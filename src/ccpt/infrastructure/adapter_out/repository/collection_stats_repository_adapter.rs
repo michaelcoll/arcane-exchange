@@ -92,6 +92,10 @@ impl CollectionStatsRepository for CollectionStatsRepositoryAdapter {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::infrastructure::adapter_out::repository::common_repository_tests::{
+        insert_card_without_cardmarket_id, insert_collection_entry, insert_set,
+    };
+    use chrono::Utc;
     use sqlx::PgPool;
 
     #[sqlx::test]
@@ -111,26 +115,11 @@ mod tests {
 
     #[sqlx::test]
     async fn returns_correct_totals(pool: PgPool) {
-        sqlx::query("INSERT INTO set_name (set_code, name) VALUES ('TST', 'Test Set')")
-            .execute(&pool)
-            .await
-            .unwrap();
-        sqlx::query("INSERT INTO card (set_code, collector_number, language_code, foil, name, rarity, scryfall_id) VALUES ('TST', '1', 'en', false, 'Card A', 'C', '12345678-1234-1234-1234-123456789012')")
-            .execute(&pool)
-            .await
-            .unwrap();
-        sqlx::query("INSERT INTO card (set_code, collector_number, language_code, foil, name, rarity, scryfall_id) VALUES ('TST', '2', 'en', false, 'Card B', 'R', '22345678-1234-1234-1234-123456789012')")
-            .execute(&pool)
-            .await
-            .unwrap();
-        sqlx::query("INSERT INTO collection_entry (set_code, collector_number, language_code, foil, user_id, quantity, purchase_price) VALUES ('TST', '1', 'en', false, 'user-1', 3, 100)")
-            .execute(&pool)
-            .await
-            .unwrap();
-        sqlx::query("INSERT INTO collection_entry (set_code, collector_number, language_code, foil, user_id, quantity, purchase_price) VALUES ('TST', '2', 'en', false, 'user-1', 2, 200)")
-            .execute(&pool)
-            .await
-            .unwrap();
+        insert_set(&pool, "TST").await;
+        insert_card_without_cardmarket_id(&pool, "TST", "1", "en", false, "Card A").await;
+        insert_card_without_cardmarket_id(&pool, "TST", "2", "en", false, "Card B").await;
+        insert_collection_entry(&pool, "TST", "1", "en", false, "user-1", 3, 100, Utc::now()).await;
+        insert_collection_entry(&pool, "TST", "2", "en", false, "user-1", 2, 200, Utc::now()).await;
 
         let adapter = CollectionStatsRepositoryAdapter::new(pool);
         let result = adapter.get_collection_stats(&UserId::new("user-1")).await;
@@ -139,24 +128,26 @@ mod tests {
         assert_eq!(stats.total_cards, 5);
         assert_eq!(stats.unique_cards, 2);
         assert_eq!(stats.sets.len(), 1);
-        assert_eq!(stats.sets[0].name, "Test Set");
+        assert_eq!(stats.sets[0].name, "Set TST");
         assert_eq!(stats.sets[0].code.to_string(), "TST");
     }
 
     #[sqlx::test]
     async fn does_not_return_other_users_cards(pool: PgPool) {
-        sqlx::query("INSERT INTO set_name (set_code, name) VALUES ('TST', 'Test Set')")
-            .execute(&pool)
-            .await
-            .unwrap();
-        sqlx::query("INSERT INTO card (set_code, collector_number, language_code, foil, name, rarity, scryfall_id) VALUES ('TST', '1', 'en', false, 'Card A', 'C', '12345678-1234-1234-1234-123456789012')")
-            .execute(&pool)
-            .await
-            .unwrap();
-        sqlx::query("INSERT INTO collection_entry (set_code, collector_number, language_code, foil, user_id, quantity, purchase_price) VALUES ('TST', '1', 'en', false, 'user-other', 10, 100)")
-            .execute(&pool)
-            .await
-            .unwrap();
+        insert_set(&pool, "TST").await;
+        insert_card_without_cardmarket_id(&pool, "TST", "1", "en", false, "Card A").await;
+        insert_collection_entry(
+            &pool,
+            "TST",
+            "1",
+            "en",
+            false,
+            "user-other",
+            10,
+            100,
+            Utc::now(),
+        )
+        .await;
 
         let adapter = CollectionStatsRepositoryAdapter::new(pool);
         let result = adapter.get_collection_stats(&UserId::new("user-1")).await;

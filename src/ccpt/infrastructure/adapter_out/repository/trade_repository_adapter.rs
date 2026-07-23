@@ -1,8 +1,9 @@
 use crate::application::error::AppError;
 use crate::application::repository::TradeRepository;
 use crate::domain::card::CardId;
-use crate::domain::trade::{TradeId, TradeStatus};
+use crate::domain::trade::{Trade, TradeCard, TradeId, TradeStatus};
 use crate::domain::user::UserId;
+use crate::infrastructure::adapter_out::repository::entities::{TradeCardEntity, TradeEntity};
 use async_trait::async_trait;
 use sqlx::{Pool, Postgres};
 
@@ -58,6 +59,35 @@ impl TradeRepository for TradeRepositoryAdapter {
         .await?;
 
         Ok(row.map(|r| (TradeId(r.id), TradeStatus::from_db_str(&r.status))))
+    }
+
+    async fn find_by_id(&self, id: TradeId) -> Result<Option<Trade>, AppError> {
+        let row = sqlx::query_as!(
+            TradeEntity,
+            r#"SELECT id, initiator_user_id, respondent_user_id, status,
+                    initiator_amount_due, respondent_amount_due,
+                    initiator_accepted_at, respondent_accepted_at,
+                    created_at, updated_at
+                FROM trade WHERE id = $1"#,
+            id.0
+        )
+        .fetch_optional(&self.pool)
+        .await?;
+
+        Ok(row.map(Trade::from))
+    }
+
+    async fn find_trade_cards(&self, trade_id: TradeId) -> Result<Vec<TradeCard>, AppError> {
+        let rows = sqlx::query_as!(
+            TradeCardEntity,
+            r#"SELECT set_code, collector_number, language_code, foil, owner_user_id, quantity
+                FROM trade_card WHERE trade_id = $1"#,
+            trade_id.0
+        )
+        .fetch_all(&self.pool)
+        .await?;
+
+        Ok(rows.into_iter().map(TradeCard::from).collect())
     }
 
     async fn create(
@@ -342,20 +372,19 @@ mod tests {
             .await
             .unwrap();
 
-        let trade_card = sqlx::query!(
-            "SELECT quantity FROM trade_card WHERE trade_id = $1",
-            trade_id
-        )
-        .fetch_one(&pool)
-        .await
-        .unwrap();
-        assert_eq!(trade_card.quantity, 2);
-
-        let trade = sqlx::query!("SELECT status FROM trade WHERE id = $1", trade_id)
-            .fetch_one(&pool)
+        let trade_cards = repository
+            .find_trade_cards(TradeId(trade_id))
             .await
             .unwrap();
-        assert_eq!(trade.status, "PENDING");
+        assert_eq!(trade_cards.len(), 1);
+        assert_eq!(trade_cards[0].quantity, 2);
+
+        let trade = repository
+            .find_by_id(TradeId(trade_id))
+            .await
+            .unwrap()
+            .unwrap();
+        assert_eq!(trade.status, TradeStatus::Pending);
     }
 
     #[sqlx::test]
@@ -379,14 +408,12 @@ mod tests {
             .await
             .unwrap();
 
-        let trade = sqlx::query!(
-            "SELECT status, initiator_accepted_at, respondent_accepted_at FROM trade WHERE id = $1",
-            trade_id
-        )
-        .fetch_one(&pool)
-        .await
-        .unwrap();
-        assert_eq!(trade.status, "PENDING");
+        let trade = repository
+            .find_by_id(TradeId(trade_id))
+            .await
+            .unwrap()
+            .unwrap();
+        assert_eq!(trade.status, TradeStatus::Pending);
         assert_eq!(trade.initiator_accepted_at, None);
         assert_eq!(trade.respondent_accepted_at, None);
     }
@@ -413,13 +440,11 @@ mod tests {
             .await
             .unwrap();
 
-        let trade = sqlx::query!(
-            "SELECT initiator_accepted_at, respondent_accepted_at FROM trade WHERE id = $1",
-            trade_id
-        )
-        .fetch_one(&pool)
-        .await
-        .unwrap();
+        let trade = repository
+            .find_by_id(TradeId(trade_id))
+            .await
+            .unwrap()
+            .unwrap();
         assert_eq!(trade.initiator_accepted_at, None);
         assert_eq!(trade.respondent_accepted_at, None);
     }
@@ -445,15 +470,12 @@ mod tests {
             .await
             .unwrap();
 
-        let rows = sqlx::query!(
-            "SELECT quantity FROM trade_card WHERE trade_id = $1",
-            trade_id
-        )
-        .fetch_all(&pool)
-        .await
-        .unwrap();
-        assert_eq!(rows.len(), 1);
-        assert_eq!(rows[0].quantity, 5);
+        let trade_cards = repository
+            .find_trade_cards(TradeId(trade_id))
+            .await
+            .unwrap();
+        assert_eq!(trade_cards.len(), 1);
+        assert_eq!(trade_cards[0].quantity, 5);
     }
 
     #[sqlx::test]
@@ -464,13 +486,14 @@ mod tests {
         let trade_id = uuid::Uuid::new_v4();
         insert_trade(&pool, trade_id, "user_a", "user_b", "PENDING").await;
 
-        let before = sqlx::query!("SELECT updated_at FROM trade WHERE id = $1", trade_id)
-            .fetch_one(&pool)
+        let repository = TradeRepositoryAdapter::new(pool.clone());
+        let before = repository
+            .find_by_id(TradeId(trade_id))
             .await
+            .unwrap()
             .unwrap()
             .updated_at;
 
-        let repository = TradeRepositoryAdapter::new(pool.clone());
         repository
             .merge_card_into_trade(
                 TradeId(trade_id),
@@ -482,9 +505,10 @@ mod tests {
             .await
             .unwrap();
 
-        let after = sqlx::query!("SELECT updated_at FROM trade WHERE id = $1", trade_id)
-            .fetch_one(&pool)
+        let after = repository
+            .find_by_id(TradeId(trade_id))
             .await
+            .unwrap()
             .unwrap()
             .updated_at;
 
@@ -510,34 +534,18 @@ mod tests {
             .await
             .unwrap();
 
-        let trade = sqlx::query!(
-            r#"SELECT initiator_user_id, respondent_user_id, status,
-                    initiator_amount_due, respondent_amount_due
-                FROM trade WHERE id = $1"#,
-            id.0,
-        )
-        .fetch_one(&pool)
-        .await
-        .unwrap();
-        assert_eq!(trade.initiator_user_id, "user_a");
-        assert_eq!(trade.respondent_user_id, "user_b");
-        assert_eq!(trade.status, "PENDING");
+        let trade = repository.find_by_id(id).await.unwrap().unwrap();
+        assert_eq!(trade.initiator_user_id, UserId::new("user_a"));
+        assert_eq!(trade.respondent_user_id, UserId::new("user_b"));
+        assert_eq!(trade.status, TradeStatus::Pending);
         assert_eq!(trade.initiator_amount_due, None);
         assert_eq!(trade.respondent_amount_due, None);
 
-        let trade_card = sqlx::query!(
-            r#"SELECT set_code, collector_number, language_code, foil, owner_user_id, quantity
-                FROM trade_card WHERE trade_id = $1"#,
-            id.0,
-        )
-        .fetch_one(&pool)
-        .await
-        .unwrap();
-        assert_eq!(trade_card.set_code, "FDN");
-        assert_eq!(trade_card.collector_number, "87");
-        assert_eq!(trade_card.language_code, "FR");
-        assert!(!trade_card.foil);
-        assert_eq!(trade_card.owner_user_id, "user_b");
+        let trade_cards = repository.find_trade_cards(id).await.unwrap();
+        assert_eq!(trade_cards.len(), 1);
+        let trade_card = &trade_cards[0];
+        assert_eq!(trade_card.card_id, make_card_id());
+        assert_eq!(trade_card.owner_user_id, UserId::new("user_b"));
         assert_eq!(trade_card.quantity, 2);
     }
 }

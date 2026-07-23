@@ -1,0 +1,88 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT set_code, collector_number, language_code, foil, owner_user_id, quantity\n                FROM trade_card WHERE trade_id = $1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "set_code",
+        "type_info": "Varchar",
+        "origin": {
+          "Table": {
+            "table": "trade_card",
+            "name": "set_code"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "collector_number",
+        "type_info": "Varchar",
+        "origin": {
+          "Table": {
+            "table": "trade_card",
+            "name": "collector_number"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "language_code",
+        "type_info": "Varchar",
+        "origin": {
+          "Table": {
+            "table": "trade_card",
+            "name": "language_code"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "foil",
+        "type_info": "Bool",
+        "origin": {
+          "Table": {
+            "table": "trade_card",
+            "name": "foil"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "owner_user_id",
+        "type_info": "Varchar",
+        "origin": {
+          "Table": {
+            "table": "trade_card",
+            "name": "owner_user_id"
+          }
+        }
+      },
+      {
+        "ordinal": 5,
+        "name": "quantity",
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "trade_card",
+            "name": "quantity"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "85c7e7c163ddd39525238339c20435728cec8c4c6f1b12043e67df8348d09e2b"
+}

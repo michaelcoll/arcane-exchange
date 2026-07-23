@@ -5,7 +5,7 @@ use crate::domain::collection::{CollectionQuery, PaginatedCollection};
 use crate::domain::collection_stats::CollectionStats;
 use crate::domain::price::{FullPriceGuide, PriceHistoryEntry};
 use crate::domain::set_name::{SetCode, SetName};
-use crate::domain::trade::{TradeId, TradeStatus};
+use crate::domain::trade::{Trade, TradeCard, TradeId, TradeStatus};
 use crate::domain::user::{User, UserId};
 use async_trait::async_trait;
 use chrono::NaiveDate;
@@ -145,6 +145,7 @@ pub trait CollectionStatsRepository: Send + Sync {
 #[cfg_attr(test, automock)]
 pub trait UserRepository: Send + Sync {
     async fn upsert(&self, user: &User) -> Result<(), AppError>;
+    async fn find_by_id(&self, id: &UserId) -> Result<Option<User>, AppError>;
 }
 
 #[async_trait]
@@ -163,6 +164,12 @@ pub trait TradeRepository: Send + Sync {
         user_a: &UserId,
         user_b: &UserId,
     ) -> Result<Option<(TradeId, TradeStatus)>, AppError>;
+
+    /// Fetches a trade by its id, if it exists.
+    async fn find_by_id(&self, id: TradeId) -> Result<Option<Trade>, AppError>;
+
+    /// Fetches every card offered in a trade.
+    async fn find_trade_cards(&self, trade_id: TradeId) -> Result<Vec<TradeCard>, AppError>;
 
     async fn create(
         &self,

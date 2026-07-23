@@ -1,7 +1,8 @@
 use crate::application::error::AppError;
 use crate::application::repository::UserRepository;
 use crate::domain::error::FunctionalError;
-use crate::domain::user::User;
+use crate::domain::user::{User, UserId};
+use crate::infrastructure::adapter_out::repository::entities::UserEntity;
 use async_trait::async_trait;
 use sqlx::{Pool, Postgres};
 
@@ -36,6 +37,18 @@ impl UserRepository for UserRepositoryAdapter {
 
         Ok(())
     }
+
+    async fn find_by_id(&self, id: &UserId) -> Result<Option<User>, AppError> {
+        let row = sqlx::query_as!(
+            UserEntity,
+            "SELECT id, username FROM users WHERE id = $1",
+            id.as_str()
+        )
+        .fetch_optional(&self.pool)
+        .await?;
+
+        Ok(row.map(User::from))
+    }
 }
 
 #[cfg(test)]
@@ -54,12 +67,13 @@ mod tests {
         let result = adapter.upsert(&make_user("user_1", "alice")).await;
 
         assert!(result.is_ok());
-        let row = sqlx::query!("SELECT id, username FROM users WHERE id = $1", "user_1")
-            .fetch_one(&pool)
+        let user = adapter
+            .find_by_id(&UserId::new("user_1"))
             .await
+            .unwrap()
             .unwrap();
-        assert_eq!(row.id, "user_1");
-        assert_eq!(row.username, "alice");
+        assert_eq!(user.id, UserId::new("user_1"));
+        assert_eq!(user.username, Some("alice".to_string()));
     }
 
     #[sqlx::test]
@@ -72,12 +86,12 @@ mod tests {
             .await
             .unwrap();
 
-        let rows = sqlx::query!("SELECT id, username FROM users WHERE id = $1", "user_2")
-            .fetch_all(&pool)
+        let user = adapter
+            .find_by_id(&UserId::new("user_2"))
             .await
+            .unwrap()
             .unwrap();
-        assert_eq!(rows.len(), 1);
-        assert_eq!(rows[0].username, "bob-updated");
+        assert_eq!(user.username, Some("bob-updated".to_string()));
     }
 
     #[sqlx::test]
