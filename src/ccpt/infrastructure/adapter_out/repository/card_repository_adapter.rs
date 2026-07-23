@@ -448,18 +448,17 @@ mod tests {
     async fn get_all_without_gatherer_id_returns_only_cards_without_gatherer_id(pool: PgPool) {
         insert_card_without_cardmarket_id(&pool, "FDN", "87", "FR", false, "Goblin Boarders").await;
         insert_card(&pool, "FDN", "12", "EN", true, "Goblin Boarders", 123).await;
-        sqlx::query!(
-            "UPDATE card SET the_gatherer_id = $1 WHERE set_code = 'FDN' AND collector_number = '12'",
-            "ABC123"
-        )
-        .execute(&pool)
-        .await
-        .unwrap();
 
-        let cards = CardRepositoryAdapter::new(pool)
-            .get_all_without_gatherer_id()
+        let repository = CardRepositoryAdapter::new(pool);
+        repository
+            .update_gatherer_id(
+                CardId::new("FDN", "12", LanguageCode::EN, true),
+                Some("ABC123".to_string()),
+            )
             .await
             .unwrap();
+
+        let cards = repository.get_all_without_gatherer_id().await.unwrap();
 
         assert_eq!(cards.len(), 1);
         assert_eq!(

@@ -1,4 +1,6 @@
+use crate::domain::card::CardId;
 use crate::domain::user::UserId;
+use chrono::{DateTime, Utc};
 use std::fmt::{Display, Formatter};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
@@ -63,6 +65,19 @@ pub struct Trade {
     pub initiator_user_id: UserId,
     pub respondent_user_id: UserId,
     pub status: TradeStatus,
+    pub initiator_amount_due: Option<u32>,
+    pub respondent_amount_due: Option<u32>,
+    pub initiator_accepted_at: Option<DateTime<Utc>>,
+    pub respondent_accepted_at: Option<DateTime<Utc>>,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct TradeCard {
+    pub card_id: CardId,
+    pub owner_user_id: UserId,
+    pub quantity: u32,
 }
 
 #[cfg(test)]

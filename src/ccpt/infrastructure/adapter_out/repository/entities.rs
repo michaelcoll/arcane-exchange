@@ -3,6 +3,7 @@ use crate::domain::language_code::LanguageCode;
 use crate::domain::price::{FullPriceGuide, Price, PriceGuide, PriceHistoryEntry};
 use crate::domain::rarity_code::RarityCode;
 use crate::domain::set_name::{SetCode, SetName};
+use crate::domain::trade::{Trade, TradeCard, TradeId, TradeStatus};
 use crate::domain::user::{User, UserId};
 use chrono::{DateTime, NaiveDate, Utc};
 use uuid::Uuid;
@@ -118,6 +119,77 @@ impl From<CardIdEntity> for CardId {
             language_code: LanguageCode::try_new(entity.language_code)
                 .expect("database contains invalid language_code"),
             foil: entity.foil,
+        }
+    }
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct UserEntity {
+    pub id: String,
+    pub username: String,
+}
+
+impl From<UserEntity> for User {
+    fn from(entity: UserEntity) -> User {
+        User::new(entity.id, None, Some(entity.username))
+    }
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct TradeEntity {
+    pub id: Uuid,
+    pub initiator_user_id: String,
+    pub respondent_user_id: String,
+    pub status: String,
+    pub initiator_amount_due: Option<i32>,
+    pub respondent_amount_due: Option<i32>,
+    pub initiator_accepted_at: Option<DateTime<Utc>>,
+    pub respondent_accepted_at: Option<DateTime<Utc>>,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
+}
+
+impl From<TradeEntity> for Trade {
+    fn from(entity: TradeEntity) -> Trade {
+        Trade {
+            id: TradeId(entity.id),
+            initiator_user_id: UserId::new(entity.initiator_user_id),
+            respondent_user_id: UserId::new(entity.respondent_user_id),
+            status: TradeStatus::from_db_str(&entity.status),
+            initiator_amount_due: entity.initiator_amount_due.map(|v| v as u32),
+            respondent_amount_due: entity.respondent_amount_due.map(|v| v as u32),
+            initiator_accepted_at: entity.initiator_accepted_at,
+            respondent_accepted_at: entity.respondent_accepted_at,
+            created_at: entity.created_at,
+            updated_at: entity.updated_at,
+        }
+    }
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct TradeCardEntity {
+    pub set_code: String,
+    pub collector_number: String,
+    pub language_code: String,
+    pub foil: bool,
+    pub owner_user_id: String,
+    pub quantity: i32,
+}
+
+impl From<TradeCardEntity> for TradeCard {
+    fn from(entity: TradeCardEntity) -> TradeCard {
+        let set_code =
+            SetCode::try_new(entity.set_code).expect("database contains invalid set_code");
+        TradeCard {
+            card_id: CardId {
+                set_code,
+                collector_number: entity.collector_number,
+                language_code: LanguageCode::try_new(entity.language_code)
+                    .expect("database contains invalid language_code"),
+                foil: entity.foil,
+            },
+            owner_user_id: UserId::new(entity.owner_user_id),
+            quantity: entity.quantity as u32,
         }
     }
 }

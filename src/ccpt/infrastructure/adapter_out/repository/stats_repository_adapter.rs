@@ -52,28 +52,18 @@ impl StatsRepository for StatsRepositoryAdapter {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::infrastructure::adapter_out::repository::common_repository_tests::{
+        insert_card_without_cardmarket_id, insert_set,
+    };
     use sqlx::PgPool;
 
     #[sqlx::test]
     async fn should_return_card_count(pool: PgPool) {
         let adapter = StatsRepositoryAdapter::new(pool.clone());
 
-        sqlx::query("INSERT INTO set_name (set_code, name) VALUES ('TST', 'Test Set')")
-            .execute(&pool)
-            .await
-            .unwrap();
-        sqlx::query(
-            "INSERT INTO card (set_code, collector_number, language_code, foil, name, rarity, scryfall_id) VALUES ('TST', '1', 'en', false, 'Test Card', 'R', '12345678-1234-1234-1234-123456789012')"
-        )
-        .execute(&pool)
-        .await
-        .unwrap();
-        sqlx::query(
-            "INSERT INTO card (set_code, collector_number, language_code, foil, name, rarity, scryfall_id) VALUES ('TST', '2', 'en', false, 'Another Card', 'C', '87654321-4321-4321-4321-210987654321')"
-        )
-        .execute(&pool)
-        .await
-        .unwrap();
+        insert_set(&pool, "TST").await;
+        insert_card_without_cardmarket_id(&pool, "TST", "1", "en", false, "Test Card").await;
+        insert_card_without_cardmarket_id(&pool, "TST", "2", "en", false, "Another Card").await;
 
         let result = adapter.get_card_number().await;
 

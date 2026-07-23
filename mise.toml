@@ -14,16 +14,15 @@ EDHREC_BASE_URL = "https://edhrec.com"
 SCRYFALL_BASE_URL = "https://api.scryfall.com"
 
 [tools]
-"cargo:cargo-llvm-cov" = { version = "latest", features = "llvm-tools-preview" }
+"cargo:cargo-llvm-cov" = "latest"
 "cargo:cargo-nextest" = "latest"
 "cargo:sqlx-cli" = "latest"
-"cargo:https://github.com/rtk-ai/rtk" = "latest"
 node = "24"
 pnpm = "11"
 
 [tasks.default]
 description = "Runs all the checks for the project"
-depends = ["openapi", "sqlx-prepare", "format", "test", "lint"]
+depends = ["openapi", "sqlx-prepare", "format", "test", "lint-backend", "lint-frontend"]
 
 [tasks.clean-backend]
 run = "cargo clean"
