@@ -2,7 +2,7 @@
 
 ## Overview
 
-Card-for-card trade between exactly 2 users. Value differences are settled in cash outside the platform. Ratings are
+Card-for-card trade between exactly two users. Value differences are settled in cash outside the platform. Ratings are
 optional and mutual.
 
 ---
@@ -31,7 +31,7 @@ optional and mutual.
 
 ### 3. Counter-Proposal
 
-- *B* browses *A*'s collection and selects 0 or more cards they're interested in, in exchange.
+- *B* browses *A*'s collection and selects zero or more cards they're interested in, in exchange.
 - The interface computes the value difference and displays the cash amount owed by one party to the other.
 - *B* submits the counter-proposal. The trade then lists:
     - Cards offered by *B* → to *A*
@@ -55,7 +55,7 @@ optional and mutual.
     - All cards on both sides of the trade are **reserved** (visible in each user's collection).
     - Any other `PENDING` or `ONE_ACCEPTED` trades involving these same cards are automatically **abandoned**.
     - The affected parties receive a notification: **"A trade involving one of your reserved cards was finalized by
-      another trade. Your trade has been cancelled."**
+      another trade. Your trade has been canceled."**
     - The other party receives a notification: **"Your partner accepted. Accept in turn or modify the trade to restart
       the negotiation."**
 
@@ -64,7 +64,7 @@ optional and mutual.
 - If either party modifies the trade while the status is `ONE_ACCEPTED`:
     - Status → `PENDING`.
     - Reserved cards are **released**.
-    - Both previous acceptances are cancelled — both parties will need to accept again.
+    - Both previous acceptances are canceled — both parties will need to accept again.
     - The other party receives a notification: **"The trade was modified. It is back in negotiation."**
 
 ### 6. Full Acceptance (status: `FULLY_ACCEPTED`)
@@ -85,9 +85,11 @@ optional and mutual.
 
 ### 9. Rating (optional, status: `CLOSED`)
 
-- Each party can rate the other from 0 to 5 stars.
+- Each party can rate the other from zero to five stars.
 - Rating is optional — skipping it does not block closing.
 - Once both have rated (or skipped), status → `CLOSED`.
+- The trade rating is the average of both parties' ratings; if only one party rated the trade, that single rating is used.
+- Each party has an overall rating, computed as the average of all ratings they have received across their past trades.
 
 ---
 
