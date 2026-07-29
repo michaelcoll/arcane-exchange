@@ -2,12 +2,18 @@
 import type { RarityCode } from '~/bindings/RarityCode';
 import type { SetInfo } from '~/bindings/SetInfo';
 
-const props = defineProps<{
-  active: { rar: RarityCode[]; sets: string[] };
-  setList: SetInfo[];
-  priceMin?: number;
-  priceMax?: number;
-}>();
+const props = withDefaults(
+  defineProps<{
+    active: { rar: RarityCode[]; sets: string[] };
+    setList: SetInfo[];
+    priceMin?: number;
+    priceMax?: number;
+    showSearch?: boolean;
+  }>(),
+  {
+    showSearch: true,
+  },
+);
 
 const emit = defineEmits<{
   toggle: [k: 'rar' | 'sets', v: string];
@@ -96,6 +102,7 @@ const clearSets = () => {
   <div class="flex h-full flex-col gap-4">
     <!-- Search -->
     <div
+      v-if="showSearch"
       class="flex items-center gap-2.5 rounded-xl border border-slate-400/50 bg-slate-200/50 px-3 py-2 transition-all duration-200 focus-within:border-cyan-500/40 focus-within:bg-slate-200 focus-within:ring-4 focus-within:ring-cyan-500/10 dark:border-white/15 dark:bg-black/20 dark:focus-within:border-cyan-400/40 dark:focus-within:bg-black/30"
     >
       <Icon
