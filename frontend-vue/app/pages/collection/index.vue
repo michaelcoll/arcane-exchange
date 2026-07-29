@@ -9,11 +9,16 @@ const { getCollection, getCollectionStats, importCards, getPriceHistory } = useC
 const q = ref('');
 const qDebounced = refDebounced(q, 200);
 
+const size = ref<'sm' | 'md' | 'lg'>('md');
+// Detail view is desktop-only — the extra KPIs/axis/range chips don't fit a small screen.
+const isDesktop = useMediaQuery('(min-width: 768px)');
+const pageSize = useCardPageSize(size, isDesktop);
+
 const params = ref({
   sort_by: 'trend' as SortBy,
   sort_dir: 'desc' as SortDir,
   page: 0,
-  page_size: 20,
+  page_size: pageSize.value,
   q: '',
   rarity: [] as RarityCode[],
   sets: undefined as string | undefined,
@@ -40,6 +45,13 @@ watch(
 );
 
 watch([() => params.value.sort_by, () => params.value.sort_dir], () => {
+  allCards.value = [];
+  params.value.page = 0;
+  refresh();
+});
+
+watch(pageSize, (v) => {
+  params.value.page_size = v;
   allCards.value = [];
   params.value.page = 0;
   refresh();
@@ -84,10 +96,7 @@ watch(sentinel, (el, oldEl) => {
 });
 
 const view = ref<'grid' | 'list'>('grid');
-const size = ref<'sm' | 'md' | 'lg'>('md');
 const graph = ref<'compact' | 'expanded'>('compact');
-// Detail view is desktop-only — the extra KPIs/axis/range chips don't fit a small screen.
-const isDesktop = useMediaQuery('(min-width: 768px)');
 const showDetail = computed(() => graph.value === 'expanded' && isDesktop.value);
 const graphRange = ref('30 j');
 
