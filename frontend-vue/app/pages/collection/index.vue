@@ -19,7 +19,6 @@ const params = ref({
   sets: undefined as string | undefined,
   price_min: undefined as number | undefined,
   price_max: undefined as number | undefined,
-  owned: true,
 });
 
 const { data: collectionData, pending, refresh } = await getCollection(params);

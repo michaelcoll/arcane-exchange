@@ -10,6 +10,7 @@ pub mod card;
 pub mod collection;
 pub mod maintenance;
 pub mod openapi;
+pub mod search;
 pub mod trade;
 pub mod user;
 

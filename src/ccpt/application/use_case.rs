@@ -66,6 +66,12 @@ pub trait GetCollectionUseCase: Send + Sync {
 
 #[async_trait]
 #[cfg_attr(test, automock)]
+pub trait SearchCardsUseCase: Send + Sync {
+    async fn search_cards(&self, query: CollectionQuery) -> Result<PaginatedCollection, AppError>;
+}
+
+#[async_trait]
+#[cfg_attr(test, automock)]
 pub trait GetCollectionPriceHistoryUseCase: Send + Sync {
     async fn get_collection_price_history(
         &self,

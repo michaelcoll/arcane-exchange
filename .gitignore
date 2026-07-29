@@ -10,6 +10,7 @@ plans
 /maquette
 .sentryclirc
 .playwright-mcp
+.openfox
 
 # Nuxt dev/build outputs
 .output

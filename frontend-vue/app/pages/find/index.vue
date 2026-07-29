@@ -2,7 +2,8 @@
 import type { CollectionCard } from '~/bindings/CollectionCard';
 import type { RarityCode } from '~/bindings/RarityCode';
 
-const { getCollection, getCollectionStats } = useCollectionService();
+const { getCollectionStats } = useCollectionService();
+const { getSearch } = useSearchService();
 
 const mode = ref<'name' | 'decklist'>('name');
 
@@ -25,10 +26,9 @@ const params = ref({
   sets: undefined as string | undefined,
   price_min: undefined as number | undefined,
   price_max: undefined as number | undefined,
-  owned: false,
 });
 
-const { data: collectionData, pending, refresh } = await getCollection(params);
+const { data: collectionData, pending, refresh } = await getSearch(params);
 const { data: statsData } = await getCollectionStats();
 
 const allCards = ref<CollectionCard[]>([]);

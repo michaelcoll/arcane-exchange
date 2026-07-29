@@ -17,6 +17,7 @@ use utoipa::OpenApi;
         super::collection::controller::import_cards,
         super::collection::controller::get_collection_stats,
         super::collection::controller::get_collection_price_history,
+        super::search::controller::search_cards,
         super::card::controller::get_card_info,
         super::card::controller::get_card_price_history,
         super::card::controller::get_card_offers,
@@ -53,7 +54,8 @@ use utoipa::OpenApi;
     ),
     tags(
         (name = "card", description = "Single card lookup, price history and sale offers (authentication required)"),
-        (name = "collection", description = "Player's collection (authentication required)"),
+        (name = "collection", description = "Player's private collection (authentication required, no public catalog)"),
+        (name = "search", description = "Public card search across all users' collections (authentication required)"),
         (name = "maintenance", description = "Maintenance operations (public)"),
         (name = "auth", description = "Authentication and user registration (authentication required)"),
         (name = "trades", description = "Trade requests between two collectors (authentication required)"),

@@ -67,7 +67,7 @@ mod tests {
             MockEnqueueGathererIdUpdateUseCase, MockGetCardOffersUseCase,
             MockGetCardPriceHistoryUseCase, MockGetCollectionPriceHistoryUseCase,
             MockGetCollectionStatsUseCase, MockGetCollectionUseCase, MockImportPriceUseCase,
-            MockRegisterUserUseCase,
+            MockRegisterUserUseCase, MockSearchCardsUseCase,
         };
         AppState {
             import_card_use_case: Arc::new(MockImportCardUseCase::new()),
@@ -75,6 +75,7 @@ mod tests {
             stats_use_case: Arc::new(MockStatsUseCase::new()),
             auth_service,
             get_collection_use_case: Arc::new(MockGetCollectionUseCase::new()),
+            search_cards_use_case: Arc::new(MockSearchCardsUseCase::new()),
             import_price_use_case: Arc::new(MockImportPriceUseCase::new()),
             enqueue_cardmarket_id_use_case: Arc::new(MockEnqueueCardMarketIdUpdateUseCase::new()),
             enqueue_gatherer_id_use_case: Arc::new(MockEnqueueGathererIdUpdateUseCase::new()),
