@@ -12,6 +12,7 @@ const props = withDefaults(
     clickable?: boolean;
     foil?: boolean;
     size?: 'sm' | 'md' | 'lg';
+    ownerUsername?: string;
   }>(),
   {
     clickable: true,
@@ -93,6 +94,12 @@ const dealTagClass = computed(() => {
         <template v-if="purchased != null">{{ formatPrice(purchased) }}</template>
         <template v-else-if="price != null">{{ formatPrice(price) }}</template>
       </span>
+
+      <span
+        v-if="ownerUsername"
+        class="text-2xs overflow-hidden text-ellipsis whitespace-nowrap text-slate-400 dark:text-slate-500"
+        >{{ ownerUsername }}</span
+      >
     </div>
   </div>
 </template>

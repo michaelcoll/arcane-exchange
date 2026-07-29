@@ -1,38 +1,153 @@
 <script setup lang="ts">
+import type { CollectionCard } from '~/bindings/CollectionCard';
+import type { RarityCode } from '~/bindings/RarityCode';
+
+const { getCollection, getCollectionStats } = useCollectionService();
+
 const mode = ref<'name' | 'decklist'>('name');
-const sort = ref<'prix' | 'distance' | 'reputation'>('prix');
-
-const owners = [
-  { u: '@mizzix_42', init: 'M4', rep: 4.8, dist: '2,3 km', qty: 2, price: 29, online: true },
-  { u: '@kaalia_dt', init: 'KA', rep: 4.9, dist: 'en ligne', qty: 1, price: 34, online: true },
-  { u: '@golgari_jo', init: 'GO', rep: 4.6, dist: '11 km', qty: 1, price: 31, online: false },
-  { u: '@urza_main', init: 'UR', rep: 4.7, dist: '5,1 km', qty: 3, price: 28, online: false },
-];
-
-const sorted = computed(() =>
-  [...owners].sort((a, b) => {
-    if (sort.value === 'prix') return a.price - b.price;
-    if (sort.value === 'distance') return parseFloat(a.dist) - parseFloat(b.dist);
-    return b.rep - a.rep;
-  }),
-);
-
-const coverers = [
-  { u: '@mizzix_42', init: 'M4', pct: 81, n: 80, val: 240, online: true },
-  { u: '@kaalia_dt', init: 'KA', pct: 63, n: 62, val: 188, online: true },
-  { u: '@urza_main', init: 'UR', pct: 47, n: 46, val: 142, online: false },
-  { u: '@simic_ramp', init: 'SI', pct: 31, n: 31, val: 96, online: false },
-];
 
 const modeOptions = [
   { value: 'name', label: 'Par nom', tone: 'cyan' },
   { value: 'decklist', label: 'Par decklist', tone: 'cyan' },
 ];
 
-const sortChips = [
-  { key: 'prix', label: 'Prix' },
-  { key: 'distance', label: 'Distance' },
-  { key: 'reputation', label: 'Réputation' },
+/* ---------- MODE: PAR NOM ---------- */
+const q = ref('');
+const submittedQ = ref('');
+
+const params = ref({
+  sort_by: 'trend' as const,
+  sort_dir: 'desc' as const,
+  page: 0,
+  page_size: 20,
+  q: '',
+  rarity: [] as RarityCode[],
+  sets: undefined as string | undefined,
+  price_min: undefined as number | undefined,
+  price_max: undefined as number | undefined,
+  owned: false,
+});
+
+const { data: collectionData, pending, refresh } = await getCollection(params);
+const { data: statsData } = await getCollectionStats();
+
+const allCards = ref<CollectionCard[]>([]);
+
+watch(
+  collectionData,
+  (data) => {
+    if (!data) return;
+    if (params.value.page === 0) {
+      allCards.value = [...data.items];
+    } else {
+      allCards.value.push(...data.items);
+    }
+  },
+  { immediate: true },
+);
+
+const resetAndRefresh = () => {
+  allCards.value = [];
+  params.value.page = 0;
+  refresh();
+};
+
+const submitSearch = () => {
+  submittedQ.value = q.value;
+  params.value.q = q.value;
+  resetAndRefresh();
+};
+
+watch(
+  () => params.value.page,
+  (page) => {
+    if (page > 0) refresh();
+  },
+);
+
+const hasMore = computed(() =>
+  collectionData.value ? allCards.value.length < collectionData.value.total : false,
+);
+
+const sentinel = ref<HTMLElement | null>(null);
+let io: IntersectionObserver | null = null;
+
+onMounted(() => {
+  io = new IntersectionObserver(
+    ([entry]) => {
+      if (entry?.isIntersecting && hasMore.value && !pending.value) {
+        params.value.page += 1;
+      }
+    },
+    { rootMargin: '300px' },
+  );
+  onUnmounted(() => io?.disconnect());
+});
+
+watch(sentinel, (el, oldEl) => {
+  if (oldEl) io?.unobserve(oldEl);
+  if (el) io?.observe(el);
+});
+
+const size = ref<'sm' | 'md' | 'lg'>('md');
+const sheet = ref(false);
+const active = ref({ rar: [] as RarityCode[], sets: [] as string[] });
+const detail = ref<CollectionCard | null>(null);
+
+const bodyScrollLocked = useScrollLock(document.body);
+watch([detail, sheet], ([d, s]) => {
+  bodyScrollLocked.value = !!d || s;
+});
+
+const toggle = (k: 'rar' | 'sets', v: string) => {
+  if (k === 'rar') {
+    const arr = active.value.rar;
+    active.value.rar = arr.includes(v as RarityCode)
+      ? arr.filter((x) => x !== v)
+      : [...arr, v as RarityCode];
+  } else {
+    const arr = active.value.sets;
+    active.value.sets = arr.includes(v) ? arr.filter((x) => x !== v) : [...arr, v];
+  }
+};
+
+watch(
+  () => [active.value.rar, active.value.sets],
+  () => {
+    params.value.rarity = active.value.rar;
+    params.value.sets = active.value.sets.length ? active.value.sets.join(',') : undefined;
+    resetAndRefresh();
+  },
+  { deep: true },
+);
+
+const setList = computed(() => statsData.value?.sets ?? []);
+
+const priceMin = computed(() =>
+  statsData.value?.price_trend_min != null ? Math.floor(statsData.value.price_trend_min / 100) : 0,
+);
+const priceMax = computed(() =>
+  statsData.value?.price_trend_max != null ? Math.ceil(statsData.value.price_trend_max / 100) : 150,
+);
+
+const onPriceChange = useDebounceFn((lo: number, hi: number) => {
+  params.value.price_min = lo > 0 ? lo * 100 : undefined;
+  params.value.price_max = hi < priceMax.value ? hi * 100 : undefined;
+  resetAndRefresh();
+}, 300);
+
+const sizeOptions = [
+  { value: 'sm', label: '', icon: 'lucide:grid-3x3', title: 'Petites cartes', tone: 'cyan' },
+  { value: 'md', label: '', icon: 'lucide:grid-2x2', title: 'Cartes moyennes', tone: 'cyan' },
+  { value: 'lg', label: '', icon: 'lucide:square', title: 'Grandes cartes', tone: 'cyan' },
+];
+
+/* ---------- MODE: PAR DECKLIST ---------- */
+const coverers = [
+  { u: '@mizzix_42', init: 'M4', pct: 81, n: 80, val: 240, online: true },
+  { u: '@kaalia_dt', init: 'KA', pct: 63, n: 62, val: 188, online: true },
+  { u: '@urza_main', init: 'UR', pct: 47, n: 46, val: 142, online: false },
+  { u: '@simic_ramp', init: 'SI', pct: 31, n: 31, val: 96, online: false },
 ];
 
 const decklist = ref(
@@ -52,126 +167,171 @@ const decklist = ref(
 
     <!-- MODE: PAR NOM -->
     <div v-if="mode === 'name'">
-      <!-- Search field -->
-      <div
-        class="mb-5 flex items-center gap-2.5 rounded-2xl border border-slate-300 bg-black/20 py-2 pr-2 pl-4 transition-all duration-200 focus-within:border-cyan-500/40 focus-within:bg-black/10 focus-within:ring-4 focus-within:ring-cyan-500/10 dark:border-white/15 dark:focus-within:border-cyan-400/40"
-      >
-        <Icon name="lucide:search" size="20" class="flex-none text-slate-400 dark:text-slate-500" />
-        <input
-          value="Sire of Seven Deaths"
-          placeholder="Nom de la carte…"
-          class="min-w-0 flex-1 border-0 bg-transparent text-base text-slate-800 outline-none placeholder:text-slate-400 dark:text-slate-100 dark:placeholder:text-slate-500"
-        />
-      </div>
+      <!-- Search bar -->
+      <form class="mb-5 flex flex-wrap items-center gap-3" @submit.prevent="submitSearch">
+        <div
+          class="flex min-w-[240px] flex-1 items-center gap-2.5 rounded-2xl border border-slate-300 bg-black/20 py-2 pr-2 pl-4 transition-all duration-200 focus-within:border-cyan-500/40 focus-within:bg-black/10 focus-within:ring-4 focus-within:ring-cyan-500/10 dark:border-white/15 dark:focus-within:border-cyan-400/40"
+        >
+          <Icon
+            name="lucide:search"
+            size="20"
+            class="flex-none text-slate-400 dark:text-slate-500"
+          />
+          <input
+            v-model="q"
+            placeholder="Nom de la carte…"
+            class="min-w-0 flex-1 border-0 bg-transparent text-base text-slate-800 outline-none placeholder:text-slate-400 dark:text-slate-100 dark:placeholder:text-slate-500"
+          />
+          <button
+            type="submit"
+            class="inline-flex items-center justify-center gap-2 rounded-xl border border-transparent bg-cyan-500 px-4 py-2 text-sm leading-none font-bold whitespace-nowrap text-zinc-950 shadow-lg transition-all duration-150 hover:-translate-y-px hover:bg-cyan-400 active:translate-y-0 dark:bg-cyan-400 dark:hover:bg-cyan-300"
+          >
+            Chercher
+          </button>
+        </div>
+        <button
+          type="button"
+          class="inline-flex cursor-pointer items-center gap-1.5 rounded-full border border-slate-200 bg-slate-100 px-3 py-1.5 text-xs font-medium whitespace-nowrap text-slate-600 transition-all duration-150 select-none hover:border-slate-300 hover:bg-slate-50 hover:text-slate-800 md:hidden dark:border-white/10 dark:bg-white/5 dark:text-slate-300 dark:hover:border-white/15 dark:hover:bg-zinc-800 dark:hover:text-slate-100"
+          @click="sheet = true"
+        >
+          <Icon name="lucide:filter" :size="13" />
+          Filtres
+        </button>
+      </form>
 
-      <!-- Card header -->
-      <div
-        class="mb-4 rounded-2xl border border-slate-200 bg-white/60 p-4 shadow-lg backdrop-blur-md dark:border-white/10 dark:bg-zinc-900/60"
-      >
-        <div class="flex gap-4">
-          <MtgCard color="m" name="Sire of Seven Deaths" class="w-24 flex-none" />
-          <div class="flex min-w-0 flex-1 flex-col gap-2.5">
-            <div>
-              <h3 class="font-display mb-1 text-xl font-semibold tracking-tight">
-                Sire of Seven Deaths
-              </h3>
-              <span class="text-sm text-slate-400 dark:text-slate-500"
-                >Creature — Eldrazi · Foundations</span
+      <!-- BODY -->
+      <div class="flex items-start gap-6">
+        <!-- Sidebar filters (desktop) -->
+        <aside
+          class="sticky top-[86px] w-[210px] flex-none rounded-2xl border border-slate-200 bg-white/60 p-4 shadow-lg backdrop-blur-md max-md:hidden dark:border-white/10 dark:bg-zinc-900/60"
+        >
+          <CollectionFilters
+            :active="active"
+            :set-list="setList"
+            :price-min="priceMin"
+            :price-max="priceMax"
+            :show-search="false"
+            @toggle="toggle"
+            @price-change="onPriceChange"
+          />
+        </aside>
+
+        <!-- Main content -->
+        <div class="min-w-0 flex-1">
+          <div class="mb-3.5 flex min-h-[22px] items-center justify-between">
+            <span v-if="submittedQ" class="text-sm text-slate-400 dark:text-slate-500">
+              <b class="font-semibold text-slate-800 dark:text-slate-100"
+                >{{ collectionData?.total ?? 0 }} résultat{{
+                  (collectionData?.total ?? 0) > 1 ? 's' : ''
+                }}</b
               >
-            </div>
-            <div class="flex flex-wrap gap-2">
-              <span
-                class="inline-flex cursor-default items-center gap-1.5 rounded-full border border-slate-200 bg-slate-100 px-3 py-1.5 text-xs font-medium whitespace-nowrap text-slate-600 select-none dark:border-white/10 dark:bg-white/5 dark:text-slate-300"
-              >
-                Prix réf.
-                <span class="ml-1 font-mono tracking-tight text-cyan-600 dark:text-cyan-400"
-                  >€31</span
-                >
-              </span>
-              <span
-                class="inline-flex cursor-default items-center gap-1.5 rounded-full border border-violet-500/30 bg-violet-500/10 px-3 py-1.5 text-xs font-medium whitespace-nowrap text-violet-700 select-none dark:border-violet-400/30 dark:bg-violet-400/10 dark:text-violet-300"
-              >
-                EDHREC
-                <span class="ml-1 font-mono tracking-tight">41 %</span>
-              </span>
-            </div>
-            <span class="text-sm text-slate-400 dark:text-slate-500"
-              >14 joueurs possèdent cette carte</span
-            >
+              pour « {{ submittedQ }} »
+            </span>
+            <SegToggle v-model="size" :options="sizeOptions" size="sm" class="ml-auto" />
           </div>
+
+          <!-- Loading state (initial) -->
+          <div
+            v-if="pending && allCards.length === 0"
+            class="flex items-center justify-center py-16 font-mono text-sm text-slate-400 dark:text-slate-500"
+          >
+            <Icon name="lucide:loader-circle" :size="18" class="mr-2.5 animate-spin" />
+            Chargement…
+          </div>
+
+          <!-- Empty state -->
+          <div
+            v-else-if="!pending && allCards.length === 0"
+            class="flex flex-col items-center justify-center gap-4 py-20 text-slate-400 dark:text-slate-500"
+          >
+            <Icon name="lucide:search-x" :size="48" class="opacity-40" />
+            <p class="text-center font-mono text-base">
+              Aucune carte ne correspond à ta recherche.
+            </p>
+          </div>
+
+          <!-- Grid -->
+          <template v-else>
+            <div
+              :class="[
+                'grid max-md:[grid-template-columns:repeat(auto-fill,minmax(150px,1fr))] max-md:gap-3.5',
+                size === 'sm'
+                  ? '[grid-template-columns:repeat(auto-fill,minmax(130px,1fr))] gap-3'
+                  : '',
+                size === 'md'
+                  ? '[grid-template-columns:repeat(auto-fill,minmax(185px,1fr))] gap-4'
+                  : '',
+                size === 'lg'
+                  ? '[grid-template-columns:repeat(auto-fill,minmax(340px,1fr))] gap-6'
+                  : '',
+              ]"
+            >
+              <CardCell
+                v-for="(c, i) in allCards"
+                :key="`${c.scryfall_id}-${c.owner_username ?? i}`"
+                :scryfall-id="c.scryfall_id"
+                :the-gatherer-id="c.the_gatherer_id ?? undefined"
+                :name="c.name"
+                :price="c.price_guide?.trend ?? 0"
+                :foil="c.foil"
+                :size="size"
+                :owner-username="c.owner_username ?? undefined"
+                @click="detail = c"
+              />
+            </div>
+
+            <!-- Infinite scroll sentinel -->
+            <div ref="sentinel" class="h-px" />
+            <div
+              v-if="pending && allCards.length > 0"
+              class="flex items-center justify-center py-8 font-mono text-sm text-slate-400 dark:text-slate-500"
+            >
+              <Icon name="lucide:loader-circle" :size="16" class="mr-2 animate-spin" />
+              Chargement…
+            </div>
+          </template>
         </div>
       </div>
 
-      <!-- Sort row -->
-      <div class="mb-3.5 flex flex-wrap items-center justify-between gap-2.5">
-        <span class="text-sm text-slate-400 dark:text-slate-500"
-          >{{ owners.length }} résultats à proximité</span
+      <!-- MOBILE FILTER SHEET -->
+      <div
+        v-if="sheet"
+        class="fixed inset-0 z-[80] animate-[fade_0.2s_ease] bg-black/60 backdrop-blur-sm"
+        @click="sheet = false"
+      >
+        <div
+          class="fixed right-0 bottom-0 left-0 z-[81] max-h-[84vh] animate-[slideup_0.3s_cubic-bezier(0.3,1,0.4,1)] overflow-auto rounded-t-3xl border-t border-slate-300 bg-white px-4 pt-5 pb-[calc(1.25rem+env(safe-area-inset-bottom))] shadow-2xl dark:border-white/15 dark:bg-zinc-900"
+          @click.stop
         >
-        <div class="flex items-center gap-2">
-          <span
-            class="text-2xs font-mono font-medium tracking-widest whitespace-nowrap text-slate-400 uppercase dark:text-slate-500"
-            >trier</span
-          >
-          <div class="flex gap-1.5">
+          <div class="mb-4 flex items-center justify-between">
+            <h3 class="font-display text-base font-semibold tracking-tight">Filtres</h3>
             <button
-              v-for="chip in sortChips"
-              :key="chip.key"
-              :class="[
-                'inline-flex cursor-pointer items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium whitespace-nowrap transition-all duration-150 select-none',
-                sort === chip.key
-                  ? 'border-cyan-500/30 bg-cyan-500/10 text-cyan-700 dark:border-cyan-400/30 dark:bg-cyan-400/10 dark:text-cyan-300'
-                  : 'border-slate-200 bg-slate-100 text-slate-600 hover:border-slate-300 hover:bg-slate-50 hover:text-slate-800 dark:border-white/10 dark:bg-white/5 dark:text-slate-300 dark:hover:border-white/15 dark:hover:bg-zinc-800 dark:hover:text-slate-100',
-              ]"
-              @click="sort = chip.key as typeof sort"
+              class="grid h-9 w-9 place-items-center rounded-lg border border-slate-200 bg-slate-100 text-slate-600 transition-all duration-150 hover:border-slate-300 hover:bg-slate-50 hover:text-slate-800 dark:border-white/10 dark:bg-white/5 dark:text-slate-300 dark:hover:border-white/15 dark:hover:bg-zinc-800 dark:hover:text-slate-100"
+              @click="sheet = false"
             >
-              {{ chip.label }}
+              <Icon name="lucide:x" :size="16" />
             </button>
           </div>
+          <CollectionFilters
+            :active="active"
+            :set-list="setList"
+            :price-min="priceMin"
+            :price-max="priceMax"
+            :show-search="false"
+            @toggle="toggle"
+            @price-change="onPriceChange"
+          />
+          <button
+            class="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-xl border border-transparent bg-cyan-500 px-4 py-2.5 text-sm leading-none font-bold whitespace-nowrap text-zinc-950 shadow-lg transition-all duration-150 hover:-translate-y-px hover:bg-cyan-400 active:translate-y-0 dark:bg-cyan-400 dark:hover:bg-cyan-300"
+            @click="sheet = false"
+          >
+            Voir les résultats
+          </button>
         </div>
       </div>
 
-      <!-- Owner rows -->
-      <div class="flex flex-col gap-2">
-        <div
-          v-for="o in sorted"
-          :key="o.u"
-          class="flex items-center gap-3 rounded-xl border border-slate-200 bg-white px-3.5 py-3 transition-all duration-150 hover:border-slate-300 hover:bg-slate-50 dark:border-white/10 dark:bg-zinc-900 dark:hover:border-white/15 dark:hover:bg-zinc-800"
-        >
-          <PlayerAvatar :initials="o.init" :online="o.online" />
-          <div class="min-w-0 flex-1">
-            <div
-              class="overflow-hidden text-sm font-semibold text-ellipsis whitespace-nowrap text-slate-800 dark:text-slate-100"
-            >
-              {{ o.u }}
-            </div>
-            <div
-              class="flex flex-wrap items-center gap-2 text-xs text-slate-400 dark:text-slate-500"
-            >
-              <span>
-                <Icon
-                  name="mdi:star"
-                  size="11"
-                  class="align-[-1px] text-violet-500 dark:text-violet-300"
-                />
-                {{ o.rep.toLocaleString('fr-FR') }}
-              </span>
-              <span>
-                <Icon name="lucide:map-pin" size="11" class="align-[-1px]" />
-                {{ o.dist }}
-              </span>
-              <span>×{{ o.qty }} dispo</span>
-            </div>
-          </div>
-          <span class="font-mono text-sm font-semibold text-cyan-600 dark:text-cyan-400"
-            >€{{ o.price }}</span
-          >
-          <NuxtLink
-            to="/trade"
-            class="inline-flex items-center justify-center gap-2 rounded-lg border border-transparent bg-cyan-500 px-3 py-1.5 text-xs leading-none font-bold whitespace-nowrap text-zinc-950 shadow-lg transition-all duration-150 hover:-translate-y-px hover:bg-cyan-400 active:translate-y-0 dark:bg-cyan-400 dark:hover:bg-cyan-300"
-            >Échanger</NuxtLink
-          >
-        </div>
-      </div>
+      <!-- CARD DETAIL MODAL -->
+      <CardDetailModal v-if="detail" :card="detail" @close="detail = null" />
     </div>
 
     <!-- MODE: PAR DECKLIST -->
