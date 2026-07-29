@@ -16,11 +16,15 @@ const modeOptions = [
 const q = ref('');
 const submittedQ = ref('');
 
+const size = ref<'sm' | 'md' | 'lg'>('md');
+const isDesktop = useMediaQuery('(min-width: 768px)');
+const pageSize = useCardPageSize(size, isDesktop);
+
 const params = ref({
   sort_by: 'trend' as const,
   sort_dir: 'desc' as const,
   page: 0,
-  page_size: 20,
+  page_size: pageSize.value,
   q: '',
   rarity: [] as RarityCode[],
   sets: undefined as string | undefined,
@@ -58,6 +62,11 @@ const submitSearch = () => {
   resetAndRefresh();
 };
 
+watch(pageSize, (v) => {
+  params.value.page_size = v;
+  resetAndRefresh();
+});
+
 watch(
   () => params.value.page,
   (page) => {
@@ -89,7 +98,6 @@ watch(sentinel, (el, oldEl) => {
   if (el) io?.observe(el);
 });
 
-const size = ref<'sm' | 'md' | 'lg'>('md');
 const sheet = ref(false);
 const active = ref({ rar: [] as RarityCode[], sets: [] as string[] });
 const detail = ref<CollectionCard | null>(null);
