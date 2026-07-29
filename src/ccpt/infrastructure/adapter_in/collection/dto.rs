@@ -143,9 +143,6 @@ pub(crate) struct CollectionParams {
     /// Maximum trend price in cents
     #[ts(optional)]
     pub(crate) price_max: Option<u32>,
-    /// Restrict to cards owned by the authenticated user (default: false — full catalog)
-    #[serde(default)]
-    pub(crate) owned: bool,
 }
 
 impl Default for CollectionParams {
@@ -160,7 +157,6 @@ impl Default for CollectionParams {
             sets: None,
             price_min: None,
             price_max: None,
-            owned: false,
         }
     }
 }

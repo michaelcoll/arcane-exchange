@@ -3,7 +3,7 @@ import type { RarityCode } from './RarityCode';
 import type { SortBy } from './SortBy';
 import type { SortDir } from './SortDir';
 
-export type CollectionParams = {
+export type SearchParams = {
   page: number;
   page_size: number;
   sort_by: SortBy;

@@ -75,7 +75,6 @@ pub(crate) async fn import_cards(
         ("sets" = Option<String>, Query, description = "Comma-separated set codes"),
         ("price_min" = Option<u32>, Query, description = "Minimum trend price in cents"),
         ("price_max" = Option<u32>, Query, description = "Maximum trend price in cents"),
-        ("owned" = Option<bool>, Query, description = "Restrict to cards owned by the authenticated user (default: false — full catalog)"),
     ),
     responses(
         (status = 200, description = "Paginated card collection", body = PaginatedCollectionResponse),
@@ -113,7 +112,6 @@ pub(crate) async fn get_collection(
         sets,
         price_min: params.price_min,
         price_max: params.price_max,
-        owned: params.owned,
     };
 
     let result = state

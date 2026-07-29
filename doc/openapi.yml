@@ -198,12 +198,6 @@ paths:
           type: integer
           format: int32
           minimum: 0
-      - name: owned
-        in: query
-        description: 'Restrict to cards owned by the authenticated user (default: false — full catalog)'
-        required: false
-        schema:
-          type: boolean
       responses:
         '200':
           description: Paginated card collection
@@ -321,6 +315,87 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/EnqueueResponse'
+  /search/card:
+    get:
+      tags:
+      - search
+      operationId: search_cards
+      parameters:
+      - name: page
+        in: query
+        description: Page number (starts at 0)
+        required: false
+        schema:
+          type: integer
+          format: int32
+          minimum: 0
+      - name: page_size
+        in: query
+        description: Items per page (max 100)
+        required: false
+        schema:
+          type: integer
+          format: int32
+          minimum: 0
+      - name: sort_by
+        in: query
+        description: Sort field
+        required: false
+        schema:
+          $ref: '#/components/schemas/SortByParam'
+      - name: sort_dir
+        in: query
+        description: Sort direction
+        required: false
+        schema:
+          $ref: '#/components/schemas/SortDirParam'
+      - name: q
+        in: query
+        description: Fuzzy search on card name or set
+        required: false
+        schema:
+          type: string
+      - name: rarity
+        in: query
+        description: Rarity codes, repeated for multiple values (e.g. rarity=C&rarity=U)
+        required: false
+        schema:
+          type: array
+          items:
+            $ref: '#/components/schemas/RarityCodeParam'
+      - name: sets
+        in: query
+        description: Comma-separated set codes
+        required: false
+        schema:
+          type: string
+      - name: price_min
+        in: query
+        description: Minimum trend price in cents
+        required: false
+        schema:
+          type: integer
+          format: int32
+          minimum: 0
+      - name: price_max
+        in: query
+        description: Maximum trend price in cents
+        required: false
+        schema:
+          type: integer
+          format: int32
+          minimum: 0
+      responses:
+        '200':
+          description: Paginated card search results
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedCollectionResponse'
+        '401':
+          description: Missing or invalid token
+      security:
+      - bearer_auth: []
   /trades:
     post:
       tags:
@@ -660,7 +735,9 @@ tags:
 - name: card
   description: Single card lookup, price history and sale offers (authentication required)
 - name: collection
-  description: Player's collection (authentication required)
+  description: Player's private collection (authentication required, no public catalog)
+- name: search
+  description: Public card search across all users' collections (authentication required)
 - name: maintenance
   description: Maintenance operations (public)
 - name: auth

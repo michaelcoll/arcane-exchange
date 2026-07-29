@@ -11,6 +11,7 @@ use crate::application::service::gatherer_id_enqueue_service::GathererIdEnqueueS
 use crate::application::service::import_card_service::ImportCardService;
 use crate::application::service::import_price_service::ImportPriceService;
 use crate::application::service::register_user_service::RegisterUserService;
+use crate::application::service::search_service::SearchService;
 use crate::application::service::stats_service::StatsService;
 use crate::application::service::trade_service::CreateTradeService;
 use crate::application::service::update_card_market_service::CardMarketIdWorker;
@@ -19,12 +20,13 @@ use crate::application::use_case::{
     CreateTradeUseCase, EnqueueCardMarketIdUpdateUseCase, EnqueueGathererIdUpdateUseCase,
     GetCardOffersUseCase, GetCardPriceHistoryUseCase, GetCollectionPriceHistoryUseCase,
     GetCollectionStatsUseCase, GetCollectionUseCase, ImportCardUseCase, ImportPriceUseCase,
-    RegisterUserUseCase, StatsUseCase,
+    RegisterUserUseCase, SearchCardsUseCase, StatsUseCase,
 };
 use crate::config::Config;
 use crate::domain::card::CardId;
 use crate::infrastructure::adapter_in::card::controller::create_card_router;
 use crate::infrastructure::adapter_in::collection::controller::create_collection_router;
+use crate::infrastructure::adapter_in::search::controller::create_search_router;
 use crate::infrastructure::adapter_in::trade::controller::create_trade_router;
 use crate::infrastructure::adapter_in::user::controller::create_user_router;
 use crate::infrastructure::adapter_out::caller::cardmarket_caller_adapter::CardMarketCallerAdapter;
@@ -63,6 +65,7 @@ pub struct AppState {
     pub stats_use_case: Arc<dyn StatsUseCase>,
     pub auth_service: Arc<dyn AuthService>,
     pub get_collection_use_case: Arc<dyn GetCollectionUseCase>,
+    pub search_cards_use_case: Arc<dyn SearchCardsUseCase>,
     pub import_price_use_case: Arc<dyn ImportPriceUseCase>,
     pub enqueue_cardmarket_id_use_case: Arc<dyn EnqueueCardMarketIdUpdateUseCase>,
     pub enqueue_gatherer_id_use_case: Arc<dyn EnqueueGathererIdUpdateUseCase>,
@@ -227,6 +230,8 @@ fn create_app_state(
 
     let stats_service = Arc::new(StatsService::new(repos.stats));
     let collection_service = Arc::new(CollectionService::new(repos.card_prices_view.clone()));
+    let search_service: Arc<dyn SearchCardsUseCase> =
+        Arc::new(SearchService::new(repos.card_prices_view.clone()));
     let collection_price_history_service: Arc<dyn GetCollectionPriceHistoryUseCase> = Arc::new(
         CollectionPriceHistoryService::new(repos.collection_price_history.clone()),
     );
@@ -248,6 +253,7 @@ fn create_app_state(
         stats_use_case: stats_service,
         auth_service,
         get_collection_use_case: collection_service,
+        search_cards_use_case: search_service,
         import_price_use_case,
         enqueue_cardmarket_id_use_case,
         enqueue_gatherer_id_use_case,
@@ -284,6 +290,7 @@ fn create_router(app_state: AppState) -> Router {
     Router::new()
         .nest("/card", create_card_router())
         .nest("/collection", create_collection_router())
+        .nest("/search", create_search_router())
         .nest("/maintenance", create_maintenance_router())
         .nest("/user", create_user_router())
         .nest("/trades", create_trade_router())
@@ -345,7 +352,7 @@ impl AppState {
             MockEnqueueGathererIdUpdateUseCase, MockGetCardOffersUseCase,
             MockGetCardPriceHistoryUseCase, MockGetCollectionPriceHistoryUseCase,
             MockGetCollectionStatsUseCase, MockGetCollectionUseCase, MockImportCardUseCase,
-            MockRegisterUserUseCase,
+            MockRegisterUserUseCase, MockSearchCardsUseCase,
         };
         use crate::domain::card::CardInfo;
         use crate::domain::user::User;
@@ -376,6 +383,7 @@ impl AppState {
             stats_use_case,
             auth_service: Arc::new(mock_auth),
             get_collection_use_case: Arc::new(MockGetCollectionUseCase::new()),
+            search_cards_use_case: Arc::new(MockSearchCardsUseCase::new()),
             import_price_use_case,
             enqueue_cardmarket_id_use_case: Arc::new(MockEnqueueCardMarketIdUpdateUseCase::new()),
             enqueue_gatherer_id_use_case: Arc::new(MockEnqueueGathererIdUpdateUseCase::new()),

@@ -1,29 +1,24 @@
 use crate::application::error::AppError;
 use crate::application::repository::CardPricesViewRepository;
-use crate::application::use_case::GetCollectionUseCase;
+use crate::application::use_case::SearchCardsUseCase;
 use crate::domain::collection::{CollectionQuery, PaginatedCollection};
-use crate::domain::user::UserId;
 use async_trait::async_trait;
 use std::sync::Arc;
 
-pub struct CollectionService {
+pub struct SearchService {
     repository: Arc<dyn CardPricesViewRepository>,
 }
 
-impl CollectionService {
+impl SearchService {
     pub fn new(repository: Arc<dyn CardPricesViewRepository>) -> Self {
         Self { repository }
     }
 }
 
 #[async_trait]
-impl GetCollectionUseCase for CollectionService {
-    async fn get_collection(
-        &self,
-        user_id: &UserId,
-        query: CollectionQuery,
-    ) -> Result<PaginatedCollection, AppError> {
-        self.repository.get_paginated(user_id, query).await
+impl SearchCardsUseCase for SearchService {
+    async fn search_cards(&self, query: CollectionQuery) -> Result<PaginatedCollection, AppError> {
+        self.repository.search_paginated(query).await
     }
 }
 
@@ -35,7 +30,7 @@ mod tests {
     use crate::domain::collection::{CollectionSortField, SortDirection};
 
     #[tokio::test]
-    async fn get_collection_delegates_to_repository_with_correct_args() {
+    async fn search_cards_delegates_to_repository_with_correct_args() {
         let mut mock_repo = MockCardPricesViewRepository::new();
         let expected_query = CollectionQuery {
             page: 1,
@@ -57,23 +52,20 @@ mod tests {
         let result_clone = expected_result.clone();
 
         mock_repo
-            .expect_get_paginated()
-            .withf(|uid, q| {
-                uid == &UserId::new("user-1")
-                    && q.page == 1
+            .expect_search_paginated()
+            .withf(|q| {
+                q.page == 1
                     && q.page_size == 10
                     && q.sort_by == CollectionSortField::SetCode
                     && q.sort_dir == SortDirection::Asc
             })
-            .returning(move |_, _| {
+            .returning(move |_| {
                 let r = result_clone.clone();
                 Box::pin(async move { Ok(r) })
             });
 
-        let service = CollectionService::new(Arc::new(mock_repo));
-        let result = service
-            .get_collection(&UserId::new("user-1"), expected_query)
-            .await;
+        let service = SearchService::new(Arc::new(mock_repo));
+        let result = service.search_cards(expected_query).await;
         assert!(result.is_ok());
         let paginated = result.unwrap();
         assert_eq!(paginated.page, 1);
@@ -82,9 +74,9 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn get_collection_propagates_repository_error() {
+    async fn search_cards_propagates_repository_error() {
         let mut mock_repo = MockCardPricesViewRepository::new();
-        mock_repo.expect_get_paginated().returning(|_, _| {
+        mock_repo.expect_search_paginated().returning(|_| {
             Box::pin(async {
                 Err(AppError::Infra(InfraError::RepositoryError(
                     "db error".to_string(),
@@ -92,10 +84,8 @@ mod tests {
             })
         });
 
-        let service = CollectionService::new(Arc::new(mock_repo));
-        let result = service
-            .get_collection(&UserId::new("user-1"), CollectionQuery::default())
-            .await;
+        let service = SearchService::new(Arc::new(mock_repo));
+        let result = service.search_cards(CollectionQuery::default()).await;
         assert!(result.is_err());
     }
 }

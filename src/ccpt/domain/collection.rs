@@ -49,8 +49,6 @@ pub struct CollectionQuery {
     pub sets: Vec<String>,
     pub price_min: Option<u32>,
     pub price_max: Option<u32>,
-    /// Restrict to cards owned by the current user. `false` returns the full catalog (all owners).
-    pub owned: bool,
 }
 
 impl Default for CollectionQuery {
@@ -65,7 +63,6 @@ impl Default for CollectionQuery {
             sets: Vec::new(),
             price_min: None,
             price_max: None,
-            owned: false,
         }
     }
 }

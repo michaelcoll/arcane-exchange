@@ -99,9 +99,16 @@ pub trait CardMarketPriceRepository: Send + Sync {
 #[cfg_attr(test, automock)]
 pub trait CardPricesViewRepository: Send + Sync {
     async fn refresh(&self) -> Result<(), AppError>;
+    /// The authenticated user's private collection. Always filtered by `user_id`.
     async fn get_paginated(
         &self,
         user_id: &UserId,
+        query: CollectionQuery,
+    ) -> Result<PaginatedCollection, AppError>;
+    /// Public search across every user's cards. No `user_id` filter — every row is
+    /// returned as `CollectionEntry::Owned`.
+    async fn search_paginated(
+        &self,
         query: CollectionQuery,
     ) -> Result<PaginatedCollection, AppError>;
     /// Whether any user owns a card matching `card_id`, regardless of who.
