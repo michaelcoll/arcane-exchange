@@ -53,7 +53,7 @@ impl From<CollectionStats> for CollectionStatsResponse {
 }
 
 // --- Query params ---
-#[derive(Deserialize, Default, TS, ToSchema)]
+#[derive(Deserialize, Default, Debug, PartialEq, TS, ToSchema)]
 #[serde(rename = "SortBy", rename_all = "snake_case")]
 #[ts(export, export_to = "SortBy.ts")]
 pub enum SortByParam {
@@ -64,7 +64,7 @@ pub enum SortByParam {
     LanguageCode,
 }
 
-#[derive(Deserialize, Default, TS, ToSchema)]
+#[derive(Deserialize, Default, Debug, PartialEq, TS, ToSchema)]
 #[serde(rename = "SortDir", rename_all = "snake_case")]
 #[ts(export, export_to = "SortDir.ts")]
 pub enum SortDirParam {
@@ -93,7 +93,7 @@ impl From<SortDirParam> for SortDirection {
     }
 }
 
-#[derive(Deserialize, TS, ToSchema)]
+#[derive(Deserialize, Debug, PartialEq, TS, ToSchema)]
 #[serde(rename = "RarityCode")]
 #[ts(export, export_to = "RarityCode.ts")]
 pub enum RarityCodeParam {
@@ -195,8 +195,8 @@ pub struct CollectionCardResponse {
     pub the_gatherer_id: Option<String>,
     /// Present only when the card is owned by the authenticated user.
     pub collection_entry: Option<CollectionEntryResponse>,
-    /// Username of the owner when the card belongs to another user (catalog listing).
-    pub owner_username: Option<String>,
+    /// Number of distinct users owning this card (search mode only).
+    pub owner_count: Option<u64>,
     pub price_guide: Option<PriceGuideResponse>,
 }
 
@@ -212,7 +212,7 @@ pub struct PaginatedCollectionResponse {
 
 impl From<Card> for CollectionCardResponse {
     fn from(c: Card) -> Self {
-        let (collection_entry, owner_username) = match c.collection_entry {
+        let (collection_entry, owner_count) = match c.collection_entry {
             CollectionEntry::Mine {
                 quantity,
                 purchase_price,
@@ -225,7 +225,10 @@ impl From<Card> for CollectionCardResponse {
                 }),
                 None,
             ),
-            CollectionEntry::Owned { owner_username, .. } => (None, Some(owner_username)),
+            CollectionEntry::Public { owner_count } => (None, Some(owner_count)),
+            CollectionEntry::Owned { .. } => unreachable!(
+                "Card.collection_entry never carries CollectionEntry::Owned; that variant is reserved for /card/offers"
+            ),
         };
 
         Self {
@@ -238,7 +241,7 @@ impl From<Card> for CollectionCardResponse {
             scryfall_id: c.scryfall_id.to_string(),
             the_gatherer_id: c.the_gatherer_id,
             collection_entry,
-            owner_username,
+            owner_count,
             price_guide: c.price_guide.map(|pg| PriceGuideResponse {
                 low: pg.low.value,
                 avg: pg.avg.value,

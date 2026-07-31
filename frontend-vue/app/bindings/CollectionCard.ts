@@ -16,8 +16,8 @@ export type CollectionCard = {
    */
   collection_entry: CollectionEntry | null;
   /**
-   * Username of the owner when the card belongs to another user (catalog listing).
+   * Number of distinct users owning this card (search mode only).
    */
-  owner_username: string | null;
+  owner_count: number | null;
   price_guide: PriceGuide | null;
 };

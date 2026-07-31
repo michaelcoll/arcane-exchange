@@ -29,5 +29,6 @@ ignore:
   - "migrations/**"
   - "node_modules/**"
   - "target/**"
+  - "src/ccpt/generate_openapi.rs"
   - "src/ccpt/infrastructure.rs"
   - "src/ccpt/main.rs"

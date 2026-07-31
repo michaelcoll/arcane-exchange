@@ -208,13 +208,9 @@ async fn search_cards_maps_card_fields_correctly() {
 }
 
 #[tokio::test]
-async fn search_cards_never_exposes_collection_entry_always_owner_username() {
+async fn search_cards_never_exposes_collection_entry_always_owner_count() {
     let mut card = make_card("FDN", "42");
-    card.collection_entry = CollectionEntry::Owned {
-        owner_username: "Bob".to_string(),
-        quantity: 3,
-        selling_price: Some(100),
-    };
+    card.collection_entry = CollectionEntry::Public { owner_count: 3 };
 
     let mut mock = MockSearchCardsUseCase::new();
     mock.expect_search_cards().returning(move |_| {
@@ -237,7 +233,7 @@ async fn search_cards_never_exposes_collection_entry_always_owner_username() {
     let axum::Json(response) = result.unwrap();
     let item = &response.items[0];
     assert!(item.collection_entry.is_none());
-    assert_eq!(item.owner_username, Some("Bob".to_string()));
+    assert_eq!(item.owner_count, Some(3));
 }
 
 #[tokio::test]

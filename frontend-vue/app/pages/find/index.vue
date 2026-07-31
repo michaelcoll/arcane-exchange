@@ -275,15 +275,15 @@ const decklist = ref(
               ]"
             >
               <CardCell
-                v-for="(c, i) in allCards"
-                :key="`${c.scryfall_id}-${c.owner_username ?? i}`"
+                v-for="c in allCards"
+                :key="c.scryfall_id"
                 :scryfall-id="c.scryfall_id"
                 :the-gatherer-id="c.the_gatherer_id ?? undefined"
                 :name="c.name"
                 :price="c.price_guide?.trend ?? 0"
                 :foil="c.foil"
                 :size="size"
-                :owner-username="c.owner_username ?? undefined"
+                :owner-count="c.owner_count ?? undefined"
                 @click="detail = c"
               />
             </div>

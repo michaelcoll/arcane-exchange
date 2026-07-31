@@ -1,12 +1,15 @@
 use super::controller::*;
 use super::dto::*;
 use crate::application::error::AppError;
+use crate::domain::card::CollectionEntry;
+use crate::domain::card_offer::CardOfferSortField;
 use crate::domain::error::FunctionalError;
 use crate::domain::user::User;
 use crate::infrastructure::AppState;
 use crate::infrastructure::adapter_in::auth_extractor::AuthenticatedUser;
 use axum::extract::{Query, State};
 use chrono::NaiveDate;
+use serde_json::json;
 use std::sync::Arc;
 
 fn make_app_state_with_card_price_history(
@@ -405,4 +408,225 @@ async fn get_card_offers_caps_page_at_max() {
     assert!(result.is_ok());
     let axum::Json(offers) = result.unwrap();
     assert_eq!(offers.page, 10);
+}
+
+// --- Unit tests for dto.rs ---
+
+#[test]
+fn card_offers_params_deserializes_with_all_fields() {
+    let json = json!({
+        "set_code": "FDN",
+        "collector_number": "87",
+        "language_code": "FR",
+        "foil": true,
+        "sort_by": "selling_price",
+        "page": 2,
+        "page_size": 20
+    });
+
+    let params: CardOffersParams = serde_json::from_value(json).unwrap();
+    assert_eq!(params.set_code, "FDN");
+    assert_eq!(params.collector_number, "87");
+    assert_eq!(params.language_code, "FR");
+    assert!(params.foil);
+    // sort_by deserialized from "selling_price" via serde(rename)
+    let sorted: CardOfferSortField = params.sort_by.into();
+    assert!(matches!(sorted, CardOfferSortField::SellingPrice));
+    assert_eq!(params.page, 2);
+    assert_eq!(params.page_size, 20);
+}
+
+#[test]
+fn card_offers_params_deserializes_with_default_page_size() {
+    let json = json!({
+        "set_code": "FDN",
+        "collector_number": "87",
+        "language_code": "FR",
+        "foil": false
+    });
+
+    let params: CardOffersParams = serde_json::from_value(json).unwrap();
+    assert_eq!(params.page_size, default_page_size());
+}
+
+#[test]
+fn card_offers_params_deserializes_sort_by_snake_case() {
+    let json = json!({
+        "set_code": "FDN",
+        "collector_number": "87",
+        "language_code": "EN",
+        "foil": false,
+        "sort_by": "selling_price"
+    });
+
+    let params: CardOffersParams = serde_json::from_value(json).unwrap();
+    let sorted: CardOfferSortField = params.sort_by.into();
+    assert!(matches!(sorted, CardOfferSortField::SellingPrice));
+}
+
+#[test]
+fn card_offers_params_deserializes_with_default_sort_by() {
+    let json = json!({
+        "set_code": "FDN",
+        "collector_number": "87",
+        "language_code": "EN",
+        "foil": false
+    });
+
+    let params: CardOffersParams = serde_json::from_value(json).unwrap();
+    let sorted: CardOfferSortField = params.sort_by.into();
+    assert!(matches!(sorted, CardOfferSortField::SellingPrice));
+}
+
+#[test]
+fn card_offers_params_deserializes_with_default_page() {
+    let json = json!({
+        "set_code": "FDN",
+        "collector_number": "87",
+        "language_code": "EN",
+        "foil": false
+    });
+
+    let params: CardOffersParams = serde_json::from_value(json).unwrap();
+    assert_eq!(params.page, 0);
+}
+
+#[test]
+fn from_collection_entry_owned_converts_correctly() {
+    let entry = CollectionEntry::Owned {
+        owner_username: "alice".to_string(),
+        quantity: 5,
+        selling_price: Some(2500),
+    };
+
+    let response: CardOfferResponse = entry.into();
+    assert_eq!(response.owner_username, "alice");
+    assert_eq!(response.quantity, 5);
+    assert_eq!(response.selling_price, Some(2500));
+}
+
+#[test]
+fn from_collection_entry_owned_with_none_selling_price() {
+    let entry = CollectionEntry::Owned {
+        owner_username: "bob".to_string(),
+        quantity: 1,
+        selling_price: None,
+    };
+
+    let response: CardOfferResponse = entry.into();
+    assert_eq!(response.owner_username, "bob");
+    assert_eq!(response.quantity, 1);
+    assert!(response.selling_price.is_none());
+}
+
+#[test]
+#[should_panic(expected = "get_offers only ever returns CollectionEntry::Owned entries")]
+fn from_collection_entry_mine_panics() {
+    let entry = CollectionEntry::Mine {
+        quantity: 2,
+        purchase_price: 100,
+        added_at: chrono::Utc::now(),
+    };
+    let _response: CardOfferResponse = entry.into();
+}
+
+#[test]
+#[should_panic(expected = "get_offers only ever returns CollectionEntry::Owned entries")]
+fn from_collection_entry_public_panics() {
+    let entry = CollectionEntry::Public { owner_count: 42 };
+    let _response: CardOfferResponse = entry.into();
+}
+
+#[test]
+fn price_history_params_deserializes_with_both_dates() {
+    let json = json!({
+        "start_date": "2025-01-01",
+        "end_date": "2025-01-31"
+    });
+
+    let params: PriceHistoryParams = serde_json::from_value(json).unwrap();
+    assert_eq!(
+        params.start_date,
+        Some(NaiveDate::from_ymd_opt(2025, 1, 1).unwrap())
+    );
+    assert_eq!(
+        params.end_date,
+        Some(NaiveDate::from_ymd_opt(2025, 1, 31).unwrap())
+    );
+}
+
+#[test]
+fn price_history_params_deserializes_with_no_dates() {
+    let json = json!({});
+
+    let params: PriceHistoryParams = serde_json::from_value(json).unwrap();
+    assert!(params.start_date.is_none());
+    assert!(params.end_date.is_none());
+}
+
+#[test]
+fn price_history_params_deserializes_with_start_date_only() {
+    let json = json!({
+        "start_date": "2025-06-01"
+    });
+
+    let params: PriceHistoryParams = serde_json::from_value(json).unwrap();
+    assert_eq!(
+        params.start_date,
+        Some(NaiveDate::from_ymd_opt(2025, 6, 1).unwrap())
+    );
+    assert!(params.end_date.is_none());
+}
+
+#[test]
+fn price_history_params_deserializes_with_end_date_only() {
+    let json = json!({
+        "end_date": "2025-12-31"
+    });
+
+    let params: PriceHistoryParams = serde_json::from_value(json).unwrap();
+    assert!(params.start_date.is_none());
+    assert_eq!(
+        params.end_date,
+        Some(NaiveDate::from_ymd_opt(2025, 12, 31).unwrap())
+    );
+}
+
+#[test]
+fn paginated_card_offers_response_serializes_correctly() {
+    let response = PaginatedCardOffersResponse {
+        items: vec![CardOfferResponse {
+            owner_username: "alice".to_string(),
+            quantity: 3,
+            selling_price: Some(1500),
+        }],
+        total: 10,
+        page: 0,
+        page_size: 6,
+    };
+
+    let json_str = serde_json::to_string(&response).unwrap();
+    let parsed: serde_json::Value = serde_json::from_str(&json_str).unwrap();
+    assert_eq!(parsed["total"], 10);
+    assert_eq!(parsed["page"], 0);
+    assert_eq!(parsed["page_size"], 6);
+    assert_eq!(parsed["items"][0]["owner_username"], "alice");
+    assert_eq!(parsed["items"][0]["selling_price"], 1500);
+}
+
+#[test]
+fn price_history_entry_response_serializes_correctly() {
+    let entry = PriceHistoryEntryResponse {
+        date: "2025-01-15".to_string(),
+        low: 1000,
+        trend: 1500,
+        avg: 1300,
+    };
+
+    let json_str = serde_json::to_string(&entry).unwrap();
+    let parsed: serde_json::Value = serde_json::from_str(&json_str).unwrap();
+    assert_eq!(parsed["date"], "2025-01-15");
+    assert_eq!(parsed["low"], 1000);
+    assert_eq!(parsed["trend"], 1500);
+    assert_eq!(parsed["avg"], 1300);
 }
