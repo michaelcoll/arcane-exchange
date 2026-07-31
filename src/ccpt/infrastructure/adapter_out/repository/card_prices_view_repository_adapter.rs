@@ -64,9 +64,9 @@ impl CardPricesViewRepositoryAdapter {
     /// [`CardPricesViewRepository::search_paginated`].
     ///
     /// `user_id` is `Some` for the private "my collection" view (filtered to that user,
-    /// real `purchase_price`/`added_at`, no `owner_username`) and `None` for the public
+    /// real `purchase_price`/`added_at`, no `owner_count`) and `None` for the public
     /// search across every user's cards (no user filter, masked `purchase_price`/`added_at`,
-    /// real `owner_username` via a join on `users`).
+    /// rows grouped by card with `owner_count` = number of distinct owners).
     async fn fetch_paginated(
         &self,
         user_id: Option<&UserId>,
@@ -78,21 +78,25 @@ impl CardPricesViewRepositoryAdapter {
         let (count_filter_clause, _, _) =
             build_filter_clause(&query, if user_id.is_some() { 2 } else { 1 });
 
-        let (where_clause, join_clause, owned_columns) = if user_id.is_some() {
+        let (where_clause, owned_columns, group_by_clause) = if user_id.is_some() {
             (
                 "WHERE cp.user_id = $1",
-                "",
-                r#"cp.purchase_price,
+                r#"cp.quantity,
+                 cp.purchase_price,
                  cp.added_at,
-                 NULL::text AS owner_username"#,
+                 0::bigint AS owner_count"#,
+                "",
             )
         } else {
             (
                 "WHERE 1 = 1",
-                "LEFT JOIN users u ON u.id = cp.user_id",
-                r#"NULL::integer AS purchase_price,
+                r#"0::integer AS quantity,
+                 NULL::integer AS purchase_price,
                  NULL::timestamptz AS added_at,
-                 u.username AS owner_username"#,
+                 COUNT(DISTINCT cp.user_id) AS owner_count"#,
+                r#"GROUP BY cp.set_code, sn.name, cp.collector_number, cp.language_code,
+                            cp.foil, cp.name, cp.rarity, cp.scryfall_id, cp.the_gatherer_id,
+                            cp.avg, cp.low, cp.trend"#,
             )
         };
 
@@ -107,16 +111,15 @@ impl CardPricesViewRepositoryAdapter {
                  cp.rarity,
                  cp.scryfall_id,
                  cp.the_gatherer_id,
-                 cp.quantity,
                  {owned_columns},
                  cp.avg,
                  cp.low,
                  cp.trend
                FROM mv_card_prices cp
                JOIN set_name sn ON sn.set_code = cp.set_code
-               {join_clause}
                {where_clause}
                {filter_clause}
+               {group_by_clause}
                ORDER BY {order_prefix} {} {} NULLS LAST, cp.name
                LIMIT ${limit_idx} OFFSET ${offset_idx}"#,
             query.sort_by, query.sort_dir,
@@ -157,8 +160,16 @@ impl CardPricesViewRepositoryAdapter {
             .await
             .map_err(|e| AppError::Infra(InfraError::RepositoryError(e.to_string())))?;
 
-        let count_sql =
-            format!("SELECT COUNT(*) FROM mv_card_prices cp {where_clause} {count_filter_clause}",);
+        let count_sql = if user_id.is_some() {
+            format!("SELECT COUNT(*) FROM mv_card_prices cp {where_clause} {count_filter_clause}")
+        } else {
+            format!(
+                r#"SELECT COUNT(*) FROM (
+                     SELECT 1 FROM mv_card_prices cp {where_clause} {count_filter_clause}
+                     GROUP BY cp.set_code, cp.collector_number, cp.language_code, cp.foil
+                   ) sub"#
+            )
+        };
 
         let mut base_count = query_scalar::<_, i64>(AssertSqlSafe(count_sql.as_str()));
         if let Some(uid) = user_id {
@@ -663,11 +674,7 @@ mod tests {
         assert_eq!(result.items.len(), 1);
         assert_eq!(
             result.items[0].collection_entry,
-            CollectionEntry::Owned {
-                owner_username: "Bob".to_string(),
-                quantity: 3,
-                selling_price: Some(100),
-            }
+            CollectionEntry::Public { owner_count: 1 }
         );
     }
 
@@ -676,7 +683,7 @@ mod tests {
         pool: PgPool,
     ) {
         // search_paginated has no notion of "the current user" — it always returns
-        // CollectionEntry::Owned, even for the card of the user running the search.
+        // CollectionEntry::Public, even for the card of the user running the search.
         insert_set(&pool, "TST").await;
         insert_card(&pool, "TST", "1", "EN", false, "Test Card", 1).await;
         insert_user(&pool, "userA", "Alice").await;
@@ -693,16 +700,14 @@ mod tests {
         assert_eq!(result.items.len(), 1);
         assert_eq!(
             result.items[0].collection_entry,
-            CollectionEntry::Owned {
-                owner_username: "Alice".to_string(),
-                quantity: 3,
-                selling_price: Some(100),
-            }
+            CollectionEntry::Public { owner_count: 1 }
         );
     }
 
     #[sqlx::test]
-    async fn search_paginated_same_card_owned_by_three_users_appears_three_times(pool: PgPool) {
+    async fn search_paginated_same_card_owned_by_three_users_appears_once_with_owner_count_three(
+        pool: PgPool,
+    ) {
         insert_set(&pool, "TST").await;
         insert_card(&pool, "TST", "1", "EN", false, "Test Card", 1).await;
         insert_user(&pool, "userA", "Alice").await;
@@ -720,8 +725,12 @@ mod tests {
             .await
             .unwrap();
 
-        assert_eq!(result.total, 3);
-        assert_eq!(result.items.len(), 3);
+        assert_eq!(result.total, 1);
+        assert_eq!(result.items.len(), 1);
+        assert_eq!(
+            result.items[0].collection_entry,
+            CollectionEntry::Public { owner_count: 3 }
+        );
     }
 
     #[sqlx::test]
@@ -1152,7 +1161,9 @@ mod tests {
                     // per-seller pricing yet), so `selling_price` is identical for every row.
                     assert_eq!(*selling_price, Some(100));
                 }
-                CollectionEntry::Mine { .. } => panic!("expected CollectionEntry::Owned"),
+                CollectionEntry::Mine { .. } | CollectionEntry::Public { .. } => {
+                    panic!("expected CollectionEntry::Owned")
+                }
             }
         }
     }
@@ -1189,7 +1200,9 @@ mod tests {
             .iter()
             .map(|item| match item {
                 CollectionEntry::Owned { owner_username, .. } => owner_username.as_str(),
-                CollectionEntry::Mine { .. } => panic!("expected CollectionEntry::Owned"),
+                CollectionEntry::Mine { .. } | CollectionEntry::Public { .. } => {
+                    panic!("expected CollectionEntry::Owned")
+                }
             })
             .collect();
         assert_eq!(usernames, vec!["Bob", "Zoe"]);

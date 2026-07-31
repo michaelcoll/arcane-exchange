@@ -60,8 +60,10 @@ impl Display for CardId {
     }
 }
 
-/// A card's presence in a collection: either fully visible (mine) or reduced to
-/// just the owner's name (someone else's, in a catalog listing).
+/// A card's presence in a collection: fully visible to its owner (`Mine`),
+/// reduced to just the seller's name for an individual sale listing (`Owned`,
+/// used by `/card/offers`), or reduced to an aggregate owner count for public
+/// search results (`Public`, used by `/search/card`).
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum CollectionEntry {
     Mine {
@@ -75,6 +77,10 @@ pub enum CollectionEntry {
         quantity: u8,
         /// Price in cents, derived from the card's `trend` price guide.
         selling_price: Option<u32>,
+    },
+    Public {
+        /// Number of distinct users owning this card.
+        owner_count: u64,
     },
 }
 

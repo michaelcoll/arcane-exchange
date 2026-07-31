@@ -72,6 +72,10 @@ fn make_paginated(items: Vec<Card>, page: u32, page_size: u32) -> PaginatedColle
     }
 }
 
+// ============================================================
+// get_collection
+// ============================================================
+
 #[tokio::test]
 async fn get_collection_returns_empty_response_when_collection_is_empty() {
     let mut mock = MockGetCollectionUseCase::new();
@@ -236,188 +240,8 @@ async fn get_collection_maps_card_fields_correctly() {
     let entry = item.collection_entry.as_ref().unwrap();
     assert_eq!(entry.quantity, 1);
     assert_eq!(entry.purchase_price, 100);
-    assert!(item.owner_username.is_none());
+    assert!(item.owner_count.is_none());
     assert!(item.price_guide.is_none());
-}
-
-#[tokio::test]
-async fn get_collection_masks_collection_entry_for_cards_owned_by_another_user() {
-    let mut card = make_card("FDN", "42");
-    card.collection_entry = CollectionEntry::Owned {
-        owner_username: "Bob".to_string(),
-        quantity: 3,
-        selling_price: Some(100),
-    };
-
-    let mut mock = MockGetCollectionUseCase::new();
-    mock.expect_get_collection().returning(move |_, _| {
-        Box::pin({
-            let c = card.clone();
-            async move { Ok(make_paginated(vec![c], 0, 20)) }
-        })
-    });
-
-    let app_state = make_app_state_with_collection(mock);
-
-    let result = get_collection(
-        AuthenticatedUser(User::for_testing()),
-        State(app_state),
-        Query(CollectionParams::default()),
-    )
-    .await;
-
-    assert!(result.is_ok());
-    let axum::Json(response) = result.unwrap();
-    let item = &response.items[0];
-    assert!(item.collection_entry.is_none());
-    assert_eq!(item.owner_username, Some("Bob".to_string()));
-}
-
-#[tokio::test]
-async fn get_collection_passes_sort_by_avg_to_use_case() {
-    let mut mock = MockGetCollectionUseCase::new();
-    mock.expect_get_collection()
-        .withf(|_, q| q.sort_by == CollectionSortField::Avg)
-        .returning(|_, _| Box::pin(async { Ok(make_paginated(vec![], 0, 20)) }));
-
-    let app_state = make_app_state_with_collection(mock);
-    let params = CollectionParams {
-        sort_by: SortByParam::Avg,
-        ..Default::default()
-    };
-
-    let result = get_collection(
-        AuthenticatedUser(User::for_testing()),
-        State(app_state),
-        Query(params),
-    )
-    .await;
-
-    assert!(result.is_ok());
-}
-
-#[tokio::test]
-async fn get_collection_passes_sort_by_set_code_to_use_case() {
-    let mut mock = MockGetCollectionUseCase::new();
-    mock.expect_get_collection()
-        .withf(|_, q| q.sort_by == CollectionSortField::SetCode)
-        .returning(|_, _| Box::pin(async { Ok(make_paginated(vec![], 0, 20)) }));
-
-    let app_state = make_app_state_with_collection(mock);
-    let params = CollectionParams {
-        sort_by: SortByParam::SetCode,
-        ..Default::default()
-    };
-
-    let result = get_collection(
-        AuthenticatedUser(User::for_testing()),
-        State(app_state),
-        Query(params),
-    )
-    .await;
-
-    assert!(result.is_ok());
-}
-
-#[tokio::test]
-async fn get_collection_passes_sort_by_language_code_to_use_case() {
-    let mut mock = MockGetCollectionUseCase::new();
-    mock.expect_get_collection()
-        .withf(|_, q| q.sort_by == CollectionSortField::LanguageCode)
-        .returning(|_, _| Box::pin(async { Ok(make_paginated(vec![], 0, 20)) }));
-
-    let app_state = make_app_state_with_collection(mock);
-    let params = CollectionParams {
-        sort_by: SortByParam::LanguageCode,
-        ..Default::default()
-    };
-
-    let result = get_collection(
-        AuthenticatedUser(User::for_testing()),
-        State(app_state),
-        Query(params),
-    )
-    .await;
-
-    assert!(result.is_ok());
-}
-
-#[tokio::test]
-async fn get_collection_passes_sort_dir_asc_to_use_case() {
-    let mut mock = MockGetCollectionUseCase::new();
-    mock.expect_get_collection()
-        .withf(|_, q| q.sort_dir == SortDirection::Asc)
-        .returning(|_, _| Box::pin(async { Ok(make_paginated(vec![], 0, 20)) }));
-
-    let app_state = make_app_state_with_collection(mock);
-    let params = CollectionParams {
-        sort_dir: SortDirParam::Asc,
-        ..Default::default()
-    };
-
-    let result = get_collection(
-        AuthenticatedUser(User::for_testing()),
-        State(app_state),
-        Query(params),
-    )
-    .await;
-
-    assert!(result.is_ok());
-}
-
-#[tokio::test]
-async fn get_collection_passes_sort_dir_desc_to_use_case() {
-    // Desc is also the default sort_dir; this test only verifies the wiring
-    // is honored explicitly, independent of get_collection_passes_sort_dir_asc_to_use_case.
-    let mut mock = MockGetCollectionUseCase::new();
-    mock.expect_get_collection()
-        .withf(|_, q| q.sort_dir == SortDirection::Desc)
-        .returning(|_, _| Box::pin(async { Ok(make_paginated(vec![], 0, 20)) }));
-
-    let app_state = make_app_state_with_collection(mock);
-
-    let result = get_collection(
-        AuthenticatedUser(User::for_testing()),
-        State(app_state),
-        Query(CollectionParams::default()),
-    )
-    .await;
-
-    assert!(result.is_ok());
-}
-
-#[tokio::test]
-async fn get_collection_maps_price_guide_fields_when_card_has_prices() {
-    use crate::domain::price::{Price, PriceGuide};
-
-    let mut card = make_card("FDN", "1");
-    card.price_guide = Some(PriceGuide {
-        low: Price { value: Some(100) },
-        avg: Price { value: Some(200) },
-        trend: Price { value: Some(300) },
-    });
-
-    let mut mock = MockGetCollectionUseCase::new();
-    mock.expect_get_collection().returning(move |_, _| {
-        let c = card.clone();
-        Box::pin(async move { Ok(make_paginated(vec![c], 0, 20)) })
-    });
-
-    let app_state = make_app_state_with_collection(mock);
-
-    let result = get_collection(
-        AuthenticatedUser(User::for_testing()),
-        State(app_state),
-        Query(CollectionParams::default()),
-    )
-    .await;
-
-    assert!(result.is_ok());
-    let axum::Json(response) = result.unwrap();
-    let pg = response.items[0].price_guide.as_ref().unwrap();
-    assert_eq!(pg.low, Some(100));
-    assert_eq!(pg.avg, Some(200));
-    assert_eq!(pg.trend, Some(300));
 }
 
 #[tokio::test]
@@ -463,6 +287,69 @@ async fn get_collection_maps_foil_card_correctly() {
 }
 
 #[tokio::test]
+async fn get_collection_masks_collection_entry_for_search_style_entries() {
+    let mut card = make_card("FDN", "42");
+    card.collection_entry = CollectionEntry::Public { owner_count: 1 };
+
+    let mut mock = MockGetCollectionUseCase::new();
+    mock.expect_get_collection().returning(move |_, _| {
+        Box::pin({
+            let c = card.clone();
+            async move { Ok(make_paginated(vec![c], 0, 20)) }
+        })
+    });
+
+    let app_state = make_app_state_with_collection(mock);
+
+    let result = get_collection(
+        AuthenticatedUser(User::for_testing()),
+        State(app_state),
+        Query(CollectionParams::default()),
+    )
+    .await;
+
+    assert!(result.is_ok());
+    let axum::Json(response) = result.unwrap();
+    let item = &response.items[0];
+    assert!(item.collection_entry.is_none());
+    assert_eq!(item.owner_count, Some(1));
+}
+
+#[tokio::test]
+async fn get_collection_maps_price_guide_fields_when_card_has_prices() {
+    use crate::domain::price::{Price, PriceGuide};
+
+    let mut card = make_card("FDN", "1");
+    card.price_guide = Some(PriceGuide {
+        low: Price { value: Some(100) },
+        avg: Price { value: Some(200) },
+        trend: Price { value: Some(300) },
+    });
+
+    let mut mock = MockGetCollectionUseCase::new();
+    mock.expect_get_collection().returning(move |_, _| {
+        let c = card.clone();
+        Box::pin(async move { Ok(make_paginated(vec![c], 0, 20)) })
+    });
+
+    let app_state = make_app_state_with_collection(mock);
+
+    let result = get_collection(
+        AuthenticatedUser(User::for_testing()),
+        State(app_state),
+        Query(CollectionParams::default()),
+    )
+    .await;
+
+    assert!(result.is_ok());
+    let axum::Json(response) = result.unwrap();
+    let pg = response.items[0].price_guide.as_ref().unwrap();
+    assert_eq!(pg.low, Some(100));
+    assert_eq!(pg.avg, Some(200));
+    assert_eq!(pg.trend, Some(300));
+}
+
+#[tokio::test]
 async fn get_collection_preserves_total_independent_of_page_items() {
     let mut mock = MockGetCollectionUseCase::new();
     mock.expect_get_collection().returning(|_, _| {
@@ -496,6 +383,80 @@ async fn get_collection_preserves_total_independent_of_page_items() {
     assert_eq!(response.items.len(), 1);
     assert_eq!(response.page, 2);
     assert_eq!(response.page_size, 1);
+}
+
+// --- Helper: call get_collection and verify the withf predicate matches.
+// Each variant just needs one assertion to prove wiring. ---
+async fn call_get_collection_with(
+    mock: MockGetCollectionUseCase,
+    params: CollectionParams,
+) -> bool {
+    let app_state = make_app_state_with_collection(mock);
+    let result = get_collection(
+        AuthenticatedUser(User::for_testing()),
+        State(app_state),
+        Query(params),
+    )
+    .await;
+    result.is_ok()
+}
+
+#[tokio::test]
+async fn get_collection_passes_sort_by_to_use_case() {
+    let variants = [
+        (SortByParam::Avg, CollectionSortField::Avg),
+        (SortByParam::Trend, CollectionSortField::Trend),
+        (SortByParam::SetCode, CollectionSortField::SetCode),
+        (SortByParam::LanguageCode, CollectionSortField::LanguageCode),
+    ];
+
+    for (input, expected) in variants {
+        let mut mock = MockGetCollectionUseCase::new();
+        let exp = expected.clone();
+        let msg = format!("{input:?} should pass {expected:?} to use case");
+        mock.expect_get_collection()
+            .withf(move |_, q| q.sort_by == exp)
+            .returning(|_, _| Box::pin(async { Ok(make_paginated(vec![], 0, 20)) }));
+        assert!(
+            call_get_collection_with(
+                mock,
+                CollectionParams {
+                    sort_by: input,
+                    ..Default::default()
+                }
+            )
+            .await,
+            "{msg}"
+        );
+    }
+}
+
+#[tokio::test]
+async fn get_collection_passes_sort_dir_to_use_case() {
+    let variants = [
+        (SortDirParam::Asc, SortDirection::Asc),
+        (SortDirParam::Desc, SortDirection::Desc),
+    ];
+
+    for (input, expected) in variants {
+        let mut mock = MockGetCollectionUseCase::new();
+        let exp = expected.clone();
+        let msg = format!("{input:?} should pass {expected:?} to use case");
+        mock.expect_get_collection()
+            .withf(move |_, q| q.sort_dir == exp)
+            .returning(|_, _| Box::pin(async { Ok(make_paginated(vec![], 0, 20)) }));
+        assert!(
+            call_get_collection_with(
+                mock,
+                CollectionParams {
+                    sort_dir: input,
+                    ..Default::default()
+                }
+            )
+            .await,
+            "{msg}"
+        );
+    }
 }
 
 #[tokio::test]
@@ -540,7 +501,51 @@ async fn get_collection_passes_none_search_query_when_q_is_absent() {
     assert!(result.is_ok());
 }
 
-// --- Tests for import_cards ---
+#[tokio::test]
+async fn get_collection_parses_repeated_rarity_query_params_into_rarity_codes() {
+    let mut mock = MockGetCollectionUseCase::new();
+    mock.expect_get_collection()
+        .withf(|_, q| q.rarity == vec![RarityCode::C, RarityCode::U])
+        .returning(|_, _| Box::pin(async { Ok(make_paginated(vec![], 0, 20)) }));
+
+    let app_state = make_app_state_with_collection(mock);
+    let uri: axum::http::Uri = "/collection?rarity=C&rarity=U".parse().unwrap();
+    let params = Query::<CollectionParams>::try_from_uri(&uri).unwrap();
+
+    let result = get_collection(
+        AuthenticatedUser(User::for_testing()),
+        State(app_state),
+        params,
+    )
+    .await;
+
+    assert!(result.is_ok());
+}
+
+#[tokio::test]
+async fn get_collection_defaults_rarity_to_empty_when_absent() {
+    let mut mock = MockGetCollectionUseCase::new();
+    mock.expect_get_collection()
+        .withf(|_, q| q.rarity.is_empty())
+        .returning(|_, _| Box::pin(async { Ok(make_paginated(vec![], 0, 20)) }));
+
+    let app_state = make_app_state_with_collection(mock);
+    let uri: axum::http::Uri = "/collection".parse().unwrap();
+    let params = Query::<CollectionParams>::try_from_uri(&uri).unwrap();
+
+    let result = get_collection(
+        AuthenticatedUser(User::for_testing()),
+        State(app_state),
+        params,
+    )
+    .await;
+
+    assert!(result.is_ok());
+}
+
+// ============================================================
+// import_cards
+// ============================================================
 
 #[tokio::test]
 async fn import_cards_succeeds_with_valid_csv() {
@@ -562,32 +567,6 @@ async fn import_cards_succeeds_with_valid_csv() {
     assert!(result.is_ok());
     let axum::Json(response) = result.unwrap();
     assert_eq!(response.message, "Cards imported successfully");
-}
-
-#[tokio::test]
-async fn import_cards_fails_with_invalid_utf8() {
-    let app_state = AppState::for_testing(Arc::new(
-        crate::application::use_case::MockStatsUseCase::new(),
-    ));
-
-    // Create invalid UTF-8 bytes
-    let invalid_bytes = vec![0xFF, 0xFE, 0xFD];
-
-    let test_user = User::for_testing();
-    let result = import_cards(
-        AuthenticatedUser(test_user),
-        State(app_state),
-        Body::from(invalid_bytes),
-    )
-    .await;
-
-    assert!(result.is_err());
-    match result.unwrap_err() {
-        AppError::Functional(FunctionalError::WrongFormat(msg)) => {
-            assert_eq!(msg, "Body is not valid UTF-8");
-        }
-        _ => panic!("Expected WrongFormat error"),
-    }
 }
 
 #[tokio::test]
@@ -657,7 +636,35 @@ async fn import_cards_succeeds_with_special_characters_in_card_name() {
     assert_eq!(response.message, "Cards imported successfully");
 }
 
-// --- Tests for get_collection_stats ---
+#[tokio::test]
+async fn import_cards_fails_with_invalid_utf8() {
+    let app_state = AppState::for_testing(Arc::new(
+        crate::application::use_case::MockStatsUseCase::new(),
+    ));
+
+    // Create invalid UTF-8 bytes
+    let invalid_bytes = vec![0xFF, 0xFE, 0xFD];
+
+    let test_user = User::for_testing();
+    let result = import_cards(
+        AuthenticatedUser(test_user),
+        State(app_state),
+        Body::from(invalid_bytes),
+    )
+    .await;
+
+    assert!(result.is_err());
+    match result.unwrap_err() {
+        AppError::Functional(FunctionalError::WrongFormat(msg)) => {
+            assert_eq!(msg, "Body is not valid UTF-8");
+        }
+        _ => panic!("Expected WrongFormat error"),
+    }
+}
+
+// ============================================================
+// get_collection_stats
+// ============================================================
 
 #[tokio::test]
 async fn get_collection_stats_returns_stats_from_use_case() {
@@ -750,18 +757,19 @@ async fn get_collection_stats_propagates_error_from_use_case() {
     }
 }
 
-// --- Tests for get_collection_price_history ---
+// ============================================================
+// get_collection_price_history
+// ============================================================
 
 #[tokio::test]
 async fn get_collection_price_history_returns_entries() {
     use crate::application::use_case::MockGetCollectionPriceHistoryUseCase;
-    use crate::domain::price::PriceHistoryEntry;
+    use crate::domain::price::{Price, PriceGuide, PriceHistoryEntry};
 
     let mut mock = MockGetCollectionPriceHistoryUseCase::new();
     mock.expect_get_collection_price_history()
         .returning(|_, _, _| {
             Box::pin(async {
-                use crate::domain::price::{Price, PriceGuide};
                 Ok(vec![PriceHistoryEntry {
                     date: NaiveDate::from_ymd_opt(2025, 1, 15).unwrap(),
                     price_guide: PriceGuide {
@@ -881,46 +889,112 @@ async fn get_collection_price_history_passes_missing_dates_through_to_use_case()
     assert!(result.is_ok());
 }
 
-// --- Tests for repeated `rarity` query params ---
+// ============================================================
+// Unit tests for dto.rs conversions & deserialisation
+// ============================================================
 
-#[tokio::test]
-async fn get_collection_parses_repeated_rarity_query_params_into_rarity_codes() {
-    let mut mock = MockGetCollectionUseCase::new();
-    mock.expect_get_collection()
-        .withf(|_, q| q.rarity == vec![RarityCode::C, RarityCode::U])
-        .returning(|_, _| Box::pin(async { Ok(make_paginated(vec![], 0, 20)) }));
-
-    let app_state = make_app_state_with_collection(mock);
-    let uri: axum::http::Uri = "/collection?rarity=C&rarity=U".parse().unwrap();
-    let params = Query::<CollectionParams>::try_from_uri(&uri).unwrap();
-
-    let result = get_collection(
-        AuthenticatedUser(User::for_testing()),
-        State(app_state),
-        params,
-    )
-    .await;
-
-    assert!(result.is_ok());
+#[test]
+fn sort_by_param_from_mapping_is_complete() {
+    assert_eq!(
+        CollectionSortField::from(SortByParam::Avg),
+        CollectionSortField::Avg
+    );
+    assert_eq!(
+        CollectionSortField::from(SortByParam::Trend),
+        CollectionSortField::Trend
+    );
+    assert_eq!(
+        CollectionSortField::from(SortByParam::SetCode),
+        CollectionSortField::SetCode
+    );
+    assert_eq!(
+        CollectionSortField::from(SortByParam::LanguageCode),
+        CollectionSortField::LanguageCode
+    );
 }
 
-#[tokio::test]
-async fn get_collection_defaults_rarity_to_empty_when_absent() {
-    let mut mock = MockGetCollectionUseCase::new();
-    mock.expect_get_collection()
-        .withf(|_, q| q.rarity.is_empty())
-        .returning(|_, _| Box::pin(async { Ok(make_paginated(vec![], 0, 20)) }));
+#[test]
+fn sort_dir_param_from_mapping_is_complete() {
+    assert_eq!(SortDirection::from(SortDirParam::Asc), SortDirection::Asc);
+    assert_eq!(SortDirection::from(SortDirParam::Desc), SortDirection::Desc);
+}
 
-    let app_state = make_app_state_with_collection(mock);
+#[test]
+fn rarity_code_param_from_mapping_is_complete() {
+    assert_eq!(RarityCode::from(RarityCodeParam::C), RarityCode::C);
+    assert_eq!(RarityCode::from(RarityCodeParam::U), RarityCode::U);
+    assert_eq!(RarityCode::from(RarityCodeParam::R), RarityCode::R);
+    assert_eq!(RarityCode::from(RarityCodeParam::M), RarityCode::M);
+}
+
+#[test]
+fn default_page_size_returns_20() {
+    assert_eq!(default_page_size(), 20);
+}
+
+#[test]
+fn collection_params_default_values() {
+    let params = CollectionParams::default();
+    assert_eq!(params.page, 0);
+    assert_eq!(params.page_size, 20);
+    assert_eq!(params.sort_by, SortByParam::Trend);
+    assert_eq!(params.sort_dir, SortDirParam::Desc);
+    assert!(params.q.is_none());
+    assert!(params.rarity.is_empty());
+    assert!(params.sets.is_none());
+    assert!(params.price_min.is_none());
+    assert!(params.price_max.is_none());
+}
+
+#[test]
+fn collection_params_serde_all_fields() {
+    let uri: axum::http::Uri = "/collection?page=5&page_size=50&sort_by=avg&sort_dir=asc&q=goblin&rarity=C&rarity=R&sets=FDN,GPT&price_min=100&price_max=5000".parse().unwrap();
+    let params = Query::<CollectionParams>::try_from_uri(&uri).unwrap();
+
+    assert_eq!(params.0.page, 5);
+    assert_eq!(params.0.page_size, 50);
+    assert_eq!(params.0.sort_by, SortByParam::Avg);
+    assert_eq!(params.0.sort_dir, SortDirParam::Asc);
+    assert_eq!(params.0.q, Some("goblin".to_string()));
+    assert_eq!(
+        params.0.rarity,
+        vec![RarityCodeParam::C, RarityCodeParam::R]
+    );
+    assert_eq!(params.0.sets, Some("FDN,GPT".to_string()));
+    assert_eq!(params.0.price_min, Some(100));
+    assert_eq!(params.0.price_max, Some(5000));
+}
+
+#[test]
+fn collection_params_serde_minimal() {
     let uri: axum::http::Uri = "/collection".parse().unwrap();
     let params = Query::<CollectionParams>::try_from_uri(&uri).unwrap();
 
-    let result = get_collection(
-        AuthenticatedUser(User::for_testing()),
-        State(app_state),
-        params,
-    )
-    .await;
+    assert_eq!(params.0.page, 0);
+    assert_eq!(params.0.page_size, 20);
+    assert_eq!(params.0.sort_by, SortByParam::Trend);
+    assert_eq!(params.0.sort_dir, SortDirParam::Desc);
+    assert!(params.0.q.is_none());
+    assert!(params.0.rarity.is_empty());
+    assert!(params.0.sets.is_none());
+    assert!(params.0.price_min.is_none());
+    assert!(params.0.price_max.is_none());
+}
 
-    assert!(result.is_ok());
+#[test]
+fn collection_params_serde_partial_fields() {
+    let uri: axum::http::Uri = "/collection?q=ancestral+reveal&price_min=1000"
+        .parse()
+        .unwrap();
+    let params = Query::<CollectionParams>::try_from_uri(&uri).unwrap();
+
+    assert_eq!(params.0.page, 0);
+    assert_eq!(params.0.page_size, 20);
+    assert_eq!(params.0.sort_by, SortByParam::Trend);
+    assert_eq!(params.0.sort_dir, SortDirParam::Desc);
+    assert_eq!(params.0.q, Some("ancestral reveal".to_string()));
+    assert!(params.0.rarity.is_empty());
+    assert!(params.0.sets.is_none());
+    assert_eq!(params.0.price_min, Some(1000));
+    assert!(params.0.price_max.is_none());
 }

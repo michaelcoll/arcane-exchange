@@ -91,6 +91,9 @@ impl From<CollectionEntry> for CardOfferResponse {
             CollectionEntry::Mine { .. } => {
                 unreachable!("get_offers only ever returns CollectionEntry::Owned entries")
             }
+            CollectionEntry::Public { .. } => {
+                unreachable!("get_offers only ever returns CollectionEntry::Owned entries")
+            }
         }
     }
 }

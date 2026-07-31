@@ -482,11 +482,13 @@ components:
           type: string
         name:
           type: string
-        owner_username:
+        owner_count:
           type:
-          - string
+          - integer
           - 'null'
-          description: Username of the owner when the card belongs to another user (catalog listing).
+          format: int64
+          description: Number of distinct users owning this card (search mode only).
+          minimum: 0
         price_guide:
           oneOf:
           - type: 'null'

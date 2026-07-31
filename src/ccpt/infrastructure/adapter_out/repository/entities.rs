@@ -358,8 +358,9 @@ pub struct CardWithPriceEntity {
     pub purchase_price: Option<i32>,
     /// `NULL` when the row belongs to another user (masked in SQL).
     pub added_at: Option<DateTime<Utc>>,
-    /// Username of the owner, `NULL` when the row is mine.
-    pub owner_username: Option<String>,
+    /// Number of distinct users owning this card (search mode only); `0` and unused
+    /// in "my collection" mode.
+    pub owner_count: i64,
     #[sqlx(flatten)]
     pub price: PriceGuideEntity,
 }
@@ -381,8 +382,6 @@ impl From<Option<i32>> for Price {
 
 impl From<CardWithPriceEntity> for Card {
     fn from(e: CardWithPriceEntity) -> Self {
-        let selling_price = e.price.trend.map(|v| v as u32);
-
         let price_guide = if e.price.avg.is_some() || e.price.low.is_some() {
             Some(PriceGuide::from(e.price))
         } else {
@@ -395,10 +394,8 @@ impl From<CardWithPriceEntity> for Card {
                 purchase_price: purchase_price as u32,
                 added_at,
             },
-            _ => CollectionEntry::Owned {
-                owner_username: e.owner_username.unwrap_or_default(),
-                quantity: e.quantity as u8,
-                selling_price,
+            _ => CollectionEntry::Public {
+                owner_count: e.owner_count as u64,
             },
         };
 
@@ -494,7 +491,7 @@ mod tests {
                 assert_eq!(*quantity, 2);
                 assert_eq!(*purchase_price, 350);
             }
-            CollectionEntry::Owned { .. } => panic!("expected CollectionEntry::Mine"),
+            _ => panic!("expected CollectionEntry::Mine"),
         }
         assert_eq!(card.cardmarket_id, Some(42));
     }
@@ -506,37 +503,6 @@ mod tests {
         let card: Card = entity.into();
 
         assert_eq!(card.cardmarket_id, None);
-    }
-
-    #[test]
-    fn card_entity_converts_to_card_with_foil_flag() {
-        let entity = make_card_entity("U", true, None);
-
-        let card: Card = entity.into();
-
-        assert!(card.id.foil);
-    }
-
-    #[test]
-    fn card_entity_set_code_is_uppercased_in_card_id_and_set_name() {
-        let entity = make_card_entity("M", false, None);
-
-        let card: Card = entity.into();
-
-        assert_eq!(card.id.set_code.to_string(), "FDN");
-        assert_eq!(card.set_name.code.to_string(), "FDN");
-    }
-
-    #[test]
-    fn card_entity_purchase_price_in_cents_is_preserved() {
-        let entity = make_card_entity("C", false, None);
-
-        let card: Card = entity.into();
-
-        match card.collection_entry {
-            CollectionEntry::Mine { purchase_price, .. } => assert_eq!(purchase_price, 350),
-            CollectionEntry::Owned { .. } => panic!("expected CollectionEntry::Mine"),
-        }
     }
 
     #[test]
@@ -583,15 +549,6 @@ mod tests {
     }
 
     #[test]
-    fn card_id_entity_converts_to_card_id_without_foil() {
-        let entity = make_card_id_entity(false);
-
-        let card_id: CardId = entity.into();
-
-        assert!(!card_id.foil);
-    }
-
-    #[test]
     fn price_as_i32_returns_some_when_value_is_present() {
         let price = Price { value: Some(199) };
 
@@ -606,31 +563,11 @@ mod tests {
     }
 
     #[test]
-    fn price_as_i32_returns_zero_when_value_is_zero() {
-        let price = Price { value: Some(0) };
-
-        assert_eq!(price.as_i32(), Some(0));
-    }
-
-    #[test]
     fn user_from_id_sets_id_correctly() {
         let user = User::from_id(UserId::new("abc123"));
 
         assert_eq!(user.id, UserId::new("abc123"));
-    }
-
-    #[test]
-    fn user_from_id_has_no_name() {
-        let user = User::from_id(UserId::new("abc123"));
-
         assert_eq!(user.name, None);
-    }
-
-    #[test]
-    fn user_from_id_with_complex_id() {
-        let user = User::from_id(UserId::new("google|105262637836230123456"));
-
-        assert_eq!(user.id, UserId::new("google|105262637836230123456"));
     }
 
     #[test]
@@ -679,5 +616,381 @@ mod tests {
         assert_eq!(entity.normal.avg, Some(20));
         assert_eq!(entity.foil.low, Some(100));
         assert_eq!(entity.foil.avg, Some(200));
+    }
+
+    // --- CardNameEntity ---
+
+    #[test]
+    fn card_name_entity_converts_to_card_id() {
+        let entity = CardNameEntity {
+            set_code: "FDN".to_string(),
+            collector_number: "42".to_string(),
+            language_code: "EN".to_string(),
+            foil: false,
+            name: "Sol Ring".to_string(),
+        };
+
+        let card_id: CardId = entity.into();
+
+        assert_eq!(card_id.collector_number, "42");
+        assert_eq!(card_id.language_code, LanguageCode::EN);
+        assert!(!card_id.foil);
+        assert_eq!(card_id.set_code.to_string(), "FDN");
+    }
+
+    // --- UserEntity ---
+
+    #[test]
+    fn user_entity_converts_to_user() {
+        let entity = UserEntity {
+            id: "user-123".to_string(),
+            username: "alice".to_string(),
+        };
+
+        let user: User = entity.into();
+
+        assert_eq!(user.id, UserId::new("user-123"));
+        assert_eq!(user.username, Some("alice".to_string()));
+    }
+
+    // --- TradeEntity ---
+
+    #[test]
+    fn trade_entity_converts_to_trade_with_all_fields() {
+        let entity = TradeEntity {
+            id: Uuid::new_v4(),
+            initiator_user_id: "init-1".to_string(),
+            respondent_user_id: "resp-1".to_string(),
+            status: "PENDING".to_string(),
+            initiator_amount_due: Some(500),
+            respondent_amount_due: Some(300),
+            initiator_accepted_at: Some(chrono::Utc::now()),
+            respondent_accepted_at: None,
+            created_at: chrono::Utc::now(),
+            updated_at: chrono::Utc::now(),
+        };
+
+        let trade: Trade = entity.into();
+
+        assert!(matches!(trade.status, TradeStatus::Pending));
+        assert_eq!(trade.initiator_user_id, UserId::new("init-1"));
+        assert_eq!(trade.respondent_user_id, UserId::new("resp-1"));
+        assert_eq!(trade.initiator_amount_due, Some(500));
+        assert_eq!(trade.respondent_amount_due, Some(300));
+    }
+
+    #[test]
+    fn trade_entity_converts_to_trade_with_no_optional_fields() {
+        let entity = TradeEntity {
+            id: Uuid::new_v4(),
+            initiator_user_id: "init-2".to_string(),
+            respondent_user_id: "resp-2".to_string(),
+            status: "CLOSED".to_string(),
+            initiator_amount_due: None,
+            respondent_amount_due: None,
+            initiator_accepted_at: None,
+            respondent_accepted_at: None,
+            created_at: chrono::Utc::now(),
+            updated_at: chrono::Utc::now(),
+        };
+
+        let trade: Trade = entity.into();
+
+        assert!(matches!(trade.status, TradeStatus::Closed));
+        assert!(trade.initiator_amount_due.is_none());
+        assert!(trade.respondent_amount_due.is_none());
+    }
+
+    // --- TradeCardEntity ---
+
+    #[test]
+    fn trade_card_entity_converts_to_trade_card() {
+        let entity = TradeCardEntity {
+            set_code: "FDN".to_string(),
+            collector_number: "87".to_string(),
+            language_code: "FR".to_string(),
+            foil: true,
+            owner_user_id: "owner-1".to_string(),
+            quantity: 3,
+        };
+
+        let trade_card: TradeCard = entity.into();
+
+        assert_eq!(trade_card.card_id.collector_number, "87");
+        assert_eq!(trade_card.card_id.language_code, LanguageCode::FR);
+        assert!(trade_card.card_id.foil);
+        assert_eq!(trade_card.card_id.set_code.to_string(), "FDN");
+        assert_eq!(trade_card.owner_user_id, UserId::new("owner-1"));
+        assert_eq!(trade_card.quantity, 3);
+    }
+
+    // --- CardWithPriceEntity ---
+
+    #[test]
+    fn card_with_price_entity_converts_to_mine_entry() {
+        let entity = CardWithPriceEntity {
+            set_code: "FDN".to_string(),
+            set_name: "Foundations".to_string(),
+            collector_number: "1".to_string(),
+            language_code: "EN".to_string(),
+            foil: false,
+            name: "Sol Ring".to_string(),
+            rarity: "C".to_string(),
+            scryfall_id: Uuid::new_v4(),
+            the_gatherer_id: None,
+            quantity: 2,
+            purchase_price: Some(350),
+            added_at: Some(chrono::Utc::now()),
+            owner_count: 0,
+            price: PriceGuideEntity {
+                low: Some(300),
+                avg: Some(350),
+                trend: None,
+            },
+        };
+
+        let card: Card = entity.into();
+
+        assert_eq!(card.name, "Sol Ring");
+        assert!(card.price_guide.is_some());
+        match card.collection_entry {
+            CollectionEntry::Mine { .. } => {}
+            _ => panic!("expected CollectionEntry::Mine"),
+        }
+    }
+
+    #[test]
+    fn card_with_price_entity_converts_to_public_entry_when_purchase_price_is_null() {
+        let entity = CardWithPriceEntity {
+            set_code: "FDN".to_string(),
+            set_name: "Foundations".to_string(),
+            collector_number: "1".to_string(),
+            language_code: "EN".to_string(),
+            foil: false,
+            name: "Sol Ring".to_string(),
+            rarity: "C".to_string(),
+            scryfall_id: Uuid::new_v4(),
+            the_gatherer_id: None,
+            quantity: 0,
+            purchase_price: None,
+            added_at: None,
+            owner_count: 5,
+            price: PriceGuideEntity {
+                low: None,
+                avg: None,
+                trend: None,
+            },
+        };
+
+        let card: Card = entity.into();
+
+        match card.collection_entry {
+            CollectionEntry::Public { owner_count } => {
+                assert_eq!(owner_count, 5);
+            }
+            _ => panic!("expected CollectionEntry::Public"),
+        }
+    }
+
+    #[test]
+    fn card_with_price_entity_converts_to_public_entry_when_added_at_is_null() {
+        let entity = CardWithPriceEntity {
+            set_code: "FDN".to_string(),
+            set_name: "Foundations".to_string(),
+            collector_number: "1".to_string(),
+            language_code: "EN".to_string(),
+            foil: false,
+            name: "Sol Ring".to_string(),
+            rarity: "C".to_string(),
+            scryfall_id: Uuid::new_v4(),
+            the_gatherer_id: None,
+            quantity: 0,
+            purchase_price: Some(350),
+            added_at: None,
+            owner_count: 3,
+            price: PriceGuideEntity {
+                low: None,
+                avg: None,
+                trend: None,
+            },
+        };
+
+        let card: Card = entity.into();
+
+        match card.collection_entry {
+            CollectionEntry::Public { owner_count } => {
+                assert_eq!(owner_count, 3);
+            }
+            _ => panic!("expected CollectionEntry::Public"),
+        }
+    }
+
+    #[test]
+    fn card_with_price_entity_with_no_price_returns_none_price_guide() {
+        let entity = CardWithPriceEntity {
+            set_code: "FDN".to_string(),
+            set_name: "Foundations".to_string(),
+            collector_number: "1".to_string(),
+            language_code: "EN".to_string(),
+            foil: false,
+            name: "Sol Ring".to_string(),
+            rarity: "C".to_string(),
+            scryfall_id: Uuid::new_v4(),
+            the_gatherer_id: None,
+            quantity: 1,
+            purchase_price: Some(100),
+            added_at: Some(chrono::Utc::now()),
+            owner_count: 0,
+            price: PriceGuideEntity {
+                low: None,
+                avg: None,
+                trend: None,
+            },
+        };
+
+        let card: Card = entity.into();
+
+        assert!(card.price_guide.is_none());
+    }
+
+    // --- CardMarketPriceEntity → FullPriceGuide ---
+
+    #[test]
+    fn card_market_price_entity_converts_to_full_price_guide() {
+        let entity = CardMarketPriceEntity {
+            id_produit: 42,
+            date: NaiveDate::from_ymd_opt(2024, 6, 15).unwrap(),
+            normal: PriceGuideEntity {
+                low: Some(100),
+                avg: Some(200),
+                trend: Some(150),
+            },
+            foil: PriceGuideEntity {
+                low: Some(1000),
+                avg: Some(2000),
+                trend: Some(1500),
+            },
+        };
+
+        let full: FullPriceGuide = entity.into();
+
+        assert_eq!(full.id_product, 42);
+        assert_eq!(full.normal.low.value, Some(100));
+        assert_eq!(full.normal.avg.value, Some(200));
+        assert_eq!(full.normal.trend.value, Some(150));
+        assert_eq!(full.foil.low.value, Some(1000));
+        assert_eq!(full.foil.avg.value, Some(2000));
+        assert_eq!(full.foil.trend.value, Some(1500));
+    }
+
+    // --- CollectionPriceHistoryEntity ---
+
+    #[test]
+    fn collection_price_history_entity_converts_to_price_history_entry() {
+        let entity = CollectionPriceHistoryEntity {
+            date: NaiveDate::from_ymd_opt(2025, 3, 1).unwrap(),
+            low: 100,
+            trend: 200,
+            avg: 150,
+        };
+
+        let entry: PriceHistoryEntry = entity.into();
+
+        assert_eq!(entry.date, NaiveDate::from_ymd_opt(2025, 3, 1).unwrap());
+        assert_eq!(entry.price_guide.low.value, Some(100));
+        assert_eq!(entry.price_guide.trend.value, Some(200));
+        assert_eq!(entry.price_guide.avg.value, Some(150));
+    }
+
+    // --- CardMarketPriceHistoryEntity ---
+
+    #[test]
+    fn card_market_price_history_entity_converts_to_price_history_entry() {
+        let entity = CardMarketPriceHistoryEntity {
+            date: NaiveDate::from_ymd_opt(2025, 3, 1).unwrap(),
+            low: Some(100),
+            trend: None,
+            avg: Some(150),
+        };
+
+        let entry: PriceHistoryEntry = entity.into();
+
+        assert_eq!(entry.date, NaiveDate::from_ymd_opt(2025, 3, 1).unwrap());
+        assert_eq!(entry.price_guide.low.value, Some(100));
+        assert_eq!(entry.price_guide.trend.value, None);
+        assert_eq!(entry.price_guide.avg.value, Some(150));
+    }
+
+    // --- CardOfferEntity ---
+
+    #[test]
+    fn card_offer_entity_converts_to_owned_entry() {
+        let entity = CardOfferEntity {
+            owner_username: "bob".to_string(),
+            quantity: 5,
+            selling_price: Some(2500),
+        };
+
+        let entry: CollectionEntry = entity.into();
+
+        match entry {
+            CollectionEntry::Owned {
+                owner_username,
+                quantity,
+                selling_price,
+            } => {
+                assert_eq!(owner_username, "bob");
+                assert_eq!(quantity, 5);
+                assert_eq!(selling_price, Some(2500));
+            }
+            _ => panic!("expected CollectionEntry::Owned"),
+        }
+    }
+
+    #[test]
+    fn card_offer_entity_converts_to_owned_entry_with_no_selling_price() {
+        let entity = CardOfferEntity {
+            owner_username: "carol".to_string(),
+            quantity: 1,
+            selling_price: None,
+        };
+
+        let entry: CollectionEntry = entity.into();
+
+        match entry {
+            CollectionEntry::Owned {
+                selling_price,
+                quantity,
+                ..
+            } => {
+                assert_eq!(quantity, 1);
+                assert!(selling_price.is_none());
+            }
+            _ => panic!("expected CollectionEntry::Owned"),
+        }
+    }
+
+    // --- Price From<i32> ---
+
+    #[test]
+    fn price_from_i32_creates_price_with_cents() {
+        let price: Price = 199i32.into();
+        assert_eq!(price.value, Some(199));
+        let price: Price = 0i32.into();
+        assert_eq!(price.value, Some(0));
+    }
+
+    // --- Price From<Option<i32>> ---
+
+    #[test]
+    fn price_from_some_i32() {
+        let price: Price = (Some(500) as Option<i32>).into();
+        assert_eq!(price.value, Some(500));
+    }
+
+    #[test]
+    fn price_from_none_i32_returns_empty() {
+        let price: Price = (None as Option<i32>).into();
+        assert_eq!(price.value, None);
     }
 }

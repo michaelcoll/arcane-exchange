@@ -105,8 +105,9 @@ pub trait CardPricesViewRepository: Send + Sync {
         user_id: &UserId,
         query: CollectionQuery,
     ) -> Result<PaginatedCollection, AppError>;
-    /// Public search across every user's cards. No `user_id` filter — every row is
-    /// returned as `CollectionEntry::Owned`.
+    /// Public search across every user's cards. No `user_id` filter — rows are
+    /// grouped by card, each returned as `CollectionEntry::Public { owner_count }`
+    /// where `owner_count` is the number of distinct users owning that card.
     async fn search_paginated(
         &self,
         query: CollectionQuery,
