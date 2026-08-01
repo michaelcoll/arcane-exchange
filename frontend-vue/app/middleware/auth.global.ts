@@ -1,8 +1,8 @@
 const isProtectedRoute = createRouteMatcher([
   '/collection(.*)',
   '/trade(.*)',
-  '/find(.*)',
-  '/prefs(.*)',
+  '/search(.*)',
+  '/profile(.*)',
 ]);
 
 export default defineNuxtRouteMiddleware((to) => {

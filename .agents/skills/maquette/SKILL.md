@@ -1,6 +1,6 @@
 ---
 name: maquette
-description: Explains how to consult the "The Arcane Exchange" UI mockup (maquette/ folder, not tracked by git) via Playwright, to use it as a design/UX reference before implementing a screen in frontend-vue. Use when the user mentions the mockup, "maquette", "The Arcane Exchange", or asks to check/compare the design before coding a screen.
+description: Explains how to consult the "The Arcane Exchange" UI mockup (maquette/ folder, not tracked by git) via the browser skill, to use it as a design/UX reference before implementing a screen in frontend-vue. Use when the user mentions the mockup, "maquette", "The Arcane Exchange", or asks to check/compare the design before coding a screen.
 ---
 
 You are consulting this project's UI mockup to use it as a visual/UX reference before implementing a real feature.
@@ -20,9 +20,11 @@ You are consulting this project's UI mockup to use it as a visual/UX reference b
 
 - Main page: `maquette/The Arcane Exchange.html`, served by the http-server web server run using the mise command
   `mise maquette`, at: `http://localhost:4000/The%20Arcane%20Exchange.html`
-- To explore it: Playwright MCP tools — `browser_navigate` to the URL, `browser_snapshot` to read the structure,
-  `browser_take_screenshot` for a visual capture, `browser_click` to navigate between screens. Save captures to
-  `.playwright-mcp/` at the repo root (project rule, see AGENTS.md).
+- To explore it: use the **browser** skill (`playwright-cli`) — run `playwright-cli open` first, then
+  `playwright-cli goto`
+  to navigate, `playwright-cli snapshot` to read the page structure, `playwright-cli screenshot --filename=<name>.png`
+  for a visual capture, `playwright-cli click` to interact with elements. Save all screenshots to `.playwright/`
+  at the repo root (project rule, see AGENTS.md).
 - `maquette/Design System.html` is a separate page that visually documents the design tokens (colors, components)
   — useful for checking a specific style without navigating the whole prototype.
 
@@ -45,8 +47,9 @@ You are consulting this project's UI mockup to use it as a visual/UX reference b
 
 ## Working method
 
-1. Before implementing a screen or component that already exists in the mockup, consult it with Playwright and note
-   layout, visual hierarchy, and behaviors (hover, transitions, empty/error states) rather than guessing.
+1. Before implementing a screen or component that already exists in the mockup, consult it with the **browser** skill
+   (`playwright-cli`) — `snapshot` for structure, `screenshot` for visuals, `click` for interactions — and note layout,
+   visual hierarchy, and behaviors (hover, transitions, empty/error states) rather than guessing.
 2. Translate into Vue/Tailwind following the conventions already in place in `frontend-vue`, not by copying the mockup's
    JSX/CSS. Use `../../../.agents/design-system.instructions.md` for tokens (colors, spacing, radius, button/badge
    variants).

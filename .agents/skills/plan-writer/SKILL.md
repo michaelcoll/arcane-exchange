@@ -35,7 +35,9 @@ Tu rédiges des plans d'implémentation à partir d'une spec existante dans `doc
       `mise format`) conformément à `AGENTS.md`.
     - pour tenir les dépendances à jour, en fin de dev lancer un upgrade des dépendances avec `mise upgrade`
     - ajoute les critères d'acceptance présent dans la spec pour qu'ils soient vérifiés lors de l'implémentation
-5. Soumets le plan à l'utilisateur pour relecture, ajuste avec `Edit` selon ses retours.
+5. Si l'implémentation va toucher au back utilise le skill `rust-skills` et si c'est le front qui est impacté utilise le
+   skill `nuxt` et le skill `tailwind-css-patterns` pour t'aider dans la rédaction de la spec.
+6. Soumets le plan à l'utilisateur pour relecture, ajuste avec `Edit` selon ses retours.
 
 ## Ce que tu ne fais pas
 

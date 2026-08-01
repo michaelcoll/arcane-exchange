@@ -19,6 +19,7 @@ SCRYFALL_BASE_URL = "https://api.scryfall.com"
 "cargo:sqlx-cli" = "latest"
 node = "24"
 pnpm = "11"
+"npm:@playwright/cli" = "latest"
 
 [tasks.default]
 description = "Runs all the checks for the project"

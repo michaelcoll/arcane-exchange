@@ -98,8 +98,8 @@ const bottomNavLinkClass = (path: string) => [
         <nav v-if="isLoaded && isSignedIn" class="ml-2 flex gap-0.5 self-stretch max-md:hidden">
           <NuxtLink to="/collection" :class="navLinkClass('/collection')">Collection</NuxtLink>
           <NuxtLink to="/trade" :class="navLinkClass('/trade')">Échanges</NuxtLink>
-          <NuxtLink to="/find" :class="navLinkClass('/find')">Rechercher</NuxtLink>
-          <NuxtLink to="/prefs" :class="navLinkClass('/prefs')">Profil</NuxtLink>
+          <NuxtLink to="/search" :class="navLinkClass('/search')">Rechercher</NuxtLink>
+          <NuxtLink to="/profile" :class="navLinkClass('/profile')">Profil</NuxtLink>
         </nav>
 
         <span class="flex-1" />
@@ -153,11 +153,11 @@ const bottomNavLinkClass = (path: string) => [
         <Icon name="lucide:arrow-left-right" size="21" />
         Échanges
       </NuxtLink>
-      <NuxtLink to="/find" :class="bottomNavLinkClass('/find')">
+      <NuxtLink to="/search" :class="bottomNavLinkClass('/search')">
         <Icon name="lucide:search" size="21" />
         Rechercher
       </NuxtLink>
-      <NuxtLink to="/prefs" :class="bottomNavLinkClass('/prefs')">
+      <NuxtLink to="/pages/profile" :class="bottomNavLinkClass('/profile')">
         <Icon name="lucide:user" size="21" />
         Profil
       </NuxtLink>

@@ -2,6 +2,8 @@
 import type { CollectionCard } from '~/bindings/CollectionCard';
 import type { RarityCode } from '~/bindings/RarityCode';
 
+import { useRoute, useRouter } from 'nuxt/app';
+
 const { getCollectionStats } = useCollectionService();
 const { getSearch } = useSearchService();
 
@@ -78,10 +80,47 @@ const hasMore = computed(() =>
   collectionData.value ? allCards.value.length < collectionData.value.total : false,
 );
 
+const route = useRoute();
+const router = useRouter();
 const sentinel = ref<HTMLElement | null>(null);
 let io: IntersectionObserver | null = null;
 
 onMounted(() => {
+  // ── Réception depuis la home : mode nom (query params) ──
+  const qParam = route.query.q as string | undefined;
+  const modeParam = route.query.mode as string | undefined;
+
+  if (qParam && qParam.trim()) {
+    if (modeParam === 'name' || modeParam === 'decklist') {
+      mode.value = modeParam;
+    }
+    q.value = qParam;
+    submittedQ.value = qParam;
+    params.value.q = qParam;
+    resetAndRefresh();
+  }
+
+  // ── Réception depuis la home : mode decklist (sessionStorage) ──
+  try {
+    const pending = sessionStorage.getItem('tae_decklist_pending');
+    if (pending !== null) {
+      // Priorité : si on vient d'un mode nom (q param déjà consommé), ne pas écraser
+      if (!qParam || !qParam.trim()) {
+        mode.value = 'decklist';
+        decklist.value = pending;
+      }
+      sessionStorage.removeItem('tae_decklist_pending');
+    }
+  } catch {
+    // sessionStorage corrompu
+  }
+
+  // ── Nettoyer l'URL ──
+  if (qParam || modeParam) {
+    router.replace({ query: {} });
+  }
+
+  // ── Infinite scroll ──
   io = new IntersectionObserver(
     ([entry]) => {
       if (entry?.isIntersecting && hasMore.value && !pending.value) {
