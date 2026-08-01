@@ -1,16 +1,14 @@
-# Local env files
+# Local files
 .env
-.env.*
 !.env.example
 .DS_Store
 example-files
-screens
-plans
 *.plan.md
 /maquette
 .sentryclirc
-.playwright-mcp
-.claude/skills
+.playwright
+.claude
+CLAUDE.md
 
 # Nuxt dev/build outputs
 .output
@@ -34,3 +32,7 @@ coverage
 !.idea/inspectionProfiles
 !.idea/copyright
 *.iml
+
+# Pix Agent
+.pi/
+.pi-lens/

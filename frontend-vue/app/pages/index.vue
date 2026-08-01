@@ -40,6 +40,30 @@ const searchOptions = [
 const selectRecent = (name: string) => {
   q.value = name;
 };
+
+const decklistContent = ref('');
+
+const navigateToSearch = (searchQ: string, searchMode: string) => {
+  const params = new URLSearchParams();
+  if (searchQ.trim()) params.set('q', searchQ.trim());
+  if (searchMode) params.set('mode', searchMode);
+  const query = params.toString();
+  navigateTo(query ? `/search?${query}` : '/search');
+};
+
+const handleDecklistSearch = () => {
+  if (decklistContent.value.trim()) {
+    try {
+      sessionStorage.setItem('tae_decklist_pending', decklistContent.value);
+    } catch {
+      // Log en cas de contenu trop volumineux (>50 ko)
+      if (decklistContent.value.length > 50_000) {
+        console.warn('Decklist très volumineuse (>50 ko)');
+      }
+    }
+  }
+  navigateTo('/search');
+};
 </script>
 
 <template>
@@ -124,11 +148,11 @@ const selectRecent = (name: string) => {
               v-model="q"
               class="min-w-0 flex-1 border-0 bg-transparent text-base text-slate-800 outline-none placeholder:text-slate-400 dark:text-slate-100 dark:placeholder:text-slate-500"
               placeholder="Vampiric Tutor, Sire of Seven Deaths…"
-              @keydown.enter="navigateTo('/find')"
+              @keydown.enter="navigateToSearch(q, mode)"
             />
             <button
               class="inline-flex items-center justify-center gap-2 self-stretch rounded-xl border border-transparent bg-cyan-500 px-6 text-base leading-none font-bold whitespace-nowrap text-zinc-950 shadow-lg transition-all duration-150 hover:-translate-y-px hover:bg-cyan-400 active:translate-y-0 dark:bg-cyan-400 dark:hover:bg-cyan-300"
-              @click="navigateTo('/find')"
+              @click="navigateToSearch(q, mode)"
             >
               Chercher
             </button>
@@ -150,13 +174,14 @@ const selectRecent = (name: string) => {
               >
             </div>
             <textarea
+              v-model="decklistContent"
               :rows="4"
               class="w-full resize-y font-mono text-sm text-slate-800 dark:text-slate-100"
               placeholder="1x Vampiric Tutor&#10;1x Black Market Connections&#10;1x The Soul Stone…"
             />
             <button
               class="inline-flex items-center justify-center gap-2 self-end rounded-lg border border-transparent bg-cyan-500 px-3 py-1.5 text-xs leading-none font-bold whitespace-nowrap text-zinc-950 shadow-lg transition-all duration-150 hover:-translate-y-px hover:bg-cyan-400 active:translate-y-0 dark:bg-cyan-400 dark:hover:bg-cyan-300"
-              @click="navigateTo('/find')"
+              @click="handleDecklistSearch"
             >
               Trouver les joueurs
             </button>
@@ -211,7 +236,7 @@ const selectRecent = (name: string) => {
           :scryfall-id="t.id"
           :name="t.name"
           :price="t.price"
-          @click="navigateTo('/find')"
+          @click="navigateTo('/search')"
         />
       </div>
     </div>
