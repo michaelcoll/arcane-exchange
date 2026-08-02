@@ -60,6 +60,7 @@ export default defineNuxtConfig({
     '@nuxt/fonts',
     '@clerk/nuxt',
     '@vueuse/nuxt',
+    '@nuxt/test-utils/module',
   ],
   runtimeConfig: {
     public: {

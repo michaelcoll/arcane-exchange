@@ -11,7 +11,8 @@
     "postinstall": "nuxt prepare",
     "format": "prettier --check \"**/*.{ts,mjs,vue,json,css,yml}\"",
     "format:fix": "prettier --write \"**/*.{ts,mjs,vue,json,css,yml}\"",
-    "lint": "nuxi typecheck"
+    "lint": "nuxi typecheck",
+    "test": "vitest run"
   },
   "packageManager": "pnpm@11.17.0",
   "engines": {
@@ -32,11 +33,15 @@
     "vue-router": "~5.2.0"
   },
   "devDependencies": {
+    "@nuxt/test-utils": "~4.1.0",
     "@types/node": "~24.1.0",
+    "@vue/test-utils": "~2.4.11",
     "eslint-config-prettier": "~10.1.8",
+    "happy-dom": "~20.11.1",
     "prettier": "~3.9.6",
     "prettier-plugin-tailwindcss": "~0.8.1",
     "typescript": "~6.0.3",
-    "vue-tsc": "~3.3.8"
+    "vitest": "~4.1.10",
+    "vue-tsc": "~3.3.9"
   }
 }
