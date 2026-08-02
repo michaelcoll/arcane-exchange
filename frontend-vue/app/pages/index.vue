@@ -2,7 +2,7 @@
 const mode = ref<'name' | 'decklist'>('name');
 const q = ref('');
 
-const recents = ['Vampiric Tutor', 'Black Market Connections', 'Emeritus of Woe', 'Reprieve'];
+const { recents, addRecentSearch } = useRecentSearches();
 
 const trends = [
   {
@@ -38,12 +38,15 @@ const searchOptions = [
 ];
 
 const selectRecent = (name: string) => {
-  q.value = name;
+  navigateToSearch(name, 'name');
 };
 
 const decklistContent = ref('');
 
 const navigateToSearch = (searchQ: string, searchMode: string) => {
+  if (searchMode === 'name' && searchQ.trim()) {
+    addRecentSearch(searchQ);
+  }
   const params = new URLSearchParams();
   if (searchQ.trim()) params.set('q', searchQ.trim());
   if (searchMode) params.set('mode', searchMode);
@@ -189,7 +192,10 @@ const handleDecklistSearch = () => {
         </div>
 
         <!-- Recent searches -->
-        <div v-if="mode === 'name'" class="flex flex-wrap items-center justify-center gap-2">
+        <div
+          v-if="mode === 'name' && recents.length > 0"
+          class="flex flex-wrap items-center justify-center gap-2"
+        >
           <span
             class="text-2xs mr-0.5 font-mono font-medium tracking-widest whitespace-nowrap text-slate-400 uppercase dark:text-slate-500"
             >récents</span
