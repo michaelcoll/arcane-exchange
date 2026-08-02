@@ -58,6 +58,12 @@ impl User {
     }
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct UserSuggestion {
+    pub username: String,
+    pub card_count: u64,
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

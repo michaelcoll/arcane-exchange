@@ -28,8 +28,7 @@ const currentIndex = computed(() => props.options.findIndex((o) => o.value === p
 const isMac = computed(() => {
   const ua = navigator as Navigator & { userAgentData?: { platform: string } };
   if (ua.userAgentData?.platform.startsWith('Mac')) return true;
-  if (/Macintosh|MacOSX|Mac OS X/.test(navigator.userAgent)) return true;
-  return false;
+  return /Macintosh|MacOSX|Mac OS X/.test(navigator.userAgent);
 });
 
 const modifierLabel = computed(() => (isMac.value ? '⌥' : 'Alt'));

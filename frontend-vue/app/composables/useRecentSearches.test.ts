@@ -5,6 +5,8 @@ import {
   addRecentSearch,
 } from '../composables/useRecentSearches';
 
+const TEST_KEY = 'test-recent-key';
+
 // Mock localStorage
 const mockLocalStorage: Record<string, string> = {};
 vi.stubGlobal('localStorage', {
@@ -26,8 +28,14 @@ vi.stubGlobal('localStorage', {
 
 function clearStorage(): void {
   Object.keys(mockLocalStorage).forEach((k) => delete mockLocalStorage[k]);
-  vi.mocked(localStorage.getItem).mockClear();
-  vi.mocked(localStorage.setItem).mockClear();
+  vi.mocked(localStorage.getItem).mockReset();
+  vi.mocked(localStorage.getItem).mockImplementation(
+    (key: string) => mockLocalStorage[key] ?? null,
+  );
+  vi.mocked(localStorage.setItem).mockReset();
+  vi.mocked(localStorage.setItem).mockImplementation((key: string, value: string) => {
+    mockLocalStorage[key] = value;
+  });
 }
 
 describe('useRecentSearches', () => {
@@ -37,45 +45,42 @@ describe('useRecentSearches', () => {
 
   describe('getRecentSearches', () => {
     it('returns empty array when localStorage is empty', () => {
-      expect(getRecentSearches()).toEqual([]);
+      expect(getRecentSearches(TEST_KEY)).toEqual([]);
     });
 
     it('returns parsed array from localStorage', () => {
-      mockLocalStorage['tae_recent_searches'] = JSON.stringify(['A', 'B', 'C']);
-      expect(getRecentSearches()).toEqual(['A', 'B', 'C']);
+      mockLocalStorage[TEST_KEY] = JSON.stringify(['A', 'B', 'C']);
+      expect(getRecentSearches(TEST_KEY)).toEqual(['A', 'B', 'C']);
     });
 
     it('returns empty array for non-array JSON value', () => {
-      mockLocalStorage['tae_recent_searches'] = JSON.stringify('not-an-array');
-      expect(getRecentSearches()).toEqual([]);
+      mockLocalStorage[TEST_KEY] = JSON.stringify('not-an-array');
+      expect(getRecentSearches(TEST_KEY)).toEqual([]);
     });
 
     it('returns empty array for corrupted JSON', () => {
-      mockLocalStorage['tae_recent_searches'] = '{invalid json';
-      expect(getRecentSearches()).toEqual([]);
+      mockLocalStorage[TEST_KEY] = '{invalid json';
+      expect(getRecentSearches(TEST_KEY)).toEqual([]);
     });
 
     it('returns empty array when localStorage is disabled', () => {
       vi.mocked(localStorage.getItem).mockImplementation(() => {
         throw new Error('localStorage not available');
       });
-      expect(getRecentSearches()).toEqual([]);
+      expect(getRecentSearches(TEST_KEY)).toEqual([]);
     });
   });
 
   describe('saveRecentSearches', () => {
     it('saves array as JSON string to localStorage', () => {
-      saveRecentSearches(['A', 'B']);
-      expect(localStorage.setItem).toHaveBeenCalledWith(
-        'tae_recent_searches',
-        JSON.stringify(['A', 'B']),
-      );
+      saveRecentSearches(TEST_KEY, ['A', 'B']);
+      expect(localStorage.setItem).toHaveBeenCalledWith(TEST_KEY, JSON.stringify(['A', 'B']));
     });
 
     it('truncates to MAX_RECENTS (4) entries', () => {
-      saveRecentSearches(['A', 'B', 'C', 'D', 'E']);
+      saveRecentSearches(TEST_KEY, ['A', 'B', 'C', 'D', 'E']);
       expect(localStorage.setItem).toHaveBeenCalledWith(
-        'tae_recent_searches',
+        TEST_KEY,
         JSON.stringify(['A', 'B', 'C', 'D']),
       );
     });
@@ -84,50 +89,60 @@ describe('useRecentSearches', () => {
       vi.mocked(localStorage.setItem).mockImplementation(() => {
         throw new Error('localStorage not available');
       });
-      expect(() => saveRecentSearches(['A'])).not.toThrow();
+      expect(() => saveRecentSearches(TEST_KEY, ['A'])).not.toThrow();
     });
   });
 
   describe('addRecentSearch', () => {
     it('adds a new term at the beginning', () => {
-      const result = addRecentSearch(['B', 'C'], 'A');
+      const result = addRecentSearch(TEST_KEY, ['B', 'C'], 'A');
       expect(result).toEqual(['A', 'B', 'C']);
     });
 
     it('moves existing term to the beginning', () => {
-      const result = addRecentSearch(['A', 'B', 'C'], 'A');
+      const result = addRecentSearch(TEST_KEY, ['A', 'B', 'C'], 'A');
       expect(result).toEqual(['A', 'B', 'C']);
     });
 
     it('moves existing term to the beginning when not first', () => {
-      const result = addRecentSearch(['B', 'A', 'C'], 'A');
+      const result = addRecentSearch(TEST_KEY, ['B', 'A', 'C'], 'A');
       expect(result).toEqual(['A', 'B', 'C']);
     });
 
     it('truncates to MAX_RECENTS (4) entries', () => {
-      const result = addRecentSearch(['A', 'B', 'C', 'D'], 'E');
+      const result = addRecentSearch(TEST_KEY, ['A', 'B', 'C', 'D'], 'E');
       expect(result).toEqual(['E', 'A', 'B', 'C']);
     });
 
     it('ignores empty or whitespace-only terms', () => {
-      const result = addRecentSearch(['A', 'B'], '');
+      const result = addRecentSearch(TEST_KEY, ['A', 'B'], '');
       expect(result).toEqual(['A', 'B']);
     });
 
     it('ignores whitespace-only terms', () => {
-      const result = addRecentSearch(['A', 'B'], '   ');
+      const result = addRecentSearch(TEST_KEY, ['A', 'B'], '   ');
       expect(result).toEqual(['A', 'B']);
     });
 
     it('trims the term before storing', () => {
-      const result = addRecentSearch([], '  Vampiric Tutor  ');
+      const result = addRecentSearch(TEST_KEY, [], '  Vampiric Tutor  ');
       expect(result).toEqual(['Vampiric Tutor']);
     });
 
     it('saves to localStorage', () => {
       clearStorage();
-      addRecentSearch([], 'Test');
+      addRecentSearch(TEST_KEY, [], 'Test');
       expect(localStorage.setItem).toHaveBeenCalled();
+    });
+  });
+
+  describe('key isolation', () => {
+    it('keeps separate histories for different keys', () => {
+      addRecentSearch('key-a', [], 'Alpha');
+      addRecentSearch('key-b', [], 'Beta');
+
+      expect(getRecentSearches('key-a')).toEqual(['Alpha']);
+      expect(getRecentSearches('key-b')).toEqual(['Beta']);
     });
   });
 });

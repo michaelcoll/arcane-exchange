@@ -8,7 +8,7 @@ use crate::domain::collection_stats::CollectionStats;
 use crate::domain::price::PriceHistoryEntry;
 use crate::domain::stats::Stats;
 use crate::domain::trade::TradeId;
-use crate::domain::user::{User, UserId};
+use crate::domain::user::{User, UserId, UserSuggestion};
 #[cfg(test)]
 use mockall::automock;
 
@@ -121,4 +121,10 @@ pub trait CreateTradeUseCase: Send + Sync {
         card_id: CardId,
         quantity: u8,
     ) -> Result<TradeId, AppError>;
+}
+
+#[async_trait]
+#[cfg_attr(test, automock)]
+pub trait AutocompleteUsersUseCase: Send + Sync {
+    async fn autocomplete(&self, query: Option<String>) -> Result<Vec<UserSuggestion>, AppError>;
 }

@@ -20,7 +20,7 @@
   },
   "dependencies": {
     "@clerk/nuxt": "~2.6.23",
-    "@clerk/vue": "~2.4.21",
+    "@clerk/vue": "~2.4.22",
     "@nuxt/eslint": "~1.16.0",
     "@nuxt/fonts": "~0.14.0",
     "@nuxt/icon": "~2.4.1",

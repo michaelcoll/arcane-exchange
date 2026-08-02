@@ -1,3 +1,4 @@
+use super::autocomplete::dto::UserSuggestionResponse;
 use super::card::dto::{
     CardOfferResponse, CardOffersSortByParam, PaginatedCardOffersResponse,
     PriceHistoryEntryResponse,
@@ -26,6 +27,7 @@ use utoipa::OpenApi;
         super::maintenance::controller::update_cardmarket_ids,
         super::user::controller::register,
         super::trade::controller::create_trade,
+        super::autocomplete::controller::autocomplete_user,
     ),
     components(schemas(
         PriceGuideResponse,
@@ -44,6 +46,7 @@ use utoipa::OpenApi;
         CardOfferResponse,
         PaginatedCardOffersResponse,
         CardOffersSortByParam,
+        UserSuggestionResponse,
     )),
     modifiers(&SecurityAddon),
     info(
@@ -59,6 +62,7 @@ use utoipa::OpenApi;
         (name = "maintenance", description = "Maintenance operations (public)"),
         (name = "auth", description = "Authentication and user registration (authentication required)"),
         (name = "trades", description = "Trade requests between two collectors (authentication required)"),
+        (name = "autocomplete", description = "Public username autocomplete (no authentication)"),
     )
 )]
 pub struct ApiDoc;

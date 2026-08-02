@@ -1,15 +1,10 @@
 <script setup lang="ts">
+import type { UserSuggestion } from '~/bindings/UserSuggestion';
+
 const mode = ref<'name' | 'decklist' | 'player'>('name');
 const q = ref('');
 
-interface Player {
-  handle: string;
-  initials: string;
-  cards: number;
-  trades: number;
-  rating: string;
-  recent?: boolean;
-}
+type Player = UserSuggestion;
 const player = ref<Player | null>(null);
 
 const searchAreaRef = ref<HTMLElement | null>(null);
@@ -29,7 +24,7 @@ watch(
   () => nextTick(focusSearchField),
 );
 
-const { recents, addRecentSearch } = useRecentSearches();
+const { recents, addRecentSearch } = useRecentSearches(CARD_RECENT_SEARCHES_KEY);
 
 const trends = [
   {
@@ -66,7 +61,7 @@ const searchOptions = [
 ];
 
 const goToPlayer = (p: Player) => {
-  navigateTo(`/search?player=${encodeURIComponent(p.handle)}`);
+  navigateTo(`/search?player=${encodeURIComponent(p.username)}`);
 };
 
 const selectRecent = (name: string) => {

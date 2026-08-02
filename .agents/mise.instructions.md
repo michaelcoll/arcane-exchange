@@ -13,17 +13,18 @@ mise run setup         # Full dev setup: clean + install frontend deps
 
 | Action                     | Command                   | Alias         |
 |----------------------------|---------------------------|---------------|
-| **All checks**             | `mise run`                | —             |
+| **All checks**             | `mise run checks`         | —             |
 | **Backend server**         | `mise run back`           | —             |
 | **Frontend dev server**    | `mise run front`          | —             |
-| **Backend tests**          | `mise run test`           | `mise run t`  |
+| **Backend tests**          | `mise run test-backend`   | —             |
+| **Frontend tests**         | `mise run test-frontend`  | —             |
 | **Backend lint**           | `mise run lint-backend`   | —             |
 | **Frontend lint**          | `mise run lint-frontend`  | —             |
 | **Format code front/back** | `mise run format`         | `mise run f`  |
 | **OpenAPI gen**            | `mise run openapi`        | `mise run o`  |
 | **DB migrations**          | `mise run migrate`        | —             |
 | **SQLx metadata**          | `mise run sqlx-prepare`   | —             |
-| **Clean artifacts**        | `mise run clean`          | `mise run c`  |
+| **Clean artifacts**        | `mise run clean`          | —             |
 | **Upgrade deps**           | `mise run upgrade`        | —             |
 | **Build backend**          | `mise run build-backend`  | `mise run bb` |
 | **Build frontend**         | `mise run build-frontend` | `mise run bf` |
@@ -42,8 +43,8 @@ Note: there is no combined `mise run lint`. Backend and frontend lint are separa
 
 ### Test
 
-- **Backend**: `mise run test` (= `mise run t`), i.e. `cargo test`
-- **Frontend**: `cd frontend-vue && pnpm test` (Vitest)
+- **Backend**: `mise run test-backend`, i.e. `cargo nextest run --status-level slow`
+- **Frontend**: `mise run test-frontend`, i.e. `pnpm run test` in `frontend-vue` (Vitest)
 
 ### Lint
 
