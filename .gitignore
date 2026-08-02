@@ -6,7 +6,7 @@ example-files
 *.plan.md
 /maquette
 .sentryclirc
-.playwright
+.playwright-cli
 .claude
 CLAUDE.md
 
