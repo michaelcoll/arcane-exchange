@@ -10,8 +10,8 @@ const { getSearch } = useSearchService();
 const mode = ref<'name' | 'decklist'>('name');
 
 const modeOptions = [
-  { value: 'name', label: 'Par nom', tone: 'cyan' },
-  { value: 'decklist', label: 'Par decklist', tone: 'cyan' },
+  { value: 'name', label: 'Par nom', tone: 'cyan', kbd: '1' },
+  { value: 'decklist', label: 'Par decklist', tone: 'cyan', kbd: '2' },
 ];
 
 /* ---------- MODE: PAR NOM ---------- */
@@ -209,7 +209,7 @@ const decklist = ref(
       <h2 class="font-display text-xl font-semibold tracking-tight">
         Cartes chez les autres joueurs
       </h2>
-      <SegToggle v-model="mode" :options="modeOptions" />
+      <SegToggle v-model="mode" :options="modeOptions" shortcuts />
     </div>
 
     <!-- MODE: PAR NOM -->

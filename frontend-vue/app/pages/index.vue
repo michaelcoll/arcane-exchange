@@ -1,6 +1,33 @@
 <script setup lang="ts">
-const mode = ref<'name' | 'decklist'>('name');
+const mode = ref<'name' | 'decklist' | 'player'>('name');
 const q = ref('');
+
+interface Player {
+  handle: string;
+  initials: string;
+  cards: number;
+  trades: number;
+  rating: string;
+  recent?: boolean;
+}
+const player = ref<Player | null>(null);
+
+const searchAreaRef = ref<HTMLElement | null>(null);
+
+const focusSearchField = () => {
+  const root = searchAreaRef.value;
+  if (!root) return;
+  const el = root.querySelector<HTMLElement>(
+    '[data-autofocus], input:not([readonly]):not([type="range"]), textarea',
+  );
+  el?.focus({ preventScroll: true });
+};
+
+onMounted(() => nextTick(focusSearchField));
+watch(
+  () => [mode.value, !!player.value],
+  () => nextTick(focusSearchField),
+);
 
 const { recents, addRecentSearch } = useRecentSearches();
 
@@ -33,9 +60,14 @@ const trades = [
 ];
 
 const searchOptions = [
-  { value: 'name', label: 'Nom de carte', tone: 'cyan' },
-  { value: 'decklist', label: 'Decklist', tone: 'cyan' },
+  { value: 'name', label: 'Nom de carte', tone: 'cyan', kbd: '1' },
+  { value: 'decklist', label: 'Decklist', tone: 'cyan', kbd: '2' },
+  { value: 'player', label: 'Joueur', tone: 'vio', kbd: '3' },
 ];
+
+const goToPlayer = (p: Player) => {
+  navigateTo(`/search?player=${encodeURIComponent(p.handle)}`);
+};
 
 const selectRecent = (name: string) => {
   navigateToSearch(name, 'name');
@@ -123,18 +155,23 @@ const handleDecklistSearch = () => {
       <p
         class="-mt-2 mb-4 max-w-[460px] text-base leading-relaxed text-slate-600 dark:text-slate-300"
       >
-        Recherche une carte ou colle une decklist. On te montre qui la possède, à quel prix, et tu
-        composes l'échange.
+        Recherche une carte, colle une decklist, ou trouve un joueur pour parcourir sa collection.
+        On te montre qui possède quoi, à quel prix, et tu composes l'échange.
       </p>
 
       <!-- Search area -->
-      <div class="flex w-full max-w-[540px] flex-col items-center gap-3.5">
-        <SegToggle v-model="mode" :options="searchOptions" />
+      <div ref="searchAreaRef" class="flex w-full max-w-[540px] flex-col items-center gap-3.5">
+        <SegToggle v-model="mode" :options="searchOptions" shortcuts />
 
         <!-- search-hero: glow via real child div + group-focus-within -->
         <div class="group relative w-full">
           <div
-            class="pointer-events-none absolute -inset-x-2.5 -inset-y-8 -z-10 rounded-[40px] bg-cyan-500/20 opacity-50 blur-xl transition-opacity duration-300 group-focus-within:opacity-90 dark:bg-cyan-400/20"
+            :class="[
+              'pointer-events-none absolute -inset-x-2.5 -inset-y-8 -z-10 rounded-[40px] opacity-50 blur-xl transition-opacity duration-300 group-focus-within:opacity-90',
+              mode === 'player'
+                ? 'bg-violet-500/20 dark:bg-violet-400/20'
+                : 'bg-cyan-500/20 dark:bg-cyan-400/20',
+            ]"
           />
 
           <!-- Name search -->
@@ -160,6 +197,9 @@ const handleDecklistSearch = () => {
               Chercher
             </button>
           </div>
+
+          <!-- Player search -->
+          <PlayerPicker v-else-if="mode === 'player'" v-model="player" @submit="goToPlayer" />
 
           <!-- Decklist search -->
           <div
@@ -190,6 +230,14 @@ const handleDecklistSearch = () => {
             </button>
           </div>
         </div>
+
+        <!-- Player mode helper -->
+        <p
+          v-if="mode === 'player' && !player"
+          class="max-w-[420px] text-center text-xs text-slate-400 dark:text-slate-500"
+        >
+          Choisis un joueur : tu arrives sur sa collection, filtrable comme la tienne.
+        </p>
 
         <!-- Recent searches -->
         <div

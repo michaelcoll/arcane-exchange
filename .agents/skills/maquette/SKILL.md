@@ -13,8 +13,7 @@ You are consulting this project's UI mockup to use it as a visual/UX reference b
   don't try to version it.
 - Serves as the visual source of truth behind `../../../.agents/design-system.instructions.md` (color tokens, spacing,
   components) and `../../../.agents/frontend.instructions.md` — those files partly document what's visible in the
-  mockup. Check them for the translation into Tailwind classes, but ignore the Angular code sample they contain: the
-  project's real stack is Vue, not Angular.
+  mockup. Check them for the translation into Tailwind classes.
 
 ## How to consult it
 
@@ -23,10 +22,12 @@ You are consulting this project's UI mockup to use it as a visual/UX reference b
 - To explore it: use the **browser** skill (`playwright-cli`) — run `playwright-cli open` first, then
   `playwright-cli goto`
   to navigate, `playwright-cli snapshot` to read the page structure, `playwright-cli screenshot --filename=<name>.png`
-  for a visual capture, `playwright-cli click` to interact with elements. Save all screenshots to `.playwright/`
+  for a visual capture, `playwright-cli click` to interact with elements. Save all screenshots to `.playwright-cli/`
   at the repo root (project rule, see AGENTS.md).
 - `maquette/Design System.html` is a separate page that visually documents the design tokens (colors, components)
   — useful for checking a specific style without navigating the whole prototype.
+- Use the `nuxt` and `tailwind-css-patterns` skills to help you convert the mockup's JSX/CSS into Vue/Tailwind code,
+  following the conventions already in place in `frontend-vue`.
 
 ## Folder structure
 
@@ -35,10 +36,13 @@ You are consulting this project's UI mockup to use it as a visual/UX reference b
 - `screen_home.jsx`, `screen_collection.jsx`, `screen_trade.jsx`, `screen_find.jsx`, `screen_prefs.jsx` — one file per
   screen.
 - `components.jsx` — shared UI components (icons, etc.).
+- `player_picker.jsx` — player picker component (morphing search/silhouette field + enriched panel), used by the home
+  screen (3rd search type) and the Rechercher screen ("Par joueur" mode).
 - `trade_store.jsx` — mocked state and data for the trade flow.
 - `error_states.jsx` + the "Simuler une panne" toggle in the tweaks panel — for viewing API error states.
 - `tweaks-panel.jsx` — dev panel (density, accent color, error simulation), not a product component.
 - `styles.css` — global stylesheet (CSS tokens, dark/light themes).
+- `assets/cards/` — card artwork images used by the mockup.
 
 ## Navigation in the app
 
