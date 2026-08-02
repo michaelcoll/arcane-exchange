@@ -6,6 +6,7 @@ use axum::response::{IntoResponse, Response};
 use serde_json::json;
 
 pub mod auth_extractor;
+pub mod autocomplete;
 pub mod card;
 pub mod collection;
 pub mod maintenance;

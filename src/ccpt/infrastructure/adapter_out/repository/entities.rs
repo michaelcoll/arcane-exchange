@@ -4,7 +4,7 @@ use crate::domain::price::{FullPriceGuide, Price, PriceGuide, PriceHistoryEntry}
 use crate::domain::rarity_code::RarityCode;
 use crate::domain::set_name::{SetCode, SetName};
 use crate::domain::trade::{Trade, TradeCard, TradeId, TradeStatus};
-use crate::domain::user::{User, UserId};
+use crate::domain::user::{User, UserId, UserSuggestion};
 use chrono::{DateTime, NaiveDate, Utc};
 use uuid::Uuid;
 
@@ -132,6 +132,21 @@ pub struct UserEntity {
 impl From<UserEntity> for User {
     fn from(entity: UserEntity) -> User {
         User::new(entity.id, None, Some(entity.username))
+    }
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct UserSuggestionEntity {
+    pub username: String,
+    pub card_count: i64,
+}
+
+impl From<UserSuggestionEntity> for UserSuggestion {
+    fn from(e: UserSuggestionEntity) -> Self {
+        UserSuggestion {
+            username: e.username,
+            card_count: e.card_count as u64,
+        }
     }
 }
 

@@ -63,11 +63,12 @@ mod tests {
 
     fn create_test_app_state_with_auth(auth_service: Arc<dyn AuthService>) -> AppState {
         use crate::application::use_case::{
-            MockCreateTradeUseCase, MockEnqueueCardMarketIdUpdateUseCase,
-            MockEnqueueGathererIdUpdateUseCase, MockGetCardOffersUseCase,
-            MockGetCardPriceHistoryUseCase, MockGetCollectionPriceHistoryUseCase,
-            MockGetCollectionStatsUseCase, MockGetCollectionUseCase, MockImportPriceUseCase,
-            MockRegisterUserUseCase, MockSearchCardsUseCase,
+            MockAutocompleteUsersUseCase, MockCreateTradeUseCase,
+            MockEnqueueCardMarketIdUpdateUseCase, MockEnqueueGathererIdUpdateUseCase,
+            MockGetCardOffersUseCase, MockGetCardPriceHistoryUseCase,
+            MockGetCollectionPriceHistoryUseCase, MockGetCollectionStatsUseCase,
+            MockGetCollectionUseCase, MockImportPriceUseCase, MockRegisterUserUseCase,
+            MockSearchCardsUseCase,
         };
         AppState {
             import_card_use_case: Arc::new(MockImportCardUseCase::new()),
@@ -87,6 +88,7 @@ mod tests {
             register_user_use_case: Arc::new(MockRegisterUserUseCase::new()),
             create_trade_use_case: Arc::new(MockCreateTradeUseCase::new()),
             get_card_offers_use_case: Arc::new(MockGetCardOffersUseCase::new()),
+            autocomplete_users_use_case: Arc::new(MockAutocompleteUsersUseCase::new()),
             max_page_size: 100,
             max_page_number: 10,
         }

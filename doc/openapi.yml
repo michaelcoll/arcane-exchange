@@ -7,6 +7,27 @@ info:
     url: https://opensource.org/licenses/MIT
   version: 0.1.0
 paths:
+  /autocomplete/user:
+    get:
+      tags:
+      - autocomplete
+      operationId: autocomplete_user
+      parameters:
+      - name: q
+        in: query
+        description: Partial username, fuzzy-matched (case-insensitive)
+        required: false
+        schema:
+          type: string
+      responses:
+        '200':
+          description: Matching usernames, max 10, ordered by similarity score
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/UserSuggestionResponse'
   /card/card-info:
     post:
       tags:
@@ -728,6 +749,24 @@ components:
           type: integer
           format: int32
           minimum: 0
+    UserSuggestionResponse:
+      type: object
+      required:
+      - username
+      - note
+      - card_count
+      properties:
+        card_count:
+          type: integer
+          format: int64
+          minimum: 0
+        note:
+          type: integer
+          format: int32
+          description: Always 5 — hardcoded display value, not backed by any stored rating yet.
+          minimum: 0
+        username:
+          type: string
   securitySchemes:
     bearer_auth:
       type: http
@@ -746,3 +785,5 @@ tags:
   description: Authentication and user registration (authentication required)
 - name: trades
   description: Trade requests between two collectors (authentication required)
+- name: autocomplete
+  description: Public username autocomplete (no authentication)

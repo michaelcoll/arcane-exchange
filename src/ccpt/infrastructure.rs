@@ -1,5 +1,6 @@
 use crate::application::caller::EdhRecCaller;
 use crate::application::service::auth_service::AuthService;
+use crate::application::service::autocomplete_user_service::AutocompleteUserService;
 use crate::application::service::card_collection_service::CardCollectionService;
 use crate::application::service::card_offer_service::CardOfferService;
 use crate::application::service::card_price_history_service::CardPriceHistoryService;
@@ -17,13 +18,14 @@ use crate::application::service::trade_service::CreateTradeService;
 use crate::application::service::update_card_market_service::CardMarketIdWorker;
 use crate::application::service::update_gatherer_service::GathererIdWorker;
 use crate::application::use_case::{
-    CreateTradeUseCase, EnqueueCardMarketIdUpdateUseCase, EnqueueGathererIdUpdateUseCase,
-    GetCardOffersUseCase, GetCardPriceHistoryUseCase, GetCollectionPriceHistoryUseCase,
-    GetCollectionStatsUseCase, GetCollectionUseCase, ImportCardUseCase, ImportPriceUseCase,
-    RegisterUserUseCase, SearchCardsUseCase, StatsUseCase,
+    AutocompleteUsersUseCase, CreateTradeUseCase, EnqueueCardMarketIdUpdateUseCase,
+    EnqueueGathererIdUpdateUseCase, GetCardOffersUseCase, GetCardPriceHistoryUseCase,
+    GetCollectionPriceHistoryUseCase, GetCollectionStatsUseCase, GetCollectionUseCase,
+    ImportCardUseCase, ImportPriceUseCase, RegisterUserUseCase, SearchCardsUseCase, StatsUseCase,
 };
 use crate::config::Config;
 use crate::domain::card::CardId;
+use crate::infrastructure::adapter_in::autocomplete::controller::create_autocomplete_router;
 use crate::infrastructure::adapter_in::card::controller::create_card_router;
 use crate::infrastructure::adapter_in::collection::controller::create_collection_router;
 use crate::infrastructure::adapter_in::search::controller::create_search_router;
@@ -75,6 +77,7 @@ pub struct AppState {
     pub register_user_use_case: Arc<dyn RegisterUserUseCase>,
     pub create_trade_use_case: Arc<dyn CreateTradeUseCase>,
     pub get_card_offers_use_case: Arc<dyn GetCardOffersUseCase>,
+    pub autocomplete_users_use_case: Arc<dyn AutocompleteUsersUseCase>,
     pub max_page_size: u32,
     pub max_page_number: u32,
 }
@@ -241,11 +244,13 @@ fn create_app_state(
     let collection_stats_service: Arc<dyn GetCollectionStatsUseCase> =
         Arc::new(CollectionStatsService::new(repos.collection_stats));
     let register_user_service: Arc<dyn RegisterUserUseCase> =
-        Arc::new(RegisterUserService::new(repos.user));
+        Arc::new(RegisterUserService::new(repos.user.clone()));
     let create_trade_service: Arc<dyn CreateTradeUseCase> =
         Arc::new(CreateTradeService::new(repos.trade));
     let card_offer_service: Arc<dyn GetCardOffersUseCase> =
         Arc::new(CardOfferService::new(repos.card_prices_view));
+    let autocomplete_users_service: Arc<dyn AutocompleteUsersUseCase> =
+        Arc::new(AutocompleteUserService::new(repos.user));
 
     AppState {
         import_card_use_case: import_card_service,
@@ -263,6 +268,7 @@ fn create_app_state(
         register_user_use_case: register_user_service,
         create_trade_use_case: create_trade_service,
         get_card_offers_use_case: card_offer_service,
+        autocomplete_users_use_case: autocomplete_users_service,
         max_page_size: config.max_page_size,
         max_page_number: config.max_page_number,
     }
@@ -288,6 +294,7 @@ async fn schedule_price_import_job(import_price_use_case: Arc<dyn ImportPriceUse
 
 fn create_router(app_state: AppState) -> Router {
     Router::new()
+        .nest("/autocomplete", create_autocomplete_router())
         .nest("/card", create_card_router())
         .nest("/collection", create_collection_router())
         .nest("/search", create_search_router())
@@ -348,11 +355,12 @@ impl AppState {
         use crate::application::caller::MockEdhRecCaller;
         use crate::application::service::auth_service::MockAuthService;
         use crate::application::use_case::{
-            MockCreateTradeUseCase, MockEnqueueCardMarketIdUpdateUseCase,
-            MockEnqueueGathererIdUpdateUseCase, MockGetCardOffersUseCase,
-            MockGetCardPriceHistoryUseCase, MockGetCollectionPriceHistoryUseCase,
-            MockGetCollectionStatsUseCase, MockGetCollectionUseCase, MockImportCardUseCase,
-            MockRegisterUserUseCase, MockSearchCardsUseCase,
+            MockAutocompleteUsersUseCase, MockCreateTradeUseCase,
+            MockEnqueueCardMarketIdUpdateUseCase, MockEnqueueGathererIdUpdateUseCase,
+            MockGetCardOffersUseCase, MockGetCardPriceHistoryUseCase,
+            MockGetCollectionPriceHistoryUseCase, MockGetCollectionStatsUseCase,
+            MockGetCollectionUseCase, MockImportCardUseCase, MockRegisterUserUseCase,
+            MockSearchCardsUseCase,
         };
         use crate::domain::card::CardInfo;
         use crate::domain::user::User;
@@ -395,6 +403,7 @@ impl AppState {
             register_user_use_case: Arc::new(MockRegisterUserUseCase::new()),
             create_trade_use_case: Arc::new(MockCreateTradeUseCase::new()),
             get_card_offers_use_case: Arc::new(MockGetCardOffersUseCase::new()),
+            autocomplete_users_use_case: Arc::new(MockAutocompleteUsersUseCase::new()),
             max_page_size: 100,
             max_page_number: 10,
         }

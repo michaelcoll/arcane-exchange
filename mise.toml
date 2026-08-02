@@ -21,9 +21,9 @@ node = "24"
 pnpm = "11"
 "npm:@playwright/cli" = "latest"
 
-[tasks.default]
+[tasks.checks]
 description = "Runs all the checks for the project"
-depends = ["openapi", "sqlx-prepare", "format", "test", "lint-backend", "lint-frontend"]
+depends = ["openapi", "sqlx-prepare", "test-backend", "test-frontend", "lint-backend", "lint-frontend"]
 
 [tasks.clean-backend]
 run = "cargo clean"
@@ -37,7 +37,6 @@ hide = true
 [tasks.clean]
 description = "Cleans the project artifacts"
 depends = ["clean-backend", "clean-frontend"]
-alias = ["c"]
 
 [tasks.install-frontend-deps]
 dir = "frontend-vue"
@@ -59,10 +58,15 @@ alias = ["o"]
 description = "Generates the SQLx metadata for the project"
 run = "rm -fr .sqlx && cargo sqlx prepare"
 
-[tasks.test]
+[tasks.test-backend]
 description = "Tests the backend"
 run = "cargo nextest run --status-level slow"
-alias = ["t"]
+depends_post = ["format-frontend"]
+
+[tasks.test-frontend]
+description = "Tests the frontend"
+dir = "frontend-vue"
+run = "pnpm run test"
 
 [tasks.lint-clippy]
 run = "cargo clippy --locked --workspace --all-features --all-targets -- -A dead_code -D clippy::all"

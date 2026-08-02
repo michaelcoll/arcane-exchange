@@ -6,7 +6,7 @@ use crate::domain::collection_stats::CollectionStats;
 use crate::domain::price::{FullPriceGuide, PriceHistoryEntry};
 use crate::domain::set_name::{SetCode, SetName};
 use crate::domain::trade::{Trade, TradeCard, TradeId, TradeStatus};
-use crate::domain::user::{User, UserId};
+use crate::domain::user::{User, UserId, UserSuggestion};
 use async_trait::async_trait;
 use chrono::NaiveDate;
 #[cfg(test)]
@@ -154,6 +154,10 @@ pub trait CollectionStatsRepository: Send + Sync {
 pub trait UserRepository: Send + Sync {
     async fn upsert(&self, user: &User) -> Result<(), AppError>;
     async fn find_by_id(&self, id: &UserId) -> Result<Option<User>, AppError>;
+    /// Fuzzy trigram search on username (ILIKE substring + word_similarity), ordered by
+    /// descending similarity score, capped at `limit`. `query` is expected already trimmed
+    /// and non-empty (checked at the service level).
+    async fn autocomplete(&self, query: &str, limit: i64) -> Result<Vec<UserSuggestion>, AppError>;
 }
 
 #[async_trait]

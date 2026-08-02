@@ -1,0 +1,36 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            SELECT u.username,\n                   COALESCE(SUM(ce.quantity), 0)::BIGINT AS \"card_count!\"\n            FROM users u\n            LEFT JOIN collection_entry ce ON ce.user_id = u.id\n            WHERE LOWER(u.username) ILIKE '%' || LOWER($1) || '%'\n               OR LOWER($1) <% LOWER(u.username)\n            GROUP BY u.id, u.username\n            ORDER BY word_similarity(LOWER($1), LOWER(u.username)) DESC\n            LIMIT $2\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "username",
+        "type_info": "Varchar",
+        "origin": {
+          "Table": {
+            "table": "users",
+            "name": "username"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "card_count!",
+        "type_info": "Int8",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Int8"
+      ]
+    },
+    "nullable": [
+      false,
+      null
+    ]
+  },
+  "hash": "0ae9d106ea1017a7570c02cbb4abbd5b623eee34c7d59b61bfba2cb2c824b777"
+}
