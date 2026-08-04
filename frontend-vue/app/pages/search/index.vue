@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { CollectionCard } from '~/bindings/CollectionCard';
 import type { RarityCode } from '~/bindings/RarityCode';
+import type { UserSuggestion } from '~/bindings/UserSuggestion';
 
 import { useRoute, useRouter } from 'nuxt/app';
 
@@ -8,17 +9,30 @@ definePageMeta({ middleware: 'auth' });
 
 const { getCollectionStats } = useCollectionService();
 const { getSearch } = useSearchService();
+const { autocompleteUsers } = useAutocompleteService();
 
-const mode = ref<'name' | 'decklist'>('name');
+const mode = ref<'name' | 'decklist' | 'player'>('name');
 
 const modeOptions = [
   { value: 'name', label: 'Par nom', tone: 'cyan', kbd: '1' },
   { value: 'decklist', label: 'Par decklist', tone: 'cyan', kbd: '2' },
+  { value: 'player', label: 'Par joueur', tone: 'vio', kbd: '3' },
 ];
 
 /* ---------- MODE: PAR NOM ---------- */
 const q = ref('');
 const submittedQ = ref('');
+
+const searchAreaRef = ref<HTMLElement | null>(null);
+
+const focusSearchField = () => {
+  const root = searchAreaRef.value;
+  if (!root) return;
+  const el = root.querySelector<HTMLElement>(
+    '[data-autofocus], input:not([readonly]):not([type="range"]), textarea',
+  );
+  el?.focus({ preventScroll: true });
+};
 
 const size = ref<'sm' | 'md' | 'lg'>('md');
 const isDesktop = useMediaQuery('(min-width: 768px)');
@@ -67,6 +81,71 @@ const submitSearch = () => {
   resetAndRefresh();
 };
 
+/* ---------- MODE: PAR JOUEUR ---------- */
+const player = ref<UserSuggestion | null>(null);
+const playerFilterQ = ref('');
+
+const pageTitle = computed(() =>
+  mode.value === 'player' && player.value
+    ? `Collection de @${player.value.username}`
+    : 'Cartes chez les autres joueurs',
+);
+
+const clearPlayer = () => {
+  player.value = null;
+};
+
+// Réception depuis /?player=username : l'URL ne porte que le pseudo, on
+// reconstitue le reste (nb de cartes, note) via l'autocomplete.
+const resolvePlayer = async (username: string) => {
+  try {
+    const suggestions = await autocompleteUsers(username);
+    player.value = suggestions.find((u) => u.username.toLowerCase() === username.toLowerCase()) ?? {
+      username,
+      note: 5,
+      card_count: 0,
+    };
+  } catch {
+    player.value = { username, note: 5, card_count: 0 };
+  }
+};
+
+watch(player, (p) => {
+  params.value.player_username = p?.username;
+  if (p) {
+    playerFilterQ.value = '';
+    params.value.q = '';
+    resetAndRefresh();
+  }
+});
+
+watch(
+  playerFilterQ,
+  useDebounceFn((v: string) => {
+    if (mode.value !== 'player' || !player.value) return;
+    params.value.q = v;
+    resetAndRefresh();
+  }, 300),
+);
+
+watch(mode, (m, prevM) => {
+  if (prevM === 'player' && m !== 'player') {
+    player.value = null;
+    q.value = '';
+    submittedQ.value = '';
+    params.value.q = '';
+    params.value.player_username = undefined;
+    resetAndRefresh();
+  }
+});
+
+watch(
+  () => [mode.value, !!player.value],
+  () => nextTick(focusSearchField),
+);
+
+onMounted(() => nextTick(focusSearchField));
+
 watch(pageSize, (v) => {
   params.value.page_size = v;
   resetAndRefresh();
@@ -106,8 +185,8 @@ onMounted(() => {
 
   // ── Réception depuis un PlayerPicker : filtre par joueur ──
   if (playerParam && playerParam.trim()) {
-    params.value.player_username = playerParam;
-    resetAndRefresh();
+    mode.value = 'player';
+    resolvePlayer(playerParam);
   }
 
   // ── Réception depuis la home : mode decklist (sessionStorage) ──
@@ -201,10 +280,10 @@ const sizeOptions = [
 
 /* ---------- MODE: PAR DECKLIST ---------- */
 const coverers = [
-  { u: '@mizzix_42', init: 'M4', pct: 81, n: 80, val: 240, online: true },
-  { u: '@kaalia_dt', init: 'KA', pct: 63, n: 62, val: 188, online: true },
-  { u: '@urza_main', init: 'UR', pct: 47, n: 46, val: 142, online: false },
-  { u: '@simic_ramp', init: 'SI', pct: 31, n: 31, val: 96, online: false },
+  { u: '@mizzix_42', init: 'M4', pct: 81, n: 80, val: 240 },
+  { u: '@kaalia_dt', init: 'KA', pct: 63, n: 62, val: 188 },
+  { u: '@urza_main', init: 'UR', pct: 47, n: 46, val: 142 },
+  { u: '@simic_ramp', init: 'SI', pct: 31, n: 31, val: 96 },
 ];
 
 const decklist = ref(
@@ -217,15 +296,47 @@ const decklist = ref(
     <!-- HEADER -->
     <div class="mb-4 flex flex-wrap items-center justify-between gap-3.5">
       <h2 class="font-display text-xl font-semibold tracking-tight">
-        Cartes chez les autres joueurs
+        {{ pageTitle }}
       </h2>
       <SegToggle v-model="mode" :options="modeOptions" shortcuts />
     </div>
 
-    <!-- MODE: PAR NOM -->
-    <div v-if="mode === 'name'">
-      <!-- Search bar -->
-      <form class="mb-5 flex flex-wrap items-center gap-3" @submit.prevent="submitSearch">
+    <!-- MODE: PAR NOM / PAR JOUEUR (collection d'un joueur choisi) -->
+    <div v-if="mode === 'name' || (mode === 'player' && player)">
+      <!-- Player header -->
+      <div
+        v-if="mode === 'player' && player"
+        class="mb-5 flex flex-wrap items-center gap-4 rounded-2xl border border-violet-200 bg-white/60 p-4 shadow-lg backdrop-blur-md dark:border-violet-400/20 dark:bg-violet-600/5"
+      >
+        <PlayerAvatar :initials="player.username.slice(0, 2).toUpperCase()" size="lg" />
+        <div class="flex min-w-0 flex-1 flex-col gap-1">
+          <span class="text-lg font-semibold text-slate-800 dark:text-slate-100"
+            ><span class="text-slate-400 dark:text-slate-500">@</span>{{ player.username }}</span
+          >
+          <div
+            class="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-400 dark:text-slate-500"
+          >
+            <span>{{ player.card_count }} cartes</span>
+            <span class="inline-flex items-center gap-1 text-violet-600 dark:text-violet-300">
+              <Icon name="lucide:star" :size="13" />{{ player.note.toFixed(1).replace('.', ',') }}
+            </span>
+          </div>
+        </div>
+        <button
+          class="inline-flex items-center justify-center gap-2 rounded-xl border border-solid border-slate-200 bg-transparent px-4 py-2.5 text-sm leading-none font-semibold whitespace-nowrap text-slate-600 transition-all duration-150 hover:-translate-y-px hover:border-slate-300 hover:bg-slate-100 hover:text-slate-800 active:translate-y-0 max-md:w-full dark:border-white/10 dark:text-slate-300 dark:hover:border-white/15 dark:hover:bg-white/5 dark:hover:text-slate-100"
+          @click="clearPlayer"
+        >
+          <Icon name="lucide:repeat" :size="14" /> Changer de joueur
+        </button>
+      </div>
+
+      <!-- Search bar (mode: par nom) -->
+      <form
+        v-if="mode === 'name'"
+        ref="searchAreaRef"
+        class="mb-5 flex flex-wrap items-center gap-3"
+        @submit.prevent="submitSearch"
+      >
         <div
           class="flex min-w-[240px] flex-1 items-center gap-2.5 rounded-2xl border border-slate-300 bg-black/20 py-2 pr-2 pl-4 transition-all duration-200 focus-within:border-cyan-500/40 focus-within:bg-black/10 focus-within:ring-4 focus-within:ring-cyan-500/10 dark:border-white/15 dark:focus-within:border-cyan-400/40"
         >
@@ -256,6 +367,33 @@ const decklist = ref(
         </button>
       </form>
 
+      <!-- Filter bar (mode: par joueur) -->
+      <div v-else class="mb-5 flex flex-wrap items-center gap-3">
+        <div
+          class="0 flex min-w-[240px] flex-1 items-center gap-2.5 rounded-2xl border border-slate-400/50 bg-black/5 py-2 pr-4 pl-4 transition-all duration-200 focus-within:border-cyan-500/40 focus-within:bg-black/5 focus-within:ring-4 focus-within:ring-cyan-500/20 dark:border-white/15 dark:bg-black/30 dark:focus-within:border-cyan-400/40"
+        >
+          <Icon
+            name="lucide:search"
+            size="20"
+            class="flex-none text-slate-400 dark:text-slate-500"
+          />
+          <input
+            v-model="playerFilterQ"
+            data-autofocus
+            placeholder="Filtrer dans sa collection…"
+            class="min-w-0 flex-1 border-0 bg-transparent text-base text-slate-800 outline-none placeholder:text-slate-400 dark:text-slate-100 dark:placeholder:text-slate-500"
+          />
+        </div>
+        <button
+          type="button"
+          class="inline-flex cursor-pointer items-center gap-1.5 rounded-full border border-slate-200 bg-slate-300 px-3 py-1.5 text-xs font-medium whitespace-nowrap text-slate-600 transition-all duration-150 select-none hover:border-slate-300 hover:bg-slate-50 hover:text-slate-800 md:hidden dark:border-white/10 dark:bg-white/5 dark:text-slate-300 dark:hover:border-white/15 dark:hover:bg-zinc-800 dark:hover:text-slate-100"
+          @click="sheet = true"
+        >
+          <Icon name="lucide:filter" :size="13" />
+          Filtres
+        </button>
+      </div>
+
       <!-- BODY -->
       <div class="flex items-start gap-6">
         <!-- Sidebar filters (desktop) -->
@@ -276,7 +414,18 @@ const decklist = ref(
         <!-- Main content -->
         <div class="min-w-0 flex-1">
           <div class="mb-3.5 flex min-h-[22px] items-center justify-between">
-            <span v-if="submittedQ" class="text-sm text-slate-400 dark:text-slate-500">
+            <span
+              v-if="mode === 'player' && player"
+              class="text-sm text-slate-400 dark:text-slate-500"
+            >
+              <b class="font-semibold text-slate-800 dark:text-slate-100"
+                >{{ collectionData?.total ?? 0 }} carte{{
+                  (collectionData?.total ?? 0) > 1 ? 's' : ''
+                }}</b
+              >
+              visible{{ (collectionData?.total ?? 0) > 1 ? 's' : '' }} sur {{ player.card_count }}
+            </span>
+            <span v-else-if="submittedQ" class="text-sm text-slate-400 dark:text-slate-500">
               <b class="font-semibold text-slate-800 dark:text-slate-100"
                 >{{ collectionData?.total ?? 0 }} résultat{{
                   (collectionData?.total ?? 0) > 1 ? 's' : ''
@@ -391,6 +540,22 @@ const decklist = ref(
       <CardDetailModal v-if="detail" :card="detail" @close="detail = null" />
     </div>
 
+    <!-- MODE: PAR JOUEUR (pas encore de joueur choisi) -->
+    <div
+      v-else-if="mode === 'player'"
+      ref="searchAreaRef"
+      class="mx-auto mt-8 flex max-w-[560px] flex-col items-center gap-3.5 rounded-2xl border border-slate-200 bg-white/60 p-6 shadow-lg backdrop-blur-md dark:border-white/10 dark:bg-zinc-900/60"
+    >
+      <span
+        class="text-2xs font-mono font-medium tracking-widest whitespace-nowrap text-slate-400 uppercase dark:text-slate-500"
+        >Quel joueur veux-tu parcourir ?</span
+      >
+      <PlayerPicker v-model="player" cta="Voir ses cartes" />
+      <span class="text-center text-xs text-slate-400 dark:text-slate-500">
+        Tu verras sa collection complète, filtrable comme la tienne.
+      </span>
+    </div>
+
     <!-- MODE: PAR DECKLIST -->
     <div
       v-else
@@ -449,7 +614,7 @@ const decklist = ref(
         >
           <div class="mb-2.5 flex items-center justify-between">
             <div class="flex items-center gap-2.5">
-              <PlayerAvatar :initials="c.init" :online="c.online" />
+              <PlayerAvatar :initials="c.init" />
               <span
                 class="overflow-hidden text-sm font-semibold text-ellipsis whitespace-nowrap text-slate-800 dark:text-slate-100"
                 >{{ c.u }}</span

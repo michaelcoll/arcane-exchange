@@ -56,7 +56,7 @@ const modeOptions = [
           <Icon name="lucide:chevron-left" size="16" />
         </button>
         <div class="flex items-center gap-2.5">
-          <PlayerAvatar initials="M4" :online="true" />
+          <PlayerAvatar initials="M4" />
           <div class="flex flex-col gap-px">
             <h2 class="font-display text-base font-semibold tracking-tight">
               Échange avec <span class="text-cyan-600 dark:text-cyan-400">@mizzix_42</span>
