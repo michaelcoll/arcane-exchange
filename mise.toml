@@ -50,9 +50,7 @@ depends = ["clean", "install-frontend-deps"]
 
 [tasks.openapi]
 description = "Generates the OpenAPI specification"
-depends_post = ["format-frontend"]
 run = "cargo run --bin generate-openapi"
-alias = ["o"]
 
 [tasks.sqlx-prepare]
 description = "Generates the SQLx metadata for the project"
@@ -94,6 +92,7 @@ hide = true
 dir = "frontend-vue"
 run = "pnpm format:fix"
 hide = true
+quiet = true
 
 [tasks.format]
 description = "Formats the codebase"

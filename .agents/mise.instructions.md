@@ -12,7 +12,7 @@ mise run setup         # Full dev setup: clean + install frontend deps
 ## Command Summary
 
 | Action                     | Command                   | Alias         |
-|----------------------------|---------------------------|---------------|
+| -------------------------- | ------------------------- | ------------- |
 | **All checks**             | `mise run checks`         | —             |
 | **Backend server**         | `mise run back`           | —             |
 | **Frontend dev server**    | `mise run front`          | —             |
@@ -49,8 +49,8 @@ Note: there is no combined `mise run lint`. Backend and frontend lint are separa
 ### Lint
 
 - **Backend**: `mise run lint-backend`
-    1. `lint-clippy`: `cargo clippy --locked --workspace --all-features --all-targets -- -A dead_code -D clippy::all`
-    2. `lint-sqlx`: `cargo sqlx prepare --check` (depends on `sqlx-prepare`; validates SQL queries against the DB)
+  1. `lint-clippy`: `cargo clippy --locked --workspace --all-features --all-targets -- -A dead_code -D clippy::all`
+  2. `lint-sqlx`: `cargo sqlx prepare --check` (depends on `sqlx-prepare`; validates SQL queries against the DB)
 - **Frontend**: `mise run lint-frontend`, i.e. `pnpm lint` in `frontend-vue`
 
 ### Format

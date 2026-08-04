@@ -1,7 +1,6 @@
 name: lint-test-backend
 
-on:
-  push
+on: push
 
 env:
   CARGO_TERM_COLOR: always
@@ -97,4 +96,3 @@ jobs:
             diff doc/openapi.yml.bak doc/openapi.yml
             exit 1
           fi
-

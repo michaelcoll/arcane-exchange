@@ -21,8 +21,8 @@ API consumed by an Angular frontend.
 
 1. Copy and configure `.env` from `example-files/`.
 2. Start services: `docker compose up -d`
-    - Backend API: <http://localhost:8080>
-    - Frontend: <http://localhost:9797>
+   - Backend API: <http://localhost:8080>
+   - Frontend: <http://localhost:9797>
 
 ### Local Development
 
@@ -36,10 +36,10 @@ API consumed by an Angular frontend.
 ## Environment Variables
 
 | Variable                 | Default                                           | Description                                      |
-|--------------------------|---------------------------------------------------|--------------------------------------------------|
+| ------------------------ | ------------------------------------------------- | ------------------------------------------------ |
 | `DATABASE_URL`           | `postgres://postgres:password@localhost/postgres` | PostgreSQL connection string                     |
 | `BACKEND_PORT`           | `8080`                                            | Backend API port                                 |
-| `CLERK_FRONTEND_API_URL` | *(required)*                                      | Clerk frontend API URL for JWT validation (JWKS) |
+| `CLERK_FRONTEND_API_URL` | _(required)_                                      | Clerk frontend API URL for JWT validation (JWKS) |
 
 > **Authentication** is handled via [Clerk](https://clerk.com/). Set `CLERK_FRONTEND_API_URL` to your Clerk instance
 > URL.
@@ -47,7 +47,7 @@ API consumed by an Angular frontend.
 ## Scripts (`mise.toml`)
 
 | Command            | Description                                        |
-|--------------------|----------------------------------------------------|
+| ------------------ | -------------------------------------------------- |
 | `mise run`         | Generate OpenAPI, format, test, and lint (default) |
 | `mise run setup`   | Clean & install all dependencies                   |
 | `mise run back`    | Run backend server (`cargo run`)                   |
@@ -63,7 +63,7 @@ API consumed by an Angular frontend.
 ### Frontend Scripts (`frontend/`)
 
 | Command      | Description                             |
-|--------------|-----------------------------------------|
+| ------------ | --------------------------------------- |
 | `pnpm start` | Serve Angular app (dev mode, port 4200) |
 | `pnpm build` | Build for production                    |
 | `pnpm test`  | Run unit tests (Vitest)                 |

@@ -41,7 +41,7 @@ Reference these guidelines when:
 ## Rule Categories by Priority
 
 | Priority | Category                    | Impact    | Prefix     | Rules |
-|----------|-----------------------------|-----------|------------|-------|
+| -------- | --------------------------- | --------- | ---------- | ----- |
 | 1        | Ownership & Borrowing       | CRITICAL  | `own-`     | 12    |
 | 2        | Error Handling              | CRITICAL  | `err-`     | 12    |
 | 3        | Memory Optimization         | CRITICAL  | `mem-`     | 17    |
@@ -563,7 +563,7 @@ This skill provides rule identifiers for quick reference. When generating or rev
 ### Rule Application by Task
 
 | Task                      | Primary Categories               |
-|---------------------------|----------------------------------|
+| ------------------------- | -------------------------------- |
 | New function              | `own-`, `err-`, `name-`, `pat-`  |
 | New struct/API            | `api-`, `type-`, `conv-`, `doc-` |
 | Async code                | `async-`, `own-`                 |

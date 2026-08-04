@@ -9,8 +9,8 @@
     "generate": "nuxt generate",
     "preview": "nuxt preview",
     "postinstall": "nuxt prepare",
-    "format": "prettier --check \"**/*.{ts,mjs,vue,json,css,yml}\"",
-    "format:fix": "prettier --write \"**/*.{ts,mjs,vue,json,css,yml}\"",
+    "format": "prettier --check \"../**/*.{ts,mjs,vue,json,css,yml,md}\"",
+    "format:fix": "prettier --write --list-different \"../**/*.{ts,mjs,vue,json,css,yml,md}\"",
     "lint": "nuxi typecheck",
     "test": "vitest run"
   },

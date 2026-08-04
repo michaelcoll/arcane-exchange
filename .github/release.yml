@@ -1,15 +1,15 @@
 changelog:
   categories:
-  - title: 🎁 Features
-    labels:
-    - '*'
-    exclude:
+    - title: 🎁 Features
       labels:
-      - dependencies
-      - fix
-  - title: 🔧 Fixes
-    labels:
-    - fix
-  - title: 📦 Dependencies
-    labels:
-    - dependencies
+        - "*"
+      exclude:
+        labels:
+          - dependencies
+          - fix
+    - title: 🔧 Fixes
+      labels:
+        - fix
+    - title: 📦 Dependencies
+      labels:
+        - dependencies

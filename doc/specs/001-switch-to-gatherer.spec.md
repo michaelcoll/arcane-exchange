@@ -34,9 +34,10 @@ Une fois le flux html trouvé, il faut rechercher la balise <meta />
 Par exemple dans le cas du lien donné plus haut, la balise vaut :
 
 ```html
-
-<meta property="og:image"
-      content="https://gatherer-static.wizards.com/Cards/medium/530325A982E8ADA7B336093036D69C306198A8A1B1E36D11DE2F9FAEA7186FE5.webp"/>
+<meta
+  property="og:image"
+  content="https://gatherer-static.wizards.com/Cards/medium/530325A982E8ADA7B336093036D69C306198A8A1B1E36D11DE2F9FAEA7186FE5.webp"
+/>
 ```
 
 La seule donnée importante dans l'url de l'image est l'id. dans l'exemple plus haut la valeur à conserver est

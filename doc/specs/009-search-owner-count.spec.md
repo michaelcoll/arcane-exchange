@@ -7,6 +7,7 @@ Si trois utilisateurs possèdent la même carte, il y a trois lignes dans les r�
 chacune avec `owner_username` pointant vers le possesseur concerné.
 
 Cette approche crée :
+
 - des doublons visuels côté frontend (la même carte apparaît plusieurs fois)
 - une pagination trompeuse (`total` compte les possesseurs, pas les cartes)
 - une jointure `users` inutile puisqu'on ne fait qu'afficher un nom

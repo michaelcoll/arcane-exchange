@@ -19,6 +19,7 @@ Créer `GET /cards/stats` (authentifié, user courant) qui retourne les stats gl
 `GET /cards/stats` — authentifié, calculé à chaque appel (pas de cache).
 
 Champs retournés :
+
 - `total_cards` : somme des quantités de toutes les entrées de l'utilisateur
 - `unique_cards` : nombre de lignes distinctes dans `collection_entry` (clé PK = set_code + collector_number + language_code + foil)
 - `price_trend_min` / `price_trend_max` : min/max du champ `trend` parmi les prix disponibles, en centimes — `null` si aucun prix

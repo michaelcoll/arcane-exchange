@@ -28,8 +28,8 @@ CLERK_FRONTEND_API_URL=https://musical-pup-67.clerk.accounts.dev
 1. **Frontend (Angular)**: The `AuthService` obtains the token via `clerk.session.getToken()` and includes it in the
    request headers (`Authorization: Bearer <token>`).
 2. **Backend (Rust)**: The `AuthenticatedUser` extractor handles JWT validation using Clerk's public keys (JWKS):
-    * Verifies the signature, issuer (`https://musical-pup-67.clerk.accounts.dev`), and expiration.
-    * Returns HTTP 401 on failure.
+   - Verifies the signature, issuer (`https://musical-pup-67.clerk.accounts.dev`), and expiration.
+   - Returns HTTP 401 on failure.
 
 ## User Model
 
