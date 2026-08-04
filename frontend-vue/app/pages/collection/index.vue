@@ -4,6 +4,8 @@ import type { RarityCode } from '~/bindings/RarityCode';
 import type { SortBy } from '~/bindings/SortBy';
 import type { SortDir } from '~/bindings/SortDir';
 
+definePageMeta({ middleware: 'auth' });
+
 const { getCollection, getCollectionStats, importCards, getPriceHistory } = useCollectionService();
 
 const q = ref('');

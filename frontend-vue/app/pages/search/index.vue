@@ -4,6 +4,8 @@ import type { RarityCode } from '~/bindings/RarityCode';
 
 import { useRoute, useRouter } from 'nuxt/app';
 
+definePageMeta({ middleware: 'auth' });
+
 const { getCollectionStats } = useCollectionService();
 const { getSearch } = useSearchService();
 
