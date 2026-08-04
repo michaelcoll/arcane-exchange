@@ -1,6 +1,6 @@
 use super::dto::SearchParams;
 use crate::application::error::AppError;
-use crate::domain::collection::CollectionQuery;
+use crate::domain::collection::{CollectionQuery, SearchQuery};
 use crate::infrastructure::AppState;
 use crate::infrastructure::adapter_in::auth_extractor::AuthenticatedUser;
 use crate::infrastructure::adapter_in::collection::dto::{
@@ -27,6 +27,7 @@ pub fn create_search_router() -> axum::Router<AppState> {
         ("sets" = Option<String>, Query, description = "Comma-separated set codes"),
         ("price_min" = Option<u32>, Query, description = "Minimum trend price in cents"),
         ("price_max" = Option<u32>, Query, description = "Maximum trend price in cents"),
+        ("player_username" = Option<String>, Query, description = "Exact username of the owner to filter by (case-insensitive, no partial match)"),
     ),
     responses(
         (status = 200, description = "Paginated card search results", body = PaginatedCollectionResponse),
@@ -54,16 +55,26 @@ pub(crate) async fn search_cards(
         .map(str::to_uppercase)
         .collect::<Vec<_>>();
 
-    let query = CollectionQuery {
-        page: params.page,
-        page_size,
-        sort_by: params.sort_by.into(),
-        sort_dir: params.sort_dir.into(),
-        search_query: params.q,
-        rarity,
-        sets,
-        price_min: params.price_min,
-        price_max: params.price_max,
+    let player_username = params
+        .player_username
+        .as_deref()
+        .map(str::trim)
+        .filter(|s| !s.is_empty())
+        .map(str::to_string);
+
+    let query = SearchQuery {
+        collection_query: CollectionQuery {
+            page: params.page,
+            page_size,
+            sort_by: params.sort_by.into(),
+            sort_dir: params.sort_dir.into(),
+            search_query: params.q,
+            rarity,
+            sets,
+            price_min: params.price_min,
+            price_max: params.price_max,
+        },
+        player_username,
     };
 
     let result = state.search_cards_use_case.search_cards(query).await?;

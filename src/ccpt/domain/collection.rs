@@ -67,6 +67,23 @@ impl Default for CollectionQuery {
     }
 }
 
+/// A search across every user's cards, adding an optional exact-match filter on the
+/// owning player's username to the shared `CollectionQuery` filters.
+#[derive(Clone, Debug, Default)]
+pub struct SearchQuery {
+    pub collection_query: CollectionQuery,
+    pub player_username: Option<String>,
+}
+
+impl From<CollectionQuery> for SearchQuery {
+    fn from(collection_query: CollectionQuery) -> Self {
+        Self {
+            collection_query,
+            player_username: None,
+        }
+    }
+}
+
 #[derive(Clone, Debug)]
 pub struct PaginatedCollection {
     pub items: Vec<Card>,
@@ -113,5 +130,17 @@ mod tests {
         assert_eq!(q.sort_by, CollectionSortField::Trend);
         assert_eq!(q.sort_dir, SortDirection::Desc);
         assert_eq!(q.search_query, None);
+    }
+
+    #[test]
+    fn search_query_default_has_no_player_username() {
+        let q = SearchQuery::default();
+        assert_eq!(q.player_username, None);
+    }
+
+    #[test]
+    fn search_query_from_collection_query_has_no_player_username() {
+        let q: SearchQuery = CollectionQuery::default().into();
+        assert_eq!(q.player_username, None);
     }
 }

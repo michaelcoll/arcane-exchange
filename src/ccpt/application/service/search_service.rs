@@ -1,7 +1,7 @@
 use crate::application::error::AppError;
 use crate::application::repository::CardPricesViewRepository;
 use crate::application::use_case::SearchCardsUseCase;
-use crate::domain::collection::{CollectionQuery, PaginatedCollection};
+use crate::domain::collection::{PaginatedCollection, SearchQuery};
 use async_trait::async_trait;
 use std::sync::Arc;
 
@@ -17,7 +17,7 @@ impl SearchService {
 
 #[async_trait]
 impl SearchCardsUseCase for SearchService {
-    async fn search_cards(&self, query: CollectionQuery) -> Result<PaginatedCollection, AppError> {
+    async fn search_cards(&self, query: SearchQuery) -> Result<PaginatedCollection, AppError> {
         self.repository.search_paginated(query).await
     }
 }
@@ -27,21 +27,24 @@ mod tests {
     use super::*;
     use crate::application::error::InfraError;
     use crate::application::repository::MockCardPricesViewRepository;
-    use crate::domain::collection::{CollectionSortField, SortDirection};
+    use crate::domain::collection::{CollectionQuery, CollectionSortField, SortDirection};
 
     #[tokio::test]
     async fn search_cards_delegates_to_repository_with_correct_args() {
         let mut mock_repo = MockCardPricesViewRepository::new();
-        let expected_query = CollectionQuery {
-            page: 1,
-            page_size: 10,
-            sort_by: CollectionSortField::SetCode,
-            sort_dir: SortDirection::Asc,
-            search_query: None,
-            rarity: Vec::new(),
-            sets: Vec::new(),
-            price_min: None,
-            price_max: None,
+        let expected_query = SearchQuery {
+            collection_query: CollectionQuery {
+                page: 1,
+                page_size: 10,
+                sort_by: CollectionSortField::SetCode,
+                sort_dir: SortDirection::Asc,
+                search_query: None,
+                rarity: Vec::new(),
+                sets: Vec::new(),
+                price_min: None,
+                price_max: None,
+            },
+            player_username: None,
         };
         let expected_result = PaginatedCollection {
             items: vec![],
@@ -54,10 +57,10 @@ mod tests {
         mock_repo
             .expect_search_paginated()
             .withf(|q| {
-                q.page == 1
-                    && q.page_size == 10
-                    && q.sort_by == CollectionSortField::SetCode
-                    && q.sort_dir == SortDirection::Asc
+                q.collection_query.page == 1
+                    && q.collection_query.page_size == 10
+                    && q.collection_query.sort_by == CollectionSortField::SetCode
+                    && q.collection_query.sort_dir == SortDirection::Asc
             })
             .returning(move |_| {
                 let r = result_clone.clone();
@@ -74,6 +77,34 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn search_cards_delegates_player_username_to_repository() {
+        let mut mock_repo = MockCardPricesViewRepository::new();
+        let expected_query = SearchQuery {
+            collection_query: CollectionQuery::default(),
+            player_username: Some("alice".to_string()),
+        };
+        let expected_result = PaginatedCollection {
+            items: vec![],
+            total: 0,
+            page: 0,
+            page_size: 20,
+        };
+        let result_clone = expected_result.clone();
+
+        mock_repo
+            .expect_search_paginated()
+            .withf(|q| q.player_username == Some("alice".to_string()))
+            .returning(move |_| {
+                let r = result_clone.clone();
+                Box::pin(async move { Ok(r) })
+            });
+
+        let service = SearchService::new(Arc::new(mock_repo));
+        let result = service.search_cards(expected_query).await;
+        assert!(result.is_ok());
+    }
+
+    #[tokio::test]
     async fn search_cards_propagates_repository_error() {
         let mut mock_repo = MockCardPricesViewRepository::new();
         mock_repo.expect_search_paginated().returning(|_| {
@@ -85,7 +116,7 @@ mod tests {
         });
 
         let service = SearchService::new(Arc::new(mock_repo));
-        let result = service.search_cards(CollectionQuery::default()).await;
+        let result = service.search_cards(SearchQuery::default()).await;
         assert!(result.is_err());
     }
 }

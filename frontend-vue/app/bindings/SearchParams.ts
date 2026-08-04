@@ -25,4 +25,8 @@ export type SearchParams = {
    * Maximum trend price in cents
    */
   price_max?: number;
+  /**
+   * Exact username of the owner to filter by (case-insensitive, no partial match)
+   */
+  player_username?: string;
 };

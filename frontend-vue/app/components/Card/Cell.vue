@@ -97,7 +97,7 @@ const dealTagClass = computed(() => {
         </span>
 
         <span
-          v-if="ownerCount != null"
+          v-if="ownerCount != null && ownerCount > 1"
           class="text-2xs inline-flex items-center gap-1 font-mono whitespace-nowrap text-slate-400 dark:text-slate-500"
         >
           <Icon name="lucide:user" :size="11" class="shrink-0" />

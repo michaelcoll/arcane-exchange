@@ -34,6 +34,7 @@ const params = ref({
   sets: undefined as string | undefined,
   price_min: undefined as number | undefined,
   price_max: undefined as number | undefined,
+  player_username: undefined as string | undefined,
 });
 
 const { data: collectionData, pending, refresh } = await getSearch(params);
@@ -91,6 +92,7 @@ onMounted(() => {
   // ── Réception depuis la home : mode nom (query params) ──
   const qParam = route.query.q as string | undefined;
   const modeParam = route.query.mode as string | undefined;
+  const playerParam = route.query.player as string | undefined;
 
   if (qParam && qParam.trim()) {
     if (modeParam === 'name' || modeParam === 'decklist') {
@@ -99,6 +101,12 @@ onMounted(() => {
     q.value = qParam;
     submittedQ.value = qParam;
     params.value.q = qParam;
+    resetAndRefresh();
+  }
+
+  // ── Réception depuis un PlayerPicker : filtre par joueur ──
+  if (playerParam && playerParam.trim()) {
+    params.value.player_username = playerParam;
     resetAndRefresh();
   }
 
@@ -118,7 +126,7 @@ onMounted(() => {
   }
 
   // ── Nettoyer l'URL ──
-  if (qParam || modeParam) {
+  if (qParam || modeParam || playerParam) {
     router.replace({ query: {} });
   }
 

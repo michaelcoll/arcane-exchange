@@ -128,9 +128,9 @@ async fn search_cards_propagates_error_from_use_case() {
 async fn search_cards_caps_page_size_at_100() {
     let mut mock = MockSearchCardsUseCase::new();
     mock.expect_search_cards()
-        .withf(|q| q.page_size == 100)
+        .withf(|q| q.collection_query.page_size == 100)
         .returning(|q| {
-            let page_size = q.page_size;
+            let page_size = q.collection_query.page_size;
             Box::pin(async move { Ok(make_paginated(vec![], 0, page_size)) })
         });
 
@@ -156,9 +156,9 @@ async fn search_cards_caps_page_size_at_100() {
 async fn search_cards_passes_pagination_params_to_use_case() {
     let mut mock = MockSearchCardsUseCase::new();
     mock.expect_search_cards()
-        .withf(|q| q.page == 3 && q.page_size == 5)
+        .withf(|q| q.collection_query.page == 3 && q.collection_query.page_size == 5)
         .returning(|q| {
-            let (page, page_size) = (q.page, q.page_size);
+            let (page, page_size) = (q.collection_query.page, q.collection_query.page_size);
             Box::pin(async move { Ok(make_paginated(vec![], page, page_size)) })
         });
 
@@ -240,7 +240,7 @@ async fn search_cards_never_exposes_collection_entry_always_owner_count() {
 async fn search_cards_passes_sort_by_avg_to_use_case() {
     let mut mock = MockSearchCardsUseCase::new();
     mock.expect_search_cards()
-        .withf(|q| q.sort_by == CollectionSortField::Avg)
+        .withf(|q| q.collection_query.sort_by == CollectionSortField::Avg)
         .returning(|_| Box::pin(async { Ok(make_paginated(vec![], 0, 20)) }));
 
     let app_state = make_app_state_with_search(mock);
@@ -263,7 +263,7 @@ async fn search_cards_passes_sort_by_avg_to_use_case() {
 async fn search_cards_passes_sort_by_set_code_to_use_case() {
     let mut mock = MockSearchCardsUseCase::new();
     mock.expect_search_cards()
-        .withf(|q| q.sort_by == CollectionSortField::SetCode)
+        .withf(|q| q.collection_query.sort_by == CollectionSortField::SetCode)
         .returning(|_| Box::pin(async { Ok(make_paginated(vec![], 0, 20)) }));
 
     let app_state = make_app_state_with_search(mock);
@@ -286,7 +286,7 @@ async fn search_cards_passes_sort_by_set_code_to_use_case() {
 async fn search_cards_passes_sort_by_language_code_to_use_case() {
     let mut mock = MockSearchCardsUseCase::new();
     mock.expect_search_cards()
-        .withf(|q| q.sort_by == CollectionSortField::LanguageCode)
+        .withf(|q| q.collection_query.sort_by == CollectionSortField::LanguageCode)
         .returning(|_| Box::pin(async { Ok(make_paginated(vec![], 0, 20)) }));
 
     let app_state = make_app_state_with_search(mock);
@@ -309,7 +309,7 @@ async fn search_cards_passes_sort_by_language_code_to_use_case() {
 async fn search_cards_passes_sort_dir_asc_to_use_case() {
     let mut mock = MockSearchCardsUseCase::new();
     mock.expect_search_cards()
-        .withf(|q| q.sort_dir == SortDirection::Asc)
+        .withf(|q| q.collection_query.sort_dir == SortDirection::Asc)
         .returning(|_| Box::pin(async { Ok(make_paginated(vec![], 0, 20)) }));
 
     let app_state = make_app_state_with_search(mock);
@@ -332,7 +332,7 @@ async fn search_cards_passes_sort_dir_asc_to_use_case() {
 async fn search_cards_passes_sort_dir_desc_to_use_case() {
     let mut mock = MockSearchCardsUseCase::new();
     mock.expect_search_cards()
-        .withf(|q| q.sort_dir == SortDirection::Desc)
+        .withf(|q| q.collection_query.sort_dir == SortDirection::Desc)
         .returning(|_| Box::pin(async { Ok(make_paginated(vec![], 0, 20)) }));
 
     let app_state = make_app_state_with_search(mock);
@@ -351,7 +351,7 @@ async fn search_cards_passes_sort_dir_desc_to_use_case() {
 async fn search_cards_passes_search_query_to_use_case() {
     let mut mock = MockSearchCardsUseCase::new();
     mock.expect_search_cards()
-        .withf(|q| q.search_query == Some("gob".to_string()))
+        .withf(|q| q.collection_query.search_query == Some("gob".to_string()))
         .returning(|_| Box::pin(async { Ok(make_paginated(vec![], 0, 20)) }));
 
     let app_state = make_app_state_with_search(mock);
@@ -374,7 +374,7 @@ async fn search_cards_passes_search_query_to_use_case() {
 async fn search_cards_passes_none_search_query_when_q_is_absent() {
     let mut mock = MockSearchCardsUseCase::new();
     mock.expect_search_cards()
-        .withf(|q| q.search_query.is_none())
+        .withf(|q| q.collection_query.search_query.is_none())
         .returning(|_| Box::pin(async { Ok(make_paginated(vec![], 0, 20)) }));
 
     let app_state = make_app_state_with_search(mock);
@@ -393,7 +393,7 @@ async fn search_cards_passes_none_search_query_when_q_is_absent() {
 async fn search_cards_parses_repeated_rarity_query_params_into_rarity_codes() {
     let mut mock = MockSearchCardsUseCase::new();
     mock.expect_search_cards()
-        .withf(|q| q.rarity == vec![RarityCode::C, RarityCode::U])
+        .withf(|q| q.collection_query.rarity == vec![RarityCode::C, RarityCode::U])
         .returning(|_| Box::pin(async { Ok(make_paginated(vec![], 0, 20)) }));
 
     let app_state = make_app_state_with_search(mock);
@@ -414,7 +414,7 @@ async fn search_cards_parses_repeated_rarity_query_params_into_rarity_codes() {
 async fn search_cards_defaults_rarity_to_empty_when_absent() {
     let mut mock = MockSearchCardsUseCase::new();
     mock.expect_search_cards()
-        .withf(|q| q.rarity.is_empty())
+        .withf(|q| q.collection_query.rarity.is_empty())
         .returning(|_| Box::pin(async { Ok(make_paginated(vec![], 0, 20)) }));
 
     let app_state = make_app_state_with_search(mock);
@@ -425,6 +425,94 @@ async fn search_cards_defaults_rarity_to_empty_when_absent() {
         AuthenticatedUser(User::for_testing()),
         State(app_state),
         params,
+    )
+    .await;
+
+    assert!(result.is_ok());
+}
+
+#[tokio::test]
+async fn search_cards_passes_player_username_to_use_case() {
+    let mut mock = MockSearchCardsUseCase::new();
+    mock.expect_search_cards()
+        .withf(|q| q.player_username == Some("Alice".to_string()))
+        .returning(|_| Box::pin(async { Ok(make_paginated(vec![], 0, 20)) }));
+
+    let app_state = make_app_state_with_search(mock);
+    let params = SearchParams {
+        player_username: Some("Alice".to_string()),
+        ..Default::default()
+    };
+
+    let result = search_cards(
+        AuthenticatedUser(User::for_testing()),
+        State(app_state),
+        Query(params),
+    )
+    .await;
+
+    assert!(result.is_ok());
+}
+
+#[tokio::test]
+async fn search_cards_treats_empty_player_username_as_none() {
+    let mut mock = MockSearchCardsUseCase::new();
+    mock.expect_search_cards()
+        .withf(|q| q.player_username.is_none())
+        .returning(|_| Box::pin(async { Ok(make_paginated(vec![], 0, 20)) }));
+
+    let app_state = make_app_state_with_search(mock);
+    let params = SearchParams {
+        player_username: Some("".to_string()),
+        ..Default::default()
+    };
+
+    let result = search_cards(
+        AuthenticatedUser(User::for_testing()),
+        State(app_state),
+        Query(params),
+    )
+    .await;
+
+    assert!(result.is_ok());
+}
+
+#[tokio::test]
+async fn search_cards_treats_whitespace_only_player_username_as_none() {
+    let mut mock = MockSearchCardsUseCase::new();
+    mock.expect_search_cards()
+        .withf(|q| q.player_username.is_none())
+        .returning(|_| Box::pin(async { Ok(make_paginated(vec![], 0, 20)) }));
+
+    let app_state = make_app_state_with_search(mock);
+    let params = SearchParams {
+        player_username: Some("   ".to_string()),
+        ..Default::default()
+    };
+
+    let result = search_cards(
+        AuthenticatedUser(User::for_testing()),
+        State(app_state),
+        Query(params),
+    )
+    .await;
+
+    assert!(result.is_ok());
+}
+
+#[tokio::test]
+async fn search_cards_defaults_player_username_to_none_when_absent() {
+    let mut mock = MockSearchCardsUseCase::new();
+    mock.expect_search_cards()
+        .withf(|q| q.player_username.is_none())
+        .returning(|_| Box::pin(async { Ok(make_paginated(vec![], 0, 20)) }));
+
+    let app_state = make_app_state_with_search(mock);
+
+    let result = search_cards(
+        AuthenticatedUser(User::for_testing()),
+        State(app_state),
+        Query(SearchParams::default()),
     )
     .await;
 

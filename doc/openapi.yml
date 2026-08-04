@@ -406,6 +406,12 @@ paths:
           type: integer
           format: int32
           minimum: 0
+      - name: player_username
+        in: query
+        description: Exact username of the owner to filter by (case-insensitive, no partial match)
+        required: false
+        schema:
+          type: string
       responses:
         '200':
           description: Paginated card search results
