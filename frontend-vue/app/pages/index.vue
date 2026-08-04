@@ -333,7 +333,7 @@ const handleDecklistSearch = () => {
             class="flex w-full items-center gap-3 rounded-xl border border-slate-200 bg-white px-3.5 py-3 text-left transition-all duration-150 hover:border-slate-300 hover:bg-slate-50 dark:border-white/10 dark:bg-zinc-900 dark:hover:border-white/15 dark:hover:bg-zinc-800"
             @click="navigateTo('/trade')"
           >
-            <PlayerAvatar :initials="e.u.slice(1, 3).toUpperCase()" :online="e.t === 'me'" />
+            <PlayerAvatar :initials="e.u.slice(1, 3).toUpperCase()" />
             <span class="flex min-w-0 flex-1 flex-col">
               <span
                 class="overflow-hidden text-sm font-semibold text-ellipsis whitespace-nowrap text-slate-800 dark:text-slate-100"
