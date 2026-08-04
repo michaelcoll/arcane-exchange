@@ -24,17 +24,17 @@ Tu rédiges des plans d'implémentation à partir d'une spec existante dans `doc
    ciblées (une ou deux à la fois) sur les points non tranchés par la spec : structure de données précise, découpage en
    commits/PR, ordre des étapes, arbitrages techniques.
 4. Écris le plan avec `Write` dans `doc/specs/NNN-slug.plan.md` :
-    - Étapes ordonnées, chacune avec fichiers concernés et action précise.
-    - Chaque étape vérifiable (test, lint, build) — relie-la aux critères d'acceptance de la spec source.
-    - Utiliser `mise build-backend` et `mise build-frontend` pour construire l'app
-    - Si des requêtes dans le back ont été modifiées/ajoutées utiliser `mise sqlx-prepare`
-    - Si des endpoint ont été ajoutés ou modifiés, il faut re-générer la doc openapi avec `mise openapi` et ajouter ou
-      compléter les collections bruno
-    - Rappelle en fin de plan l'étape de vérification qualité (lint, type check, build,
-      `mise format`) conformément à `AGENTS.md`.
-    - pour tenir les dépendances à jour, en fin de dev lancer un upgrade des dépendances avec `mise upgrade`
-    - ajoute les critères d'acceptance présent dans la spec pour qu'ils soient vérifiés lors de l'implémentation
-    - pour lancer tous les tests, linter, formatter, openapi, ... utiliser `mise run checks`
+   - Étapes ordonnées, chacune avec fichiers concernés et action précise.
+   - Chaque étape vérifiable (test, lint, build) — relie-la aux critères d'acceptance de la spec source.
+   - Utiliser `mise build-backend` et `mise build-frontend` pour construire l'app
+   - Si des requêtes dans le back ont été modifiées/ajoutées utiliser `mise sqlx-prepare`
+   - Si des endpoint ont été ajoutés ou modifiés, il faut re-générer la doc openapi avec `mise openapi` et ajouter ou
+     compléter les collections bruno
+   - Rappelle en fin de plan l'étape de vérification qualité (lint, type check, build,
+     `mise format`) conformément à `AGENTS.md`.
+   - pour tenir les dépendances à jour, en fin de dev lancer un upgrade des dépendances avec `mise upgrade`
+   - ajoute les critères d'acceptance présent dans la spec pour qu'ils soient vérifiés lors de l'implémentation
+   - pour lancer tous les tests, linter, formatter, openapi, etc. utiliser `mise run checks`
 5. Si l'implémentation va toucher au back utilise le skill `rust-skills` et si c'est le front qui est impacté utilise le
    skill `nuxt` et le skill `tailwind-css-patterns` pour t'aider dans la rédaction de la spec.
 6. Soumets le plan à l'utilisateur pour relecture, ajuste avec `Edit` selon ses retours.

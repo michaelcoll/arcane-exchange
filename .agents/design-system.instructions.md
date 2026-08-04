@@ -19,7 +19,7 @@ already used by existing components (`app/components/*.vue`) when the mockup doe
 ### Colors — locked palette
 
 | Role               | Token                     | Value     | Usage                                           |
-|--------------------|---------------------------|-----------|-------------------------------------------------|
+| ------------------ | ------------------------- | --------- | ----------------------------------------------- |
 | App background     | `--bg`                    | `#131313` | global background (+ radial cyan/violet aurora) |
 | Surface            | `--surface`               | `#1c1b1b` | cards, panels, modals                           |
 | Cyan (accent)      | `--cyan` / `--accent`     | `#00daf3` | action, interactive, rising values              |
@@ -72,7 +72,7 @@ to stay readable, subtle black borders). Always code with `var(--*)` — never a
 Three families (loaded via the `@nuxt/fonts` module, see `nuxt.config.ts`):
 
 | CSS var          | Tailwind class | Family             | Usage                                                  |
-|------------------|----------------|--------------------|--------------------------------------------------------|
+| ---------------- | -------------- | ------------------ | ------------------------------------------------------ |
 | `--font-display` | `font-display` | **Space Grotesk**  | titles, KPIs, brand                                    |
 | `--font-body`    | `font-sans`    | **Hanken Grotesk** | body copy, UI (default font)                           |
 | `--font-mono`    | `font-mono`    | **JetBrains Mono** | numbers, prices, labels, codes — enable `tabular-nums` |
@@ -104,7 +104,7 @@ mobile nav fixed at the bottom). Reference points from the mockup to respect in 
 Visual patterns to compose in Tailwind (no dedicated `.panel`/`.card-surface`/`.inset` class in `frontend-vue`):
 
 | Pattern             | Indicative Tailwind composition                                                                                                          | Role                                   |
-|---------------------|------------------------------------------------------------------------------------------------------------------------------------------|----------------------------------------|
+| ------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------- |
 | Frosted-glass panel | `bg-[var(--glass-bg)] backdrop-blur-[length:var(--glass-blur)] border border-[var(--line)] rounded-[var(--r-lg)] shadow-[var(--shadow)]` | main container (cards, panels, modals) |
 | Flat surface        | `bg-[var(--surface)] rounded-[var(--r-md)]`                                                                                              | plain surface, no glass effect         |
 | Inset area          | background darker than the parent surface + `rounded-[var(--r-md)]`                                                                      | recessed sub-area                      |

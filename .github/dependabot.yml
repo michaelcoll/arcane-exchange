@@ -64,4 +64,4 @@ updates:
           - "@nuxt*"
     ignore:
       - dependency-name: "typescript"
-        update-types: [ "version-update:semver-major" ]
+        update-types: ["version-update:semver-major"]

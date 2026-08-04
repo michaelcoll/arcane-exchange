@@ -9,6 +9,7 @@ L'endpoint doit être public (non authentifié) car il est utilisé sur la page 
 ## Objectif
 
 Créer `GET /autocomplete/user?q={{username}}` qui retourne une liste de joueurs correspondant à la query, avec :
+
 - `username` : le nom du joueur
 - `note` : valeur hardcodée à `5` (champ purement UI, pas stocké en base)
 - `card_count` : nombre de cartes possédées par l'utilisateur (calculé depuis `collection_entry`)
@@ -41,6 +42,7 @@ Le query param `q` est optionnel. Si absent ou vide, retourne une liste vide.
 ### Payload
 
 Chaque entrée de réponse contient :
+
 ```json
 {
   "username": "alice",
@@ -66,6 +68,7 @@ Chaque entrée de réponse contient :
 ### Architecture
 
 Hexagonale, même pattern que les autres endpoints publics :
+
 - **Handler** (adapter_in) : extrait `q`, délègue au use case
 - **Use case** (service) : délègue au repository
 - **Repository port** : interface avec méthode `autocomplete_users(query: Option<String>)`

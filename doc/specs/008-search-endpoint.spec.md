@@ -3,10 +3,12 @@
 ## Contexte
 
 Le endpoint `GET /collection` assure deux rôles aujourd'hui :
+
 1. Récupérer la collection privée d'un utilisateur (quand `owned=true` ou par défaut).
 2. Rechercher/parcourir les cartes de tous les utilisateurs (quand `owned=false`).
 
 Ce mélange de responsabilités pose problème :
+
 - `/collection` expose implicitement des données publiques sans que la sémantique de sa route n'indique clairement cette double fonctionnalité.
 - Il n'existe pas de endpoint dédié à la recherche de cartes d'autres utilisateurs, ce qui empêche de créer une page "recherche" ou "découverte" indépendante de la collection personnelle.
 

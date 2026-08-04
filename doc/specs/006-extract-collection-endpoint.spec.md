@@ -45,7 +45,7 @@ nouveau routeur), sans toucher au controller `card` existant ni aux autres endpo
   `CollectionParams`, `SortByParam`, `SortDirParam` (+ leurs `impl From<...>` vers les types domaine
   `CollectionSortField`/`SortDirection`), `default_page_size`, `max_page_size`, `CollectionCardResponse`,
   `CollectionEntryResponse`, `PriceGuideResponse`, `PaginatedCollectionResponse` (+ `impl From<Card> for
-  CollectionCardResponse`).
+CollectionCardResponse`).
 - Les DTOs encore utilisés par les endpoints restant dans `card` (`MessageResponse`, `PriceHistoryParams`,
   `PriceHistoryEntryResponse`, `CollectionStatsResponse`, `SetInfoResponse`) restent dans `card/dto.rs`.
 
