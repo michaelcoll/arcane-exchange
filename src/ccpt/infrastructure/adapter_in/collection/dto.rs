@@ -101,6 +101,7 @@ pub enum RarityCodeParam {
     U,
     R,
     M,
+    S,
 }
 
 impl From<RarityCodeParam> for RarityCode {
@@ -110,6 +111,7 @@ impl From<RarityCodeParam> for RarityCode {
             RarityCodeParam::U => RarityCode::U,
             RarityCodeParam::R => RarityCode::R,
             RarityCodeParam::M => RarityCode::M,
+            RarityCodeParam::S => RarityCode::S,
         }
     }
 }

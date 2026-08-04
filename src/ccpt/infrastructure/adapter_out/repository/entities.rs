@@ -105,6 +105,7 @@ fn from_db_rarity<S: AsRef<str>>(s: S) -> RarityCode {
         "U" | "u" => RarityCode::U,
         "R" | "r" => RarityCode::R,
         "M" | "m" => RarityCode::M,
+        "S" | "s" => RarityCode::S,
         _ => panic!("invalid rarity code from database: {}", s),
     }
 }
@@ -538,6 +539,16 @@ mod tests {
     #[test]
     fn from_db_rarity_returns_mythic_for_m() {
         assert_eq!(from_db_rarity("M"), RarityCode::M);
+    }
+
+    #[test]
+    fn from_db_rarity_returns_special_for_s() {
+        assert_eq!(from_db_rarity("S"), RarityCode::S);
+    }
+
+    #[test]
+    fn from_db_rarity_returns_special_for_lowercase_s() {
+        assert_eq!(from_db_rarity("s"), RarityCode::S);
     }
 
     #[test]

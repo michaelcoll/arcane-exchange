@@ -25,8 +25,9 @@ const RARITY_LABELS: Record<RarityCode, string> = {
   R: 'Rare',
   U: 'Unco',
   C: 'Commune',
+  S: 'Special',
 };
-const RARITIES: RarityCode[] = ['M', 'R', 'U', 'C'];
+const RARITIES: RarityCode[] = ['M', 'R', 'U', 'C', 'S'];
 
 const q = defineModel<string>('q', { default: '' });
 

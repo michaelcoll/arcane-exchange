@@ -57,8 +57,8 @@ mod tests {
 
     #[test]
     fn string_from_invalid_rarity_code_includes_the_value() {
-        let msg: String = FunctionalError::InvalidRarityCode("special".to_string()).into();
-        assert_eq!(msg, "Invalid rarity code 'special'");
+        let msg: String = FunctionalError::InvalidRarityCode("joke".to_string()).into();
+        assert_eq!(msg, "Invalid rarity code 'joke'");
     }
 
     #[test]
