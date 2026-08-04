@@ -43,7 +43,11 @@ Note: there is no combined `mise run lint`. Backend and frontend lint are separa
 
 ### Test
 
-- **Backend**: `mise run test-backend`, i.e. `cargo nextest run --status-level slow`
+- **Backend**: `mise run test-backend`, i.e. `cargo nextest run --status-level slow`.
+  **Side-effect** : le derive `ts-rs` est exécuté lors de la compilation, ce qui régénère
+  les fichiers TypeScript dans `frontend-vue/app/bindings/` (ex. `RarityCode.ts`, `CollectionParams.ts`, etc.).
+  Toute modification d'un enum DTO (`ToSchema` + `TS`) nécessite de relancer `mise run test-backend`
+  pour que les bindings front end soient à jour.
 - **Frontend**: `mise run test-frontend`, i.e. `pnpm run test` in `frontend-vue` (Vitest)
 
 ### Lint

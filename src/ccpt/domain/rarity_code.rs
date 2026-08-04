@@ -7,6 +7,7 @@ pub enum RarityCode {
     U,
     R,
     M,
+    S,
 }
 
 impl RarityCode {
@@ -17,6 +18,7 @@ impl RarityCode {
             "uncommon" | "u" => Ok(RarityCode::U),
             "rare" | "r" => Ok(RarityCode::R),
             "mythic" | "m" => Ok(RarityCode::M),
+            "special" | "s" => Ok(RarityCode::S),
             _ => Err(FunctionalError::InvalidRarityCode(s_ref.to_string())),
         }
     }
@@ -29,6 +31,7 @@ impl Display for RarityCode {
             RarityCode::U => write!(f, "U"),
             RarityCode::R => write!(f, "R"),
             RarityCode::M => write!(f, "M"),
+            RarityCode::S => write!(f, "S"),
         }
     }
 }
@@ -58,6 +61,11 @@ mod tests {
     }
 
     #[test]
+    fn try_new_returns_special_for_special_string() {
+        assert_eq!(RarityCode::try_new("special"), Ok(RarityCode::S));
+    }
+
+    #[test]
     fn try_new_is_case_insensitive_for_common() {
         assert_eq!(RarityCode::try_new("Common"), Ok(RarityCode::C));
         assert_eq!(RarityCode::try_new("COMMON"), Ok(RarityCode::C));
@@ -82,8 +90,14 @@ mod tests {
     }
 
     #[test]
+    fn try_new_is_case_insensitive_for_special() {
+        assert_eq!(RarityCode::try_new("Special"), Ok(RarityCode::S));
+        assert_eq!(RarityCode::try_new("SPECIAL"), Ok(RarityCode::S));
+    }
+
+    #[test]
     fn try_new_returns_error_for_unknown_rarity() {
-        let result = RarityCode::try_new("special");
+        let result = RarityCode::try_new("joke");
         assert!(result.is_err());
     }
 
@@ -95,9 +109,9 @@ mod tests {
 
     #[test]
     fn try_new_returns_invalid_rarity_code_error_variant() {
-        let result = RarityCode::try_new("special");
+        let result = RarityCode::try_new("joke");
         match result {
-            Err(FunctionalError::InvalidRarityCode(msg)) => assert_eq!(msg, "special"),
+            Err(FunctionalError::InvalidRarityCode(msg)) => assert_eq!(msg, "joke"),
             _ => panic!("Expected InvalidRarityCode variant"),
         }
     }
@@ -120,5 +134,10 @@ mod tests {
     #[test]
     fn display_formats_mythic_as_m() {
         assert_eq!(RarityCode::M.to_string(), "M");
+    }
+
+    #[test]
+    fn display_formats_special_as_s() {
+        assert_eq!(RarityCode::S.to_string(), "S");
     }
 }

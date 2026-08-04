@@ -925,6 +925,7 @@ fn rarity_code_param_from_mapping_is_complete() {
     assert_eq!(RarityCode::from(RarityCodeParam::U), RarityCode::U);
     assert_eq!(RarityCode::from(RarityCodeParam::R), RarityCode::R);
     assert_eq!(RarityCode::from(RarityCodeParam::M), RarityCode::M);
+    assert_eq!(RarityCode::from(RarityCodeParam::S), RarityCode::S);
 }
 
 #[test]

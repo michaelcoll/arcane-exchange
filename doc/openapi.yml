@@ -714,6 +714,7 @@ components:
       - U
       - R
       - M
+      - S
     SetInfoResponse:
       type: object
       required:
