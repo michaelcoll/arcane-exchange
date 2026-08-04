@@ -1,7 +1,7 @@
 use crate::application::error::AppError;
 use crate::domain::card::{Card, CardId};
 use crate::domain::card_offer::{CardOfferSortField, PaginatedCardOffers};
-use crate::domain::collection::{CollectionQuery, PaginatedCollection};
+use crate::domain::collection::{CollectionQuery, PaginatedCollection, SearchQuery};
 use crate::domain::collection_stats::CollectionStats;
 use crate::domain::price::{FullPriceGuide, PriceHistoryEntry};
 use crate::domain::set_name::{SetCode, SetName};
@@ -107,11 +107,10 @@ pub trait CardPricesViewRepository: Send + Sync {
     ) -> Result<PaginatedCollection, AppError>;
     /// Public search across every user's cards. No `user_id` filter — rows are
     /// grouped by card, each returned as `CollectionEntry::Public { owner_count }`
-    /// where `owner_count` is the number of distinct users owning that card.
-    async fn search_paginated(
-        &self,
-        query: CollectionQuery,
-    ) -> Result<PaginatedCollection, AppError>;
+    /// where `owner_count` is the number of distinct users owning that card. When
+    /// `query.player_username` is set, results are restricted to that player's cards
+    /// (exact match, case-insensitive) and `owner_count` is always `1`.
+    async fn search_paginated(&self, query: SearchQuery) -> Result<PaginatedCollection, AppError>;
     /// Whether any user owns a card matching `card_id`, regardless of who.
     async fn exists(&self, card_id: &CardId) -> Result<bool, AppError>;
     /// Other users' offers for `card_id` (the caller's own entry, if any, is excluded).

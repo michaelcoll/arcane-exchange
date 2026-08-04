@@ -2,7 +2,7 @@ use crate::application::error::{AppError, InfraError};
 use crate::application::repository::CardPricesViewRepository;
 use crate::domain::card::{Card, CardId, CollectionEntry};
 use crate::domain::card_offer::{CardOfferSortField, PaginatedCardOffers};
-use crate::domain::collection::{CollectionQuery, PaginatedCollection};
+use crate::domain::collection::{CollectionQuery, PaginatedCollection, SearchQuery};
 use crate::domain::user::UserId;
 use crate::infrastructure::adapter_out::repository::entities::{
     CardOfferEntity, CardWithPriceEntity,
@@ -10,10 +10,14 @@ use crate::infrastructure::adapter_out::repository::entities::{
 use async_trait::async_trait;
 use sqlx::{AssertSqlSafe, Pool, Postgres, query_as, query_scalar};
 
-/// Builds the "AND ..." filter clause (search, rarity, sets, price range) for the
-/// collection query, starting bind placeholders at `start_idx`.
+/// Builds the "AND ..." filter clause (search, rarity, sets, price range, player
+/// username) for the collection query, starting bind placeholders at `start_idx`.
 /// Returns (filter_clause, order_prefix, next_idx).
-fn build_filter_clause(query: &CollectionQuery, start_idx: u32) -> (String, String, u32) {
+fn build_filter_clause(
+    query: &CollectionQuery,
+    player_username: Option<&str>,
+    start_idx: u32,
+) -> (String, String, u32) {
     let mut idx = start_idx;
     let mut conditions = Vec::new();
     let mut order_prefix = String::new();
@@ -39,6 +43,12 @@ fn build_filter_clause(query: &CollectionQuery, start_idx: u32) -> (String, Stri
     }
     if query.price_max.is_some() {
         conditions.push(format!("cp.trend <= ${idx}"));
+        idx += 1;
+    }
+    if player_username.is_some() {
+        conditions.push(format!(
+            "cp.user_id IN (SELECT id FROM users WHERE LOWER(username) = LOWER(${idx}))"
+        ));
         idx += 1;
     }
 
@@ -71,12 +81,17 @@ impl CardPricesViewRepositoryAdapter {
         &self,
         user_id: Option<&UserId>,
         query: CollectionQuery,
+        player_username: Option<&str>,
     ) -> Result<PaginatedCollection, AppError> {
         let limit_idx = if user_id.is_some() { 2 } else { 1 };
         let offset_idx = limit_idx + 1;
-        let (filter_clause, order_prefix, _) = build_filter_clause(&query, offset_idx + 1);
-        let (count_filter_clause, _, _) =
-            build_filter_clause(&query, if user_id.is_some() { 2 } else { 1 });
+        let (filter_clause, order_prefix, _) =
+            build_filter_clause(&query, player_username, offset_idx + 1);
+        let (count_filter_clause, _, _) = build_filter_clause(
+            &query,
+            player_username,
+            if user_id.is_some() { 2 } else { 1 },
+        );
 
         let (where_clause, owned_columns, group_by_clause) = if user_id.is_some() {
             (
@@ -154,6 +169,9 @@ impl CardPricesViewRepositoryAdapter {
         if let Some(v) = query.price_max {
             base_query = base_query.bind(v as i64);
         }
+        if let Some(username) = player_username {
+            base_query = base_query.bind(username.to_string());
+        }
 
         let entities = base_query
             .fetch_all(&self.pool)
@@ -196,6 +214,9 @@ impl CardPricesViewRepositoryAdapter {
         if let Some(v) = query.price_max {
             base_count = base_count.bind(v as i64);
         }
+        if let Some(username) = player_username {
+            base_count = base_count.bind(username.to_string());
+        }
 
         let total: i64 = base_count
             .fetch_one(&self.pool)
@@ -226,14 +247,16 @@ impl CardPricesViewRepository for CardPricesViewRepositoryAdapter {
         user_id: &UserId,
         query: CollectionQuery,
     ) -> Result<PaginatedCollection, AppError> {
-        self.fetch_paginated(Some(user_id), query).await
+        self.fetch_paginated(Some(user_id), query, None).await
     }
 
-    async fn search_paginated(
-        &self,
-        query: CollectionQuery,
-    ) -> Result<PaginatedCollection, AppError> {
-        self.fetch_paginated(None, query).await
+    async fn search_paginated(&self, query: SearchQuery) -> Result<PaginatedCollection, AppError> {
+        self.fetch_paginated(
+            None,
+            query.collection_query,
+            query.player_username.as_deref(),
+        )
+        .await
     }
 
     async fn exists(&self, card_id: &CardId) -> Result<bool, AppError> {
@@ -636,7 +659,7 @@ mod tests {
 
         let adapter = CardPricesViewRepositoryAdapter::new(pool);
         let result = adapter
-            .search_paginated(CollectionQuery::default())
+            .search_paginated(CollectionQuery::default().into())
             .await
             .unwrap();
 
@@ -648,7 +671,7 @@ mod tests {
     async fn search_paginated_returns_empty_when_no_cards(pool: PgPool) {
         let adapter = CardPricesViewRepositoryAdapter::new(pool);
         let result = adapter
-            .search_paginated(CollectionQuery::default())
+            .search_paginated(CollectionQuery::default().into())
             .await
             .unwrap();
 
@@ -667,7 +690,7 @@ mod tests {
 
         let adapter = CardPricesViewRepositoryAdapter::new(pool);
         let result = adapter
-            .search_paginated(CollectionQuery::default())
+            .search_paginated(CollectionQuery::default().into())
             .await
             .unwrap();
 
@@ -693,7 +716,7 @@ mod tests {
 
         let adapter = CardPricesViewRepositoryAdapter::new(pool);
         let result = adapter
-            .search_paginated(CollectionQuery::default())
+            .search_paginated(CollectionQuery::default().into())
             .await
             .unwrap();
 
@@ -721,7 +744,7 @@ mod tests {
 
         let adapter = CardPricesViewRepositoryAdapter::new(pool);
         let result = adapter
-            .search_paginated(CollectionQuery::default())
+            .search_paginated(CollectionQuery::default().into())
             .await
             .unwrap();
 
@@ -750,7 +773,7 @@ mod tests {
             search_query: Some("gob".to_string()),
             ..CollectionQuery::default()
         };
-        let result = adapter.search_paginated(query).await.unwrap();
+        let result = adapter.search_paginated(query.into()).await.unwrap();
 
         assert_eq!(result.items.len(), 1);
         assert_eq!(result.total, 1);
@@ -776,7 +799,7 @@ mod tests {
             rarity: vec![RarityCode::M],
             ..CollectionQuery::default()
         };
-        let result = adapter.search_paginated(query).await.unwrap();
+        let result = adapter.search_paginated(query.into()).await.unwrap();
 
         assert_eq!(result.items.len(), 1);
         assert_eq!(result.total, 1);
@@ -812,11 +835,156 @@ mod tests {
             page_size: 2,
             ..CollectionQuery::default()
         };
-        let result = adapter.search_paginated(query).await.unwrap();
+        let result = adapter.search_paginated(query.into()).await.unwrap();
 
         assert_eq!(result.items.len(), 2);
         assert_eq!(result.total, 5);
         assert_eq!(result.page_size, 2);
+    }
+
+    #[sqlx::test]
+    async fn search_paginated_filters_by_player_username_exact_match(pool: PgPool) {
+        insert_set(&pool, "TS1").await;
+        insert_card(&pool, "TS1", "1", "EN", false, "Card A", 1).await;
+        insert_set(&pool, "TS2").await;
+        insert_card(&pool, "TS2", "1", "EN", false, "Card B", 2).await;
+        insert_user(&pool, "userA", "Alice").await;
+        insert_user(&pool, "userB", "Bob").await;
+        insert_collection_entry(&pool, "TS1", "1", "EN", false, "userA", 1, 100, Utc::now()).await;
+        insert_collection_entry(&pool, "TS2", "1", "EN", false, "userB", 1, 100, Utc::now()).await;
+        insert_price(&pool, CardMarketPriceEntity::simple(1, 100)).await;
+        insert_price(&pool, CardMarketPriceEntity::simple(2, 100)).await;
+        refresh_view(&pool).await;
+
+        let adapter = CardPricesViewRepositoryAdapter::new(pool);
+        let query = SearchQuery {
+            collection_query: CollectionQuery::default(),
+            player_username: Some("Alice".to_string()),
+        };
+        let result = adapter.search_paginated(query).await.unwrap();
+
+        assert_eq!(result.total, 1);
+        assert_eq!(result.items.len(), 1);
+        assert_eq!(result.items[0].name, "Card A");
+    }
+
+    #[sqlx::test]
+    async fn search_paginated_player_username_is_case_insensitive(pool: PgPool) {
+        insert_set(&pool, "TST").await;
+        insert_card(&pool, "TST", "1", "EN", false, "Card A", 1).await;
+        insert_user(&pool, "userA", "Alice").await;
+        insert_collection_entry(&pool, "TST", "1", "EN", false, "userA", 1, 100, Utc::now()).await;
+        insert_price(&pool, CardMarketPriceEntity::simple(1, 100)).await;
+        refresh_view(&pool).await;
+
+        let adapter = CardPricesViewRepositoryAdapter::new(pool);
+        let query = SearchQuery {
+            collection_query: CollectionQuery::default(),
+            player_username: Some("ALICE".to_string()),
+        };
+        let result = adapter.search_paginated(query).await.unwrap();
+
+        assert_eq!(result.total, 1);
+        assert_eq!(result.items[0].name, "Card A");
+    }
+
+    #[sqlx::test]
+    async fn search_paginated_player_username_requires_exact_match_no_partial(pool: PgPool) {
+        insert_set(&pool, "TST").await;
+        insert_card(&pool, "TST", "1", "EN", false, "Card A", 1).await;
+        insert_user(&pool, "userA", "Alice").await;
+        insert_collection_entry(&pool, "TST", "1", "EN", false, "userA", 1, 100, Utc::now()).await;
+        insert_price(&pool, CardMarketPriceEntity::simple(1, 100)).await;
+        refresh_view(&pool).await;
+
+        let adapter = CardPricesViewRepositoryAdapter::new(pool);
+        let query = SearchQuery {
+            collection_query: CollectionQuery::default(),
+            player_username: Some("ali".to_string()),
+        };
+        let result = adapter.search_paginated(query).await.unwrap();
+
+        assert!(result.items.is_empty());
+        assert_eq!(result.total, 0);
+    }
+
+    #[sqlx::test]
+    async fn search_paginated_returns_empty_for_unknown_player_username(pool: PgPool) {
+        insert_set(&pool, "TST").await;
+        insert_card(&pool, "TST", "1", "EN", false, "Card A", 1).await;
+        insert_user(&pool, "userA", "Alice").await;
+        insert_collection_entry(&pool, "TST", "1", "EN", false, "userA", 1, 100, Utc::now()).await;
+        insert_price(&pool, CardMarketPriceEntity::simple(1, 100)).await;
+        refresh_view(&pool).await;
+
+        let adapter = CardPricesViewRepositoryAdapter::new(pool);
+        let query = SearchQuery {
+            collection_query: CollectionQuery::default(),
+            player_username: Some("unknown-user".to_string()),
+        };
+        let result = adapter.search_paginated(query).await.unwrap();
+
+        assert!(result.items.is_empty());
+        assert_eq!(result.total, 0);
+    }
+
+    #[sqlx::test]
+    async fn search_paginated_player_username_forces_owner_count_to_one_even_with_multiple_real_owners(
+        pool: PgPool,
+    ) {
+        insert_set(&pool, "TST").await;
+        insert_card(&pool, "TST", "1", "EN", false, "Test Card", 1).await;
+        insert_user(&pool, "userA", "Alice").await;
+        insert_user(&pool, "userB", "Bob").await;
+        insert_user(&pool, "userC", "Carol").await;
+        insert_collection_entry(&pool, "TST", "1", "EN", false, "userA", 1, 100, Utc::now()).await;
+        insert_collection_entry(&pool, "TST", "1", "EN", false, "userB", 1, 100, Utc::now()).await;
+        insert_collection_entry(&pool, "TST", "1", "EN", false, "userC", 1, 100, Utc::now()).await;
+        insert_price(&pool, CardMarketPriceEntity::simple(1, 100)).await;
+        refresh_view(&pool).await;
+
+        let adapter = CardPricesViewRepositoryAdapter::new(pool);
+        let query = SearchQuery {
+            collection_query: CollectionQuery::default(),
+            player_username: Some("Alice".to_string()),
+        };
+        let result = adapter.search_paginated(query).await.unwrap();
+
+        assert_eq!(result.total, 1);
+        assert_eq!(result.items.len(), 1);
+        assert_eq!(
+            result.items[0].collection_entry,
+            CollectionEntry::Public { owner_count: 1 }
+        );
+    }
+
+    #[sqlx::test]
+    async fn search_paginated_player_username_combines_with_other_filters(pool: PgPool) {
+        use crate::infrastructure::adapter_out::repository::common_repository_tests::insert_card_with_rarity;
+
+        insert_set(&pool, "TST").await;
+        insert_card_with_rarity(&pool, "TST", "1", "EN", false, "Common Card", 1, "C").await;
+        insert_card_with_rarity(&pool, "TST", "2", "EN", false, "Mythic Card", 2, "M").await;
+        insert_user(&pool, "userA", "Alice").await;
+        insert_collection_entry(&pool, "TST", "1", "EN", false, "userA", 1, 100, Utc::now()).await;
+        insert_collection_entry(&pool, "TST", "2", "EN", false, "userA", 1, 100, Utc::now()).await;
+        insert_price(&pool, CardMarketPriceEntity::simple(1, 100)).await;
+        insert_price(&pool, CardMarketPriceEntity::simple(2, 100)).await;
+        refresh_view(&pool).await;
+
+        let adapter = CardPricesViewRepositoryAdapter::new(pool);
+        let query = SearchQuery {
+            collection_query: CollectionQuery {
+                rarity: vec![RarityCode::M],
+                ..CollectionQuery::default()
+            },
+            player_username: Some("Alice".to_string()),
+        };
+        let result = adapter.search_paginated(query).await.unwrap();
+
+        assert_eq!(result.items.len(), 1);
+        assert_eq!(result.total, 1);
+        assert_eq!(result.items[0].name, "Mythic Card");
     }
 
     #[sqlx::test]

@@ -29,6 +29,9 @@ pub(crate) struct SearchParams {
     /// Maximum trend price in cents
     #[ts(optional)]
     pub(crate) price_max: Option<u32>,
+    /// Exact username of the owner to filter by (case-insensitive, no partial match)
+    #[ts(optional)]
+    pub(crate) player_username: Option<String>,
 }
 
 impl Default for SearchParams {
@@ -43,6 +46,7 @@ impl Default for SearchParams {
             sets: None,
             price_min: None,
             price_max: None,
+            player_username: None,
         }
     }
 }

@@ -3,7 +3,7 @@ use async_trait::async_trait;
 
 use crate::domain::card::CardId;
 use crate::domain::card_offer::{CardOfferSortField, PaginatedCardOffers};
-use crate::domain::collection::{CollectionQuery, PaginatedCollection};
+use crate::domain::collection::{CollectionQuery, PaginatedCollection, SearchQuery};
 use crate::domain::collection_stats::CollectionStats;
 use crate::domain::price::PriceHistoryEntry;
 use crate::domain::stats::Stats;
@@ -67,7 +67,7 @@ pub trait GetCollectionUseCase: Send + Sync {
 #[async_trait]
 #[cfg_attr(test, automock)]
 pub trait SearchCardsUseCase: Send + Sync {
-    async fn search_cards(&self, query: CollectionQuery) -> Result<PaginatedCollection, AppError>;
+    async fn search_cards(&self, query: SearchQuery) -> Result<PaginatedCollection, AppError>;
 }
 
 #[async_trait]
