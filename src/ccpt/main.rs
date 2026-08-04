@@ -21,15 +21,13 @@ fn main() -> Result<(), sqlx::Error> {
 
     let _guard = sentry::init((
         "https://a9de037d8a32f68ba3a9b2fa13ab576f@o4511529669033984.ingest.de.sentry.io/4511529672507472",
-        sentry::ClientOptions {
-            release: sentry::release_name!(),
-            traces_sample_rate: 1.0,
-            enable_logs: true,
+        sentry::ClientOptions::new()
+            .maybe_release(sentry::release_name!())
+            .traces_sample_rate(1.0)
+            .enable_logs(true)
             // Capture user IPs and potentially sensitive headers when using HTTP server integrations
             // see https://docs.sentry.io/platforms/rust/data-management/data-collected for more info
-            send_default_pii: true,
-            ..Default::default()
-        },
+            .send_default_pii(true),
     ));
 
     let config = Config::from_env();
