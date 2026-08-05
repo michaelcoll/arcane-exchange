@@ -163,6 +163,7 @@ jobs:
 
     permissions:
       contents: write
+      pull-requests: write
 
     steps:
       - uses: actions/checkout@v7
@@ -197,8 +198,7 @@ jobs:
             --title "chore(docker-compose): bump images to $TAG" \
             --body "Auto-generated PR to update docker-compose image tags for release $TAG" \
             --head "$BRANCH" \
-            --base main \
-            --json url --jq '.url')
+            --base main)
 
           gh pr merge "$PR_URL" --auto --squash
           echo "Auto-merge enabled for $PR_URL"
