@@ -169,20 +169,36 @@ jobs:
         with:
           ref: main
 
-      - name: Update image tags in docker-compose.yml
+      - name: Update docker-compose and create PR
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
         run: |
-          TAG="${{ github.event.release.tag_name }}"
+          TAG="$RELEASE_TAG"
           sed -i "s|\(ghcr.io/michaelcoll/card-collection-price-tracker:\).*|\1$TAG|" docker-compose.yml
           sed -i "s|\(ghcr.io/michaelcoll/card-collection-price-tracker-frontend:\).*|\1$TAG|" docker-compose.yml
 
-      - name: Commit and push
-        run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          BRANCH="release/update-docker-compose-$TAG"
+
           git add docker-compose.yml
           if git diff --cached --quiet; then
             echo "docker-compose.yml already up to date"
             exit 0
           fi
-          git commit -m "chore(docker-compose): bump images to ${{ github.event.release.tag_name }}"
-          git push origin HEAD:main
+
+          git checkout -b "$BRANCH"
+          git commit -m "chore(docker-compose): bump images to $TAG"
+          git push origin "$BRANCH"
+
+          PR_URL=$(gh pr create \
+            --title "chore(docker-compose): bump images to $TAG" \
+            --body "Auto-generated PR to update docker-compose image tags for release $TAG" \
+            --head "$BRANCH" \
+            --base main \
+            --json url --jq '.url')
+
+          gh pr merge "$PR_URL" --auto --squash
+          echo "Auto-merge enabled for $PR_URL"
