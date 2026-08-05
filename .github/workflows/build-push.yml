@@ -34,7 +34,7 @@ jobs:
         id: meta-back
         uses: docker/metadata-action@v6
         with:
-          images: ghcr.io/michaelcoll/card-collection-price-tracker
+          images: ghcr.io/michaelcoll/arcane-exchange
           tags: |
             type=raw,value=latest,enable={{is_default_branch}}
             type=semver,pattern={{version}}
@@ -100,7 +100,7 @@ jobs:
         id: meta-front
         uses: docker/metadata-action@v6
         with:
-          images: ghcr.io/michaelcoll/card-collection-price-tracker-frontend
+          images: ghcr.io/michaelcoll/arcane-exchange-frontend
           tags: |
             type=raw,value=latest,enable={{is_default_branch}}
             type=semver,pattern={{version}}
@@ -155,50 +155,3 @@ jobs:
           SENTRY_ORG: ${{ vars.SENTRY_ORG }}
           SENTRY_PROJECT: ${{ vars.SENTRY_PROJECT_FRONT }}
         run: pnpm build
-
-  update-docker-compose:
-    runs-on: ubuntu-latest
-    if: github.event_name == 'release'
-    needs: [build-and-push-backend, build-and-push-frontend]
-
-    permissions:
-      contents: write
-      pull-requests: write
-
-    steps:
-      - uses: actions/checkout@v7
-        with:
-          ref: main
-
-      - name: Update docker-compose and create PR
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          RELEASE_TAG: ${{ github.event.release.tag_name }}
-        run: |
-          TAG="$RELEASE_TAG"
-          sed -i "s|\(ghcr.io/michaelcoll/card-collection-price-tracker:\).*|\1$TAG|" docker-compose.yml
-          sed -i "s|\(ghcr.io/michaelcoll/card-collection-price-tracker-frontend:\).*|\1$TAG|" docker-compose.yml
-
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-
-          BRANCH="release/update-docker-compose-$TAG"
-
-          git add docker-compose.yml
-          if git diff --cached --quiet; then
-            echo "docker-compose.yml already up to date"
-            exit 0
-          fi
-
-          git checkout -b "$BRANCH"
-          git commit -m "chore(docker-compose): bump images to $TAG"
-          git push origin "$BRANCH"
-
-          PR_URL=$(gh pr create \
-            --title "chore(docker-compose): bump images to $TAG" \
-            --body "Auto-generated PR to update docker-compose image tags for release $TAG" \
-            --head "$BRANCH" \
-            --base main)
-
-          gh pr merge "$PR_URL" --auto --rebase
-          echo "Auto-merge enabled for $PR_URL"
