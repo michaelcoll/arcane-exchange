@@ -200,5 +200,5 @@ jobs:
             --head "$BRANCH" \
             --base main)
 
-          gh pr merge "$PR_URL" --auto --squash
+          gh pr merge "$PR_URL" --auto --rebase
           echo "Auto-merge enabled for $PR_URL"
