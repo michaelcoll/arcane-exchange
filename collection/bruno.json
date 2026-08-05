@@ -1,6 +1,6 @@
 {
   "version": "1",
-  "name": "card-collection-price-tracker",
+  "name": "arcane-exchange",
   "type": "collection",
   "ignore": ["node_modules", ".git"],
   "size": 0.0011472702026367188,

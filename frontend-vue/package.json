@@ -14,13 +14,13 @@
     "lint": "nuxi typecheck",
     "test": "vitest run"
   },
-  "packageManager": "pnpm@11.17.0",
+  "packageManager": "pnpm@11.20.0",
   "engines": {
     "node": ">=24"
   },
   "dependencies": {
     "@clerk/nuxt": "~3.0.1",
-    "@clerk/vue": "~2.4.22",
+    "@clerk/vue": "~2.4.23",
     "@nuxt/eslint": "~1.16.0",
     "@nuxt/fonts": "~0.14.0",
     "@nuxt/icon": "~2.4.1",

@@ -1,6 +1,6 @@
-# card-collection-price-tracker
+# arcane-exchange
 
-[![codecov](https://codecov.io/gh/michaelcoll/card-collection-price-tracker/graph/badge.svg?token=b2Wlmg2WX3)](https://codecov.io/gh/michaelcoll/card-collection-price-tracker)
+[![codecov](https://codecov.io/gh/michaelcoll/arcane-exchange/graph/badge.svg?token=b2Wlmg2WX3)](https://codecov.io/gh/michaelcoll/arcane-exchange)
 
 ## Overview
 
@@ -74,7 +74,7 @@ API consumed by an Angular frontend.
 - Backend: `mise run test`
 - Frontend: `cd frontend && pnpm test`
 
-Coverage reports are uploaded to [Codecov](https://codecov.io/gh/michaelcoll/card-collection-price-tracker).
+Coverage reports are uploaded to [Codecov](https://codecov.io/gh/michaelcoll/arcane-exchange).
 
 ## Project Structure
 
