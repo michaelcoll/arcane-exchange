@@ -32,7 +32,7 @@ fn slugify(name: &str) -> String {
     let mut slug = String::new();
     let mut last_was_dash = false;
     for c in name.chars() {
-        if c == '\'' {
+        if c == '\'' || c == '.' {
             continue;
         }
         if c.is_ascii_alphanumeric() {
@@ -158,6 +158,11 @@ mod tests {
             slugify("Y'shtola, Night's Blessed"),
             "yshtola-nights-blessed"
         );
+    }
+
+    #[test]
+    fn slugify_removes_dots_without_inserting_dashes() {
+        assert_eq!(slugify("S.H.I.E.L.D. Helicarrier"), "shield-helicarrier");
     }
 
     #[test]
