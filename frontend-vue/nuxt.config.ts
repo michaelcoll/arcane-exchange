@@ -61,6 +61,7 @@ export default defineNuxtConfig({
     '@clerk/nuxt',
     '@vueuse/nuxt',
     '@nuxt/test-utils/module',
+    'nuxt-security',
   ],
   runtimeConfig: {
     public: {
@@ -121,6 +122,36 @@ export default defineNuxtConfig({
         proxy: {
           to: `http://${process.env.NUXT_BACKEND_HOSTNAME}:8080/**`,
         },
+        security: {
+          // The backend already enforces its own CORS/rate-limiting/validation;
+          // avoid nuxt-security's Nitro middleware double-handling proxied traffic.
+          corsHandler: false,
+          rateLimiter: false,
+          xssValidator: false,
+          requestSizeLimiter: {
+            maxRequestSizeInBytes: 20_000_000,
+            maxUploadFileRequestInBytes: 20_000_000,
+          },
+        },
+      },
+    },
+  },
+  security: {
+    // Module defaults (Strict CSP + nonce, COEP: credentialless, frame-ancestors 'self', etc.)
+    // are kept as-is; only the proxied API route above is scoped out. Revisit if Clerk's
+    // hosted flows or any embedded widget need a frame-src/script-src exception.
+    headers: {
+      contentSecurityPolicy: {
+        'img-src': [
+          "'self'",
+          'data:',
+          // Card artwork: api.scryfall.com redirects to the cards.scryfall.io image CDN.
+          'https://api.scryfall.com',
+          'https://cards.scryfall.io',
+          'https://gatherer-static.wizards.com',
+          // Clerk-hosted avatars and OAuth provider icons on the sign-in/profile UI.
+          'https://img.clerk.com',
+        ],
       },
     },
   },
