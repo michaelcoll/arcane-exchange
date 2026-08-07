@@ -1,7 +1,8 @@
 .nuxt
 .output
-node_modules
-target
-example-files
+.playwright-cli
 .sqlx
+example-files
+node_modules
 openapi.yml
+target
