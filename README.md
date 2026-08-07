@@ -1,108 +1,65 @@
-# arcane-exchange
+# Arcane Exchange
 
 [![codecov](https://codecov.io/gh/michaelcoll/arcane-exchange/graph/badge.svg?token=b2Wlmg2WX3)](https://codecov.io/gh/michaelcoll/arcane-exchange)
+[![license](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
-## Overview
+Track what your Magic: The Gathering collection is worth, find the cards you're missing in other players'
+collections, and trade them — card for card.
 
-A web application tracking card collection prices (e.g., Magic: The Gathering). It fetches and stores prices via a REST
-API consumed by an Angular frontend.
+## Features
 
-## Requirements
+- **Your collection, valued** — import a Manabox export and see the total value, the 30-day trend and a price history
+  for every card.
+- **Real market prices** — daily prices from Cardmarket, card data from Scryfall, playability signals from EDHREC.
+- **Find who owns a card** — search by card name, by decklist, or browse a specific player's collection.
+- **Trade in two clicks** — request a card, get a counter-offer, negotiate. The app computes the value difference; the
+  cash delta is settled between players, off-platform.
 
-- **Rust** (edition 2024, stable toolchain)
-- **Node.js** >= 24 & **pnpm** >= 11 (Frontend)
-- **PostgreSQL** 18
-- **Docker/Compose** (Optional)
-- [`mise`](https://mise.jdx.dev/) — Task runner & toolchain manager
+**Stack** — Rust (Axum, SQLx) · Nuxt 4 / Vue 3 / Tailwind · PostgreSQL 18 · Clerk for authentication.
 
-## Setup
+## Quick start (Docker Compose)
 
-### Docker Compose (Recommended)
-
-1. Copy and configure `.env` from `example-files/`.
-2. Start services: `docker compose up -d`
-   - Backend API: <http://localhost:8080>
-   - Frontend: <http://localhost:9797>
-
-### Local Development
-
-1. Start PostgreSQL service (if not using Compose).
-2. Copy/configure `.env`.
-3. Install SDKs and tools `mise install`.
-4. Setup project: `mise run setup`.
-5. Run backend: `mise run back`. (API on <http://localhost:8080>)
-6. Run frontend: `mise run front`. (app on <http://localhost:4200>)
-
-## Environment Variables
-
-| Variable                 | Default                                           | Description                                      |
-| ------------------------ | ------------------------------------------------- | ------------------------------------------------ |
-| `DATABASE_URL`           | `postgres://postgres:password@localhost/postgres` | PostgreSQL connection string                     |
-| `BACKEND_PORT`           | `8080`                                            | Backend API port                                 |
-| `CLERK_FRONTEND_API_URL` | _(required)_                                      | Clerk frontend API URL for JWT validation (JWKS) |
-
-> **Authentication** is handled via [Clerk](https://clerk.com/). Set `CLERK_FRONTEND_API_URL` to your Clerk instance
-> URL.
-
-## Scripts (`mise.toml`)
-
-| Command            | Description                                        |
-| ------------------ | -------------------------------------------------- |
-| `mise run`         | Generate OpenAPI, format, test, and lint (default) |
-| `mise run setup`   | Clean & install all dependencies                   |
-| `mise run back`    | Run backend server (`cargo run`)                   |
-| `mise run front`   | Run frontend dev server (`pnpm start`)             |
-| `mise run test`    | Run backend tests                                  |
-| `mise run lint`    | Lint backend (Clippy + SQLx)                       |
-| `mise run format`  | Format backend & frontend                          |
-| `mise run openapi` | Generate OpenAPI specification                     |
-| `mise run migrate` | Run database migrations                            |
-| `mise run clean`   | Remove build artifacts                             |
-| `mise run upgrade` | Upgrade backend & frontend dependencies            |
-
-### Frontend Scripts (`frontend/`)
-
-| Command      | Description                             |
-| ------------ | --------------------------------------- |
-| `pnpm start` | Serve Angular app (dev mode, port 4200) |
-| `pnpm build` | Build for production                    |
-| `pnpm test`  | Run unit tests (Vitest)                 |
-| `pnpm lint`  | Check formatting (Prettier)             |
-
-## Tests
-
-- Backend: `mise run test`
-- Frontend: `cd frontend && pnpm test`
-
-Coverage reports are uploaded to [Codecov](https://codecov.io/gh/michaelcoll/arcane-exchange).
-
-## Project Structure
-
-```
-.
-├── src/ccpt/                          # Rust backend (hexagonal / clean architecture)
-│   ├── main.rs                        # Entry point
-│   ├── domain/                        # Domain models (Card, Price, User, LanguageCode…)
-│   ├── application/                   # Use cases and service interfaces
-│   └── infrastructure/
-│       ├── adapter_in/                # HTTP controllers (Axum), auth extractor
-│       └── adapter_out/               # DB repositories (SQLx), external callers
-├── frontend/                          # Angular 21 frontend (pnpm + Tailwind CSS + Angular Material)
-├── migrations/                        # SQLx SQL migration files
-├── collection/                        # Bruno API collection for manual testing
-├── example-files/                     # Example CSV and credentials files
-├── Dockerfile                         # Backend Docker image
-├── docker-compose.yml                 # Full-stack Compose setup
-├── mise.toml                          # Task runner & toolchain configuration
-└── Cargo.toml                         # Rust package manifest
+```bash
+cp .env.example .env   # then fill in your Clerk keys
+docker compose up -d
 ```
 
-### Architecture
+- App: <http://localhost:9797>
+- API: <http://localhost:8080>
 
-The backend follows **Clean Architecture** with strict inward dependency flow: `Domain ← Application ← Infrastructure`.
+## Development
 
-- **Domain**: Pure business entities.
-- **Application**: Use cases and repository traits.
-- **Infrastructure**: Adapters (Axum, SQLx, External Callers).
+Install [`mise`](https://mise.jdx.dev/) — it provides Node, pnpm and the Rust CLI tools. You also need a stable **Rust**
+toolchain (edition 2024) and a **PostgreSQL 18** instance.
 
-Cards are identified by `CardId`: `set_code + collector_number + language_code + foil`.
+```bash
+mise install                    # toolchain
+mise run setup                  # install dependencies
+docker compose up -d postgres   # or use your own PostgreSQL
+mise run migrate                # apply database migrations
+
+mise run back                   # API on http://localhost:8080
+mise run front                  # app on http://localhost:3000
+```
+
+Before opening a PR, run `mise run checks` (OpenAPI, tests, lint) and `mise run format`.
+`mise tasks` lists everything else.
+
+## Configuration
+
+Copy `.env.example` to `.env` and fill it in — the Clerk keys are the only values you must provide to run the app.
+Everything else (database URL, ports, external API endpoints) has a working default in `mise.toml` for local
+development, and in `docker-compose.yml` for Compose.
+
+Authentication is handled by [Clerk](https://clerk.com/): create an instance, then set `CLERK_FRONTEND_API_URL`
+(used by the backend to validate JWTs) along with the publishable and secret keys used by the frontend.
+
+## Contributing
+
+- The HTTP API is documented in [`doc/openapi.yml`](doc/openapi.yml) — regenerate it with `mise run openapi`.
+- Feature specs live in [`doc/specs/`](doc/specs).
+- Conventions, architecture notes and the full task list are in [`AGENTS.md`](AGENTS.md) and `.agents/`.
+
+## License
+
+[MIT](LICENSE) © Michaël COLL
