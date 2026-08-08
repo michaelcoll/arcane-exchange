@@ -105,6 +105,7 @@ impl CardRepository for CardRepositoryAdapter {
             quantity,
             purchase_price,
             added_at,
+            ..
         } = &card.collection_entry
         else {
             panic!("save() is only called for cards owned by the importing user");

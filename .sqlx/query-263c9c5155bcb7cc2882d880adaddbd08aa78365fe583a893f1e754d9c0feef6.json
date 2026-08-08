@@ -1,0 +1,29 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE trade\n                SET initiator_accepted_at = CASE WHEN $2 THEN NOW() ELSE initiator_accepted_at END,\n                    respondent_accepted_at = CASE WHEN NOT $2 THEN NOW() ELSE respondent_accepted_at END,\n                    status = CASE\n                        WHEN ($2 AND respondent_accepted_at IS NOT NULL)\n                          OR (NOT $2 AND initiator_accepted_at IS NOT NULL)\n                        THEN 'FULLY_ACCEPTED' ELSE 'ONE_ACCEPTED' END,\n                    updated_at = NOW()\n                WHERE id = $1\n                  AND status IN ('PENDING', 'ONE_ACCEPTED')\n                  AND ( ($2 AND initiator_accepted_at IS NULL) OR (NOT $2 AND respondent_accepted_at IS NULL) )\n                RETURNING status",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "status",
+        "type_info": "Varchar",
+        "origin": {
+          "Table": {
+            "table": "trade",
+            "name": "status"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Bool"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "263c9c5155bcb7cc2882d880adaddbd08aa78365fe583a893f1e754d9c0feef6"
+}

@@ -1,0 +1,17 @@
+meta {
+  name: rate trade
+  type: http
+  seq: 5
+}
+
+post {
+  url: {{baseUrl}}/trades/{{tradeId}}/rate
+  body: json
+  auth: inherit
+}
+
+body:json {
+  {
+    "rating": 5
+  }
+}

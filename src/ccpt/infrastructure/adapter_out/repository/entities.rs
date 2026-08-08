@@ -89,6 +89,7 @@ impl From<CardEntity> for Card {
                 added_at: entity.added_at.expect(
                     "collection_entry.added_at should always be set (ManaBox import guarantee)",
                 ),
+                reserved: false,
             },
             scryfall_id: entity.scryfall_id,
             cardmarket_id: entity.cardmarket_id.map(|id| id as u32),
@@ -161,6 +162,10 @@ pub struct TradeEntity {
     pub respondent_amount_due: Option<i32>,
     pub initiator_accepted_at: Option<DateTime<Utc>>,
     pub respondent_accepted_at: Option<DateTime<Utc>>,
+    pub initiator_confirmed_at: Option<DateTime<Utc>>,
+    pub respondent_confirmed_at: Option<DateTime<Utc>>,
+    pub initiator_rating: Option<i16>,
+    pub respondent_rating: Option<i16>,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
 }
@@ -176,6 +181,14 @@ impl From<TradeEntity> for Trade {
             respondent_amount_due: entity.respondent_amount_due.map(|v| v as u32),
             initiator_accepted_at: entity.initiator_accepted_at,
             respondent_accepted_at: entity.respondent_accepted_at,
+            initiator_confirmed_at: entity.initiator_confirmed_at,
+            respondent_confirmed_at: entity.respondent_confirmed_at,
+            initiator_rating: entity
+                .initiator_rating
+                .map(|v| u8::try_from(v).expect("database contains invalid rating (expected 0-5)")),
+            respondent_rating: entity
+                .respondent_rating
+                .map(|v| u8::try_from(v).expect("database contains invalid rating (expected 0-5)")),
             created_at: entity.created_at,
             updated_at: entity.updated_at,
         }
@@ -377,6 +390,9 @@ pub struct CardWithPriceEntity {
     /// Number of distinct users owning this card (search mode only); `0` and unused
     /// in "my collection" mode.
     pub owner_count: i64,
+    /// `true` if this card is engaged in one of its owner's trades in `ONE_ACCEPTED` or
+    /// `FULLY_ACCEPTED` status. Always `false` in search mode.
+    pub reserved: bool,
     #[sqlx(flatten)]
     pub price: PriceGuideEntity,
 }
@@ -409,6 +425,7 @@ impl From<CardWithPriceEntity> for Card {
                 quantity: e.quantity as u8,
                 purchase_price: purchase_price as u32,
                 added_at,
+                reserved: e.reserved,
             },
             _ => CollectionEntry::Public {
                 owner_count: e.owner_count as u64,
@@ -692,6 +709,10 @@ mod tests {
             respondent_amount_due: Some(300),
             initiator_accepted_at: Some(chrono::Utc::now()),
             respondent_accepted_at: None,
+            initiator_confirmed_at: None,
+            respondent_confirmed_at: None,
+            initiator_rating: None,
+            respondent_rating: None,
             created_at: chrono::Utc::now(),
             updated_at: chrono::Utc::now(),
         };
@@ -716,6 +737,10 @@ mod tests {
             respondent_amount_due: None,
             initiator_accepted_at: None,
             respondent_accepted_at: None,
+            initiator_confirmed_at: None,
+            respondent_confirmed_at: None,
+            initiator_rating: None,
+            respondent_rating: None,
             created_at: chrono::Utc::now(),
             updated_at: chrono::Utc::now(),
         };
@@ -768,6 +793,7 @@ mod tests {
             purchase_price: Some(350),
             added_at: Some(chrono::Utc::now()),
             owner_count: 0,
+            reserved: true,
             price: PriceGuideEntity {
                 low: Some(300),
                 avg: Some(350),
@@ -780,7 +806,7 @@ mod tests {
         assert_eq!(card.name, "Sol Ring");
         assert!(card.price_guide.is_some());
         match card.collection_entry {
-            CollectionEntry::Mine { .. } => {}
+            CollectionEntry::Mine { reserved, .. } => assert!(reserved),
             _ => panic!("expected CollectionEntry::Mine"),
         }
     }
@@ -801,6 +827,7 @@ mod tests {
             purchase_price: None,
             added_at: None,
             owner_count: 5,
+            reserved: false,
             price: PriceGuideEntity {
                 low: None,
                 avg: None,
@@ -834,6 +861,7 @@ mod tests {
             purchase_price: Some(350),
             added_at: None,
             owner_count: 3,
+            reserved: false,
             price: PriceGuideEntity {
                 low: None,
                 avg: None,
@@ -867,6 +895,7 @@ mod tests {
             purchase_price: Some(100),
             added_at: Some(chrono::Utc::now()),
             owner_count: 0,
+            reserved: false,
             price: PriceGuideEntity {
                 low: None,
                 avg: None,

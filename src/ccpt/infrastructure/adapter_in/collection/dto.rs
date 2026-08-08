@@ -199,6 +199,9 @@ pub struct CollectionCardResponse {
     pub collection_entry: Option<CollectionEntryResponse>,
     /// Number of distinct users owning this card (search mode only).
     pub owner_count: Option<u64>,
+    /// `true` if this card is engaged in one of the authenticated user's trades in
+    /// `ONE_ACCEPTED` or `FULLY_ACCEPTED` status. Always `false` in search mode.
+    pub reserved: bool,
     pub price_guide: Option<PriceGuideResponse>,
 }
 
@@ -214,11 +217,12 @@ pub struct PaginatedCollectionResponse {
 
 impl From<Card> for CollectionCardResponse {
     fn from(c: Card) -> Self {
-        let (collection_entry, owner_count) = match c.collection_entry {
+        let (collection_entry, owner_count, reserved) = match c.collection_entry {
             CollectionEntry::Mine {
                 quantity,
                 purchase_price,
                 added_at,
+                reserved,
             } => (
                 Some(CollectionEntryResponse {
                     quantity,
@@ -226,8 +230,9 @@ impl From<Card> for CollectionCardResponse {
                     added_at: added_at.to_rfc3339(),
                 }),
                 None,
+                reserved,
             ),
-            CollectionEntry::Public { owner_count } => (None, Some(owner_count)),
+            CollectionEntry::Public { owner_count } => (None, Some(owner_count), false),
             CollectionEntry::Owned { .. } => unreachable!(
                 "Card.collection_entry never carries CollectionEntry::Owned; that variant is reserved for /card/offers"
             ),
@@ -244,6 +249,7 @@ impl From<Card> for CollectionCardResponse {
             the_gatherer_id: c.the_gatherer_id,
             collection_entry,
             owner_count,
+            reserved,
             price_guide: c.price_guide.map(|pg| PriceGuideResponse {
                 low: pg.low.value,
                 avg: pg.avg.value,

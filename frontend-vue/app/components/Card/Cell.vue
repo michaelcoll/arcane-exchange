@@ -13,6 +13,7 @@ const props = withDefaults(
     foil?: boolean;
     size?: 'sm' | 'md' | 'lg';
     ownerCount?: number;
+    reserved?: boolean;
   }>(),
   {
     clickable: true,
@@ -52,6 +53,7 @@ const dealTagClass = computed(() => {
       :clickable="clickable ?? true"
       :foil="foil"
       :size="size"
+      :reserved="reserved"
       @click="emit('click')"
     />
     <div class="flex flex-col gap-1">

@@ -201,4 +201,38 @@ pub trait TradeRepository: Send + Sync {
         quantity: u8,
         reopen_to_pending: bool,
     ) -> Result<(), AppError>;
+
+    /// Records the caller's acceptance (`is_initiator` selects which party) if the trade is
+    /// `PENDING` or `ONE_ACCEPTED` and the caller had not already accepted. Also abandons every
+    /// other active trade (`PENDING`/`ONE_ACCEPTED`) sharing a card with this trade, but only when
+    /// this call is the very first acceptance (i.e. the returned status is `ONE_ACCEPTED`).
+    /// Returns `None` if the precondition wasn't met (nothing changed).
+    async fn accept(
+        &self,
+        trade_id: TradeId,
+        is_initiator: bool,
+    ) -> Result<Option<TradeStatus>, AppError>;
+
+    /// Sets the trade to `ABANDONED`, unless it is already `COMPLETED`, `CLOSED` or `ABANDONED`.
+    /// Returns `false` if the precondition wasn't met (nothing changed).
+    async fn abandon(&self, trade_id: TradeId) -> Result<bool, AppError>;
+
+    /// Records the caller's confirmation of the physical exchange (`is_initiator` selects which
+    /// party) if the trade is `FULLY_ACCEPTED` and the caller had not already confirmed.
+    /// Returns `None` if the precondition wasn't met (nothing changed).
+    async fn confirm(
+        &self,
+        trade_id: TradeId,
+        is_initiator: bool,
+    ) -> Result<Option<TradeStatus>, AppError>;
+
+    /// Records the caller's rating (`is_initiator` selects which party) if the trade is
+    /// `COMPLETED` and the caller had not already rated. Returns `None` if the precondition
+    /// wasn't met (nothing changed).
+    async fn rate(
+        &self,
+        trade_id: TradeId,
+        is_initiator: bool,
+        rating: u8,
+    ) -> Result<Option<TradeStatus>, AppError>;
 }

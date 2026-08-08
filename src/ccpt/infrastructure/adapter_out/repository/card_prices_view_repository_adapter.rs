@@ -99,7 +99,15 @@ impl CardPricesViewRepositoryAdapter {
                 r#"cp.quantity,
                  cp.purchase_price,
                  cp.added_at,
-                 0::bigint AS owner_count"#,
+                 0::bigint AS owner_count,
+                 EXISTS (
+                     SELECT 1 FROM trade_card tc
+                     JOIN trade t ON t.id = tc.trade_id
+                     WHERE tc.set_code = cp.set_code AND tc.collector_number = cp.collector_number
+                       AND tc.language_code = cp.language_code AND tc.foil = cp.foil
+                       AND tc.owner_user_id = cp.user_id
+                       AND t.status IN ('ONE_ACCEPTED', 'FULLY_ACCEPTED')
+                 ) AS reserved"#,
                 "",
             )
         } else {
@@ -108,7 +116,8 @@ impl CardPricesViewRepositoryAdapter {
                 r#"0::integer AS quantity,
                  NULL::integer AS purchase_price,
                  NULL::timestamptz AS added_at,
-                 COUNT(DISTINCT cp.user_id) AS owner_count"#,
+                 COUNT(DISTINCT cp.user_id) AS owner_count,
+                 false AS reserved"#,
                 r#"GROUP BY cp.set_code, sn.name, cp.collector_number, cp.language_code,
                             cp.foil, cp.name, cp.rarity, cp.scryfall_id, cp.the_gatherer_id,
                             cp.avg, cp.low, cp.trend"#,
@@ -424,6 +433,117 @@ mod tests {
 
         assert_eq!(result.items.len(), 1);
         assert_eq!(result.total, 1);
+    }
+
+    #[sqlx::test]
+    async fn get_paginated_marks_card_as_reserved_when_trade_is_one_accepted(pool: PgPool) {
+        use crate::infrastructure::adapter_out::repository::common_repository_tests::{
+            insert_trade, insert_trade_card, insert_user,
+        };
+
+        insert_set(&pool, "TST").await;
+        insert_card(&pool, "TST", "1", "EN", false, "Test Card", 1).await;
+        insert_collection_entry(&pool, "TST", "1", "EN", false, "user1", 2, 500, Utc::now()).await;
+        insert_price(&pool, CardMarketPriceEntity::simple(1, 200)).await;
+        refresh_view(&pool).await;
+
+        insert_user(&pool, "user1", "alice").await;
+        insert_user(&pool, "user2", "bob").await;
+        let trade_id = uuid::Uuid::new_v4();
+        insert_trade(&pool, trade_id, "user2", "user1", "ONE_ACCEPTED").await;
+        insert_trade_card(&pool, trade_id, "TST", "1", "EN", false, "user1", 1).await;
+
+        let adapter = CardPricesViewRepositoryAdapter::new(pool);
+        let result = adapter
+            .get_paginated(&UserId::new("user1"), CollectionQuery::default())
+            .await
+            .unwrap();
+
+        assert_eq!(result.items.len(), 1);
+        match result.items[0].collection_entry {
+            CollectionEntry::Mine { reserved, .. } => assert!(reserved),
+            _ => panic!("expected CollectionEntry::Mine"),
+        }
+    }
+
+    #[sqlx::test]
+    async fn get_paginated_marks_card_as_reserved_when_trade_is_fully_accepted(pool: PgPool) {
+        use crate::infrastructure::adapter_out::repository::common_repository_tests::{
+            insert_trade, insert_trade_card, insert_user,
+        };
+
+        insert_set(&pool, "TST").await;
+        insert_card(&pool, "TST", "1", "EN", false, "Test Card", 1).await;
+        insert_collection_entry(&pool, "TST", "1", "EN", false, "user1", 2, 500, Utc::now()).await;
+        insert_price(&pool, CardMarketPriceEntity::simple(1, 200)).await;
+        refresh_view(&pool).await;
+
+        insert_user(&pool, "user1", "alice").await;
+        insert_user(&pool, "user2", "bob").await;
+        let trade_id = uuid::Uuid::new_v4();
+        insert_trade(&pool, trade_id, "user2", "user1", "FULLY_ACCEPTED").await;
+        insert_trade_card(&pool, trade_id, "TST", "1", "EN", false, "user1", 1).await;
+
+        let adapter = CardPricesViewRepositoryAdapter::new(pool);
+        let result = adapter
+            .get_paginated(&UserId::new("user1"), CollectionQuery::default())
+            .await
+            .unwrap();
+
+        match result.items[0].collection_entry {
+            CollectionEntry::Mine { reserved, .. } => assert!(reserved),
+            _ => panic!("expected CollectionEntry::Mine"),
+        }
+    }
+
+    #[sqlx::test]
+    async fn get_paginated_does_not_mark_card_as_reserved_when_trade_is_pending(pool: PgPool) {
+        use crate::infrastructure::adapter_out::repository::common_repository_tests::{
+            insert_trade, insert_trade_card, insert_user,
+        };
+
+        insert_set(&pool, "TST").await;
+        insert_card(&pool, "TST", "1", "EN", false, "Test Card", 1).await;
+        insert_collection_entry(&pool, "TST", "1", "EN", false, "user1", 2, 500, Utc::now()).await;
+        insert_price(&pool, CardMarketPriceEntity::simple(1, 200)).await;
+        refresh_view(&pool).await;
+
+        insert_user(&pool, "user1", "alice").await;
+        insert_user(&pool, "user2", "bob").await;
+        let trade_id = uuid::Uuid::new_v4();
+        insert_trade(&pool, trade_id, "user2", "user1", "PENDING").await;
+        insert_trade_card(&pool, trade_id, "TST", "1", "EN", false, "user1", 1).await;
+
+        let adapter = CardPricesViewRepositoryAdapter::new(pool);
+        let result = adapter
+            .get_paginated(&UserId::new("user1"), CollectionQuery::default())
+            .await
+            .unwrap();
+
+        match result.items[0].collection_entry {
+            CollectionEntry::Mine { reserved, .. } => assert!(!reserved),
+            _ => panic!("expected CollectionEntry::Mine"),
+        }
+    }
+
+    #[sqlx::test]
+    async fn get_paginated_does_not_mark_card_as_reserved_when_no_active_trade(pool: PgPool) {
+        insert_set(&pool, "TST").await;
+        insert_card(&pool, "TST", "1", "EN", false, "Test Card", 1).await;
+        insert_collection_entry(&pool, "TST", "1", "EN", false, "user1", 2, 500, Utc::now()).await;
+        insert_price(&pool, CardMarketPriceEntity::simple(1, 200)).await;
+        refresh_view(&pool).await;
+
+        let adapter = CardPricesViewRepositoryAdapter::new(pool);
+        let result = adapter
+            .get_paginated(&UserId::new("user1"), CollectionQuery::default())
+            .await
+            .unwrap();
+
+        match result.items[0].collection_entry {
+            CollectionEntry::Mine { reserved, .. } => assert!(!reserved),
+            _ => panic!("expected CollectionEntry::Mine"),
+        }
     }
 
     #[sqlx::test]

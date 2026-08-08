@@ -19,5 +19,10 @@ export type CollectionCard = {
    * Number of distinct users owning this card (search mode only).
    */
   owner_count: number | null;
+  /**
+   * `true` if this card is engaged in one of the authenticated user's trades in
+   * `ONE_ACCEPTED` or `FULLY_ACCEPTED` status. Always `false` in search mode.
+   */
+  reserved: boolean;
   price_guide: PriceGuide | null;
 };

@@ -146,6 +146,7 @@ pub fn parse_cards(csv: &str) -> Result<Vec<Card>, AppError> {
                 quantity,
                 purchase_price,
                 added_at,
+                reserved: false,
             },
         );
         cards.push(card);
@@ -159,6 +160,7 @@ pub fn parse_cards(csv: &str) -> Result<Vec<Card>, AppError> {
                 quantity: existing_quantity,
                 purchase_price: existing_purchase_price,
                 added_at: existing_added_at,
+                ..
             } = existing.collection_entry
             else {
                 unreachable!("parsed cards always carry a CollectionEntry::Mine");
@@ -167,6 +169,7 @@ pub fn parse_cards(csv: &str) -> Result<Vec<Card>, AppError> {
                 quantity: new_quantity,
                 purchase_price: new_purchase_price,
                 added_at: new_added_at,
+                ..
             } = card.collection_entry
             else {
                 unreachable!("parsed cards always carry a CollectionEntry::Mine");
@@ -181,6 +184,7 @@ pub fn parse_cards(csv: &str) -> Result<Vec<Card>, AppError> {
                 quantity: new_qty.min(u8::MAX as u32) as u8,
                 purchase_price: total_cost / new_qty,
                 added_at,
+                reserved: false,
             };
         } else {
             order.push(card.id.clone());
@@ -413,6 +417,7 @@ mod tests {
             quantity,
             purchase_price,
             added_at,
+            ..
         } = cards[0].collection_entry
         else {
             panic!("expected CollectionEntry::Mine");
@@ -482,6 +487,7 @@ mod tests {
                 added_at: DateTime::parse_from_rfc3339("2026-02-05T20:44:45.815Z")
                     .unwrap()
                     .with_timezone(&Utc),
+                reserved: false,
             },
         );
 

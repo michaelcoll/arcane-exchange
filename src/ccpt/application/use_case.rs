@@ -128,3 +128,27 @@ pub trait CreateTradeUseCase: Send + Sync {
 pub trait AutocompleteUsersUseCase: Send + Sync {
     async fn autocomplete(&self, query: Option<String>) -> Result<Vec<UserSuggestion>, AppError>;
 }
+
+#[async_trait]
+#[cfg_attr(test, automock)]
+pub trait AcceptTradeUseCase: Send + Sync {
+    async fn accept(&self, trade_id: TradeId, caller_id: UserId) -> Result<(), AppError>;
+}
+
+#[async_trait]
+#[cfg_attr(test, automock)]
+pub trait AbandonTradeUseCase: Send + Sync {
+    async fn abandon(&self, trade_id: TradeId, caller_id: UserId) -> Result<(), AppError>;
+}
+
+#[async_trait]
+#[cfg_attr(test, automock)]
+pub trait ConfirmTradeUseCase: Send + Sync {
+    async fn confirm(&self, trade_id: TradeId, caller_id: UserId) -> Result<(), AppError>;
+}
+
+#[async_trait]
+#[cfg_attr(test, automock)]
+pub trait RateTradeUseCase: Send + Sync {
+    async fn rate(&self, trade_id: TradeId, caller_id: UserId, rating: u8) -> Result<(), AppError>;
+}
