@@ -111,6 +111,7 @@ mod tests {
                 added_at: DateTime::parse_from_rfc3339("2026-02-05T20:44:45.815Z")
                     .unwrap()
                     .with_timezone(&Utc),
+                reserved: false,
             },
         );
 
@@ -184,6 +185,7 @@ mod tests {
                 added_at: DateTime::parse_from_rfc3339("2026-02-05T20:44:45.815Z")
                     .unwrap()
                     .with_timezone(&Utc),
+                reserved: false,
             },
         );
 
@@ -254,6 +256,7 @@ mod tests {
                 added_at: DateTime::parse_from_rfc3339("2026-02-05T20:44:45.815Z")
                     .unwrap()
                     .with_timezone(&Utc),
+                reserved: false,
             },
         );
 

@@ -26,10 +26,18 @@ impl IntoResponse for AppError {
                 | FunctionalError::InvalidCollectorNumber(_)
                 | FunctionalError::WrongFormat(_)
                 | FunctionalError::SelfTrade => StatusCode::BAD_REQUEST,
-                FunctionalError::PriceNotFound | FunctionalError::CardNotFound => {
-                    StatusCode::NOT_FOUND
-                }
-                FunctionalError::TradeNotModifiable => StatusCode::CONFLICT,
+                FunctionalError::PriceNotFound
+                | FunctionalError::CardNotFound
+                | FunctionalError::TradeNotFound => StatusCode::NOT_FOUND,
+                FunctionalError::TradeAccessDenied => StatusCode::FORBIDDEN,
+                FunctionalError::TradeNotModifiable
+                | FunctionalError::TradeNotAcceptable
+                | FunctionalError::TradeAlreadyAccepted
+                | FunctionalError::TradeAlreadyFinalized
+                | FunctionalError::TradeNotFullyAccepted
+                | FunctionalError::TradeAlreadyConfirmed
+                | FunctionalError::TradeNotCompleted
+                | FunctionalError::TradeAlreadyRated => StatusCode::CONFLICT,
             },
             AppError::Authentication(_) => StatusCode::UNAUTHORIZED,
             AppError::Infra(e) => match e {
@@ -113,6 +121,69 @@ mod tests {
     #[test]
     fn trade_not_modifiable_returns_conflict_status() {
         let error = AppError::Functional(FunctionalError::TradeNotModifiable);
+        let response = error.into_response();
+        assert_eq!(response.status(), StatusCode::CONFLICT);
+    }
+
+    #[test]
+    fn trade_not_found_returns_not_found_status() {
+        let error = AppError::Functional(FunctionalError::TradeNotFound);
+        let response = error.into_response();
+        assert_eq!(response.status(), StatusCode::NOT_FOUND);
+    }
+
+    #[test]
+    fn trade_access_denied_returns_forbidden_status() {
+        let error = AppError::Functional(FunctionalError::TradeAccessDenied);
+        let response = error.into_response();
+        assert_eq!(response.status(), StatusCode::FORBIDDEN);
+    }
+
+    #[test]
+    fn trade_not_acceptable_returns_conflict_status() {
+        let error = AppError::Functional(FunctionalError::TradeNotAcceptable);
+        let response = error.into_response();
+        assert_eq!(response.status(), StatusCode::CONFLICT);
+    }
+
+    #[test]
+    fn trade_already_accepted_returns_conflict_status() {
+        let error = AppError::Functional(FunctionalError::TradeAlreadyAccepted);
+        let response = error.into_response();
+        assert_eq!(response.status(), StatusCode::CONFLICT);
+    }
+
+    #[test]
+    fn trade_already_finalized_returns_conflict_status() {
+        let error = AppError::Functional(FunctionalError::TradeAlreadyFinalized);
+        let response = error.into_response();
+        assert_eq!(response.status(), StatusCode::CONFLICT);
+    }
+
+    #[test]
+    fn trade_not_fully_accepted_returns_conflict_status() {
+        let error = AppError::Functional(FunctionalError::TradeNotFullyAccepted);
+        let response = error.into_response();
+        assert_eq!(response.status(), StatusCode::CONFLICT);
+    }
+
+    #[test]
+    fn trade_already_confirmed_returns_conflict_status() {
+        let error = AppError::Functional(FunctionalError::TradeAlreadyConfirmed);
+        let response = error.into_response();
+        assert_eq!(response.status(), StatusCode::CONFLICT);
+    }
+
+    #[test]
+    fn trade_not_completed_returns_conflict_status() {
+        let error = AppError::Functional(FunctionalError::TradeNotCompleted);
+        let response = error.into_response();
+        assert_eq!(response.status(), StatusCode::CONFLICT);
+    }
+
+    #[test]
+    fn trade_already_rated_returns_conflict_status() {
+        let error = AppError::Functional(FunctionalError::TradeAlreadyRated);
         let response = error.into_response();
         assert_eq!(response.status(), StatusCode::CONFLICT);
     }

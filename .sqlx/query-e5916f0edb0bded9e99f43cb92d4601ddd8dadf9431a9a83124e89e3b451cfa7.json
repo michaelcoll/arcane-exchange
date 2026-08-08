@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE trade SET status = 'ABANDONED', updated_at = NOW()\n                WHERE id = $1 AND status NOT IN ('COMPLETED', 'CLOSED', 'ABANDONED')",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "e5916f0edb0bded9e99f43cb92d4601ddd8dadf9431a9a83124e89e3b451cfa7"
+}

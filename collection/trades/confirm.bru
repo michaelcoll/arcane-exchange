@@ -1,0 +1,11 @@
+meta {
+  name: confirm trade
+  type: http
+  seq: 4
+}
+
+post {
+  url: {{baseUrl}}/trades/{{tradeId}}/confirm
+  body: none
+  auth: inherit
+}

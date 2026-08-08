@@ -69,6 +69,10 @@ pub struct Trade {
     pub respondent_amount_due: Option<u32>,
     pub initiator_accepted_at: Option<DateTime<Utc>>,
     pub respondent_accepted_at: Option<DateTime<Utc>>,
+    pub initiator_confirmed_at: Option<DateTime<Utc>>,
+    pub respondent_confirmed_at: Option<DateTime<Utc>>,
+    pub initiator_rating: Option<u8>,
+    pub respondent_rating: Option<u8>,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
 }

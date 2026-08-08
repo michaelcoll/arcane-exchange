@@ -14,6 +14,15 @@ pub enum FunctionalError {
     CardNotFound,
     SelfTrade,
     TradeNotModifiable,
+    TradeNotFound,
+    TradeAccessDenied,
+    TradeNotAcceptable,
+    TradeAlreadyAccepted,
+    TradeAlreadyFinalized,
+    TradeNotFullyAccepted,
+    TradeAlreadyConfirmed,
+    TradeNotCompleted,
+    TradeAlreadyRated,
 }
 
 impl From<FunctionalError> for String {
@@ -35,6 +44,27 @@ impl From<FunctionalError> for String {
                 "This trade has already been fully accepted and can no longer be modified"
                     .to_string()
             }
+            FunctionalError::TradeNotFound => "Trade not found".to_string(),
+            FunctionalError::TradeAccessDenied => "You are not a party to this trade".to_string(),
+            FunctionalError::TradeNotAcceptable => {
+                "This trade cannot be accepted in its current status".to_string()
+            }
+            FunctionalError::TradeAlreadyAccepted => {
+                "You have already accepted this trade".to_string()
+            }
+            FunctionalError::TradeAlreadyFinalized => {
+                "This trade is already finalized and cannot be abandoned".to_string()
+            }
+            FunctionalError::TradeNotFullyAccepted => {
+                "This trade must be fully accepted before it can be confirmed".to_string()
+            }
+            FunctionalError::TradeAlreadyConfirmed => {
+                "You have already confirmed this trade".to_string()
+            }
+            FunctionalError::TradeNotCompleted => {
+                "This trade must be completed before it can be rated".to_string()
+            }
+            FunctionalError::TradeAlreadyRated => "You have already rated this trade".to_string(),
         }
     }
 }

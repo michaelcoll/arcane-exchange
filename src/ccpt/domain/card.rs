@@ -71,6 +71,9 @@ pub enum CollectionEntry {
         /// Price in cents
         purchase_price: u32,
         added_at: chrono::DateTime<chrono::Utc>,
+        /// `true` if this card is engaged in one of the owner's trades in `ONE_ACCEPTED` or
+        /// `FULLY_ACCEPTED` status.
+        reserved: bool,
     },
     Owned {
         owner_username: String,
@@ -122,6 +125,7 @@ impl Card {
                 quantity,
                 purchase_price,
                 added_at: chrono::Utc::now(),
+                reserved: false,
             },
             scryfall_id: uuid::Uuid::default(),
             cardmarket_id: None,

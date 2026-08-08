@@ -10,3 +10,9 @@ pub(crate) struct CreateTradeRequest {
     pub(crate) respondent_user_id: String,
     pub(crate) quantity: u8,
 }
+
+#[derive(Deserialize, ToSchema)]
+pub(crate) struct RateTradeRequest {
+    /// Rating given to the other party, from 0 to 5 inclusive.
+    pub(crate) rating: u8,
+}

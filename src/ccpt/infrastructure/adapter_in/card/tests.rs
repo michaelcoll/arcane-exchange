@@ -526,6 +526,7 @@ fn from_collection_entry_mine_panics() {
         quantity: 2,
         purchase_price: 100,
         added_at: chrono::Utc::now(),
+        reserved: false,
     };
     let _response: CardOfferResponse = entry.into();
 }

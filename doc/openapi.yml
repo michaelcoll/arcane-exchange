@@ -447,6 +447,118 @@ paths:
           description: The active trade with this user is already fully accepted and can no longer be modified
       security:
       - bearer_auth: []
+  /trades/{trade_id}/abandon:
+    post:
+      tags:
+      - trades
+      operationId: abandon_trade
+      parameters:
+      - name: trade_id
+        in: path
+        description: Trade id
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        '204':
+          description: Trade abandoned
+        '401':
+          description: Missing or invalid token
+        '403':
+          description: Caller is not a party to this trade
+        '404':
+          description: Trade not found
+        '409':
+          description: Trade is already finalized and cannot be abandoned
+      security:
+      - bearer_auth: []
+  /trades/{trade_id}/accept:
+    post:
+      tags:
+      - trades
+      operationId: accept_trade
+      parameters:
+      - name: trade_id
+        in: path
+        description: Trade id
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        '204':
+          description: Trade accepted
+        '401':
+          description: Missing or invalid token
+        '403':
+          description: Caller is not a party to this trade
+        '404':
+          description: Trade not found
+        '409':
+          description: Trade cannot be accepted in its current status, or already accepted by the caller
+      security:
+      - bearer_auth: []
+  /trades/{trade_id}/confirm:
+    post:
+      tags:
+      - trades
+      operationId: confirm_trade
+      parameters:
+      - name: trade_id
+        in: path
+        description: Trade id
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        '204':
+          description: Physical exchange confirmed
+        '401':
+          description: Missing or invalid token
+        '403':
+          description: Caller is not a party to this trade
+        '404':
+          description: Trade not found
+        '409':
+          description: Trade must be fully accepted before it can be confirmed, or already confirmed by the caller
+      security:
+      - bearer_auth: []
+  /trades/{trade_id}/rate:
+    post:
+      tags:
+      - trades
+      operationId: rate_trade
+      parameters:
+      - name: trade_id
+        in: path
+        description: Trade id
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RateTradeRequest'
+        required: true
+      responses:
+        '204':
+          description: Rating recorded
+        '400':
+          description: Rating missing or out of the 0-5 range
+        '401':
+          description: Missing or invalid token
+        '403':
+          description: Caller is not a party to this trade
+        '404':
+          description: Trade not found
+        '409':
+          description: Trade must be completed before it can be rated, or already rated by the caller
+      security:
+      - bearer_auth: []
   /user/register:
     post:
       tags:
@@ -495,6 +607,7 @@ components:
       - name
       - rarity_code
       - scryfall_id
+      - reserved
       properties:
         collection_entry:
           oneOf:
@@ -522,6 +635,11 @@ components:
           - $ref: '#/components/schemas/PriceGuideResponse'
         rarity_code:
           type: string
+        reserved:
+          type: boolean
+          description: |-
+            `true` if this card is engaged in one of the authenticated user's trades in
+            `ONE_ACCEPTED` or `FULLY_ACCEPTED` status. Always `false` in search mode.
         scryfall_id:
           type: string
         set_code:
@@ -715,6 +833,16 @@ components:
       - R
       - M
       - S
+    RateTradeRequest:
+      type: object
+      required:
+      - rating
+      properties:
+        rating:
+          type: integer
+          format: int32
+          description: Rating given to the other party, from 0 to 5 inclusive.
+          minimum: 0
     SetInfoResponse:
       type: object
       required:

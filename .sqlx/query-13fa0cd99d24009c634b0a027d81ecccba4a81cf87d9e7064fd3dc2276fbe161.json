@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT id, initiator_user_id, respondent_user_id, status,\n                    initiator_amount_due, respondent_amount_due,\n                    initiator_accepted_at, respondent_accepted_at,\n                    created_at, updated_at\n                FROM trade WHERE id = $1",
+  "query": "SELECT id, initiator_user_id, respondent_user_id, status,\n                    initiator_amount_due, respondent_amount_due,\n                    initiator_accepted_at, respondent_accepted_at,\n                    initiator_confirmed_at, respondent_confirmed_at,\n                    initiator_rating, respondent_rating,\n                    created_at, updated_at\n                FROM trade WHERE id = $1",
   "describe": {
     "columns": [
       {
@@ -93,6 +93,50 @@
       },
       {
         "ordinal": 8,
+        "name": "initiator_confirmed_at",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "trade",
+            "name": "initiator_confirmed_at"
+          }
+        }
+      },
+      {
+        "ordinal": 9,
+        "name": "respondent_confirmed_at",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "trade",
+            "name": "respondent_confirmed_at"
+          }
+        }
+      },
+      {
+        "ordinal": 10,
+        "name": "initiator_rating",
+        "type_info": "Int2",
+        "origin": {
+          "Table": {
+            "table": "trade",
+            "name": "initiator_rating"
+          }
+        }
+      },
+      {
+        "ordinal": 11,
+        "name": "respondent_rating",
+        "type_info": "Int2",
+        "origin": {
+          "Table": {
+            "table": "trade",
+            "name": "respondent_rating"
+          }
+        }
+      },
+      {
+        "ordinal": 12,
         "name": "created_at",
         "type_info": "Timestamptz",
         "origin": {
@@ -103,7 +147,7 @@
         }
       },
       {
-        "ordinal": 9,
+        "ordinal": 13,
         "name": "updated_at",
         "type_info": "Timestamptz",
         "origin": {
@@ -128,9 +172,13 @@
       true,
       true,
       true,
+      true,
+      true,
+      true,
+      true,
       false,
       false
     ]
   },
-  "hash": "2e60213ef1c59b99b290a0fe0dd5f302c06ee562b8ec67bbed22f24892818048"
+  "hash": "13fa0cd99d24009c634b0a027d81ecccba4a81cf87d9e7064fd3dc2276fbe161"
 }

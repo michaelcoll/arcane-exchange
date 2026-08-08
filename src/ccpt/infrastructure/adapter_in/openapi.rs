@@ -8,7 +8,7 @@ use super::collection::dto::{
     PriceGuideResponse, RarityCodeParam, SetInfoResponse, SortByParam, SortDirParam,
 };
 use super::maintenance::dto::{EnqueueResponse, StatsResponse};
-use super::trade::dto::CreateTradeRequest;
+use super::trade::dto::{CreateTradeRequest, RateTradeRequest};
 use utoipa::OpenApi;
 
 #[derive(OpenApi)]
@@ -27,6 +27,10 @@ use utoipa::OpenApi;
         super::maintenance::controller::update_cardmarket_ids,
         super::user::controller::register,
         super::trade::controller::create_trade,
+        super::trade::controller::accept_trade,
+        super::trade::controller::abandon_trade,
+        super::trade::controller::confirm_trade,
+        super::trade::controller::rate_trade,
         super::autocomplete::controller::autocomplete_user,
     ),
     components(schemas(
@@ -43,6 +47,7 @@ use utoipa::OpenApi;
         StatsResponse,
         EnqueueResponse,
         CreateTradeRequest,
+        RateTradeRequest,
         CardOfferResponse,
         PaginatedCardOffersResponse,
         CardOffersSortByParam,

@@ -291,6 +291,49 @@ pub async fn mark_trade_accepted_by_both(pool: &PgPool, id: Uuid) {
     .unwrap();
 }
 
+pub async fn mark_trade_party_accepted(pool: &PgPool, id: Uuid, is_initiator: bool) {
+    sqlx::query(
+        r#"UPDATE trade
+             SET initiator_accepted_at = CASE WHEN $2 THEN NOW() ELSE initiator_accepted_at END,
+                 respondent_accepted_at = CASE WHEN NOT $2 THEN NOW() ELSE respondent_accepted_at END
+             WHERE id = $1"#,
+    )
+    .bind(id)
+    .bind(is_initiator)
+    .execute(pool)
+    .await
+    .unwrap();
+}
+
+pub async fn mark_trade_party_confirmed(pool: &PgPool, id: Uuid, is_initiator: bool) {
+    sqlx::query(
+        r#"UPDATE trade
+             SET initiator_confirmed_at = CASE WHEN $2 THEN NOW() ELSE initiator_confirmed_at END,
+                 respondent_confirmed_at = CASE WHEN NOT $2 THEN NOW() ELSE respondent_confirmed_at END
+             WHERE id = $1"#,
+    )
+    .bind(id)
+    .bind(is_initiator)
+    .execute(pool)
+    .await
+    .unwrap();
+}
+
+pub async fn mark_trade_party_rated(pool: &PgPool, id: Uuid, is_initiator: bool, rating: i16) {
+    sqlx::query(
+        r#"UPDATE trade
+             SET initiator_rating = CASE WHEN $2 THEN $3 ELSE initiator_rating END,
+                 respondent_rating = CASE WHEN NOT $2 THEN $3 ELSE respondent_rating END
+             WHERE id = $1"#,
+    )
+    .bind(id)
+    .bind(is_initiator)
+    .bind(rating)
+    .execute(pool)
+    .await
+    .unwrap();
+}
+
 #[allow(clippy::too_many_arguments)]
 pub async fn insert_trade_card(
     pool: &PgPool,

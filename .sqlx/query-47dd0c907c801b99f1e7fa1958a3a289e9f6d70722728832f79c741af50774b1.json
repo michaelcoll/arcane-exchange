@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE trade SET status = 'ABANDONED', updated_at = NOW()\n                    WHERE id != $1 AND status IN ('PENDING', 'ONE_ACCEPTED')\n                      AND id IN (\n                        SELECT DISTINCT tc2.trade_id FROM trade_card tc1\n                        JOIN trade_card tc2\n                          ON tc1.set_code = tc2.set_code AND tc1.collector_number = tc2.collector_number\n                         AND tc1.language_code = tc2.language_code AND tc1.foil = tc2.foil\n                         AND tc1.owner_user_id = tc2.owner_user_id\n                        WHERE tc1.trade_id = $1 AND tc2.trade_id != $1\n                      )",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "47dd0c907c801b99f1e7fa1958a3a289e9f6d70722728832f79c741af50774b1"
+}

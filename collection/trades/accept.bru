@@ -1,0 +1,11 @@
+meta {
+  name: accept trade
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{baseUrl}}/trades/{{tradeId}}/accept
+  body: none
+  auth: inherit
+}

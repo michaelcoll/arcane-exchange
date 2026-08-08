@@ -1,0 +1,30 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE trade\n                SET initiator_rating = CASE WHEN $2 THEN $3 ELSE initiator_rating END,\n                    respondent_rating = CASE WHEN NOT $2 THEN $3 ELSE respondent_rating END,\n                    status = CASE\n                        WHEN ($2 AND respondent_rating IS NOT NULL)\n                          OR (NOT $2 AND initiator_rating IS NOT NULL)\n                        THEN 'CLOSED' ELSE 'COMPLETED' END,\n                    updated_at = NOW()\n                WHERE id = $1\n                  AND status = 'COMPLETED'\n                  AND ( ($2 AND initiator_rating IS NULL) OR (NOT $2 AND respondent_rating IS NULL) )\n                RETURNING status",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "status",
+        "type_info": "Varchar",
+        "origin": {
+          "Table": {
+            "table": "trade",
+            "name": "status"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Bool",
+        "Int2"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "2e6ac557d8c53f3c9d64789f6f805a171a7e2e2ee637f88dda6d20308ff0e651"
+}

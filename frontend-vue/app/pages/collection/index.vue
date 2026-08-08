@@ -539,6 +539,7 @@ const onDragLeave = () => {
               deal="compare"
               :foil="c.foil"
               :size="size"
+              :reserved="c.reserved"
               @click="detail = c"
             />
           </div>
