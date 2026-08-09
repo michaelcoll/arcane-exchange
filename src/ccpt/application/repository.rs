@@ -5,7 +5,9 @@ use crate::domain::collection::{CollectionQuery, PaginatedCollection, SearchQuer
 use crate::domain::collection_stats::CollectionStats;
 use crate::domain::price::{FullPriceGuide, PriceHistoryEntry};
 use crate::domain::set_name::{SetCode, SetName};
-use crate::domain::trade::{Trade, TradeCard, TradeId, TradeStatus};
+use crate::domain::trade::{
+    PaginatedTrades, Trade, TradeCard, TradeCardDetail, TradeId, TradeListQuery, TradeStatus,
+};
 use crate::domain::user::{User, UserId, UserSuggestion};
 use async_trait::async_trait;
 use chrono::NaiveDate;
@@ -181,6 +183,23 @@ pub trait TradeRepository: Send + Sync {
 
     /// Fetches every card offered in a trade.
     async fn find_trade_cards(&self, trade_id: TradeId) -> Result<Vec<TradeCard>, AppError>;
+
+    /// Fetches every card offered in a trade, enriched with name/price/image ids for display.
+    /// Unlike `find_trade_cards`, this survives the owner later removing the card from their
+    /// collection (it joins `card`/`cardmarket_price` directly, not the collection-gated
+    /// `mv_card_prices` view).
+    async fn find_trade_cards_with_details(
+        &self,
+        trade_id: TradeId,
+    ) -> Result<Vec<TradeCardDetail>, AppError>;
+
+    /// Lists every trade `caller_id` is a party to (as initiator or respondent), optionally
+    /// filtered by status, ordered by `updated_at` descending.
+    async fn list_trades(
+        &self,
+        caller_id: &UserId,
+        query: TradeListQuery,
+    ) -> Result<PaginatedTrades, AppError>;
 
     async fn create(
         &self,

@@ -1,9 +1,14 @@
 use crate::application::error::AppError;
 use crate::application::repository::TradeRepository;
 use crate::domain::card::CardId;
-use crate::domain::trade::{Trade, TradeCard, TradeId, TradeStatus};
+use crate::domain::trade::{
+    PaginatedTrades, Trade, TradeCard, TradeCardDetail, TradeId, TradeListQuery, TradeStatus,
+    TradeSummary,
+};
 use crate::domain::user::UserId;
-use crate::infrastructure::adapter_out::repository::entities::{TradeCardEntity, TradeEntity};
+use crate::infrastructure::adapter_out::repository::entities::{
+    TradeCardDetailEntity, TradeCardEntity, TradeEntity, TradeSummaryEntity,
+};
 use async_trait::async_trait;
 use sqlx::{Pool, Postgres};
 
@@ -90,6 +95,98 @@ impl TradeRepository for TradeRepositoryAdapter {
         .await?;
 
         Ok(rows.into_iter().map(TradeCard::from).collect())
+    }
+
+    async fn find_trade_cards_with_details(
+        &self,
+        trade_id: TradeId,
+    ) -> Result<Vec<TradeCardDetail>, AppError> {
+        let rows = sqlx::query_as!(
+            TradeCardDetailEntity,
+            r#"WITH last_price AS (
+                    SELECT id_produit, MAX(date) AS last_date
+                    FROM cardmarket_price
+                    GROUP BY id_produit
+                )
+                SELECT tc.set_code AS "set_code!", tc.collector_number AS "collector_number!",
+                       tc.language_code AS "language_code!", tc.foil AS "foil!",
+                       tc.owner_user_id AS "owner_user_id!", tc.quantity AS "quantity!",
+                       c.name AS "name!", c.scryfall_id AS "scryfall_id!", c.the_gatherer_id,
+                       CASE WHEN c.foil THEN cmp.low_foil ELSE cmp.low END AS low,
+                       CASE WHEN c.foil THEN cmp.trend_foil ELSE cmp.trend END AS trend,
+                       CASE WHEN c.foil THEN cmp.avg_foil ELSE cmp.avg END AS avg
+                FROM trade_card tc
+                JOIN card c ON c.set_code = tc.set_code AND c.collector_number = tc.collector_number
+                    AND c.language_code = tc.language_code AND c.foil = tc.foil
+                LEFT JOIN last_price lp ON c.cardmarket_id = lp.id_produit
+                LEFT JOIN cardmarket_price cmp ON c.cardmarket_id = cmp.id_produit AND cmp.date = lp.last_date
+                WHERE tc.trade_id = $1"#,
+            trade_id.0
+        )
+        .fetch_all(&self.pool)
+        .await?;
+
+        Ok(rows.into_iter().map(TradeCardDetail::from).collect())
+    }
+
+    async fn list_trades(
+        &self,
+        caller_id: &UserId,
+        query: TradeListQuery,
+    ) -> Result<PaginatedTrades, AppError> {
+        let statuses: Option<Vec<String>> = if query.statuses.is_empty() {
+            None
+        } else {
+            Some(
+                query
+                    .statuses
+                    .iter()
+                    .map(|s| s.as_db_str().to_string())
+                    .collect(),
+            )
+        };
+        let limit = query.page_size as i64;
+        let offset = (query.page * query.page_size) as i64;
+
+        let rows = sqlx::query_as!(
+            TradeSummaryEntity,
+            r#"SELECT t.id, t.status, t.updated_at,
+                    u.username AS partner_username,
+                    COALESCE(SUM(tc.quantity) FILTER (WHERE tc.owner_user_id = $1), 0)::bigint AS "my_card_count!",
+                    COALESCE(SUM(tc.quantity) FILTER (WHERE tc.owner_user_id != $1), 0)::bigint AS "partner_card_count!"
+                FROM trade t
+                JOIN users u ON u.id = CASE WHEN t.initiator_user_id = $1 THEN t.respondent_user_id ELSE t.initiator_user_id END
+                LEFT JOIN trade_card tc ON tc.trade_id = t.id
+                WHERE (t.initiator_user_id = $1 OR t.respondent_user_id = $1)
+                    AND ($2::text[] IS NULL OR t.status = ANY($2))
+                GROUP BY t.id, t.status, t.updated_at, u.username
+                ORDER BY t.updated_at DESC
+                LIMIT $3 OFFSET $4"#,
+            caller_id.as_str(),
+            statuses.as_deref(),
+            limit,
+            offset,
+        )
+        .fetch_all(&self.pool)
+        .await?;
+
+        let total = sqlx::query_scalar!(
+            r#"SELECT COUNT(*) FROM trade t
+                WHERE (t.initiator_user_id = $1 OR t.respondent_user_id = $1)
+                    AND ($2::text[] IS NULL OR t.status = ANY($2))"#,
+            caller_id.as_str(),
+            statuses.as_deref(),
+        )
+        .fetch_one(&self.pool)
+        .await?
+        .unwrap_or(0);
+
+        Ok(PaginatedTrades {
+            items: rows.into_iter().map(TradeSummary::from).collect(),
+            total: total as u64,
+            page: query.page,
+            page_size: query.page_size,
+        })
     }
 
     async fn create(
@@ -303,11 +400,27 @@ mod tests {
     use super::*;
     use crate::domain::language_code::LanguageCode;
     use crate::infrastructure::adapter_out::repository::common_repository_tests::{
-        insert_card, insert_collection_entry, insert_trade, insert_trade_card, insert_user,
-        mark_trade_accepted_by_both, mark_trade_party_accepted, mark_trade_party_confirmed,
-        mark_trade_party_rated,
+        insert_card, insert_collection_entry, insert_price, insert_trade, insert_trade_card,
+        insert_user, mark_trade_accepted_by_both, mark_trade_party_accepted,
+        mark_trade_party_confirmed, mark_trade_party_rated,
+    };
+    use crate::infrastructure::adapter_out::repository::entities::{
+        CardMarketPriceEntity, PriceGuideEntity,
     };
     use sqlx::PgPool;
+
+    fn make_price(id_produit: i32, avg: i32) -> CardMarketPriceEntity {
+        CardMarketPriceEntity {
+            id_produit,
+            date: chrono::Local::now().date_naive(),
+            normal: PriceGuideEntity {
+                low: Some(avg / 2),
+                avg: Some(avg),
+                trend: Some(avg),
+            },
+            foil: PriceGuideEntity::empty(),
+        }
+    }
 
     fn make_card_id() -> CardId {
         CardId::new("FDN", "87", LanguageCode::FR, false)
@@ -1106,5 +1219,307 @@ mod tests {
 
             assert_eq!(result, None, "status {status} should not be ratable");
         }
+    }
+
+    // --- find_trade_cards_with_details ---
+
+    #[sqlx::test]
+    async fn find_trade_cards_with_details_returns_name_and_price_for_each_card(pool: PgPool) {
+        insert_user(&pool, "user_a", "alice").await;
+        insert_user(&pool, "user_b", "bob").await;
+        insert_card(&pool, "FDN", "87", "FR", false, "Goblin Boarders", 1).await;
+        insert_price(&pool, make_price(1, 200)).await;
+        let trade_id = uuid::Uuid::new_v4();
+        insert_trade(&pool, trade_id, "user_a", "user_b", "PENDING").await;
+        insert_trade_card(&pool, trade_id, "FDN", "87", "FR", false, "user_b", 3).await;
+
+        let repository = TradeRepositoryAdapter::new(pool);
+        let cards = repository
+            .find_trade_cards_with_details(TradeId(trade_id))
+            .await
+            .unwrap();
+
+        assert_eq!(cards.len(), 1);
+        assert_eq!(cards[0].name, "Goblin Boarders");
+        assert_eq!(cards[0].quantity, 3);
+        assert_eq!(cards[0].owner_user_id, UserId::new("user_b"));
+        assert_eq!(
+            cards[0].price_guide.as_ref().and_then(|p| p.avg.value),
+            Some(200)
+        );
+    }
+
+    #[sqlx::test]
+    async fn find_trade_cards_with_details_returns_empty_for_trade_without_cards(pool: PgPool) {
+        insert_user(&pool, "user_a", "alice").await;
+        insert_user(&pool, "user_b", "bob").await;
+        let trade_id = uuid::Uuid::new_v4();
+        insert_trade(&pool, trade_id, "user_a", "user_b", "PENDING").await;
+
+        let repository = TradeRepositoryAdapter::new(pool);
+        let cards = repository
+            .find_trade_cards_with_details(TradeId(trade_id))
+            .await
+            .unwrap();
+
+        assert!(cards.is_empty());
+    }
+
+    #[sqlx::test]
+    async fn find_trade_cards_with_details_price_is_none_without_cardmarket_data(pool: PgPool) {
+        insert_user(&pool, "user_a", "alice").await;
+        insert_user(&pool, "user_b", "bob").await;
+        insert_card(&pool, "FDN", "87", "FR", false, "Goblin Boarders", 1).await;
+        let trade_id = uuid::Uuid::new_v4();
+        insert_trade(&pool, trade_id, "user_a", "user_b", "PENDING").await;
+        insert_trade_card(&pool, trade_id, "FDN", "87", "FR", false, "user_b", 1).await;
+
+        let repository = TradeRepositoryAdapter::new(pool);
+        let cards = repository
+            .find_trade_cards_with_details(TradeId(trade_id))
+            .await
+            .unwrap();
+
+        assert_eq!(cards.len(), 1);
+        assert!(cards[0].price_guide.is_none());
+    }
+
+    #[sqlx::test]
+    async fn find_trade_cards_with_details_survives_owner_removing_collection_entry(pool: PgPool) {
+        // The card was added to the trade, but the owner's `collection_entry` row is absent
+        // (e.g. they removed it from their collection afterwards). `mv_card_prices` would drop
+        // the card entirely in that case; this query must not, since it joins `card` directly.
+        insert_user(&pool, "user_a", "alice").await;
+        insert_user(&pool, "user_b", "bob").await;
+        insert_card(&pool, "FDN", "87", "FR", false, "Goblin Boarders", 1).await;
+        insert_price(&pool, make_price(1, 200)).await;
+        let trade_id = uuid::Uuid::new_v4();
+        insert_trade(&pool, trade_id, "user_a", "user_b", "PENDING").await;
+        insert_trade_card(&pool, trade_id, "FDN", "87", "FR", false, "user_b", 1).await;
+
+        let repository = TradeRepositoryAdapter::new(pool);
+        let cards = repository
+            .find_trade_cards_with_details(TradeId(trade_id))
+            .await
+            .unwrap();
+
+        assert_eq!(cards.len(), 1);
+        assert_eq!(cards[0].name, "Goblin Boarders");
+        assert_eq!(
+            cards[0].price_guide.as_ref().and_then(|p| p.avg.value),
+            Some(200)
+        );
+    }
+
+    // --- list_trades ---
+
+    #[sqlx::test]
+    async fn list_trades_returns_trades_where_caller_is_initiator_or_respondent(pool: PgPool) {
+        insert_user(&pool, "user_a", "alice").await;
+        insert_user(&pool, "user_b", "bob").await;
+        insert_user(&pool, "user_c", "carol").await;
+        insert_trade(&pool, uuid::Uuid::new_v4(), "user_a", "user_b", "PENDING").await;
+        insert_trade(&pool, uuid::Uuid::new_v4(), "user_b", "user_a", "PENDING").await;
+
+        let repository = TradeRepositoryAdapter::new(pool);
+        let result = repository
+            .list_trades(
+                &UserId::new("user_a"),
+                TradeListQuery {
+                    statuses: vec![],
+                    page: 0,
+                    page_size: 20,
+                },
+            )
+            .await
+            .unwrap();
+
+        assert_eq!(result.total, 2);
+        assert_eq!(result.items.len(), 2);
+    }
+
+    #[sqlx::test]
+    async fn list_trades_excludes_trades_where_caller_is_not_a_party(pool: PgPool) {
+        insert_user(&pool, "user_a", "alice").await;
+        insert_user(&pool, "user_b", "bob").await;
+        insert_user(&pool, "user_c", "carol").await;
+        insert_trade(&pool, uuid::Uuid::new_v4(), "user_b", "user_c", "PENDING").await;
+
+        let repository = TradeRepositoryAdapter::new(pool);
+        let result = repository
+            .list_trades(
+                &UserId::new("user_a"),
+                TradeListQuery {
+                    statuses: vec![],
+                    page: 0,
+                    page_size: 20,
+                },
+            )
+            .await
+            .unwrap();
+
+        assert!(result.items.is_empty());
+        assert_eq!(result.total, 0);
+    }
+
+    #[sqlx::test]
+    async fn list_trades_filters_by_status(pool: PgPool) {
+        insert_user(&pool, "user_a", "alice").await;
+        insert_user(&pool, "user_b", "bob").await;
+        insert_trade(&pool, uuid::Uuid::new_v4(), "user_a", "user_b", "PENDING").await;
+        insert_trade(&pool, uuid::Uuid::new_v4(), "user_a", "user_b", "CLOSED").await;
+
+        let repository = TradeRepositoryAdapter::new(pool);
+        let result = repository
+            .list_trades(
+                &UserId::new("user_a"),
+                TradeListQuery {
+                    statuses: vec![TradeStatus::Closed],
+                    page: 0,
+                    page_size: 20,
+                },
+            )
+            .await
+            .unwrap();
+
+        assert_eq!(result.total, 1);
+        assert_eq!(result.items[0].status, TradeStatus::Closed);
+    }
+
+    #[sqlx::test]
+    async fn list_trades_orders_by_updated_at_descending(pool: PgPool) {
+        insert_user(&pool, "user_a", "alice").await;
+        insert_user(&pool, "user_b", "bob").await;
+        let older_id = uuid::Uuid::new_v4();
+        let newer_id = uuid::Uuid::new_v4();
+        let now = chrono::Utc::now();
+        insert_trade(&pool, older_id, "user_a", "user_b", "PENDING").await;
+        sqlx::query("UPDATE trade SET updated_at = $2 WHERE id = $1")
+            .bind(older_id)
+            .bind(now - chrono::Duration::days(1))
+            .execute(&pool)
+            .await
+            .unwrap();
+        insert_trade(&pool, newer_id, "user_a", "user_b", "PENDING").await;
+        sqlx::query("UPDATE trade SET updated_at = $2 WHERE id = $1")
+            .bind(newer_id)
+            .bind(now)
+            .execute(&pool)
+            .await
+            .unwrap();
+
+        let repository = TradeRepositoryAdapter::new(pool);
+        let result = repository
+            .list_trades(
+                &UserId::new("user_a"),
+                TradeListQuery {
+                    statuses: vec![],
+                    page: 0,
+                    page_size: 20,
+                },
+            )
+            .await
+            .unwrap();
+
+        assert_eq!(result.items[0].id, TradeId(newer_id));
+        assert_eq!(result.items[1].id, TradeId(older_id));
+    }
+
+    #[sqlx::test]
+    async fn list_trades_paginates_with_page_and_page_size(pool: PgPool) {
+        insert_user(&pool, "user_a", "alice").await;
+        insert_user(&pool, "user_b", "bob").await;
+        for _ in 0..5 {
+            insert_trade(&pool, uuid::Uuid::new_v4(), "user_a", "user_b", "PENDING").await;
+        }
+
+        let repository = TradeRepositoryAdapter::new(pool);
+        let page0 = repository
+            .list_trades(
+                &UserId::new("user_a"),
+                TradeListQuery {
+                    statuses: vec![],
+                    page: 0,
+                    page_size: 2,
+                },
+            )
+            .await
+            .unwrap();
+        let page1 = repository
+            .list_trades(
+                &UserId::new("user_a"),
+                TradeListQuery {
+                    statuses: vec![],
+                    page: 1,
+                    page_size: 2,
+                },
+            )
+            .await
+            .unwrap();
+
+        assert_eq!(page0.items.len(), 2);
+        assert_eq!(page1.items.len(), 2);
+        assert_eq!(page0.total, 5);
+        assert_eq!(page0.page_size, 2);
+    }
+
+    #[sqlx::test]
+    async fn list_trades_computes_my_and_partner_card_count_from_quantities(pool: PgPool) {
+        insert_user(&pool, "user_a", "alice").await;
+        insert_user(&pool, "user_b", "bob").await;
+        insert_card(&pool, "FDN", "87", "FR", false, "Goblin Boarders", 1).await;
+        insert_card(&pool, "FDN", "12", "FR", false, "Sol Ring", 2).await;
+        let trade_id = uuid::Uuid::new_v4();
+        insert_trade(&pool, trade_id, "user_a", "user_b", "PENDING").await;
+        insert_trade_card(&pool, trade_id, "FDN", "87", "FR", false, "user_a", 2).await;
+        insert_trade_card(&pool, trade_id, "FDN", "12", "FR", false, "user_b", 3).await;
+
+        let repository = TradeRepositoryAdapter::new(pool);
+        let result = repository
+            .list_trades(
+                &UserId::new("user_a"),
+                TradeListQuery {
+                    statuses: vec![],
+                    page: 0,
+                    page_size: 20,
+                },
+            )
+            .await
+            .unwrap();
+
+        assert_eq!(result.items[0].my_card_count, 2);
+        assert_eq!(result.items[0].partner_card_count, 3);
+    }
+
+    #[sqlx::test]
+    async fn list_trades_partner_username_is_the_other_party_regardless_of_initiator_respondent(
+        pool: PgPool,
+    ) {
+        insert_user(&pool, "user_a", "alice").await;
+        insert_user(&pool, "user_b", "bob").await;
+        let trade_as_initiator = uuid::Uuid::new_v4();
+        let trade_as_respondent = uuid::Uuid::new_v4();
+        insert_trade(&pool, trade_as_initiator, "user_a", "user_b", "PENDING").await;
+        insert_trade(&pool, trade_as_respondent, "user_b", "user_a", "PENDING").await;
+
+        let repository = TradeRepositoryAdapter::new(pool);
+        let result = repository
+            .list_trades(
+                &UserId::new("user_a"),
+                TradeListQuery {
+                    statuses: vec![],
+                    page: 0,
+                    page_size: 20,
+                },
+            )
+            .await
+            .unwrap();
+
+        assert!(
+            result
+                .items
+                .iter()
+                .all(|summary| summary.partner_username == "bob")
+        );
     }
 }

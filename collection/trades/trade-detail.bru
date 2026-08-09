@@ -1,0 +1,11 @@
+meta {
+  name: trade detail
+  type: http
+  seq: 6
+}
+
+get {
+  url: {{baseUrl}}/trades/{{tradeId}}
+  body: none
+  auth: inherit
+}

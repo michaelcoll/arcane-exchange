@@ -67,8 +67,9 @@ mod tests {
             MockConfirmTradeUseCase, MockCreateTradeUseCase, MockEnqueueCardMarketIdUpdateUseCase,
             MockEnqueueGathererIdUpdateUseCase, MockGetCardOffersUseCase,
             MockGetCardPriceHistoryUseCase, MockGetCollectionPriceHistoryUseCase,
-            MockGetCollectionStatsUseCase, MockGetCollectionUseCase, MockImportPriceUseCase,
-            MockRateTradeUseCase, MockRegisterUserUseCase, MockSearchCardsUseCase,
+            MockGetCollectionStatsUseCase, MockGetCollectionUseCase, MockGetTradeUseCase,
+            MockImportPriceUseCase, MockListTradesUseCase, MockRateTradeUseCase,
+            MockRegisterUserUseCase, MockSearchCardsUseCase,
         };
         AppState {
             import_card_use_case: Arc::new(MockImportCardUseCase::new()),
@@ -93,6 +94,8 @@ mod tests {
             rate_trade_use_case: Arc::new(MockRateTradeUseCase::new()),
             get_card_offers_use_case: Arc::new(MockGetCardOffersUseCase::new()),
             autocomplete_users_use_case: Arc::new(MockAutocompleteUsersUseCase::new()),
+            get_trade_use_case: Arc::new(MockGetTradeUseCase::new()),
+            list_trades_use_case: Arc::new(MockListTradesUseCase::new()),
             max_page_size: 100,
             max_page_number: 10,
         }

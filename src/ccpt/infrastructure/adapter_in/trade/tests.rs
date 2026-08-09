@@ -1,17 +1,25 @@
 use super::controller::*;
-use super::dto::{CreateTradeRequest, RateTradeRequest};
+use super::dto::{CreateTradeRequest, ListTradesParams, RateTradeRequest, TradeStatusParam};
 use crate::application::error::AppError;
 use crate::application::use_case::{
     MockAbandonTradeUseCase, MockAcceptTradeUseCase, MockConfirmTradeUseCase,
-    MockCreateTradeUseCase, MockRateTradeUseCase, MockStatsUseCase,
+    MockCreateTradeUseCase, MockGetTradeUseCase, MockListTradesUseCase, MockRateTradeUseCase,
+    MockStatsUseCase,
 };
+use crate::domain::card::CardId;
 use crate::domain::error::FunctionalError;
-use crate::domain::trade::TradeId;
+use crate::domain::language_code::LanguageCode;
+use crate::domain::price::PriceGuide;
+use crate::domain::trade::{
+    PaginatedTrades, TradeCardDetail, TradeDetail, TradeId, TradePartyState, TradeStatus,
+    TradeSummary,
+};
 use crate::domain::user::User;
 use crate::infrastructure::AppState;
 use crate::infrastructure::adapter_in::auth_extractor::AuthenticatedUser;
 use axum::extract::{Path, State};
 use axum::http::StatusCode;
+use axum_extra::extract::Query;
 use std::sync::Arc;
 
 fn make_app_state(create_trade_use_case: MockCreateTradeUseCase) -> AppState {
@@ -647,4 +655,317 @@ async fn rate_trade_propagates_trade_not_completed_from_use_case() {
         result,
         Err(AppError::Functional(FunctionalError::TradeNotCompleted))
     ));
+}
+
+// --- get_trade ---
+
+fn make_app_state_get_trade(get_trade_use_case: MockGetTradeUseCase) -> AppState {
+    AppState::for_testing_with_get_trade(
+        Arc::new(MockStatsUseCase::new()),
+        Arc::new(get_trade_use_case),
+    )
+}
+
+fn make_trade_detail() -> TradeDetail {
+    TradeDetail {
+        id: TradeId::new(),
+        status: crate::domain::trade::TradeStatus::Pending,
+        partner_username: "bob".to_string(),
+        my_cards: vec![],
+        partner_cards: vec![],
+        me: TradePartyState {
+            accepted: false,
+            confirmed: false,
+            rating: None,
+        },
+        partner: TradePartyState {
+            accepted: false,
+            confirmed: false,
+            rating: None,
+        },
+    }
+}
+
+#[tokio::test]
+async fn get_trade_returns_detail_on_success() {
+    let mut mock_use_case = MockGetTradeUseCase::new();
+    mock_use_case
+        .expect_get_trade()
+        .times(1)
+        .returning(|_, _| Box::pin(async { Ok(make_trade_detail()) }));
+
+    let state = make_app_state_get_trade(mock_use_case);
+    let result = get_trade(
+        AuthenticatedUser(User::for_testing()),
+        State(state),
+        Path(uuid::Uuid::new_v4()),
+    )
+    .await;
+
+    let response = result.unwrap();
+    assert_eq!(response.0.partner_username, "bob");
+}
+
+#[tokio::test]
+async fn get_trade_propagates_trade_not_found() {
+    let mut mock_use_case = MockGetTradeUseCase::new();
+    mock_use_case.expect_get_trade().times(1).returning(|_, _| {
+        Box::pin(async { Err(AppError::Functional(FunctionalError::TradeNotFound)) })
+    });
+
+    let state = make_app_state_get_trade(mock_use_case);
+    let result = get_trade(
+        AuthenticatedUser(User::for_testing()),
+        State(state),
+        Path(uuid::Uuid::new_v4()),
+    )
+    .await;
+
+    assert!(matches!(
+        result,
+        Err(AppError::Functional(FunctionalError::TradeNotFound))
+    ));
+}
+
+#[tokio::test]
+async fn get_trade_propagates_trade_access_denied() {
+    let mut mock_use_case = MockGetTradeUseCase::new();
+    mock_use_case.expect_get_trade().times(1).returning(|_, _| {
+        Box::pin(async { Err(AppError::Functional(FunctionalError::TradeAccessDenied)) })
+    });
+
+    let state = make_app_state_get_trade(mock_use_case);
+    let result = get_trade(
+        AuthenticatedUser(User::for_testing()),
+        State(state),
+        Path(uuid::Uuid::new_v4()),
+    )
+    .await;
+
+    assert!(matches!(
+        result,
+        Err(AppError::Functional(FunctionalError::TradeAccessDenied))
+    ));
+}
+
+#[tokio::test]
+async fn get_trade_response_maps_card_details() {
+    let card = TradeCardDetail {
+        card_id: CardId::new("FDN", "87", LanguageCode::FR, false),
+        owner_user_id: crate::domain::user::UserId::new("bob"),
+        name: "Goblin Boarders".to_string(),
+        quantity: 3,
+        price_guide: Some(PriceGuide::new(150u32, 220u32, 200u32)),
+        scryfall_id: uuid::Uuid::new_v4(),
+        the_gatherer_id: Some("12345".to_string()),
+    };
+    let mut mock_use_case = MockGetTradeUseCase::new();
+    mock_use_case
+        .expect_get_trade()
+        .times(1)
+        .returning(move |_, _| {
+            let card = card.clone();
+            Box::pin(async move {
+                Ok(TradeDetail {
+                    partner_cards: vec![card],
+                    ..make_trade_detail()
+                })
+            })
+        });
+
+    let state = make_app_state_get_trade(mock_use_case);
+    let result = get_trade(
+        AuthenticatedUser(User::for_testing()),
+        State(state),
+        Path(uuid::Uuid::new_v4()),
+    )
+    .await;
+
+    let response = result.unwrap();
+    assert_eq!(response.0.partner_cards.len(), 1);
+    let card = &response.0.partner_cards[0];
+    assert_eq!(card.set_code, "FDN");
+    assert_eq!(card.collector_number, "87");
+    assert_eq!(card.name, "Goblin Boarders");
+    assert_eq!(card.quantity, 3);
+    assert_eq!(card.the_gatherer_id, Some("12345".to_string()));
+    let price_guide = card.price_guide.as_ref().unwrap();
+    assert_eq!(price_guide.low, Some(150));
+    assert_eq!(price_guide.avg, Some(200));
+    assert_eq!(price_guide.trend, Some(220));
+}
+
+// --- list_trades ---
+
+fn make_app_state_list_trades(list_trades_use_case: MockListTradesUseCase) -> AppState {
+    AppState::for_testing_with_list_trades(
+        Arc::new(MockStatsUseCase::new()),
+        Arc::new(list_trades_use_case),
+    )
+}
+
+fn make_list_params() -> ListTradesParams {
+    ListTradesParams {
+        page: 0,
+        page_size: 20,
+        status: vec![],
+    }
+}
+
+#[tokio::test]
+async fn list_trades_returns_paginated_response_on_success() {
+    let mut mock_use_case = MockListTradesUseCase::new();
+    mock_use_case
+        .expect_list_trades()
+        .times(1)
+        .returning(|_, _| {
+            Box::pin(async {
+                Ok(PaginatedTrades {
+                    items: vec![],
+                    total: 0,
+                    page: 0,
+                    page_size: 20,
+                })
+            })
+        });
+
+    let state = make_app_state_list_trades(mock_use_case);
+    let result = list_trades(
+        AuthenticatedUser(User::for_testing()),
+        State(state),
+        Query(make_list_params()),
+    )
+    .await;
+
+    let response = result.unwrap();
+    assert_eq!(response.0.total, 0);
+    assert_eq!(response.0.page_size, 20);
+}
+
+#[tokio::test]
+async fn list_trades_clamps_page_size_to_max() {
+    let mut mock_use_case = MockListTradesUseCase::new();
+    mock_use_case
+        .expect_list_trades()
+        .times(1)
+        .withf(|_, query| query.page_size == 100)
+        .returning(|_, _| {
+            Box::pin(async {
+                Ok(PaginatedTrades {
+                    items: vec![],
+                    total: 0,
+                    page: 0,
+                    page_size: 100,
+                })
+            })
+        });
+
+    let state = make_app_state_list_trades(mock_use_case);
+    let result = list_trades(
+        AuthenticatedUser(User::for_testing()),
+        State(state),
+        Query(ListTradesParams {
+            page: 0,
+            page_size: 500,
+            status: vec![],
+        }),
+    )
+    .await;
+
+    assert!(result.is_ok());
+}
+
+#[tokio::test]
+async fn list_trades_response_maps_trade_summaries() {
+    let trade_id = TradeId::new();
+    let updated_at = chrono::Utc::now();
+    let mut mock_use_case = MockListTradesUseCase::new();
+    mock_use_case
+        .expect_list_trades()
+        .times(1)
+        .returning(move |_, _| {
+            Box::pin(async move {
+                Ok(PaginatedTrades {
+                    items: vec![TradeSummary {
+                        id: trade_id,
+                        status: TradeStatus::OneAccepted,
+                        partner_username: "bob".to_string(),
+                        my_card_count: 2,
+                        partner_card_count: 5,
+                        updated_at,
+                    }],
+                    total: 1,
+                    page: 0,
+                    page_size: 20,
+                })
+            })
+        });
+
+    let state = make_app_state_list_trades(mock_use_case);
+    let result = list_trades(
+        AuthenticatedUser(User::for_testing()),
+        State(state),
+        Query(make_list_params()),
+    )
+    .await;
+
+    let response = result.unwrap();
+    assert_eq!(response.0.items.len(), 1);
+    let summary = &response.0.items[0];
+    assert_eq!(summary.id, trade_id.to_string());
+    assert_eq!(summary.status, "ONE_ACCEPTED");
+    assert_eq!(summary.partner_username, "bob");
+    assert_eq!(summary.my_card_count, 2);
+    assert_eq!(summary.partner_card_count, 5);
+    assert_eq!(summary.updated_at, updated_at.to_rfc3339());
+}
+
+#[tokio::test]
+async fn list_trades_maps_every_status_param_variant_to_domain_status() {
+    let mut mock_use_case = MockListTradesUseCase::new();
+    mock_use_case
+        .expect_list_trades()
+        .times(1)
+        .withf(|_, query| {
+            query.statuses
+                == vec![
+                    TradeStatus::Pending,
+                    TradeStatus::OneAccepted,
+                    TradeStatus::FullyAccepted,
+                    TradeStatus::Completed,
+                    TradeStatus::Closed,
+                    TradeStatus::Abandoned,
+                ]
+        })
+        .returning(|_, query| {
+            Box::pin(async move {
+                Ok(PaginatedTrades {
+                    items: vec![],
+                    total: 0,
+                    page: query.page,
+                    page_size: query.page_size,
+                })
+            })
+        });
+
+    let state = make_app_state_list_trades(mock_use_case);
+    let result = list_trades(
+        AuthenticatedUser(User::for_testing()),
+        State(state),
+        Query(ListTradesParams {
+            page: 0,
+            page_size: 20,
+            status: vec![
+                TradeStatusParam::Pending,
+                TradeStatusParam::OneAccepted,
+                TradeStatusParam::FullyAccepted,
+                TradeStatusParam::Completed,
+                TradeStatusParam::Closed,
+                TradeStatusParam::Abandoned,
+            ],
+        }),
+    )
+    .await;
+
+    assert!(result.is_ok());
 }

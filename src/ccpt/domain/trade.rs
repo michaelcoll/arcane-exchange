@@ -1,4 +1,5 @@
 use crate::domain::card::CardId;
+use crate::domain::price::PriceGuide;
 use crate::domain::user::UserId;
 use chrono::{DateTime, Utc};
 use std::fmt::{Display, Formatter};
@@ -82,6 +83,70 @@ pub struct TradeCard {
     pub card_id: CardId,
     pub owner_user_id: UserId,
     pub quantity: u32,
+}
+
+/// A card offered in a trade, enriched with the display data the trade detail screen needs
+/// (name, price, image ids). `owner_user_id` is used by [`TradeDetail`]'s assembly to split
+/// cards into `my_cards`/`partner_cards`; it isn't re-exposed once split.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct TradeCardDetail {
+    pub card_id: CardId,
+    pub owner_user_id: UserId,
+    pub name: String,
+    pub quantity: u32,
+    pub price_guide: Option<PriceGuide>,
+    pub scryfall_id: uuid::Uuid,
+    pub the_gatherer_id: Option<String>,
+}
+
+/// One party's acceptance/confirmation/rating state on a trade.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct TradePartyState {
+    pub accepted: bool,
+    pub confirmed: bool,
+    pub rating: Option<u8>,
+}
+
+/// Full read model for a trade, already resolved from the caller's point of view (`me` vs
+/// `partner`) — the `initiator_*`/`respondent_*` split never leaks past the repository/service
+/// layer, mirroring `resolve_party`.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct TradeDetail {
+    pub id: TradeId,
+    pub status: TradeStatus,
+    pub partner_username: String,
+    pub my_cards: Vec<TradeCardDetail>,
+    pub partner_cards: Vec<TradeCardDetail>,
+    pub me: TradePartyState,
+    pub partner: TradePartyState,
+}
+
+/// One row of the trade list: everything the summary screen needs without fetching each
+/// trade's full card list.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct TradeSummary {
+    pub id: TradeId,
+    pub status: TradeStatus,
+    pub partner_username: String,
+    pub my_card_count: u32,
+    pub partner_card_count: u32,
+    pub updated_at: DateTime<Utc>,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct PaginatedTrades {
+    pub items: Vec<TradeSummary>,
+    pub total: u64,
+    pub page: u32,
+    pub page_size: u32,
+}
+
+/// `statuses` empty means no filter (every status included).
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct TradeListQuery {
+    pub statuses: Vec<TradeStatus>,
+    pub page: u32,
+    pub page_size: u32,
 }
 
 #[cfg(test)]

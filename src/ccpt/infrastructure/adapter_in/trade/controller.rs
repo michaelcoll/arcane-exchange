@@ -1,19 +1,24 @@
-use super::dto::{CreateTradeRequest, RateTradeRequest};
+use super::dto::{
+    CreateTradeRequest, ListTradesParams, PaginatedTradesResponse, RateTradeRequest,
+    TradeDetailResponse,
+};
 use crate::application::error::AppError;
 use crate::domain::card::CardId;
 use crate::domain::error::FunctionalError;
 use crate::domain::language_code::LanguageCode;
-use crate::domain::trade::TradeId;
+use crate::domain::trade::{TradeId, TradeListQuery};
 use crate::domain::user::UserId;
 use crate::infrastructure::AppState;
 use crate::infrastructure::adapter_in::auth_extractor::AuthenticatedUser;
 use axum::extract::{Path, State};
 use axum::http::StatusCode;
-use axum::routing::post;
+use axum::routing::{get, post};
+use axum_extra::extract::Query;
 
 pub fn create_trade_router() -> axum::Router<AppState> {
     axum::Router::new()
-        .route("/", post(create_trade))
+        .route("/", post(create_trade).get(list_trades))
+        .route("/{trade_id}", get(get_trade))
         .route("/{trade_id}/accept", post(accept_trade))
         .route("/{trade_id}/abandon", post(abandon_trade))
         .route("/{trade_id}/confirm", post(confirm_trade))
@@ -182,4 +187,77 @@ pub(crate) async fn rate_trade(
         .await?;
 
     Ok(StatusCode::NO_CONTENT)
+}
+
+#[utoipa::path(
+    get,
+    path = "/trades/{trade_id}",
+    params(("trade_id" = uuid::Uuid, Path, description = "Trade id")),
+    responses(
+        (status = 200, description = "Trade detail", body = TradeDetailResponse),
+        (status = 401, description = "Missing or invalid token"),
+        (status = 403, description = "Caller is not a party to this trade"),
+        (status = 404, description = "Trade not found"),
+    ),
+    security(("bearer_auth" = [])),
+    tag = "trades",
+)]
+pub(crate) async fn get_trade(
+    AuthenticatedUser(user): AuthenticatedUser,
+    State(state): State<AppState>,
+    Path(trade_id): Path<uuid::Uuid>,
+) -> Result<axum::Json<TradeDetailResponse>, AppError> {
+    let detail = state
+        .get_trade_use_case
+        .get_trade(TradeId(trade_id), user.id)
+        .await?;
+
+    Ok(axum::Json(TradeDetailResponse::from(detail)))
+}
+
+#[utoipa::path(
+    get,
+    path = "/trades",
+    params(
+        ("page" = Option<u32>, Query, description = "Page number (starts at 0)"),
+        ("page_size" = Option<u32>, Query, description = "Items per page (max 100)"),
+        ("status" = Option<Vec<super::dto::TradeStatusParam>>, Query, description = "Trade status, repeated for multiple values (e.g. status=PENDING&status=CLOSED)"),
+    ),
+    responses(
+        (status = 200, description = "Paginated list of trades the caller is a party to", body = PaginatedTradesResponse),
+        (status = 400, description = "Invalid status filter"),
+        (status = 401, description = "Missing or invalid token"),
+    ),
+    security(("bearer_auth" = [])),
+    tag = "trades",
+)]
+pub(crate) async fn list_trades(
+    AuthenticatedUser(user): AuthenticatedUser,
+    State(state): State<AppState>,
+    Query(params): Query<ListTradesParams>,
+) -> Result<axum::Json<PaginatedTradesResponse>, AppError> {
+    let page_size = params.page_size.clamp(1, state.max_page_size);
+    let page = params.page.min(state.max_page_number);
+
+    let query = TradeListQuery {
+        statuses: params.status.into_iter().map(Into::into).collect(),
+        page,
+        page_size,
+    };
+
+    let result = state
+        .list_trades_use_case
+        .list_trades(user.id, query)
+        .await?;
+
+    Ok(axum::Json(PaginatedTradesResponse {
+        items: result
+            .items
+            .into_iter()
+            .map(super::dto::TradeSummaryResponse::from)
+            .collect(),
+        total: result.total,
+        page: result.page,
+        page_size: result.page_size,
+    }))
 }

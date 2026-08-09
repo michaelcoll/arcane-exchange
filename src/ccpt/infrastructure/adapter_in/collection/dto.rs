@@ -1,6 +1,7 @@
 use crate::domain::card::{Card, CollectionEntry};
 use crate::domain::collection::{CollectionSortField, SortDirection};
 use crate::domain::collection_stats::CollectionStats;
+use crate::domain::price::PriceGuide;
 use crate::domain::rarity_code::RarityCode;
 use serde::{Deserialize, Serialize};
 use ts_rs::TS;
@@ -173,6 +174,16 @@ pub struct PriceGuideResponse {
     pub trend: Option<u32>,
 }
 
+impl From<PriceGuide> for PriceGuideResponse {
+    fn from(pg: PriceGuide) -> Self {
+        Self {
+            low: pg.low.value,
+            avg: pg.avg.value,
+            trend: pg.trend.value,
+        }
+    }
+}
+
 #[derive(Serialize, TS, ToSchema)]
 #[serde(rename = "CollectionEntry")]
 #[ts(export, export_to = "CollectionEntry.ts")]
@@ -250,11 +261,7 @@ impl From<Card> for CollectionCardResponse {
             collection_entry,
             owner_count,
             reserved,
-            price_guide: c.price_guide.map(|pg| PriceGuideResponse {
-                low: pg.low.value,
-                avg: pg.avg.value,
-                trend: pg.trend.value,
-            }),
+            price_guide: c.price_guide.map(PriceGuideResponse::from),
         }
     }
 }

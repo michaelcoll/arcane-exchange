@@ -7,7 +7,7 @@ use crate::domain::collection::{CollectionQuery, PaginatedCollection, SearchQuer
 use crate::domain::collection_stats::CollectionStats;
 use crate::domain::price::PriceHistoryEntry;
 use crate::domain::stats::Stats;
-use crate::domain::trade::TradeId;
+use crate::domain::trade::{PaginatedTrades, TradeDetail, TradeId, TradeListQuery};
 use crate::domain::user::{User, UserId, UserSuggestion};
 #[cfg(test)]
 use mockall::automock;
@@ -151,4 +151,24 @@ pub trait ConfirmTradeUseCase: Send + Sync {
 #[cfg_attr(test, automock)]
 pub trait RateTradeUseCase: Send + Sync {
     async fn rate(&self, trade_id: TradeId, caller_id: UserId, rating: u8) -> Result<(), AppError>;
+}
+
+#[async_trait]
+#[cfg_attr(test, automock)]
+pub trait GetTradeUseCase: Send + Sync {
+    async fn get_trade(
+        &self,
+        trade_id: TradeId,
+        caller_id: UserId,
+    ) -> Result<TradeDetail, AppError>;
+}
+
+#[async_trait]
+#[cfg_attr(test, automock)]
+pub trait ListTradesUseCase: Send + Sync {
+    async fn list_trades(
+        &self,
+        caller_id: UserId,
+        query: TradeListQuery,
+    ) -> Result<PaginatedTrades, AppError>;
 }

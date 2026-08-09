@@ -16,7 +16,7 @@ use crate::application::service::search_service::SearchService;
 use crate::application::service::stats_service::StatsService;
 use crate::application::service::trade_service::{
     AbandonTradeService, AcceptTradeService, ConfirmTradeService, CreateTradeService,
-    RateTradeService,
+    GetTradeService, ListTradesService, RateTradeService,
 };
 use crate::application::service::update_card_market_service::CardMarketIdWorker;
 use crate::application::service::update_gatherer_service::GathererIdWorker;
@@ -24,8 +24,9 @@ use crate::application::use_case::{
     AbandonTradeUseCase, AcceptTradeUseCase, AutocompleteUsersUseCase, ConfirmTradeUseCase,
     CreateTradeUseCase, EnqueueCardMarketIdUpdateUseCase, EnqueueGathererIdUpdateUseCase,
     GetCardOffersUseCase, GetCardPriceHistoryUseCase, GetCollectionPriceHistoryUseCase,
-    GetCollectionStatsUseCase, GetCollectionUseCase, ImportCardUseCase, ImportPriceUseCase,
-    RateTradeUseCase, RegisterUserUseCase, SearchCardsUseCase, StatsUseCase,
+    GetCollectionStatsUseCase, GetCollectionUseCase, GetTradeUseCase, ImportCardUseCase,
+    ImportPriceUseCase, ListTradesUseCase, RateTradeUseCase, RegisterUserUseCase,
+    SearchCardsUseCase, StatsUseCase,
 };
 use crate::config::Config;
 use crate::domain::card::CardId;
@@ -86,6 +87,8 @@ pub struct AppState {
     pub rate_trade_use_case: Arc<dyn RateTradeUseCase>,
     pub get_card_offers_use_case: Arc<dyn GetCardOffersUseCase>,
     pub autocomplete_users_use_case: Arc<dyn AutocompleteUsersUseCase>,
+    pub get_trade_use_case: Arc<dyn GetTradeUseCase>,
+    pub list_trades_use_case: Arc<dyn ListTradesUseCase>,
     pub max_page_size: u32,
     pub max_page_number: u32,
 }
@@ -262,11 +265,15 @@ fn create_app_state(
     let confirm_trade_service: Arc<dyn ConfirmTradeUseCase> =
         Arc::new(ConfirmTradeService::new(repos.trade.clone()));
     let rate_trade_service: Arc<dyn RateTradeUseCase> =
-        Arc::new(RateTradeService::new(repos.trade));
+        Arc::new(RateTradeService::new(repos.trade.clone()));
     let card_offer_service: Arc<dyn GetCardOffersUseCase> =
         Arc::new(CardOfferService::new(repos.card_prices_view));
     let autocomplete_users_service: Arc<dyn AutocompleteUsersUseCase> =
-        Arc::new(AutocompleteUserService::new(repos.user));
+        Arc::new(AutocompleteUserService::new(repos.user.clone()));
+    let get_trade_service: Arc<dyn GetTradeUseCase> =
+        Arc::new(GetTradeService::new(repos.trade.clone(), repos.user));
+    let list_trades_service: Arc<dyn ListTradesUseCase> =
+        Arc::new(ListTradesService::new(repos.trade));
 
     AppState {
         import_card_use_case: import_card_service,
@@ -289,6 +296,8 @@ fn create_app_state(
         rate_trade_use_case: rate_trade_service,
         get_card_offers_use_case: card_offer_service,
         autocomplete_users_use_case: autocomplete_users_service,
+        get_trade_use_case: get_trade_service,
+        list_trades_use_case: list_trades_service,
         max_page_size: config.max_page_size,
         max_page_number: config.max_page_number,
     }
@@ -379,8 +388,9 @@ impl AppState {
             MockConfirmTradeUseCase, MockCreateTradeUseCase, MockEnqueueCardMarketIdUpdateUseCase,
             MockEnqueueGathererIdUpdateUseCase, MockGetCardOffersUseCase,
             MockGetCardPriceHistoryUseCase, MockGetCollectionPriceHistoryUseCase,
-            MockGetCollectionStatsUseCase, MockGetCollectionUseCase, MockImportCardUseCase,
-            MockRateTradeUseCase, MockRegisterUserUseCase, MockSearchCardsUseCase,
+            MockGetCollectionStatsUseCase, MockGetCollectionUseCase, MockGetTradeUseCase,
+            MockImportCardUseCase, MockListTradesUseCase, MockRateTradeUseCase,
+            MockRegisterUserUseCase, MockSearchCardsUseCase,
         };
         use crate::domain::card::CardInfo;
         use crate::domain::user::User;
@@ -428,6 +438,8 @@ impl AppState {
             rate_trade_use_case: Arc::new(MockRateTradeUseCase::new()),
             get_card_offers_use_case: Arc::new(MockGetCardOffersUseCase::new()),
             autocomplete_users_use_case: Arc::new(MockAutocompleteUsersUseCase::new()),
+            get_trade_use_case: Arc::new(MockGetTradeUseCase::new()),
+            list_trades_use_case: Arc::new(MockListTradesUseCase::new()),
             max_page_size: 100,
             max_page_number: 10,
         }
@@ -520,6 +532,36 @@ impl AppState {
         let mut base =
             Self::for_testing_with_import_price(stats_use_case, Arc::new(mock_import_price));
         base.rate_trade_use_case = rate_trade_use_case;
+        base
+    }
+
+    pub fn for_testing_with_get_trade(
+        stats_use_case: Arc<dyn StatsUseCase>,
+        get_trade_use_case: Arc<dyn GetTradeUseCase>,
+    ) -> Self {
+        use crate::application::use_case::MockImportPriceUseCase;
+        let mut mock_import_price = MockImportPriceUseCase::new();
+        mock_import_price
+            .expect_import_prices_for_current_date()
+            .returning(|| Box::pin(async { Ok(()) }));
+        let mut base =
+            Self::for_testing_with_import_price(stats_use_case, Arc::new(mock_import_price));
+        base.get_trade_use_case = get_trade_use_case;
+        base
+    }
+
+    pub fn for_testing_with_list_trades(
+        stats_use_case: Arc<dyn StatsUseCase>,
+        list_trades_use_case: Arc<dyn ListTradesUseCase>,
+    ) -> Self {
+        use crate::application::use_case::MockImportPriceUseCase;
+        let mut mock_import_price = MockImportPriceUseCase::new();
+        mock_import_price
+            .expect_import_prices_for_current_date()
+            .returning(|| Box::pin(async { Ok(()) }));
+        let mut base =
+            Self::for_testing_with_import_price(stats_use_case, Arc::new(mock_import_price));
+        base.list_trades_use_case = list_trades_use_case;
         base
     }
 
