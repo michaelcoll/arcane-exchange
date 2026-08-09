@@ -4,11 +4,14 @@ import { defineVitestProject } from '@nuxt/test-utils/config';
 export default defineConfig({
   test: {
     reporters: ['dot'],
+    onConsoleLog(log, type) {
+      if (type === 'stdout') return false;
+    },
     projects: [
       {
         test: {
           name: 'unit',
-          include: ['**/*.{test,spec}.ts'],
+          include: ['app/**/*.{test,spec}.ts'],
           environment: 'node',
         },
       },
