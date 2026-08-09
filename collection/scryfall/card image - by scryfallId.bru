@@ -5,13 +5,14 @@ meta {
 }
 
 get {
-  url: https://api.scryfall.com/cards/:scryfallId?format=image
+  url: https://api.scryfall.com/cards/:scryfallId?format=image&version=normal
   body: none
   auth: none
 }
 
 params:query {
   format: image
+  version: normal
 }
 
 params:path {
