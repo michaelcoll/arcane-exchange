@@ -1,12 +1,14 @@
 use crate::application::error::AppError;
-use crate::application::repository::TradeRepository;
+use crate::application::repository::{TradeRepository, UserRepository};
 use crate::application::use_case::{
     AbandonTradeUseCase, AcceptTradeUseCase, ConfirmTradeUseCase, CreateTradeUseCase,
-    RateTradeUseCase,
+    GetTradeUseCase, ListTradesUseCase, RateTradeUseCase,
 };
 use crate::domain::card::CardId;
 use crate::domain::error::FunctionalError;
-use crate::domain::trade::{Trade, TradeId, TradeStatus};
+use crate::domain::trade::{
+    PaginatedTrades, Trade, TradeDetail, TradeId, TradeListQuery, TradePartyState, TradeStatus,
+};
 use crate::domain::user::UserId;
 use async_trait::async_trait;
 use std::sync::Arc;
@@ -21,6 +23,15 @@ fn resolve_party(trade: &Trade, caller_id: &UserId) -> Result<bool, AppError> {
         Ok(false)
     } else {
         Err(FunctionalError::TradeAccessDenied.into())
+    }
+}
+
+/// Reorders an (initiator, respondent) pair into (me, partner) from the caller's point of view.
+fn perspective<T>(is_initiator: bool, initiator_val: T, respondent_val: T) -> (T, T) {
+    if is_initiator {
+        (initiator_val, respondent_val)
+    } else {
+        (respondent_val, initiator_val)
     }
 }
 
@@ -271,11 +282,125 @@ impl RateTradeUseCase for RateTradeService {
     }
 }
 
+pub struct GetTradeService {
+    trade_repository: Arc<dyn TradeRepository>,
+    user_repository: Arc<dyn UserRepository>,
+}
+
+impl GetTradeService {
+    pub fn new(
+        trade_repository: Arc<dyn TradeRepository>,
+        user_repository: Arc<dyn UserRepository>,
+    ) -> Self {
+        Self {
+            trade_repository,
+            user_repository,
+        }
+    }
+}
+
+#[async_trait]
+impl GetTradeUseCase for GetTradeService {
+    async fn get_trade(
+        &self,
+        trade_id: TradeId,
+        caller_id: UserId,
+    ) -> Result<TradeDetail, AppError> {
+        let trade = self
+            .trade_repository
+            .find_by_id(trade_id)
+            .await?
+            .ok_or(FunctionalError::TradeNotFound)?;
+        let is_initiator = resolve_party(&trade, &caller_id)?;
+
+        let partner_id = if is_initiator {
+            &trade.respondent_user_id
+        } else {
+            &trade.initiator_user_id
+        };
+        // `trade.initiator_user_id`/`respondent_user_id` are FK-constrained to `users.id`
+        // (migration 0011), so the partner always exists and always has a username
+        // (`users.username` is `NOT NULL`, migration 0009).
+        let partner_username = self
+            .user_repository
+            .find_by_id(partner_id)
+            .await?
+            .expect("database contains invalid trade: partner user not found")
+            .username
+            .expect("database contains invalid user record: missing username");
+
+        let cards = self
+            .trade_repository
+            .find_trade_cards_with_details(trade_id)
+            .await?;
+        let (my_cards, partner_cards) = cards
+            .into_iter()
+            .partition(|card| card.owner_user_id == caller_id);
+
+        let (me_accepted_at, partner_accepted_at) = perspective(
+            is_initiator,
+            trade.initiator_accepted_at,
+            trade.respondent_accepted_at,
+        );
+        let (me_confirmed_at, partner_confirmed_at) = perspective(
+            is_initiator,
+            trade.initiator_confirmed_at,
+            trade.respondent_confirmed_at,
+        );
+        let (me_rating, partner_rating) = perspective(
+            is_initiator,
+            trade.initiator_rating,
+            trade.respondent_rating,
+        );
+
+        Ok(TradeDetail {
+            id: trade.id,
+            status: trade.status,
+            partner_username,
+            my_cards,
+            partner_cards,
+            me: TradePartyState {
+                accepted: me_accepted_at.is_some(),
+                confirmed: me_confirmed_at.is_some(),
+                rating: me_rating,
+            },
+            partner: TradePartyState {
+                accepted: partner_accepted_at.is_some(),
+                confirmed: partner_confirmed_at.is_some(),
+                rating: partner_rating,
+            },
+        })
+    }
+}
+
+pub struct ListTradesService {
+    trade_repository: Arc<dyn TradeRepository>,
+}
+
+impl ListTradesService {
+    pub fn new(trade_repository: Arc<dyn TradeRepository>) -> Self {
+        Self { trade_repository }
+    }
+}
+
+#[async_trait]
+impl ListTradesUseCase for ListTradesService {
+    async fn list_trades(
+        &self,
+        caller_id: UserId,
+        query: TradeListQuery,
+    ) -> Result<PaginatedTrades, AppError> {
+        self.trade_repository.list_trades(&caller_id, query).await
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::application::repository::MockTradeRepository;
+    use crate::application::repository::{MockTradeRepository, MockUserRepository};
     use crate::domain::language_code::LanguageCode;
+    use crate::domain::trade::TradeCardDetail;
+    use crate::domain::user::User;
 
     fn make_initiator_id() -> UserId {
         UserId::new("user_initiator")
@@ -1021,5 +1146,235 @@ mod tests {
             result,
             Err(AppError::Functional(FunctionalError::TradeNotCompleted))
         ));
+    }
+
+    // --- GetTradeService ---
+
+    fn make_trade_card_detail(owner: UserId) -> TradeCardDetail {
+        TradeCardDetail {
+            card_id: make_card_id(),
+            owner_user_id: owner,
+            name: "Goblin Boarders".to_string(),
+            quantity: 1,
+            price_guide: None,
+            scryfall_id: uuid::Uuid::new_v4(),
+            the_gatherer_id: None,
+        }
+    }
+
+    #[tokio::test]
+    async fn get_trade_returns_detail_split_by_owner() {
+        let trade = make_base_trade();
+        let mut mock_trade_repository = MockTradeRepository::new();
+        mock_trade_repository
+            .expect_find_by_id()
+            .times(1)
+            .returning(move |_| {
+                let trade = trade.clone();
+                Box::pin(async move { Ok(Some(trade)) })
+            });
+        mock_trade_repository
+            .expect_find_trade_cards_with_details()
+            .times(1)
+            .returning(|_| {
+                Box::pin(async {
+                    Ok(vec![
+                        make_trade_card_detail(make_initiator_id()),
+                        make_trade_card_detail(make_respondent_id()),
+                    ])
+                })
+            });
+        let mut mock_user_repository = MockUserRepository::new();
+        mock_user_repository
+            .expect_find_by_id()
+            .times(1)
+            .withf(|id| *id == make_respondent_id())
+            .returning(|_| {
+                Box::pin(async {
+                    Ok(Some(User::new(
+                        make_respondent_id(),
+                        None,
+                        Some("bob".to_string()),
+                    )))
+                })
+            });
+
+        let service = GetTradeService::new(
+            Arc::new(mock_trade_repository),
+            Arc::new(mock_user_repository),
+        );
+        let detail = service
+            .get_trade(TradeId::new(), make_initiator_id())
+            .await
+            .unwrap();
+
+        assert_eq!(detail.partner_username, "bob");
+        assert_eq!(detail.my_cards.len(), 1);
+        assert_eq!(detail.my_cards[0].owner_user_id, make_initiator_id());
+        assert_eq!(detail.partner_cards.len(), 1);
+        assert_eq!(detail.partner_cards[0].owner_user_id, make_respondent_id());
+    }
+
+    #[tokio::test]
+    async fn get_trade_fails_when_trade_not_found() {
+        let mut mock_trade_repository = MockTradeRepository::new();
+        mock_trade_repository
+            .expect_find_by_id()
+            .times(1)
+            .returning(|_| Box::pin(async { Ok(None) }));
+
+        let service = GetTradeService::new(
+            Arc::new(mock_trade_repository),
+            Arc::new(MockUserRepository::new()),
+        );
+        let result = service.get_trade(TradeId::new(), make_initiator_id()).await;
+
+        assert!(matches!(
+            result,
+            Err(AppError::Functional(FunctionalError::TradeNotFound))
+        ));
+    }
+
+    #[tokio::test]
+    async fn get_trade_fails_when_caller_is_not_a_party() {
+        let trade = make_base_trade();
+        let mut mock_trade_repository = MockTradeRepository::new();
+        mock_trade_repository
+            .expect_find_by_id()
+            .times(1)
+            .returning(move |_| {
+                let trade = trade.clone();
+                Box::pin(async move { Ok(Some(trade)) })
+            });
+
+        let service = GetTradeService::new(
+            Arc::new(mock_trade_repository),
+            Arc::new(MockUserRepository::new()),
+        );
+        let result = service.get_trade(TradeId::new(), make_stranger_id()).await;
+
+        assert!(matches!(
+            result,
+            Err(AppError::Functional(FunctionalError::TradeAccessDenied))
+        ));
+    }
+
+    #[tokio::test]
+    async fn get_trade_me_and_partner_state_reflect_caller_perspective() {
+        let trade = Trade {
+            initiator_accepted_at: Some(chrono::Utc::now()),
+            respondent_accepted_at: None,
+            ..make_base_trade()
+        };
+
+        let mut mock_trade_repository_as_initiator = MockTradeRepository::new();
+        let trade_for_initiator = trade.clone();
+        mock_trade_repository_as_initiator
+            .expect_find_by_id()
+            .times(1)
+            .returning(move |_| {
+                let trade = trade_for_initiator.clone();
+                Box::pin(async move { Ok(Some(trade)) })
+            });
+        mock_trade_repository_as_initiator
+            .expect_find_trade_cards_with_details()
+            .times(1)
+            .returning(|_| Box::pin(async { Ok(vec![]) }));
+        let mut mock_user_repository_as_initiator = MockUserRepository::new();
+        mock_user_repository_as_initiator
+            .expect_find_by_id()
+            .times(1)
+            .returning(|_| {
+                Box::pin(async {
+                    Ok(Some(User::new(
+                        make_respondent_id(),
+                        None,
+                        Some("bob".to_string()),
+                    )))
+                })
+            });
+        let service_as_initiator = GetTradeService::new(
+            Arc::new(mock_trade_repository_as_initiator),
+            Arc::new(mock_user_repository_as_initiator),
+        );
+        let detail_as_initiator = service_as_initiator
+            .get_trade(TradeId::new(), make_initiator_id())
+            .await
+            .unwrap();
+        assert!(detail_as_initiator.me.accepted);
+        assert!(!detail_as_initiator.partner.accepted);
+
+        let mut mock_trade_repository_as_respondent = MockTradeRepository::new();
+        let trade_for_respondent = trade.clone();
+        mock_trade_repository_as_respondent
+            .expect_find_by_id()
+            .times(1)
+            .returning(move |_| {
+                let trade = trade_for_respondent.clone();
+                Box::pin(async move { Ok(Some(trade)) })
+            });
+        mock_trade_repository_as_respondent
+            .expect_find_trade_cards_with_details()
+            .times(1)
+            .returning(|_| Box::pin(async { Ok(vec![]) }));
+        let mut mock_user_repository_as_respondent = MockUserRepository::new();
+        mock_user_repository_as_respondent
+            .expect_find_by_id()
+            .times(1)
+            .returning(|_| {
+                Box::pin(async {
+                    Ok(Some(User::new(
+                        make_initiator_id(),
+                        None,
+                        Some("alice".to_string()),
+                    )))
+                })
+            });
+        let service_as_respondent = GetTradeService::new(
+            Arc::new(mock_trade_repository_as_respondent),
+            Arc::new(mock_user_repository_as_respondent),
+        );
+        let detail_as_respondent = service_as_respondent
+            .get_trade(TradeId::new(), make_respondent_id())
+            .await
+            .unwrap();
+        assert!(!detail_as_respondent.me.accepted);
+        assert!(detail_as_respondent.partner.accepted);
+    }
+
+    // --- ListTradesService ---
+
+    #[tokio::test]
+    async fn list_trades_delegates_to_repository_with_caller_id_and_query() {
+        let query = TradeListQuery {
+            statuses: vec![TradeStatus::Pending],
+            page: 0,
+            page_size: 20,
+        };
+        let mut mock_repository = MockTradeRepository::new();
+        mock_repository
+            .expect_list_trades()
+            .times(1)
+            .withf(|caller_id, query| {
+                *caller_id == make_initiator_id() && query.statuses == vec![TradeStatus::Pending]
+            })
+            .returning(|_, query| {
+                Box::pin(async move {
+                    Ok(PaginatedTrades {
+                        items: vec![],
+                        total: 0,
+                        page: query.page,
+                        page_size: query.page_size,
+                    })
+                })
+            });
+
+        let service = ListTradesService::new(Arc::new(mock_repository));
+        let result = service
+            .list_trades(make_initiator_id(), query)
+            .await
+            .unwrap();
+
+        assert_eq!(result.total, 0);
     }
 }

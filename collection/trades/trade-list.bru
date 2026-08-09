@@ -1,0 +1,17 @@
+meta {
+  name: list trades
+  type: http
+  seq: 7
+}
+
+get {
+  url: {{baseUrl}}/trades?page=0&page_size=20
+  body: none
+  auth: inherit
+}
+
+params:query {
+  page: 0
+  page_size: 20
+  ~status: PENDING
+}

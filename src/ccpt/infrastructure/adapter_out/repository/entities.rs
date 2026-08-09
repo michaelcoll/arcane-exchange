@@ -3,7 +3,7 @@ use crate::domain::language_code::LanguageCode;
 use crate::domain::price::{FullPriceGuide, Price, PriceGuide, PriceHistoryEntry};
 use crate::domain::rarity_code::RarityCode;
 use crate::domain::set_name::{SetCode, SetName};
-use crate::domain::trade::{Trade, TradeCard, TradeId, TradeStatus};
+use crate::domain::trade::{Trade, TradeCard, TradeCardDetail, TradeId, TradeStatus, TradeSummary};
 use crate::domain::user::{User, UserId, UserSuggestion};
 use chrono::{DateTime, NaiveDate, Utc};
 use uuid::Uuid;
@@ -219,6 +219,82 @@ impl From<TradeCardEntity> for TradeCard {
             },
             owner_user_id: UserId::new(entity.owner_user_id),
             quantity: entity.quantity as u32,
+        }
+    }
+}
+
+/// Row for [`TradeRepository::find_trade_cards_with_details`]. Price columns are flat (not
+/// `#[sqlx(flatten)]`-ed into `PriceGuideEntity`) because this is populated via the compile-time
+/// `sqlx::query_as!` macro, which maps columns by field name and doesn't support flatten.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct TradeCardDetailEntity {
+    pub set_code: String,
+    pub collector_number: String,
+    pub language_code: String,
+    pub foil: bool,
+    pub owner_user_id: String,
+    pub quantity: i32,
+    pub name: String,
+    pub scryfall_id: Uuid,
+    pub the_gatherer_id: Option<String>,
+    pub low: Option<i32>,
+    pub avg: Option<i32>,
+    pub trend: Option<i32>,
+}
+
+impl From<TradeCardDetailEntity> for TradeCardDetail {
+    fn from(entity: TradeCardDetailEntity) -> TradeCardDetail {
+        let set_code =
+            SetCode::try_new(entity.set_code).expect("database contains invalid set_code");
+        let price_guide = if entity.low.is_some() || entity.avg.is_some() || entity.trend.is_some()
+        {
+            Some(PriceGuide::from(PriceGuideEntity {
+                low: entity.low,
+                avg: entity.avg,
+                trend: entity.trend,
+            }))
+        } else {
+            None
+        };
+
+        TradeCardDetail {
+            card_id: CardId {
+                set_code,
+                collector_number: entity.collector_number,
+                language_code: LanguageCode::try_new(entity.language_code)
+                    .expect("database contains invalid language_code"),
+                foil: entity.foil,
+            },
+            owner_user_id: UserId::new(entity.owner_user_id),
+            name: entity.name,
+            quantity: entity.quantity as u32,
+            price_guide,
+            scryfall_id: entity.scryfall_id,
+            the_gatherer_id: entity.the_gatherer_id,
+        }
+    }
+}
+
+/// Row for [`TradeRepository::list_trades`].
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct TradeSummaryEntity {
+    pub id: Uuid,
+    pub status: String,
+    pub updated_at: DateTime<Utc>,
+    pub partner_username: String,
+    pub my_card_count: i64,
+    pub partner_card_count: i64,
+}
+
+impl From<TradeSummaryEntity> for TradeSummary {
+    fn from(entity: TradeSummaryEntity) -> TradeSummary {
+        TradeSummary {
+            id: TradeId(entity.id),
+            status: TradeStatus::from_db_str(&entity.status),
+            partner_username: entity.partner_username,
+            my_card_count: entity.my_card_count as u32,
+            partner_card_count: entity.partner_card_count as u32,
+            updated_at: entity.updated_at,
         }
     }
 }
