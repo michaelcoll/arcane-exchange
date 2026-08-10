@@ -478,15 +478,17 @@ paths:
         required: true
       responses:
         '201':
-          description: Trade created, or card added to (merged into) the active trade with this user
+          description: Trade created (or the existing active trade with this user), without any card
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CreateTradeResponse'
         '400':
-          description: Invalid payload or respondent is the initiator
+          description: Invalid payload, or respondent is the caller
         '401':
           description: Missing or invalid token
         '404':
-          description: Card not found, not owned by respondent, or respondent unknown
-        '409':
-          description: The active trade with this user is already fully accepted and can no longer be modified
+          description: Respondent username unknown
       security:
       - bearer_auth: []
   /trades/{trade_id}:
@@ -569,6 +571,74 @@ paths:
           description: Trade cannot be accepted in its current status, or already accepted by the caller
       security:
       - bearer_auth: []
+  /trades/{trade_id}/cards:
+    post:
+      tags:
+      - trades
+      operationId: add_trade_card
+      parameters:
+      - name: trade_id
+        in: path
+        description: Trade id
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AddTradeCardRequest'
+        required: true
+      responses:
+        '204':
+          description: Card added to the trade (quantity incremented if already present)
+        '400':
+          description: Invalid payload, or owner_username is not a party to this trade
+        '401':
+          description: Missing or invalid token
+        '403':
+          description: Caller is not a party to this trade
+        '404':
+          description: Trade not found, owner username unknown, or card not owned in sufficient quantity
+        '409':
+          description: Trade cannot be modified in its current status
+      security:
+      - bearer_auth: []
+  /trades/{trade_id}/cards/remove:
+    post:
+      tags:
+      - trades
+      operationId: remove_trade_card
+      parameters:
+      - name: trade_id
+        in: path
+        description: Trade id
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RemoveTradeCardRequest'
+        required: true
+      responses:
+        '204':
+          description: Card removed from the trade
+        '400':
+          description: Invalid payload, or owner_username is not a party to this trade
+        '401':
+          description: Missing or invalid token
+        '403':
+          description: Caller is not a party to this trade
+        '404':
+          description: Trade not found, owner username unknown, or card not part of the trade
+        '409':
+          description: Trade cannot be modified in its current status
+      security:
+      - bearer_auth: []
   /trades/{trade_id}/confirm:
     post:
       tags:
@@ -645,6 +715,30 @@ paths:
       - bearer_auth: []
 components:
   schemas:
+    AddTradeCardRequest:
+      type: object
+      required:
+      - set_code
+      - collector_number
+      - language_code
+      - foil
+      - owner_username
+      - quantity
+      properties:
+        collector_number:
+          type: string
+        foil:
+          type: boolean
+        language_code:
+          type: string
+        owner_username:
+          type: string
+        quantity:
+          type: integer
+          format: int32
+          minimum: 0
+        set_code:
+          type: string
     CardOfferResponse:
       type: object
       required:
@@ -770,26 +864,16 @@ components:
     CreateTradeRequest:
       type: object
       required:
-      - set_code
-      - collector_number
-      - language_code
-      - foil
-      - respondent_user_id
-      - quantity
+      - respondent_username
       properties:
-        collector_number:
+        respondent_username:
           type: string
-        foil:
-          type: boolean
-        language_code:
-          type: string
-        quantity:
-          type: integer
-          format: int32
-          minimum: 0
-        respondent_user_id:
-          type: string
-        set_code:
+    CreateTradeResponse:
+      type: object
+      required:
+      - id
+      properties:
+        id:
           type: string
     EnqueueResponse:
       type: object
@@ -937,6 +1021,25 @@ components:
           format: int32
           description: Rating given to the other party, from 0 to 5 inclusive.
           minimum: 0
+    RemoveTradeCardRequest:
+      type: object
+      required:
+      - set_code
+      - collector_number
+      - language_code
+      - foil
+      - owner_username
+      properties:
+        collector_number:
+          type: string
+        foil:
+          type: boolean
+        language_code:
+          type: string
+        owner_username:
+          type: string
+        set_code:
+          type: string
     SetInfoResponse:
       type: object
       required:

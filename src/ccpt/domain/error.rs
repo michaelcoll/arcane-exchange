@@ -23,6 +23,9 @@ pub enum FunctionalError {
     TradeAlreadyConfirmed,
     TradeNotCompleted,
     TradeAlreadyRated,
+    UserNotFound,
+    TradeEmpty,
+    TradeCardNotFound,
 }
 
 impl From<FunctionalError> for String {
@@ -65,6 +68,11 @@ impl From<FunctionalError> for String {
                 "This trade must be completed before it can be rated".to_string()
             }
             FunctionalError::TradeAlreadyRated => "You have already rated this trade".to_string(),
+            FunctionalError::UserNotFound => "User not found".to_string(),
+            FunctionalError::TradeEmpty => {
+                "This trade has no cards yet and cannot be accepted".to_string()
+            }
+            FunctionalError::TradeCardNotFound => "This card is not part of the trade".to_string(),
         }
     }
 }

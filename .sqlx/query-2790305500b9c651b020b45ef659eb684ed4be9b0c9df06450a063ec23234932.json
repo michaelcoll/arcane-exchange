@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE trade\n                    SET status = CASE WHEN $2 THEN 'PENDING' ELSE status END,\n                        initiator_accepted_at = CASE WHEN $2 THEN NULL ELSE initiator_accepted_at END,\n                        respondent_accepted_at = CASE WHEN $2 THEN NULL ELSE respondent_accepted_at END,\n                        updated_at = NOW()\n                    WHERE id = $1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Bool"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "2790305500b9c651b020b45ef659eb684ed4be9b0c9df06450a063ec23234932"
+}

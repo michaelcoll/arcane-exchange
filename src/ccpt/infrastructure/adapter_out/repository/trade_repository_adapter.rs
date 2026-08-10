@@ -194,11 +194,7 @@ impl TradeRepository for TradeRepositoryAdapter {
         id: TradeId,
         initiator_id: &UserId,
         respondent_id: &UserId,
-        card_id: &CardId,
-        quantity: u8,
     ) -> Result<(), AppError> {
-        let mut tx = self.pool.begin().await?;
-
         sqlx::query!(
             r#"INSERT INTO trade (id, initiator_user_id, respondent_user_id, status)
                 VALUES ($1, $2, $3, 'PENDING')"#,
@@ -206,24 +202,8 @@ impl TradeRepository for TradeRepositoryAdapter {
             initiator_id.as_str(),
             respondent_id.as_str(),
         )
-        .execute(&mut *tx)
+        .execute(&self.pool)
         .await?;
-
-        sqlx::query!(
-            r#"INSERT INTO trade_card (trade_id, set_code, collector_number, language_code, foil, owner_user_id, quantity)
-                VALUES ($1, $2, $3, $4, $5, $6, $7)"#,
-            id.0,
-            card_id.set_code.to_string(),
-            card_id.collector_number,
-            card_id.language_code.to_string(),
-            card_id.foil,
-            respondent_id.as_str(),
-            quantity as i32,
-        )
-        .execute(&mut *tx)
-        .await?;
-
-        tx.commit().await?;
 
         Ok(())
     }
@@ -270,6 +250,50 @@ impl TradeRepository for TradeRepositoryAdapter {
         tx.commit().await?;
 
         Ok(())
+    }
+
+    async fn remove_card_from_trade(
+        &self,
+        trade_id: TradeId,
+        card_id: &CardId,
+        owner_id: &UserId,
+        reopen_to_pending: bool,
+    ) -> Result<bool, AppError> {
+        let mut tx = self.pool.begin().await?;
+
+        let result = sqlx::query!(
+            r#"DELETE FROM trade_card
+                WHERE trade_id = $1 AND set_code = $2 AND collector_number = $3
+                  AND language_code = $4 AND foil = $5 AND owner_user_id = $6"#,
+            trade_id.0,
+            card_id.set_code.to_string(),
+            card_id.collector_number,
+            card_id.language_code.to_string(),
+            card_id.foil,
+            owner_id.as_str(),
+        )
+        .execute(&mut *tx)
+        .await?;
+
+        let removed = result.rows_affected() > 0;
+        if removed {
+            sqlx::query!(
+                r#"UPDATE trade
+                    SET status = CASE WHEN $2 THEN 'PENDING' ELSE status END,
+                        initiator_accepted_at = CASE WHEN $2 THEN NULL ELSE initiator_accepted_at END,
+                        respondent_accepted_at = CASE WHEN $2 THEN NULL ELSE respondent_accepted_at END,
+                        updated_at = NOW()
+                    WHERE id = $1"#,
+                trade_id.0,
+                reopen_to_pending,
+            )
+            .execute(&mut *tx)
+            .await?;
+        }
+
+        tx.commit().await?;
+
+        Ok(removed)
     }
 
     async fn accept(
@@ -754,21 +778,14 @@ mod tests {
     }
 
     #[sqlx::test]
-    async fn create_inserts_trade_and_trade_card(pool: PgPool) {
+    async fn create_inserts_trade_without_cards(pool: PgPool) {
         insert_user(&pool, "user_a", "alice").await;
         insert_user(&pool, "user_b", "bob").await;
-        insert_card(&pool, "FDN", "87", "FR", false, "Goblin Boarders", 1).await;
 
         let repository = TradeRepositoryAdapter::new(pool.clone());
         let id = TradeId::new();
         repository
-            .create(
-                id,
-                &UserId::new("user_a"),
-                &UserId::new("user_b"),
-                &make_card_id(),
-                2,
-            )
+            .create(id, &UserId::new("user_a"), &UserId::new("user_b"))
             .await
             .unwrap();
 
@@ -780,11 +797,191 @@ mod tests {
         assert_eq!(trade.respondent_amount_due, None);
 
         let trade_cards = repository.find_trade_cards(id).await.unwrap();
-        assert_eq!(trade_cards.len(), 1);
-        let trade_card = &trade_cards[0];
-        assert_eq!(trade_card.card_id, make_card_id());
-        assert_eq!(trade_card.owner_user_id, UserId::new("user_b"));
-        assert_eq!(trade_card.quantity, 2);
+        assert!(trade_cards.is_empty());
+    }
+
+    // --- remove_card_from_trade ---
+
+    #[sqlx::test]
+    async fn remove_card_from_trade_removes_matching_card_entirely(pool: PgPool) {
+        insert_user(&pool, "user_a", "alice").await;
+        insert_user(&pool, "user_b", "bob").await;
+        insert_card(&pool, "FDN", "87", "FR", false, "Goblin Boarders", 1).await;
+        let trade_id = uuid::Uuid::new_v4();
+        insert_trade(&pool, trade_id, "user_a", "user_b", "PENDING").await;
+        insert_trade_card(&pool, trade_id, "FDN", "87", "FR", false, "user_b", 5).await;
+
+        let repository = TradeRepositoryAdapter::new(pool.clone());
+        let removed = repository
+            .remove_card_from_trade(
+                TradeId(trade_id),
+                &make_card_id(),
+                &UserId::new("user_b"),
+                false,
+            )
+            .await
+            .unwrap();
+
+        assert!(removed);
+        let trade_cards = repository
+            .find_trade_cards(TradeId(trade_id))
+            .await
+            .unwrap();
+        assert!(trade_cards.is_empty());
+    }
+
+    #[sqlx::test]
+    async fn remove_card_from_trade_returns_false_when_card_absent(pool: PgPool) {
+        insert_user(&pool, "user_a", "alice").await;
+        insert_user(&pool, "user_b", "bob").await;
+        insert_card(&pool, "FDN", "87", "FR", false, "Goblin Boarders", 1).await;
+        let trade_id = uuid::Uuid::new_v4();
+        insert_trade(&pool, trade_id, "user_a", "user_b", "PENDING").await;
+
+        let repository = TradeRepositoryAdapter::new(pool.clone());
+        let before = repository
+            .find_by_id(TradeId(trade_id))
+            .await
+            .unwrap()
+            .unwrap();
+
+        let removed = repository
+            .remove_card_from_trade(
+                TradeId(trade_id),
+                &make_card_id(),
+                &UserId::new("user_b"),
+                false,
+            )
+            .await
+            .unwrap();
+
+        assert!(!removed);
+        let after = repository
+            .find_by_id(TradeId(trade_id))
+            .await
+            .unwrap()
+            .unwrap();
+        assert_eq!(after.updated_at, before.updated_at);
+        assert_eq!(after.status, TradeStatus::Pending);
+    }
+
+    #[sqlx::test]
+    async fn remove_card_from_trade_returns_false_when_owner_does_not_match(pool: PgPool) {
+        insert_user(&pool, "user_a", "alice").await;
+        insert_user(&pool, "user_b", "bob").await;
+        insert_card(&pool, "FDN", "87", "FR", false, "Goblin Boarders", 1).await;
+        let trade_id = uuid::Uuid::new_v4();
+        insert_trade(&pool, trade_id, "user_a", "user_b", "PENDING").await;
+        insert_trade_card(&pool, trade_id, "FDN", "87", "FR", false, "user_b", 1).await;
+
+        let repository = TradeRepositoryAdapter::new(pool.clone());
+        let removed = repository
+            .remove_card_from_trade(
+                TradeId(trade_id),
+                &make_card_id(),
+                &UserId::new("user_a"),
+                false,
+            )
+            .await
+            .unwrap();
+
+        assert!(!removed);
+    }
+
+    #[sqlx::test]
+    async fn remove_card_from_trade_reopens_one_accepted_trade(pool: PgPool) {
+        insert_user(&pool, "user_a", "alice").await;
+        insert_user(&pool, "user_b", "bob").await;
+        insert_card(&pool, "FDN", "87", "FR", false, "Goblin Boarders", 1).await;
+        let trade_id = uuid::Uuid::new_v4();
+        insert_trade(&pool, trade_id, "user_a", "user_b", "ONE_ACCEPTED").await;
+        insert_trade_card(&pool, trade_id, "FDN", "87", "FR", false, "user_b", 1).await;
+        mark_trade_party_accepted(&pool, trade_id, true).await;
+
+        let repository = TradeRepositoryAdapter::new(pool.clone());
+        let removed = repository
+            .remove_card_from_trade(
+                TradeId(trade_id),
+                &make_card_id(),
+                &UserId::new("user_b"),
+                true,
+            )
+            .await
+            .unwrap();
+
+        assert!(removed);
+        let trade = repository
+            .find_by_id(TradeId(trade_id))
+            .await
+            .unwrap()
+            .unwrap();
+        assert_eq!(trade.status, TradeStatus::Pending);
+        assert_eq!(trade.initiator_accepted_at, None);
+        assert_eq!(trade.respondent_accepted_at, None);
+    }
+
+    #[sqlx::test]
+    async fn remove_card_from_trade_leaves_acceptance_untouched_when_not_reopening(pool: PgPool) {
+        insert_user(&pool, "user_a", "alice").await;
+        insert_user(&pool, "user_b", "bob").await;
+        insert_card(&pool, "FDN", "87", "FR", false, "Goblin Boarders", 1).await;
+        let trade_id = uuid::Uuid::new_v4();
+        insert_trade(&pool, trade_id, "user_a", "user_b", "ONE_ACCEPTED").await;
+        insert_trade_card(&pool, trade_id, "FDN", "87", "FR", false, "user_b", 1).await;
+        mark_trade_party_accepted(&pool, trade_id, true).await;
+
+        let repository = TradeRepositoryAdapter::new(pool.clone());
+        repository
+            .remove_card_from_trade(
+                TradeId(trade_id),
+                &make_card_id(),
+                &UserId::new("user_b"),
+                false,
+            )
+            .await
+            .unwrap();
+
+        let trade = repository
+            .find_by_id(TradeId(trade_id))
+            .await
+            .unwrap()
+            .unwrap();
+        assert_eq!(trade.status, TradeStatus::OneAccepted);
+        assert!(trade.initiator_accepted_at.is_some());
+    }
+
+    #[sqlx::test]
+    async fn remove_card_from_trade_removes_last_card_leaving_trade_empty(pool: PgPool) {
+        insert_user(&pool, "user_a", "alice").await;
+        insert_user(&pool, "user_b", "bob").await;
+        insert_card(&pool, "FDN", "87", "FR", false, "Goblin Boarders", 1).await;
+        let trade_id = uuid::Uuid::new_v4();
+        insert_trade(&pool, trade_id, "user_a", "user_b", "PENDING").await;
+        insert_trade_card(&pool, trade_id, "FDN", "87", "FR", false, "user_b", 1).await;
+
+        let repository = TradeRepositoryAdapter::new(pool.clone());
+        let removed = repository
+            .remove_card_from_trade(
+                TradeId(trade_id),
+                &make_card_id(),
+                &UserId::new("user_b"),
+                false,
+            )
+            .await
+            .unwrap();
+
+        assert!(removed);
+        let trade = repository
+            .find_by_id(TradeId(trade_id))
+            .await
+            .unwrap()
+            .unwrap();
+        assert_eq!(trade.status, TradeStatus::Pending);
+        let trade_cards = repository
+            .find_trade_cards(TradeId(trade_id))
+            .await
+            .unwrap();
+        assert!(trade_cards.is_empty());
     }
 
     // --- accept ---

@@ -1,10 +1,13 @@
 use super::controller::*;
-use super::dto::{CreateTradeRequest, ListTradesParams, RateTradeRequest, TradeStatusParam};
+use super::dto::{
+    AddTradeCardRequest, CreateTradeRequest, ListTradesParams, RateTradeRequest,
+    RemoveTradeCardRequest, TradeStatusParam,
+};
 use crate::application::error::AppError;
 use crate::application::use_case::{
-    MockAbandonTradeUseCase, MockAcceptTradeUseCase, MockConfirmTradeUseCase,
-    MockCreateTradeUseCase, MockGetTradeUseCase, MockListTradesUseCase, MockRateTradeUseCase,
-    MockStatsUseCase,
+    MockAbandonTradeUseCase, MockAcceptTradeUseCase, MockAddTradeCardUseCase,
+    MockConfirmTradeUseCase, MockCreateTradeUseCase, MockGetTradeUseCase, MockListTradesUseCase,
+    MockRateTradeUseCase, MockRemoveTradeCardUseCase, MockStatsUseCase,
 };
 use crate::domain::card::CardId;
 use crate::domain::error::FunctionalError;
@@ -31,12 +34,7 @@ fn make_app_state(create_trade_use_case: MockCreateTradeUseCase) -> AppState {
 
 fn make_payload() -> CreateTradeRequest {
     CreateTradeRequest {
-        set_code: "FDN".to_string(),
-        collector_number: "87".to_string(),
-        language_code: "FR".to_string(),
-        foil: false,
-        respondent_user_id: "user_respondent".to_string(),
-        quantity: 1,
+        respondent_username: "bob".to_string(),
     }
 }
 
@@ -46,7 +44,7 @@ async fn create_trade_returns_created_on_nominal_payload() {
     mock_use_case
         .expect_create_trade()
         .times(1)
-        .returning(|_, _, _, _| Box::pin(async { Ok(TradeId::new()) }));
+        .returning(|_, _| Box::pin(async { Ok(TradeId::new()) }));
 
     let state = make_app_state(mock_use_case);
     let user = User::for_testing();
@@ -58,86 +56,19 @@ async fn create_trade_returns_created_on_nominal_payload() {
     )
     .await;
 
-    assert!(result.is_ok());
-    assert_eq!(result.unwrap(), StatusCode::CREATED);
+    let (status, body) = result.unwrap();
+    assert_eq!(status, StatusCode::CREATED);
+    assert!(!body.0.id.is_empty());
 }
 
 #[tokio::test]
-async fn create_trade_returns_bad_request_on_invalid_language_code() {
-    let mock_use_case = MockCreateTradeUseCase::new();
-    let state = make_app_state(mock_use_case);
-    let mut payload = make_payload();
-    payload.language_code = "XX".to_string();
-
-    let result = create_trade(
-        AuthenticatedUser(User::for_testing()),
-        State(state),
-        axum::Json(payload),
-    )
-    .await;
-
-    assert!(result.is_err());
-    match result.unwrap_err() {
-        AppError::Functional(FunctionalError::InvalidLanguageCode(msg)) => {
-            assert_eq!(msg, "XX")
-        }
-        _ => panic!("Expected InvalidLanguageCode"),
-    }
-}
-
-#[tokio::test]
-async fn create_trade_returns_bad_request_on_invalid_card_id() {
-    let mock_use_case = MockCreateTradeUseCase::new();
-    let state = make_app_state(mock_use_case);
-    let mut payload = make_payload();
-    payload.collector_number = "12345678901".to_string();
-
-    let result = create_trade(
-        AuthenticatedUser(User::for_testing()),
-        State(state),
-        axum::Json(payload),
-    )
-    .await;
-
-    assert!(matches!(
-        result,
-        Err(AppError::Functional(
-            FunctionalError::InvalidCollectorNumber(_)
-        ))
-    ));
-}
-
-#[tokio::test]
-async fn create_trade_returns_bad_request_when_quantity_is_zero() {
-    let mock_use_case = MockCreateTradeUseCase::new();
-    let state = make_app_state(mock_use_case);
-    let mut payload = make_payload();
-    payload.quantity = 0;
-
-    let result = create_trade(
-        AuthenticatedUser(User::for_testing()),
-        State(state),
-        axum::Json(payload),
-    )
-    .await;
-
-    assert!(result.is_err());
-    match result.unwrap_err() {
-        AppError::Functional(FunctionalError::WrongFormat(msg)) => {
-            assert_eq!(msg, "quantity must be at least 1")
-        }
-        _ => panic!("Expected WrongFormat"),
-    }
-}
-
-#[tokio::test]
-async fn create_trade_propagates_card_not_found_from_use_case() {
+async fn create_trade_propagates_user_not_found_from_use_case() {
     let mut mock_use_case = MockCreateTradeUseCase::new();
     mock_use_case
         .expect_create_trade()
         .times(1)
-        .returning(|_, _, _, _| {
-            Box::pin(async { Err(AppError::Functional(FunctionalError::CardNotFound)) })
+        .returning(|_, _| {
+            Box::pin(async { Err(AppError::Functional(FunctionalError::UserNotFound)) })
         });
 
     let state = make_app_state(mock_use_case);
@@ -150,7 +81,7 @@ async fn create_trade_propagates_card_not_found_from_use_case() {
 
     assert!(matches!(
         result,
-        Err(AppError::Functional(FunctionalError::CardNotFound))
+        Err(AppError::Functional(FunctionalError::UserNotFound))
     ));
 }
 
@@ -160,7 +91,7 @@ async fn create_trade_propagates_self_trade_from_use_case() {
     mock_use_case
         .expect_create_trade()
         .times(1)
-        .returning(|_, _, _, _| {
+        .returning(|_, _| {
             Box::pin(async { Err(AppError::Functional(FunctionalError::SelfTrade)) })
         });
 
@@ -178,21 +109,272 @@ async fn create_trade_propagates_self_trade_from_use_case() {
     ));
 }
 
+// --- add_trade_card ---
+
+fn make_app_state_add_trade_card(add_trade_card_use_case: MockAddTradeCardUseCase) -> AppState {
+    AppState::for_testing_with_add_trade_card(
+        Arc::new(MockStatsUseCase::new()),
+        Arc::new(add_trade_card_use_case),
+    )
+}
+
+fn make_add_card_payload() -> AddTradeCardRequest {
+    AddTradeCardRequest {
+        set_code: "FDN".to_string(),
+        collector_number: "87".to_string(),
+        language_code: "FR".to_string(),
+        foil: false,
+        owner_username: "bob".to_string(),
+        quantity: 1,
+    }
+}
+
 #[tokio::test]
-async fn create_trade_propagates_trade_not_modifiable_from_use_case() {
-    let mut mock_use_case = MockCreateTradeUseCase::new();
+async fn add_trade_card_returns_no_content_on_success() {
+    let mut mock_use_case = MockAddTradeCardUseCase::new();
     mock_use_case
-        .expect_create_trade()
+        .expect_add_card()
+        .times(1)
+        .returning(|_, _, _, _, _| Box::pin(async { Ok(()) }));
+
+    let state = make_app_state_add_trade_card(mock_use_case);
+    let result = add_trade_card(
+        AuthenticatedUser(User::for_testing()),
+        State(state),
+        Path(uuid::Uuid::new_v4()),
+        axum::Json(make_add_card_payload()),
+    )
+    .await;
+
+    assert_eq!(result.unwrap(), StatusCode::NO_CONTENT);
+}
+
+#[tokio::test]
+async fn add_trade_card_returns_bad_request_on_invalid_language_code() {
+    let mock_use_case = MockAddTradeCardUseCase::new();
+    let state = make_app_state_add_trade_card(mock_use_case);
+    let mut payload = make_add_card_payload();
+    payload.language_code = "XX".to_string();
+
+    let result = add_trade_card(
+        AuthenticatedUser(User::for_testing()),
+        State(state),
+        Path(uuid::Uuid::new_v4()),
+        axum::Json(payload),
+    )
+    .await;
+
+    assert!(matches!(
+        result,
+        Err(AppError::Functional(FunctionalError::InvalidLanguageCode(
+            _
+        )))
+    ));
+}
+
+#[tokio::test]
+async fn add_trade_card_returns_bad_request_when_quantity_is_zero() {
+    let mock_use_case = MockAddTradeCardUseCase::new();
+    let state = make_app_state_add_trade_card(mock_use_case);
+    let mut payload = make_add_card_payload();
+    payload.quantity = 0;
+
+    let result = add_trade_card(
+        AuthenticatedUser(User::for_testing()),
+        State(state),
+        Path(uuid::Uuid::new_v4()),
+        axum::Json(payload),
+    )
+    .await;
+
+    match result.unwrap_err() {
+        AppError::Functional(FunctionalError::WrongFormat(msg)) => {
+            assert_eq!(msg, "quantity must be at least 1")
+        }
+        _ => panic!("Expected WrongFormat"),
+    }
+}
+
+#[tokio::test]
+async fn add_trade_card_propagates_trade_not_found_from_use_case() {
+    let mut mock_use_case = MockAddTradeCardUseCase::new();
+    mock_use_case
+        .expect_add_card()
+        .times(1)
+        .returning(|_, _, _, _, _| {
+            Box::pin(async { Err(AppError::Functional(FunctionalError::TradeNotFound)) })
+        });
+
+    let state = make_app_state_add_trade_card(mock_use_case);
+    let result = add_trade_card(
+        AuthenticatedUser(User::for_testing()),
+        State(state),
+        Path(uuid::Uuid::new_v4()),
+        axum::Json(make_add_card_payload()),
+    )
+    .await;
+
+    assert!(matches!(
+        result,
+        Err(AppError::Functional(FunctionalError::TradeNotFound))
+    ));
+}
+
+#[tokio::test]
+async fn add_trade_card_propagates_trade_access_denied_from_use_case() {
+    let mut mock_use_case = MockAddTradeCardUseCase::new();
+    mock_use_case
+        .expect_add_card()
+        .times(1)
+        .returning(|_, _, _, _, _| {
+            Box::pin(async { Err(AppError::Functional(FunctionalError::TradeAccessDenied)) })
+        });
+
+    let state = make_app_state_add_trade_card(mock_use_case);
+    let result = add_trade_card(
+        AuthenticatedUser(User::for_testing()),
+        State(state),
+        Path(uuid::Uuid::new_v4()),
+        axum::Json(make_add_card_payload()),
+    )
+    .await;
+
+    assert!(matches!(
+        result,
+        Err(AppError::Functional(FunctionalError::TradeAccessDenied))
+    ));
+}
+
+#[tokio::test]
+async fn add_trade_card_propagates_trade_not_modifiable_from_use_case() {
+    let mut mock_use_case = MockAddTradeCardUseCase::new();
+    mock_use_case
+        .expect_add_card()
+        .times(1)
+        .returning(|_, _, _, _, _| {
+            Box::pin(async { Err(AppError::Functional(FunctionalError::TradeNotModifiable)) })
+        });
+
+    let state = make_app_state_add_trade_card(mock_use_case);
+    let result = add_trade_card(
+        AuthenticatedUser(User::for_testing()),
+        State(state),
+        Path(uuid::Uuid::new_v4()),
+        axum::Json(make_add_card_payload()),
+    )
+    .await;
+
+    assert!(matches!(
+        result,
+        Err(AppError::Functional(FunctionalError::TradeNotModifiable))
+    ));
+}
+
+// --- remove_trade_card ---
+
+fn make_app_state_remove_trade_card(
+    remove_trade_card_use_case: MockRemoveTradeCardUseCase,
+) -> AppState {
+    AppState::for_testing_with_remove_trade_card(
+        Arc::new(MockStatsUseCase::new()),
+        Arc::new(remove_trade_card_use_case),
+    )
+}
+
+fn make_remove_card_payload() -> RemoveTradeCardRequest {
+    RemoveTradeCardRequest {
+        set_code: "FDN".to_string(),
+        collector_number: "87".to_string(),
+        language_code: "FR".to_string(),
+        foil: false,
+        owner_username: "bob".to_string(),
+    }
+}
+
+#[tokio::test]
+async fn remove_trade_card_returns_no_content_on_success() {
+    let mut mock_use_case = MockRemoveTradeCardUseCase::new();
+    mock_use_case
+        .expect_remove_card()
+        .times(1)
+        .returning(|_, _, _, _| Box::pin(async { Ok(()) }));
+
+    let state = make_app_state_remove_trade_card(mock_use_case);
+    let result = remove_trade_card(
+        AuthenticatedUser(User::for_testing()),
+        State(state),
+        Path(uuid::Uuid::new_v4()),
+        axum::Json(make_remove_card_payload()),
+    )
+    .await;
+
+    assert_eq!(result.unwrap(), StatusCode::NO_CONTENT);
+}
+
+#[tokio::test]
+async fn remove_trade_card_returns_bad_request_on_invalid_language_code() {
+    let mock_use_case = MockRemoveTradeCardUseCase::new();
+    let state = make_app_state_remove_trade_card(mock_use_case);
+    let mut payload = make_remove_card_payload();
+    payload.language_code = "XX".to_string();
+
+    let result = remove_trade_card(
+        AuthenticatedUser(User::for_testing()),
+        State(state),
+        Path(uuid::Uuid::new_v4()),
+        axum::Json(payload),
+    )
+    .await;
+
+    assert!(matches!(
+        result,
+        Err(AppError::Functional(FunctionalError::InvalidLanguageCode(
+            _
+        )))
+    ));
+}
+
+#[tokio::test]
+async fn remove_trade_card_propagates_trade_card_not_found_from_use_case() {
+    let mut mock_use_case = MockRemoveTradeCardUseCase::new();
+    mock_use_case
+        .expect_remove_card()
+        .times(1)
+        .returning(|_, _, _, _| {
+            Box::pin(async { Err(AppError::Functional(FunctionalError::TradeCardNotFound)) })
+        });
+
+    let state = make_app_state_remove_trade_card(mock_use_case);
+    let result = remove_trade_card(
+        AuthenticatedUser(User::for_testing()),
+        State(state),
+        Path(uuid::Uuid::new_v4()),
+        axum::Json(make_remove_card_payload()),
+    )
+    .await;
+
+    assert!(matches!(
+        result,
+        Err(AppError::Functional(FunctionalError::TradeCardNotFound))
+    ));
+}
+
+#[tokio::test]
+async fn remove_trade_card_propagates_trade_not_modifiable_from_use_case() {
+    let mut mock_use_case = MockRemoveTradeCardUseCase::new();
+    mock_use_case
+        .expect_remove_card()
         .times(1)
         .returning(|_, _, _, _| {
             Box::pin(async { Err(AppError::Functional(FunctionalError::TradeNotModifiable)) })
         });
 
-    let state = make_app_state(mock_use_case);
-    let result = create_trade(
+    let state = make_app_state_remove_trade_card(mock_use_case);
+    let result = remove_trade_card(
         AuthenticatedUser(User::for_testing()),
         State(state),
-        axum::Json(make_payload()),
+        Path(uuid::Uuid::new_v4()),
+        axum::Json(make_remove_card_payload()),
     )
     .await;
 

@@ -1,0 +1,22 @@
+meta {
+  name: add trade card
+  type: http
+  seq: 8
+}
+
+post {
+  url: {{baseUrl}}/trades/{{tradeId}}/cards
+  body: json
+  auth: inherit
+}
+
+body:json {
+  {
+    "set_code": "ECL",
+    "collector_number": "166",
+    "language_code": "FR",
+    "foil": false,
+    "owner_username": "{{otherUsername}}",
+    "quantity": 1
+  }
+}

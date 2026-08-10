@@ -1,0 +1,19 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "DELETE FROM trade_card\n                WHERE trade_id = $1 AND set_code = $2 AND collector_number = $3\n                  AND language_code = $4 AND foil = $5 AND owner_user_id = $6",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Text",
+        "Text",
+        "Text",
+        "Bool",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "9c6f4ed85201cf3f63069a2094f8a06f2b6dd990d83911ba3f733478682eb281"
+}

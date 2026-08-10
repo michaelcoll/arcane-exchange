@@ -20,13 +20,6 @@
 - State plainly what will be destroyed (table, file, branch, data) and wait for a clear yes before running it — a vague
   or implied approval is not enough
 
-## CHANGE / EDIT MODE
-
-- After completing features (large or small), always run `mise run lint-backend` and/or `mise run lint-frontend` to type
-  check, and `mise run format` to format the code
-- Always use `mise run <task>` (see [mise.instructions.md](.agents/mise.instructions.md)) instead of calling
-  `cargo`/`pnpm`/`npm` directly — if a mise task exists for what you're doing, use it rather than the raw command
-
 ## TESTING
 
 - Use any testing tools, libraries available to the project for testing your changes
@@ -36,22 +29,6 @@
 
 - Always launch independent tool calls in parallel within the same message
 - Never wait for one tool's result before calling another tool that doesn't depend on it
-
-## TOOLS
-
-- Reading a file → `Read`, never `cat`/`head`/`tail`/`sed`/piping through `python`/`jq` in Bash
-- Searching file content → `Grep`, never `grep`/`ack`/`rg` in Bash
-- Finding files by name/pattern → `Glob`, never `find` in Bash
-- Editing a file → `Edit` (diff-only), never `sed`/`awk`
-- Creating a file → `Write`, never heredoc/`echo >` in Bash
-- Reserve `Bash` for what only a shell can do: running `mise run <task>`, git, moving/deleting files
-- If a dedicated tool exists for the job, using Bash instead is a mistake — not a style choice
-- Prefer `mise run <task>` over calling `cargo`/`pnpm` directly — see
-  [mise.instructions.md](.agents/mise.instructions.md) for the full task list
-
-## PLAYWRIGHT
-
-- Save your screen captures and logs from playwright in the `.playwright-mcp` folder at the root of the repository
 
 ## Instructions
 

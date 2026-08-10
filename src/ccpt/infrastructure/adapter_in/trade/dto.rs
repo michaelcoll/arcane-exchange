@@ -6,17 +6,42 @@ use serde::{Deserialize, Serialize};
 use ts_rs::TS;
 use utoipa::ToSchema;
 
-#[derive(Deserialize, ToSchema)]
+#[derive(Deserialize, TS, ToSchema)]
+#[ts(export, export_to = "CreateTradeRequest.ts")]
 pub(crate) struct CreateTradeRequest {
+    pub(crate) respondent_username: String,
+}
+
+#[derive(Serialize, TS, ToSchema)]
+#[serde(rename = "CreateTradeResponse")]
+#[ts(export, export_to = "CreateTradeResponse.ts")]
+pub struct CreateTradeResponse {
+    pub id: String,
+}
+
+#[derive(Deserialize, TS, ToSchema)]
+#[ts(export, export_to = "AddTradeCardRequest.ts")]
+pub(crate) struct AddTradeCardRequest {
     pub(crate) set_code: String,
     pub(crate) collector_number: String,
     pub(crate) language_code: String,
     pub(crate) foil: bool,
-    pub(crate) respondent_user_id: String,
+    pub(crate) owner_username: String,
     pub(crate) quantity: u8,
 }
 
-#[derive(Deserialize, ToSchema)]
+#[derive(Deserialize, TS, ToSchema)]
+#[ts(export, export_to = "RemoveTradeCardRequest.ts")]
+pub(crate) struct RemoveTradeCardRequest {
+    pub(crate) set_code: String,
+    pub(crate) collector_number: String,
+    pub(crate) language_code: String,
+    pub(crate) foil: bool,
+    pub(crate) owner_username: String,
+}
+
+#[derive(Deserialize, TS, ToSchema)]
+#[ts(export, export_to = "RateTradeRequest.ts")]
 pub(crate) struct RateTradeRequest {
     /// Rating given to the other party, from 0 to 5 inclusive.
     pub(crate) rating: u8,
