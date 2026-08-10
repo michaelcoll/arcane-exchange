@@ -1,3 +1,6 @@
+[hooks]
+postinstall = "lefthook install"
+
 [env]
 # Database
 POSTGRES_USER = "postgres"
@@ -20,6 +23,7 @@ SCRYFALL_BASE_URL = "https://api.scryfall.com"
 node = "24"
 pnpm = "11"
 "npm:@playwright/cli" = "latest"
+"go:github.com/evilmartians/lefthook/v2" = "latest"
 
 [tasks.checks]
 description = "Runs all the checks for the project"
@@ -141,3 +145,7 @@ dir = "frontend-vue"
 depends = ["install-frontend-deps"]
 run = "pnpm build"
 alias = ["bf"]
+
+[tasks.coverage-backend]
+description = "Runs the backend tests with coverage"
+run = "cargo llvm-cov nextest --status-level slow --locked --workspace --all-features --bin ccpt --tests --ignore-filename-regex \"main.rs|infrastructure.rs|generate_openapi.rs\" --lcov --output-path lcov.info"

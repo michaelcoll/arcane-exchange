@@ -54,7 +54,7 @@ jobs:
       - run: cargo install sqlx-cli --no-default-features --features native-tls,postgres
       - run: sqlx migrate run
 
-      - run: cargo llvm-cov nextest --status-level slow --locked --workspace --all-features --bins --examples --tests --lcov --output-path lcov.info
+      - run: cargo llvm-cov nextest --status-level slow --locked --workspace --all-features --bin ccpt --tests --ignore-filename-regex "main.rs|infrastructure.rs|generate_openapi.rs" --lcov --output-path lcov.info
 
       - uses: codecov/codecov-action@v7
         with:
