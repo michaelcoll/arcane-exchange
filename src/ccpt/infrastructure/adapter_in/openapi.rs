@@ -9,8 +9,9 @@ use super::collection::dto::{
 };
 use super::maintenance::dto::{EnqueueResponse, StatsResponse};
 use super::trade::dto::{
-    CreateTradeRequest, PaginatedTradesResponse, RateTradeRequest, TradeCardResponse,
-    TradeDetailResponse, TradePartyStateResponse, TradeStatusParam, TradeSummaryResponse,
+    AddTradeCardRequest, CreateTradeRequest, CreateTradeResponse, PaginatedTradesResponse,
+    RateTradeRequest, RemoveTradeCardRequest, TradeCardResponse, TradeDetailResponse,
+    TradePartyStateResponse, TradeStatusParam, TradeSummaryResponse,
 };
 use utoipa::OpenApi;
 
@@ -30,6 +31,8 @@ use utoipa::OpenApi;
         super::maintenance::controller::update_cardmarket_ids,
         super::user::controller::register,
         super::trade::controller::create_trade,
+        super::trade::controller::add_trade_card,
+        super::trade::controller::remove_trade_card,
         super::trade::controller::accept_trade,
         super::trade::controller::abandon_trade,
         super::trade::controller::confirm_trade,
@@ -52,6 +55,9 @@ use utoipa::OpenApi;
         StatsResponse,
         EnqueueResponse,
         CreateTradeRequest,
+        CreateTradeResponse,
+        AddTradeCardRequest,
+        RemoveTradeCardRequest,
         RateTradeRequest,
         CardOfferResponse,
         PaginatedCardOffersResponse,

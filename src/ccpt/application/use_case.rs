@@ -117,10 +117,33 @@ pub trait CreateTradeUseCase: Send + Sync {
     async fn create_trade(
         &self,
         initiator_user_id: UserId,
-        respondent_user_id: UserId,
+        respondent_username: String,
+    ) -> Result<TradeId, AppError>;
+}
+
+#[async_trait]
+#[cfg_attr(test, automock)]
+pub trait AddTradeCardUseCase: Send + Sync {
+    async fn add_card(
+        &self,
+        trade_id: TradeId,
+        caller_id: UserId,
+        owner_username: String,
         card_id: CardId,
         quantity: u8,
-    ) -> Result<TradeId, AppError>;
+    ) -> Result<(), AppError>;
+}
+
+#[async_trait]
+#[cfg_attr(test, automock)]
+pub trait RemoveTradeCardUseCase: Send + Sync {
+    async fn remove_card(
+        &self,
+        trade_id: TradeId,
+        caller_id: UserId,
+        owner_username: String,
+        card_id: CardId,
+    ) -> Result<(), AppError>;
 }
 
 #[async_trait]

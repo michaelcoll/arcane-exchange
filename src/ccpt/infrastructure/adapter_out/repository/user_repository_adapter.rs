@@ -50,6 +50,18 @@ impl UserRepository for UserRepositoryAdapter {
         Ok(row.map(User::from))
     }
 
+    async fn find_by_username(&self, username: &str) -> Result<Option<User>, AppError> {
+        let row = sqlx::query_as!(
+            UserEntity,
+            "SELECT id, username FROM users WHERE LOWER(username) = LOWER($1)",
+            username
+        )
+        .fetch_optional(&self.pool)
+        .await?;
+
+        Ok(row.map(User::from))
+    }
+
     async fn autocomplete(&self, query: &str, limit: i64) -> Result<Vec<UserSuggestion>, AppError> {
         let rows = sqlx::query_as!(
             UserSuggestionEntity,
@@ -135,6 +147,36 @@ mod tests {
             }
             _ => panic!("Expected WrongFormat"),
         }
+    }
+
+    // --- find_by_username ---
+
+    #[sqlx::test]
+    async fn find_by_username_returns_user_on_exact_case_match(pool: PgPool) {
+        insert_user(&pool, "user_bob", "bob").await;
+
+        let adapter = UserRepositoryAdapter::new(pool);
+        let result = adapter.find_by_username("bob").await.unwrap().unwrap();
+
+        assert_eq!(result.id, UserId::new("user_bob"));
+    }
+
+    #[sqlx::test]
+    async fn find_by_username_is_case_insensitive(pool: PgPool) {
+        insert_user(&pool, "user_bob", "bob").await;
+
+        let adapter = UserRepositoryAdapter::new(pool);
+        let result = adapter.find_by_username("Bob").await.unwrap().unwrap();
+
+        assert_eq!(result.id, UserId::new("user_bob"));
+    }
+
+    #[sqlx::test]
+    async fn find_by_username_returns_none_when_not_found(pool: PgPool) {
+        let adapter = UserRepositoryAdapter::new(pool);
+        let result = adapter.find_by_username("nobody").await.unwrap();
+
+        assert!(result.is_none());
     }
 
     // --- autocomplete ---

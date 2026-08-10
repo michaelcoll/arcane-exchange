@@ -63,13 +63,14 @@ mod tests {
 
     fn create_test_app_state_with_auth(auth_service: Arc<dyn AuthService>) -> AppState {
         use crate::application::use_case::{
-            MockAbandonTradeUseCase, MockAcceptTradeUseCase, MockAutocompleteUsersUseCase,
-            MockConfirmTradeUseCase, MockCreateTradeUseCase, MockEnqueueCardMarketIdUpdateUseCase,
-            MockEnqueueGathererIdUpdateUseCase, MockGetCardOffersUseCase,
-            MockGetCardPriceHistoryUseCase, MockGetCollectionPriceHistoryUseCase,
-            MockGetCollectionStatsUseCase, MockGetCollectionUseCase, MockGetTradeUseCase,
-            MockImportPriceUseCase, MockListTradesUseCase, MockRateTradeUseCase,
-            MockRegisterUserUseCase, MockSearchCardsUseCase,
+            MockAbandonTradeUseCase, MockAcceptTradeUseCase, MockAddTradeCardUseCase,
+            MockAutocompleteUsersUseCase, MockConfirmTradeUseCase, MockCreateTradeUseCase,
+            MockEnqueueCardMarketIdUpdateUseCase, MockEnqueueGathererIdUpdateUseCase,
+            MockGetCardOffersUseCase, MockGetCardPriceHistoryUseCase,
+            MockGetCollectionPriceHistoryUseCase, MockGetCollectionStatsUseCase,
+            MockGetCollectionUseCase, MockGetTradeUseCase, MockImportPriceUseCase,
+            MockListTradesUseCase, MockRateTradeUseCase, MockRegisterUserUseCase,
+            MockRemoveTradeCardUseCase, MockSearchCardsUseCase,
         };
         AppState {
             import_card_use_case: Arc::new(MockImportCardUseCase::new()),
@@ -96,6 +97,8 @@ mod tests {
             autocomplete_users_use_case: Arc::new(MockAutocompleteUsersUseCase::new()),
             get_trade_use_case: Arc::new(MockGetTradeUseCase::new()),
             list_trades_use_case: Arc::new(MockListTradesUseCase::new()),
+            add_trade_card_use_case: Arc::new(MockAddTradeCardUseCase::new()),
+            remove_trade_card_use_case: Arc::new(MockRemoveTradeCardUseCase::new()),
             max_page_size: 100,
             max_page_number: 10,
         }

@@ -1,13 +1,12 @@
 use super::dto::{
-    CreateTradeRequest, ListTradesParams, PaginatedTradesResponse, RateTradeRequest,
-    TradeDetailResponse,
+    AddTradeCardRequest, CreateTradeRequest, CreateTradeResponse, ListTradesParams,
+    PaginatedTradesResponse, RateTradeRequest, RemoveTradeCardRequest, TradeDetailResponse,
 };
 use crate::application::error::AppError;
 use crate::domain::card::CardId;
 use crate::domain::error::FunctionalError;
 use crate::domain::language_code::LanguageCode;
 use crate::domain::trade::{TradeId, TradeListQuery};
-use crate::domain::user::UserId;
 use crate::infrastructure::AppState;
 use crate::infrastructure::adapter_in::auth_extractor::AuthenticatedUser;
 use axum::extract::{Path, State};
@@ -19,6 +18,8 @@ pub fn create_trade_router() -> axum::Router<AppState> {
     axum::Router::new()
         .route("/", post(create_trade).get(list_trades))
         .route("/{trade_id}", get(get_trade))
+        .route("/{trade_id}/cards", post(add_trade_card))
+        .route("/{trade_id}/cards/remove", post(remove_trade_card))
         .route("/{trade_id}/accept", post(accept_trade))
         .route("/{trade_id}/abandon", post(abandon_trade))
         .route("/{trade_id}/confirm", post(confirm_trade))
@@ -30,11 +31,10 @@ pub fn create_trade_router() -> axum::Router<AppState> {
     path = "/trades",
     request_body = CreateTradeRequest,
     responses(
-        (status = 201, description = "Trade created, or card added to (merged into) the active trade with this user"),
-        (status = 400, description = "Invalid payload or respondent is the initiator"),
+        (status = 201, description = "Trade created (or the existing active trade with this user), without any card", body = CreateTradeResponse),
+        (status = 400, description = "Invalid payload, or respondent is the caller"),
         (status = 401, description = "Missing or invalid token"),
-        (status = 404, description = "Card not found, not owned by respondent, or respondent unknown"),
-        (status = 409, description = "The active trade with this user is already fully accepted and can no longer be modified"),
+        (status = 404, description = "Respondent username unknown"),
     ),
     security(("bearer_auth" = [])),
     tag = "trades",
@@ -43,6 +43,39 @@ pub(crate) async fn create_trade(
     AuthenticatedUser(user): AuthenticatedUser,
     State(state): State<AppState>,
     axum::Json(payload): axum::Json<CreateTradeRequest>,
+) -> Result<(StatusCode, axum::Json<CreateTradeResponse>), AppError> {
+    let id = state
+        .create_trade_use_case
+        .create_trade(user.id, payload.respondent_username)
+        .await?;
+
+    Ok((
+        StatusCode::CREATED,
+        axum::Json(CreateTradeResponse { id: id.to_string() }),
+    ))
+}
+
+#[utoipa::path(
+    post,
+    path = "/trades/{trade_id}/cards",
+    params(("trade_id" = uuid::Uuid, Path, description = "Trade id")),
+    request_body = AddTradeCardRequest,
+    responses(
+        (status = 204, description = "Card added to the trade (quantity incremented if already present)"),
+        (status = 400, description = "Invalid payload, or owner_username is not a party to this trade"),
+        (status = 401, description = "Missing or invalid token"),
+        (status = 403, description = "Caller is not a party to this trade"),
+        (status = 404, description = "Trade not found, owner username unknown, or card not owned in sufficient quantity"),
+        (status = 409, description = "Trade cannot be modified in its current status"),
+    ),
+    security(("bearer_auth" = [])),
+    tag = "trades",
+)]
+pub(crate) async fn add_trade_card(
+    AuthenticatedUser(user): AuthenticatedUser,
+    State(state): State<AppState>,
+    Path(trade_id): Path<uuid::Uuid>,
+    axum::Json(payload): axum::Json<AddTradeCardRequest>,
 ) -> Result<StatusCode, AppError> {
     let language_code = LanguageCode::try_new(&payload.language_code).map_err(AppError::from)?;
     let card_id = CardId::try_new(
@@ -60,16 +93,56 @@ pub(crate) async fn create_trade(
     }
 
     state
-        .create_trade_use_case
-        .create_trade(
+        .add_trade_card_use_case
+        .add_card(
+            TradeId(trade_id),
             user.id,
-            UserId::new(payload.respondent_user_id),
+            payload.owner_username,
             card_id,
             payload.quantity,
         )
         .await?;
 
-    Ok(StatusCode::CREATED)
+    Ok(StatusCode::NO_CONTENT)
+}
+
+#[utoipa::path(
+    post,
+    path = "/trades/{trade_id}/cards/remove",
+    params(("trade_id" = uuid::Uuid, Path, description = "Trade id")),
+    request_body = RemoveTradeCardRequest,
+    responses(
+        (status = 204, description = "Card removed from the trade"),
+        (status = 400, description = "Invalid payload, or owner_username is not a party to this trade"),
+        (status = 401, description = "Missing or invalid token"),
+        (status = 403, description = "Caller is not a party to this trade"),
+        (status = 404, description = "Trade not found, owner username unknown, or card not part of the trade"),
+        (status = 409, description = "Trade cannot be modified in its current status"),
+    ),
+    security(("bearer_auth" = [])),
+    tag = "trades",
+)]
+pub(crate) async fn remove_trade_card(
+    AuthenticatedUser(user): AuthenticatedUser,
+    State(state): State<AppState>,
+    Path(trade_id): Path<uuid::Uuid>,
+    axum::Json(payload): axum::Json<RemoveTradeCardRequest>,
+) -> Result<StatusCode, AppError> {
+    let language_code = LanguageCode::try_new(&payload.language_code).map_err(AppError::from)?;
+    let card_id = CardId::try_new(
+        payload.set_code.as_str(),
+        payload.collector_number,
+        language_code,
+        payload.foil,
+    )
+    .map_err(AppError::from)?;
+
+    state
+        .remove_trade_card_use_case
+        .remove_card(TradeId(trade_id), user.id, payload.owner_username, card_id)
+        .await?;
+
+    Ok(StatusCode::NO_CONTENT)
 }
 
 #[utoipa::path(

@@ -155,6 +155,8 @@ pub trait CollectionStatsRepository: Send + Sync {
 pub trait UserRepository: Send + Sync {
     async fn upsert(&self, user: &User) -> Result<(), AppError>;
     async fn find_by_id(&self, id: &UserId) -> Result<Option<User>, AppError>;
+    /// Exact match on username, case-insensitive.
+    async fn find_by_username(&self, username: &str) -> Result<Option<User>, AppError>;
     /// Fuzzy trigram search on username (ILIKE substring + word_similarity), ordered by
     /// descending similarity score, capped at `limit`. `query` is expected already trimmed
     /// and non-empty (checked at the service level).
@@ -206,8 +208,6 @@ pub trait TradeRepository: Send + Sync {
         id: TradeId,
         initiator_id: &UserId,
         respondent_id: &UserId,
-        card_id: &CardId,
-        quantity: u8,
     ) -> Result<(), AppError>;
 
     /// Adds `card_id` to an existing trade (or increments its `quantity` if already present for `owner_id`).
@@ -220,6 +220,18 @@ pub trait TradeRepository: Send + Sync {
         quantity: u8,
         reopen_to_pending: bool,
     ) -> Result<(), AppError>;
+
+    /// Removes the trade_card row identified by `card_id` + `owner_id` from `trade_id`, entirely
+    /// (no partial quantity decrement). When `reopen_to_pending` is true, the trade's status is reset
+    /// to `PENDING` and both acceptance timestamps cleared — same effect as `merge_card_into_trade`.
+    /// Returns `false` if no matching row existed (nothing changed, trade untouched).
+    async fn remove_card_from_trade(
+        &self,
+        trade_id: TradeId,
+        card_id: &CardId,
+        owner_id: &UserId,
+        reopen_to_pending: bool,
+    ) -> Result<bool, AppError>;
 
     /// Records the caller's acceptance (`is_initiator` selects which party) if the trade is
     /// `PENDING` or `ONE_ACCEPTED` and the caller had not already accepted. Also abandons every

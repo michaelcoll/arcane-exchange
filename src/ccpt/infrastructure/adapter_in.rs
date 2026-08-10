@@ -28,7 +28,9 @@ impl IntoResponse for AppError {
                 | FunctionalError::SelfTrade => StatusCode::BAD_REQUEST,
                 FunctionalError::PriceNotFound
                 | FunctionalError::CardNotFound
-                | FunctionalError::TradeNotFound => StatusCode::NOT_FOUND,
+                | FunctionalError::TradeNotFound
+                | FunctionalError::UserNotFound
+                | FunctionalError::TradeCardNotFound => StatusCode::NOT_FOUND,
                 FunctionalError::TradeAccessDenied => StatusCode::FORBIDDEN,
                 FunctionalError::TradeNotModifiable
                 | FunctionalError::TradeNotAcceptable
@@ -37,7 +39,8 @@ impl IntoResponse for AppError {
                 | FunctionalError::TradeNotFullyAccepted
                 | FunctionalError::TradeAlreadyConfirmed
                 | FunctionalError::TradeNotCompleted
-                | FunctionalError::TradeAlreadyRated => StatusCode::CONFLICT,
+                | FunctionalError::TradeAlreadyRated
+                | FunctionalError::TradeEmpty => StatusCode::CONFLICT,
             },
             AppError::Authentication(_) => StatusCode::UNAUTHORIZED,
             AppError::Infra(e) => match e {
@@ -186,6 +189,27 @@ mod tests {
         let error = AppError::Functional(FunctionalError::TradeAlreadyRated);
         let response = error.into_response();
         assert_eq!(response.status(), StatusCode::CONFLICT);
+    }
+
+    #[test]
+    fn user_not_found_returns_not_found_status() {
+        let error = AppError::Functional(FunctionalError::UserNotFound);
+        let response = error.into_response();
+        assert_eq!(response.status(), StatusCode::NOT_FOUND);
+    }
+
+    #[test]
+    fn trade_empty_returns_conflict_status() {
+        let error = AppError::Functional(FunctionalError::TradeEmpty);
+        let response = error.into_response();
+        assert_eq!(response.status(), StatusCode::CONFLICT);
+    }
+
+    #[test]
+    fn trade_card_not_found_returns_not_found_status() {
+        let error = AppError::Functional(FunctionalError::TradeCardNotFound);
+        let response = error.into_response();
+        assert_eq!(response.status(), StatusCode::NOT_FOUND);
     }
 
     #[test]
