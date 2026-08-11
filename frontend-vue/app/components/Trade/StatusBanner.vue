@@ -9,8 +9,6 @@ const props = defineProps<{
   accepted: boolean;
   /** L'utilisateur courant a confirmé l'échange physique. */
   confirmed: boolean;
-  /** L'abandon vient de l'utilisateur courant (et non du partenaire). */
-  abandonedByMe: boolean;
 }>();
 
 const content = computed<{ tone: TradeTone; icon: string; title: string; text: string }>(() => {
@@ -59,16 +57,14 @@ const content = computed<{ tone: TradeTone; icon: string; title: string; text: s
         tone: 'down',
         icon: 'lucide:x',
         title: 'Échange abandonné',
-        text: props.abandonedByMe
-          ? 'Tu as abandonné cet échange. Les cartes réservées ont été libérées.'
-          : `${them} a abandonné l’échange. Les cartes réservées ont été libérées.`,
+        text: 'Cet échange a été abandonné. Les cartes réservées ont été libérées.',
       };
     default:
       return {
         tone: 'cyan',
         icon: 'lucide:arrow-left-right',
         title: 'Négociation ouverte',
-        text: `Ajoute ou retire des cartes des deux côtés. Chaque modification notifie ${them}.`,
+        text: `Ajoute ou retire des cartes des deux côtés en composant avec ${them}.`,
       };
   }
 });

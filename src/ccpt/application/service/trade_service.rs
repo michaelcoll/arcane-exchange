@@ -162,6 +162,14 @@ impl AddTradeCardUseCase for AddTradeCardService {
         let owner_id = resolve_owner(&self.user_repository, &trade, &owner_username).await?;
         let reopen = reopen_flag_for_modification(&trade.status)?;
 
+        if self
+            .trade_repository
+            .is_card_reserved_elsewhere(trade_id, &owner_id, &card_id)
+            .await?
+        {
+            return Err(FunctionalError::CardAlreadyReserved.into());
+        }
+
         let owned_quantity = self
             .trade_repository
             .find_collection_entry_quantity(&owner_id, &card_id)
@@ -769,6 +777,10 @@ mod tests {
                 Box::pin(async move { Ok(Some(trade)) })
             });
         mock_trade_repository
+            .expect_is_card_reserved_elsewhere()
+            .times(1)
+            .returning(|_, _, _| Box::pin(async { Ok(false) }));
+        mock_trade_repository
             .expect_find_collection_entry_quantity()
             .times(1)
             .returning(|_, _| Box::pin(async { Ok(Some(3)) }));
@@ -814,6 +826,10 @@ mod tests {
                 let trade = trade.clone();
                 Box::pin(async move { Ok(Some(trade)) })
             });
+        mock_trade_repository
+            .expect_is_card_reserved_elsewhere()
+            .times(1)
+            .returning(|_, _, _| Box::pin(async { Ok(false) }));
         mock_trade_repository
             .expect_find_collection_entry_quantity()
             .times(1)
@@ -1000,6 +1016,10 @@ mod tests {
                 Box::pin(async move { Ok(Some(trade)) })
             });
         mock_trade_repository
+            .expect_is_card_reserved_elsewhere()
+            .times(1)
+            .returning(|_, _, _| Box::pin(async { Ok(false) }));
+        mock_trade_repository
             .expect_find_collection_entry_quantity()
             .times(1)
             .returning(|_, _| Box::pin(async { Ok(Some(0)) }));
@@ -1026,6 +1046,47 @@ mod tests {
         assert!(matches!(
             result,
             Err(AppError::Functional(FunctionalError::CardNotFound))
+        ));
+    }
+
+    #[tokio::test]
+    async fn add_card_fails_when_card_already_reserved_elsewhere() {
+        let trade = make_base_trade();
+        let mut mock_trade_repository = MockTradeRepository::new();
+        mock_trade_repository
+            .expect_find_by_id()
+            .times(1)
+            .returning(move |_| {
+                let trade = trade.clone();
+                Box::pin(async move { Ok(Some(trade)) })
+            });
+        mock_trade_repository
+            .expect_is_card_reserved_elsewhere()
+            .times(1)
+            .returning(|_, _, _| Box::pin(async { Ok(true) }));
+        let mut mock_user_repository = MockUserRepository::new();
+        mock_user_repository
+            .expect_find_by_username()
+            .times(1)
+            .returning(|_| Box::pin(async { Ok(Some(make_respondent_user())) }));
+
+        let service = AddTradeCardService::new(
+            Arc::new(mock_trade_repository),
+            Arc::new(mock_user_repository),
+        );
+        let result = service
+            .add_card(
+                TradeId::new(),
+                make_initiator_id(),
+                "respondent".to_string(),
+                make_card_id(),
+                1,
+            )
+            .await;
+
+        assert!(matches!(
+            result,
+            Err(AppError::Functional(FunctionalError::CardAlreadyReserved))
         ));
     }
 

@@ -74,6 +74,9 @@ pub struct CardOfferResponse {
     pub owner_username: String,
     pub quantity: u8,
     pub selling_price: Option<u32>,
+    /// `true` if this exact copy is engaged in one of the owner's trades in `ONE_ACCEPTED` or
+    /// `FULLY_ACCEPTED` status — it cannot be traded away right now.
+    pub reserved: bool,
 }
 
 impl From<CollectionEntry> for CardOfferResponse {
@@ -83,10 +86,12 @@ impl From<CollectionEntry> for CardOfferResponse {
                 owner_username,
                 quantity,
                 selling_price,
+                reserved,
             } => Self {
                 owner_username,
                 quantity,
                 selling_price,
+                reserved,
             },
             CollectionEntry::Mine { .. } => {
                 unreachable!("get_offers only ever returns CollectionEntry::Owned entries")

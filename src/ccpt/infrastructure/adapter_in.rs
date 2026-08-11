@@ -40,7 +40,8 @@ impl IntoResponse for AppError {
                 | FunctionalError::TradeAlreadyConfirmed
                 | FunctionalError::TradeNotCompleted
                 | FunctionalError::TradeAlreadyRated
-                | FunctionalError::TradeEmpty => StatusCode::CONFLICT,
+                | FunctionalError::TradeEmpty
+                | FunctionalError::CardAlreadyReserved => StatusCode::CONFLICT,
             },
             AppError::Authentication(_) => StatusCode::UNAUTHORIZED,
             AppError::Infra(e) => match e {
@@ -210,6 +211,13 @@ mod tests {
         let error = AppError::Functional(FunctionalError::TradeCardNotFound);
         let response = error.into_response();
         assert_eq!(response.status(), StatusCode::NOT_FOUND);
+    }
+
+    #[test]
+    fn card_already_reserved_returns_conflict_status() {
+        let error = AppError::Functional(FunctionalError::CardAlreadyReserved);
+        let response = error.into_response();
+        assert_eq!(response.status(), StatusCode::CONFLICT);
     }
 
     #[test]

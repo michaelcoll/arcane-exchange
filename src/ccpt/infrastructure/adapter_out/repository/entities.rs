@@ -467,7 +467,8 @@ pub struct CardWithPriceEntity {
     /// in "my collection" mode.
     pub owner_count: i64,
     /// `true` if this card is engaged in one of its owner's trades in `ONE_ACCEPTED` or
-    /// `FULLY_ACCEPTED` status. Always `false` in search mode.
+    /// `FULLY_ACCEPTED` status. In search mode, only accurate when scoped to a single real
+    /// owner (`player_username`); `false` in the unscoped multi-owner aggregate.
     pub reserved: bool,
     #[sqlx(flatten)]
     pub price: PriceGuideEntity,
@@ -505,6 +506,7 @@ impl From<CardWithPriceEntity> for Card {
             },
             _ => CollectionEntry::Public {
                 owner_count: e.owner_count as u64,
+                reserved: e.reserved,
             },
         };
 
@@ -534,6 +536,7 @@ pub struct CardOfferEntity {
     pub owner_username: String,
     pub quantity: i32,
     pub selling_price: Option<i32>,
+    pub reserved: bool,
 }
 
 impl From<CardOfferEntity> for CollectionEntry {
@@ -542,6 +545,7 @@ impl From<CardOfferEntity> for CollectionEntry {
             owner_username: e.owner_username,
             quantity: e.quantity as u8,
             selling_price: e.selling_price.map(|v| v as u32),
+            reserved: e.reserved,
         }
     }
 }
@@ -914,7 +918,7 @@ mod tests {
         let card: Card = entity.into();
 
         match card.collection_entry {
-            CollectionEntry::Public { owner_count } => {
+            CollectionEntry::Public { owner_count, .. } => {
                 assert_eq!(owner_count, 5);
             }
             _ => panic!("expected CollectionEntry::Public"),
@@ -948,7 +952,7 @@ mod tests {
         let card: Card = entity.into();
 
         match card.collection_entry {
-            CollectionEntry::Public { owner_count } => {
+            CollectionEntry::Public { owner_count, .. } => {
                 assert_eq!(owner_count, 3);
             }
             _ => panic!("expected CollectionEntry::Public"),
@@ -1060,6 +1064,7 @@ mod tests {
             owner_username: "bob".to_string(),
             quantity: 5,
             selling_price: Some(2500),
+            reserved: false,
         };
 
         let entry: CollectionEntry = entity.into();
@@ -1069,6 +1074,7 @@ mod tests {
                 owner_username,
                 quantity,
                 selling_price,
+                ..
             } => {
                 assert_eq!(owner_username, "bob");
                 assert_eq!(quantity, 5);
@@ -1084,6 +1090,7 @@ mod tests {
             owner_username: "carol".to_string(),
             quantity: 1,
             selling_price: None,
+            reserved: false,
         };
 
         let entry: CollectionEntry = entity.into();
@@ -1097,6 +1104,23 @@ mod tests {
                 assert_eq!(quantity, 1);
                 assert!(selling_price.is_none());
             }
+            _ => panic!("expected CollectionEntry::Owned"),
+        }
+    }
+
+    #[test]
+    fn card_offer_entity_converts_reserved_flag() {
+        let entity = CardOfferEntity {
+            owner_username: "bob".to_string(),
+            quantity: 1,
+            selling_price: Some(100),
+            reserved: true,
+        };
+
+        let entry: CollectionEntry = entity.into();
+
+        match entry {
+            CollectionEntry::Owned { reserved, .. } => assert!(reserved),
             _ => panic!("expected CollectionEntry::Owned"),
         }
     }

@@ -201,6 +201,7 @@ async fn get_card_offers_returns_paginated_offers() {
                         owner_username: "Bob".to_string(),
                         quantity: 3,
                         selling_price: Some(1500),
+                        reserved: false,
                     }],
                     total: 1,
                     page,
@@ -225,6 +226,7 @@ async fn get_card_offers_returns_paginated_offers() {
     assert_eq!(offers.items[0].owner_username, "Bob");
     assert_eq!(offers.items[0].quantity, 3);
     assert_eq!(offers.items[0].selling_price, Some(1500));
+    assert!(!offers.items[0].reserved);
 }
 
 #[tokio::test]
@@ -497,12 +499,14 @@ fn from_collection_entry_owned_converts_correctly() {
         owner_username: "alice".to_string(),
         quantity: 5,
         selling_price: Some(2500),
+        reserved: false,
     };
 
     let response: CardOfferResponse = entry.into();
     assert_eq!(response.owner_username, "alice");
     assert_eq!(response.quantity, 5);
     assert_eq!(response.selling_price, Some(2500));
+    assert!(!response.reserved);
 }
 
 #[test]
@@ -511,12 +515,26 @@ fn from_collection_entry_owned_with_none_selling_price() {
         owner_username: "bob".to_string(),
         quantity: 1,
         selling_price: None,
+        reserved: false,
     };
 
     let response: CardOfferResponse = entry.into();
     assert_eq!(response.owner_username, "bob");
     assert_eq!(response.quantity, 1);
     assert!(response.selling_price.is_none());
+}
+
+#[test]
+fn from_collection_entry_owned_propagates_reserved() {
+    let entry = CollectionEntry::Owned {
+        owner_username: "carol".to_string(),
+        quantity: 1,
+        selling_price: Some(100),
+        reserved: true,
+    };
+
+    let response: CardOfferResponse = entry.into();
+    assert!(response.reserved);
 }
 
 #[test]
@@ -534,7 +552,10 @@ fn from_collection_entry_mine_panics() {
 #[test]
 #[should_panic(expected = "get_offers only ever returns CollectionEntry::Owned entries")]
 fn from_collection_entry_public_panics() {
-    let entry = CollectionEntry::Public { owner_count: 42 };
+    let entry = CollectionEntry::Public {
+        owner_count: 42,
+        reserved: false,
+    };
     let _response: CardOfferResponse = entry.into();
 }
 
@@ -600,6 +621,7 @@ fn paginated_card_offers_response_serializes_correctly() {
             owner_username: "alice".to_string(),
             quantity: 3,
             selling_price: Some(1500),
+            reserved: false,
         }],
         total: 10,
         page: 0,

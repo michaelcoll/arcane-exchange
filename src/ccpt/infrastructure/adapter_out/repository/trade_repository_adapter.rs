@@ -45,6 +45,35 @@ impl TradeRepository for TradeRepositoryAdapter {
         Ok(row.map(|r| r.quantity))
     }
 
+    async fn is_card_reserved_elsewhere(
+        &self,
+        trade_id: TradeId,
+        owner_id: &UserId,
+        card_id: &CardId,
+    ) -> Result<bool, AppError> {
+        let reserved = sqlx::query_scalar!(
+            r#"SELECT EXISTS (
+                 SELECT 1 FROM trade_card tc
+                 JOIN trade t ON t.id = tc.trade_id
+                 WHERE tc.set_code = $1 AND tc.collector_number = $2
+                   AND tc.language_code = $3 AND tc.foil = $4
+                   AND tc.owner_user_id = $5
+                   AND t.id != $6
+                   AND t.status IN ('ONE_ACCEPTED', 'FULLY_ACCEPTED')
+               ) AS "reserved!""#,
+            card_id.set_code.to_string(),
+            card_id.collector_number,
+            card_id.language_code.to_string(),
+            card_id.foil,
+            owner_id.as_str(),
+            trade_id.0,
+        )
+        .fetch_one(&self.pool)
+        .await?;
+
+        Ok(reserved)
+    }
+
     async fn find_active_trade(
         &self,
         user_a: &UserId,
@@ -485,6 +514,164 @@ mod tests {
             .unwrap();
 
         assert_eq!(result, None);
+    }
+
+    #[sqlx::test]
+    async fn is_card_reserved_elsewhere_true_when_engaged_in_another_one_accepted_trade(
+        pool: PgPool,
+    ) {
+        insert_user(&pool, "user_a", "alice").await;
+        insert_user(&pool, "user_b", "bob").await;
+        insert_user(&pool, "user_c", "carol").await;
+        insert_card(&pool, "FDN", "87", "FR", false, "Goblin Boarders", 1).await;
+        let other_trade = uuid::Uuid::new_v4();
+        insert_trade(&pool, other_trade, "user_a", "user_b", "ONE_ACCEPTED").await;
+        insert_trade_card(&pool, other_trade, "FDN", "87", "FR", false, "user_a", 1).await;
+
+        let this_trade = uuid::Uuid::new_v4();
+        insert_trade(&pool, this_trade, "user_a", "user_c", "PENDING").await;
+
+        let repository = TradeRepositoryAdapter::new(pool);
+        let result = repository
+            .is_card_reserved_elsewhere(
+                TradeId(this_trade),
+                &UserId::new("user_a"),
+                &make_card_id(),
+            )
+            .await
+            .unwrap();
+
+        assert!(result);
+    }
+
+    #[sqlx::test]
+    async fn is_card_reserved_elsewhere_true_when_engaged_in_another_fully_accepted_trade(
+        pool: PgPool,
+    ) {
+        insert_user(&pool, "user_a", "alice").await;
+        insert_user(&pool, "user_b", "bob").await;
+        insert_user(&pool, "user_c", "carol").await;
+        insert_card(&pool, "FDN", "87", "FR", false, "Goblin Boarders", 1).await;
+        let other_trade = uuid::Uuid::new_v4();
+        insert_trade(&pool, other_trade, "user_a", "user_b", "FULLY_ACCEPTED").await;
+        insert_trade_card(&pool, other_trade, "FDN", "87", "FR", false, "user_a", 1).await;
+
+        let this_trade = uuid::Uuid::new_v4();
+        insert_trade(&pool, this_trade, "user_a", "user_c", "PENDING").await;
+
+        let repository = TradeRepositoryAdapter::new(pool);
+        let result = repository
+            .is_card_reserved_elsewhere(
+                TradeId(this_trade),
+                &UserId::new("user_a"),
+                &make_card_id(),
+            )
+            .await
+            .unwrap();
+
+        assert!(result);
+    }
+
+    #[sqlx::test]
+    async fn is_card_reserved_elsewhere_false_when_only_engaged_in_this_trade(pool: PgPool) {
+        insert_user(&pool, "user_a", "alice").await;
+        insert_user(&pool, "user_c", "carol").await;
+        insert_card(&pool, "FDN", "87", "FR", false, "Goblin Boarders", 1).await;
+        let this_trade = uuid::Uuid::new_v4();
+        insert_trade(&pool, this_trade, "user_a", "user_c", "ONE_ACCEPTED").await;
+        insert_trade_card(&pool, this_trade, "FDN", "87", "FR", false, "user_a", 1).await;
+
+        let repository = TradeRepositoryAdapter::new(pool);
+        let result = repository
+            .is_card_reserved_elsewhere(
+                TradeId(this_trade),
+                &UserId::new("user_a"),
+                &make_card_id(),
+            )
+            .await
+            .unwrap();
+
+        assert!(!result);
+    }
+
+    #[sqlx::test]
+    async fn is_card_reserved_elsewhere_false_when_other_trade_is_only_pending(pool: PgPool) {
+        insert_user(&pool, "user_a", "alice").await;
+        insert_user(&pool, "user_b", "bob").await;
+        insert_user(&pool, "user_c", "carol").await;
+        insert_card(&pool, "FDN", "87", "FR", false, "Goblin Boarders", 1).await;
+        let other_trade = uuid::Uuid::new_v4();
+        insert_trade(&pool, other_trade, "user_a", "user_b", "PENDING").await;
+        insert_trade_card(&pool, other_trade, "FDN", "87", "FR", false, "user_a", 1).await;
+
+        let this_trade = uuid::Uuid::new_v4();
+        insert_trade(&pool, this_trade, "user_a", "user_c", "PENDING").await;
+
+        let repository = TradeRepositoryAdapter::new(pool);
+        let result = repository
+            .is_card_reserved_elsewhere(
+                TradeId(this_trade),
+                &UserId::new("user_a"),
+                &make_card_id(),
+            )
+            .await
+            .unwrap();
+
+        assert!(!result);
+    }
+
+    #[sqlx::test]
+    async fn is_card_reserved_elsewhere_false_when_other_trade_is_terminal(pool: PgPool) {
+        insert_user(&pool, "user_a", "alice").await;
+        insert_user(&pool, "user_b", "bob").await;
+        insert_user(&pool, "user_c", "carol").await;
+        insert_card(&pool, "FDN", "87", "FR", false, "Goblin Boarders", 1).await;
+        let this_trade = uuid::Uuid::new_v4();
+        insert_trade(&pool, this_trade, "user_a", "user_c", "PENDING").await;
+
+        let repository = TradeRepositoryAdapter::new(pool.clone());
+        for status in ["COMPLETED", "CLOSED", "ABANDONED"] {
+            let other_trade = uuid::Uuid::new_v4();
+            insert_trade(&pool, other_trade, "user_a", "user_b", status).await;
+            insert_trade_card(&pool, other_trade, "FDN", "87", "FR", false, "user_a", 1).await;
+
+            let result = repository
+                .is_card_reserved_elsewhere(
+                    TradeId(this_trade),
+                    &UserId::new("user_a"),
+                    &make_card_id(),
+                )
+                .await
+                .unwrap();
+
+            assert!(!result, "status {status} must not count as reserved");
+        }
+    }
+
+    #[sqlx::test]
+    async fn is_card_reserved_elsewhere_false_when_engaged_by_a_different_owner(pool: PgPool) {
+        insert_user(&pool, "user_a", "alice").await;
+        insert_user(&pool, "user_b", "bob").await;
+        insert_user(&pool, "user_c", "carol").await;
+        insert_card(&pool, "FDN", "87", "FR", false, "Goblin Boarders", 1).await;
+        let other_trade = uuid::Uuid::new_v4();
+        insert_trade(&pool, other_trade, "user_b", "user_c", "FULLY_ACCEPTED").await;
+        insert_trade_card(&pool, other_trade, "FDN", "87", "FR", false, "user_b", 1).await;
+
+        let this_trade = uuid::Uuid::new_v4();
+        insert_trade(&pool, this_trade, "user_a", "user_c", "PENDING").await;
+
+        let repository = TradeRepositoryAdapter::new(pool);
+        let result = repository
+            .is_card_reserved_elsewhere(
+                TradeId(this_trade),
+                &UserId::new("user_a"),
+                &make_card_id(),
+            )
+            .await
+            .unwrap();
+
+        assert!(!result);
     }
 
     #[sqlx::test]

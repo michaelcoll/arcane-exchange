@@ -37,7 +37,7 @@ const labelClasses: Record<NodeState, string> = {
       <span
         v-if="i < TRADE_LIFECYCLE.length - 1"
         :class="[
-          'absolute top-[15px] left-1/2 z-[1] h-0.5 w-full max-[620px]:top-[13px]',
+          'absolute top-[15px] left-[calc(50%+15px)] z-[1] h-0.5 w-[calc(100%-30px)] max-[620px]:top-[13px] max-[620px]:left-[calc(50%+13px)] max-[620px]:w-[calc(100%-26px)]',
           stateOf(i) === 'done'
             ? 'bg-cyan-500/40 dark:bg-cyan-400/40'
             : 'bg-slate-200 dark:bg-white/10',

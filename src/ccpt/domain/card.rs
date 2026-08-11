@@ -80,10 +80,18 @@ pub enum CollectionEntry {
         quantity: u8,
         /// Price in cents, derived from the card's `trend` price guide.
         selling_price: Option<u32>,
+        /// `true` if this exact copy is engaged in one of the owner's trades in
+        /// `ONE_ACCEPTED` or `FULLY_ACCEPTED` status — it cannot be traded away right now.
+        reserved: bool,
     },
     Public {
         /// Number of distinct users owning this card.
         owner_count: u64,
+        /// `true` if this card is engaged in one of its owner's trades in `ONE_ACCEPTED` or
+        /// `FULLY_ACCEPTED` status. Only meaningful when the search is scoped to a single real
+        /// owner (`player_username` filter, hence `owner_count == 1`); `false` in the
+        /// unscoped multi-owner aggregate, where no single owner can be attributed.
+        reserved: bool,
     },
 }
 

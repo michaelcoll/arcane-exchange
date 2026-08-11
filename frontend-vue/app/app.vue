@@ -140,6 +140,8 @@ const bottomNavLinkClass = (path: string) => [
       <NuxtPage />
     </main>
 
+    <AppToast />
+
     <!-- MOBILE BOTTOM NAV -->
     <nav
       v-if="isLoaded && isSignedIn"

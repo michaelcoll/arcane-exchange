@@ -602,7 +602,7 @@ paths:
         '404':
           description: Trade not found, owner username unknown, or card not owned in sufficient quantity
         '409':
-          description: Trade cannot be modified in its current status
+          description: Trade cannot be modified in its current status, or the card is already reserved by another trade
       security:
       - bearer_auth: []
   /trades/{trade_id}/cards/remove:
@@ -744,6 +744,7 @@ components:
       required:
       - owner_username
       - quantity
+      - reserved
       properties:
         owner_username:
           type: string
@@ -751,6 +752,11 @@ components:
           type: integer
           format: int32
           minimum: 0
+        reserved:
+          type: boolean
+          description: |-
+            `true` if this exact copy is engaged in one of the owner's trades in `ONE_ACCEPTED` or
+            `FULLY_ACCEPTED` status — it cannot be traded away right now.
         selling_price:
           type:
           - integer
@@ -802,8 +808,10 @@ components:
         reserved:
           type: boolean
           description: |-
-            `true` if this card is engaged in one of the authenticated user's trades in
-            `ONE_ACCEPTED` or `FULLY_ACCEPTED` status. Always `false` in search mode.
+            `true` if this card is engaged in an `ONE_ACCEPTED` or `FULLY_ACCEPTED` trade of its
+            owner (the authenticated user in collection mode, or the `player_username`-filtered
+            owner in search mode). Always `false` in the unscoped multi-owner search, where no
+            single owner can be attributed.
         scryfall_id:
           type: string
         set_code:

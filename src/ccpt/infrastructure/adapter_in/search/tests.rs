@@ -210,7 +210,10 @@ async fn search_cards_maps_card_fields_correctly() {
 #[tokio::test]
 async fn search_cards_never_exposes_collection_entry_always_owner_count() {
     let mut card = make_card("FDN", "42");
-    card.collection_entry = CollectionEntry::Public { owner_count: 3 };
+    card.collection_entry = CollectionEntry::Public {
+        owner_count: 3,
+        reserved: false,
+    };
 
     let mut mock = MockSearchCardsUseCase::new();
     mock.expect_search_cards().returning(move |_| {

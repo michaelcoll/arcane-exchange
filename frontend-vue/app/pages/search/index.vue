@@ -110,6 +110,13 @@ const resolvePlayer = async (username: string) => {
   }
 };
 
+// Depuis la section decklist (mockée) : bascule directement en mode « par joueur »
+// plutôt que de rediriger vers /trade, qui n'a plus de point d'entrée générique.
+const goToPlayerCollection = (username: string) => {
+  mode.value = 'player';
+  resolvePlayer(username.replace(/^@/, ''));
+};
+
 watch(player, (p) => {
   params.value.player_username = p?.username;
   if (p) {
@@ -482,6 +489,7 @@ const decklist = ref(
                 :foil="c.foil"
                 :size="size"
                 :owner-count="c.owner_count ?? undefined"
+                :reserved="c.reserved"
                 @click="detail = c"
               />
             </div>
@@ -647,18 +655,20 @@ const decklist = ref(
               >
                 Voir les {{ c.n }}
               </button>
-              <NuxtLink
-                to="/trade"
+              <button
                 class="inline-flex items-center justify-center gap-2 rounded-lg border border-transparent bg-cyan-500 px-3 py-1.5 text-xs leading-none font-bold whitespace-nowrap text-zinc-950 shadow-lg transition-all duration-150 hover:-translate-y-px hover:bg-cyan-400 active:translate-y-0 dark:bg-cyan-400 dark:hover:bg-cyan-300"
-                >Composer l'échange</NuxtLink
+                @click="goToPlayerCollection(c.u)"
               >
+                Composer l'échange
+              </button>
             </div>
-            <NuxtLink
+            <button
               v-else
-              to="/trade"
               class="inline-flex items-center justify-center gap-2 rounded-lg border border-slate-200 bg-transparent px-3 py-1.5 text-xs leading-none font-semibold whitespace-nowrap text-slate-600 transition-all duration-150 hover:-translate-y-px hover:border-slate-300 hover:bg-slate-100 hover:text-slate-800 active:translate-y-0 dark:border-white/10 dark:text-slate-300 dark:hover:border-white/15 dark:hover:bg-white/5 dark:hover:text-slate-100"
-              >Composer</NuxtLink
+              @click="goToPlayerCollection(c.u)"
             >
+              Composer
+            </button>
           </div>
         </div>
       </div>

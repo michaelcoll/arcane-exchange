@@ -172,6 +172,16 @@ pub trait TradeRepository: Send + Sync {
         card_id: &CardId,
     ) -> Result<Option<i32>, AppError>;
 
+    /// True when `card_id` (owned by `owner_id`) already appears in a trade other than `trade_id`
+    /// with status `ONE_ACCEPTED` or `FULLY_ACCEPTED` — i.e. it is already committed to another
+    /// trade and cannot be added to this one.
+    async fn is_card_reserved_elsewhere(
+        &self,
+        trade_id: TradeId,
+        owner_id: &UserId,
+        card_id: &CardId,
+    ) -> Result<bool, AppError>;
+
     /// Finds the active trade (`PENDING`, `ONE_ACCEPTED` or `FULLY_ACCEPTED`) between two users, if any,
     /// regardless of which one is `initiator_user_id` vs `respondent_user_id` on that trade.
     async fn find_active_trade(

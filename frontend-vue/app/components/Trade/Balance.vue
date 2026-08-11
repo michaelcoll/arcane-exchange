@@ -1,24 +1,18 @@
 <script setup lang="ts">
-import type { TradeValueMode } from '~/utils/trade';
-
 const props = defineProps<{
-  /** `getTotal - giveTotal` : > 0 tu reçois plus (tu dois la différence), < 0 l'inverse. */
+  /** `getTotal - giveTotal`, en centimes : > 0 tu reçois plus (tu dois la différence), < 0 l'inverse. */
   diff: number;
   giveTotal: number;
   getTotal: number;
-  mode: TradeValueMode;
 }>();
 
-const fmt = (v: number) => (props.mode === 'eur' ? `€${v}` : `${v}%`);
-
-const even = computed(() => Math.abs(props.diff) < (props.mode === 'eur' ? 3 : 2));
+const even = computed(() => Math.abs(props.diff) < 300);
 
 const verdict = computed(() => {
-  const abs = Math.abs(props.diff);
-  if (even.value) return props.mode === 'eur' ? 'Équilibré' : '≈ équilibré';
-  if (props.diff > 0)
-    return props.mode === 'eur' ? `Tu dois €${abs}` : `À ton avantage · +${abs} pts`;
-  return props.mode === 'eur' ? `On te doit €${abs}` : `À son avantage · +${abs} pts`;
+  const abs = formatPrice(Math.abs(props.diff));
+  if (even.value) return 'Équilibré';
+  if (props.diff > 0) return `Tu dois ${abs}`;
+  return `On te doit ${abs}`;
 });
 
 const getShare = computed(() => {
@@ -56,10 +50,10 @@ const getShare = computed(() => {
     </div>
     <div class="flex w-full items-baseline justify-between">
       <span class="font-mono text-sm font-semibold text-violet-500 dark:text-violet-300">{{
-        fmt(giveTotal)
+        formatPrice(giveTotal)
       }}</span>
       <span class="font-mono text-sm font-semibold text-cyan-600 dark:text-cyan-400">{{
-        fmt(getTotal)
+        formatPrice(getTotal)
       }}</span>
     </div>
     <div
