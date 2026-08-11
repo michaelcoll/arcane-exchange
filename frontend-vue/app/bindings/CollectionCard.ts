@@ -20,8 +20,10 @@ export type CollectionCard = {
    */
   owner_count: number | null;
   /**
-   * `true` if this card is engaged in one of the authenticated user's trades in
-   * `ONE_ACCEPTED` or `FULLY_ACCEPTED` status. Always `false` in search mode.
+   * `true` if this card is engaged in an `ONE_ACCEPTED` or `FULLY_ACCEPTED` trade of its
+   * owner (the authenticated user in collection mode, or the `player_username`-filtered
+   * owner in search mode). Always `false` in the unscoped multi-owner search, where no
+   * single owner can be attributed.
    */
   reserved: boolean;
   price_guide: PriceGuide | null;

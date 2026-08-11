@@ -93,31 +93,46 @@ impl CardPricesViewRepositoryAdapter {
             if user_id.is_some() { 2 } else { 1 },
         );
 
-        let (where_clause, owned_columns, group_by_clause) = if user_id.is_some() {
-            (
-                "WHERE cp.user_id = $1",
-                r#"cp.quantity,
-                 cp.purchase_price,
-                 cp.added_at,
-                 0::bigint AS owner_count,
-                 EXISTS (
+        // `reserved` is only meaningful when the result set can't mix cards from several
+        // owners: the caller's own collection (`user_id` bound), or a public search scoped to
+        // a single real owner via `player_username`. In the unscoped multi-owner search, which
+        // owner a row's `reserved` would refer to is ambiguous, so it stays `false`.
+        let reserved_subquery = r#"EXISTS (
                      SELECT 1 FROM trade_card tc
                      JOIN trade t ON t.id = tc.trade_id
                      WHERE tc.set_code = cp.set_code AND tc.collector_number = cp.collector_number
                        AND tc.language_code = cp.language_code AND tc.foil = cp.foil
                        AND tc.owner_user_id = cp.user_id
                        AND t.status IN ('ONE_ACCEPTED', 'FULLY_ACCEPTED')
-                 ) AS reserved"#,
+                 )"#;
+
+        let (where_clause, owned_columns, group_by_clause) = if user_id.is_some() {
+            (
+                "WHERE cp.user_id = $1",
+                format!(
+                    r#"cp.quantity,
+                 cp.purchase_price,
+                 cp.added_at,
+                 0::bigint AS owner_count,
+                 {reserved_subquery} AS reserved"#
+                ),
                 "",
             )
         } else {
+            let reserved_column = if player_username.is_some() {
+                format!("bool_or({reserved_subquery}) AS reserved")
+            } else {
+                "false AS reserved".to_string()
+            };
             (
                 "WHERE 1 = 1",
-                r#"0::integer AS quantity,
+                format!(
+                    r#"0::integer AS quantity,
                  NULL::integer AS purchase_price,
                  NULL::timestamptz AS added_at,
                  COUNT(DISTINCT cp.user_id) AS owner_count,
-                 false AS reserved"#,
+                 {reserved_column}"#
+                ),
                 r#"GROUP BY cp.set_code, sn.name, cp.collector_number, cp.language_code,
                             cp.foil, cp.name, cp.rarity, cp.scryfall_id, cp.the_gatherer_id,
                             cp.avg, cp.low, cp.trend"#,
@@ -298,7 +313,15 @@ impl CardPricesViewRepository for CardPricesViewRepositoryAdapter {
         let entities = match sort_by {
             CardOfferSortField::SellingPrice => sqlx::query_as!(
                 CardOfferEntity,
-                r#"SELECT u.username AS owner_username, cp.quantity AS "quantity!", cp.trend AS selling_price
+                r#"SELECT u.username AS owner_username, cp.quantity AS "quantity!", cp.trend AS selling_price,
+                     EXISTS (
+                         SELECT 1 FROM trade_card tc
+                         JOIN trade t ON t.id = tc.trade_id
+                         WHERE tc.set_code = cp.set_code AND tc.collector_number = cp.collector_number
+                           AND tc.language_code = cp.language_code AND tc.foil = cp.foil
+                           AND tc.owner_user_id = cp.user_id
+                           AND t.status IN ('ONE_ACCEPTED', 'FULLY_ACCEPTED')
+                     ) AS "reserved!"
                      FROM mv_card_prices cp
                      JOIN users u ON u.id = cp.user_id
                      WHERE cp.set_code = $1 AND cp.collector_number = $2 AND cp.language_code = $3
@@ -817,7 +840,10 @@ mod tests {
         assert_eq!(result.items.len(), 1);
         assert_eq!(
             result.items[0].collection_entry,
-            CollectionEntry::Public { owner_count: 1 }
+            CollectionEntry::Public {
+                owner_count: 1,
+                reserved: false
+            }
         );
     }
 
@@ -843,7 +869,10 @@ mod tests {
         assert_eq!(result.items.len(), 1);
         assert_eq!(
             result.items[0].collection_entry,
-            CollectionEntry::Public { owner_count: 1 }
+            CollectionEntry::Public {
+                owner_count: 1,
+                reserved: false
+            }
         );
     }
 
@@ -872,7 +901,10 @@ mod tests {
         assert_eq!(result.items.len(), 1);
         assert_eq!(
             result.items[0].collection_entry,
-            CollectionEntry::Public { owner_count: 3 }
+            CollectionEntry::Public {
+                owner_count: 3,
+                reserved: false
+            }
         );
     }
 
@@ -1074,7 +1106,79 @@ mod tests {
         assert_eq!(result.items.len(), 1);
         assert_eq!(
             result.items[0].collection_entry,
-            CollectionEntry::Public { owner_count: 1 }
+            CollectionEntry::Public {
+                owner_count: 1,
+                reserved: false
+            }
+        );
+    }
+
+    #[sqlx::test]
+    async fn search_paginated_player_username_reflects_the_scoped_owners_reservation(pool: PgPool) {
+        use crate::infrastructure::adapter_out::repository::common_repository_tests::{
+            insert_trade, insert_trade_card,
+        };
+
+        insert_set(&pool, "TST").await;
+        insert_card(&pool, "TST", "1", "EN", false, "Test Card", 1).await;
+        insert_user(&pool, "userA", "Alice").await;
+        insert_user(&pool, "userB", "Bob").await;
+        insert_collection_entry(&pool, "TST", "1", "EN", false, "userA", 1, 100, Utc::now()).await;
+        insert_price(&pool, CardMarketPriceEntity::simple(1, 100)).await;
+        refresh_view(&pool).await;
+
+        let trade_id = uuid::Uuid::new_v4();
+        insert_trade(&pool, trade_id, "userA", "userB", "FULLY_ACCEPTED").await;
+        insert_trade_card(&pool, trade_id, "TST", "1", "EN", false, "userA", 1).await;
+
+        let adapter = CardPricesViewRepositoryAdapter::new(pool);
+        let query = SearchQuery {
+            collection_query: CollectionQuery::default(),
+            player_username: Some("Alice".to_string()),
+        };
+        let result = adapter.search_paginated(query).await.unwrap();
+
+        assert_eq!(result.items.len(), 1);
+        assert_eq!(
+            result.items[0].collection_entry,
+            CollectionEntry::Public {
+                owner_count: 1,
+                reserved: true
+            }
+        );
+    }
+
+    #[sqlx::test]
+    async fn search_paginated_unscoped_multi_owner_never_reports_reserved(pool: PgPool) {
+        use crate::infrastructure::adapter_out::repository::common_repository_tests::{
+            insert_trade, insert_trade_card,
+        };
+
+        insert_set(&pool, "TST").await;
+        insert_card(&pool, "TST", "1", "EN", false, "Test Card", 1).await;
+        insert_user(&pool, "userA", "Alice").await;
+        insert_user(&pool, "userB", "Bob").await;
+        insert_collection_entry(&pool, "TST", "1", "EN", false, "userA", 1, 100, Utc::now()).await;
+        insert_price(&pool, CardMarketPriceEntity::simple(1, 100)).await;
+        refresh_view(&pool).await;
+
+        let trade_id = uuid::Uuid::new_v4();
+        insert_trade(&pool, trade_id, "userA", "userB", "FULLY_ACCEPTED").await;
+        insert_trade_card(&pool, trade_id, "TST", "1", "EN", false, "userA", 1).await;
+
+        let adapter = CardPricesViewRepositoryAdapter::new(pool);
+        let result = adapter
+            .search_paginated(CollectionQuery::default().into())
+            .await
+            .unwrap();
+
+        assert_eq!(result.items.len(), 1);
+        assert_eq!(
+            result.items[0].collection_entry,
+            CollectionEntry::Public {
+                owner_count: 1,
+                reserved: false
+            }
         );
     }
 
@@ -1448,6 +1552,57 @@ mod tests {
                     // All offers of the same card share the same trend price today (no
                     // per-seller pricing yet), so `selling_price` is identical for every row.
                     assert_eq!(*selling_price, Some(100));
+                }
+                CollectionEntry::Mine { .. } | CollectionEntry::Public { .. } => {
+                    panic!("expected CollectionEntry::Owned")
+                }
+            }
+        }
+    }
+
+    #[sqlx::test]
+    async fn get_offers_marks_a_seller_reserved_when_their_copy_is_committed_elsewhere(
+        pool: PgPool,
+    ) {
+        use crate::infrastructure::adapter_out::repository::common_repository_tests::{
+            insert_trade, insert_trade_card,
+        };
+
+        insert_set(&pool, "TST").await;
+        insert_card(&pool, "TST", "1", "EN", false, "Test Card", 1).await;
+        insert_user(&pool, "userA", "Alice").await;
+        insert_user(&pool, "userB", "Bob").await;
+        insert_user(&pool, "userC", "Carol").await;
+        insert_collection_entry(&pool, "TST", "1", "EN", false, "userB", 1, 100, Utc::now()).await;
+        insert_collection_entry(&pool, "TST", "1", "EN", false, "userC", 1, 100, Utc::now()).await;
+        insert_price(&pool, CardMarketPriceEntity::simple(1, 100)).await;
+        refresh_view(&pool).await;
+
+        let trade_id = uuid::Uuid::new_v4();
+        insert_trade(&pool, trade_id, "userB", "userA", "FULLY_ACCEPTED").await;
+        insert_trade_card(&pool, trade_id, "TST", "1", "EN", false, "userB", 1).await;
+
+        let adapter = CardPricesViewRepositoryAdapter::new(pool);
+        let result = adapter
+            .get_offers(
+                &UserId::new("userA"),
+                &card_id("TST", "1", "EN", false),
+                CardOfferSortField::SellingPrice,
+                0,
+                20,
+            )
+            .await
+            .unwrap();
+
+        assert_eq!(result.items.len(), 2);
+        for item in &result.items {
+            match item {
+                CollectionEntry::Owned {
+                    owner_username,
+                    reserved,
+                    ..
+                } => {
+                    assert_eq!(*reserved, owner_username == "Bob");
                 }
                 CollectionEntry::Mine { .. } | CollectionEntry::Public { .. } => {
                     panic!("expected CollectionEntry::Owned")

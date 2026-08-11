@@ -12,6 +12,31 @@ defineEmits<{
 }>();
 
 const { getCardPriceHistory, getCardOffers } = useCardsService();
+const { createTrade, addCard } = useTradeService();
+const { showError } = useToast();
+
+const startingWith = ref<string | null>(null);
+
+const startTrade = async (offer: CardOffer) => {
+  startingWith.value = offer.owner_username;
+  try {
+    const { id } = await createTrade(offer.owner_username);
+    await addCard(id, {
+      set_code: props.card.set_code,
+      collector_number: props.card.collector_number,
+      language_code: props.card.language_code,
+      foil: props.card.foil,
+      owner_username: offer.owner_username,
+      quantity: 1,
+    });
+    await navigateTo(`/trade/${id}`);
+  } catch (e) {
+    const message = (e as { data?: { error?: string } })?.data?.error ?? 'Une erreur est survenue.';
+    showError('Échange impossible', message);
+  } finally {
+    startingWith.value = null;
+  }
+};
 
 const cardHistoryData = ref<PriceHistoryEntry[]>([]);
 const cardHistoryPending = ref(false);
@@ -242,11 +267,27 @@ const cardVariation = computed(() => computeVariation(cardHistoryData.value));
                   <span class="font-mono text-base font-bold tracking-tight">{{
                     formatPrice(offer.selling_price ?? 0)
                   }}</span>
-                  <NuxtLink
-                    to="/trade"
-                    class="inline-flex items-center justify-center gap-2 rounded-lg border border-transparent bg-cyan-500 px-3 py-1.5 text-xs leading-none font-bold whitespace-nowrap text-zinc-950 shadow-lg transition-all duration-150 hover:-translate-y-px hover:bg-cyan-400 active:translate-y-0 dark:bg-cyan-400 dark:hover:bg-cyan-300"
-                    >Échanger</NuxtLink
+                  <span
+                    v-if="offer.reserved"
+                    class="text-2xs inline-flex items-center gap-1 rounded-lg border border-violet-400/40 bg-violet-500/10 px-3 py-1.5 font-mono font-bold whitespace-nowrap text-violet-600 dark:text-violet-300"
                   >
+                    <Icon name="lucide:lock" size="12" />
+                    Réservée
+                  </span>
+                  <button
+                    v-else
+                    class="inline-flex items-center justify-center gap-2 rounded-lg border border-transparent bg-cyan-500 px-3 py-1.5 text-xs leading-none font-bold whitespace-nowrap text-zinc-950 shadow-lg transition-all duration-150 hover:-translate-y-px hover:bg-cyan-400 active:translate-y-0 disabled:pointer-events-none disabled:opacity-60 dark:bg-cyan-400 dark:hover:bg-cyan-300"
+                    :disabled="startingWith !== null"
+                    @click="startTrade(offer)"
+                  >
+                    <Icon
+                      v-if="startingWith === offer.owner_username"
+                      name="lucide:loader-circle"
+                      size="13"
+                      class="animate-spin"
+                    />
+                    <template v-else>Échanger</template>
+                  </button>
                 </div>
               </div>
             </div>

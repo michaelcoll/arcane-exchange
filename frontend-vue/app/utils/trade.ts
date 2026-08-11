@@ -1,24 +1,35 @@
+import type { TradeCard } from '~/bindings/TradeCard';
+
 /* Statuts de la machine à états d'un échange — miroir de `TradeStatus` côté backend
  * (src/ccpt/domain/trade.rs). Voir .agents/trade-workflow.instructions.md. */
 export type TradeStatus =
   'PENDING' | 'ONE_ACCEPTED' | 'FULLY_ACCEPTED' | 'COMPLETED' | 'CLOSED' | 'ABANDONED';
 
+const ALL_TRADE_STATUSES: TradeStatus[] = [
+  'PENDING',
+  'ONE_ACCEPTED',
+  'FULLY_ACCEPTED',
+  'COMPLETED',
+  'CLOSED',
+  'ABANDONED',
+];
+
+/** Valide et rétrécit le `status: string` du binding ts-rs vers l'union locale, repli sur `PENDING`. */
+export const toTradeStatus = (raw: string): TradeStatus =>
+  (ALL_TRADE_STATUSES as string[]).includes(raw) ? (raw as TradeStatus) : 'PENDING';
+
 export type TradeTone = 'cyan' | 'violet' | 'good' | 'down' | 'muted';
 
-/** Note laissée au partenaire : 1 à 5 étoiles, `skip` si passée, `null` tant que non renseignée. */
-export type TradeRating = number | 'skip' | null;
+/** Note laissée au partenaire : 1 à 5 étoiles, `null` tant que non renseignée. */
+export type TradeRating = number | null;
 
-/** Carte posée d'un côté de l'échange. `edh` = part des decks EDHREC qui la jouent. */
-export interface TradeCard {
-  name: string;
-  eur: number;
-  edh: number;
-  scryfallId?: string;
-  theGathererId?: string;
-}
+/** Valeur d'une ligne de carte, en centimes : prix trend × quantité, 0 si le prix est inconnu. */
+export const tradeCardValue = (card: TradeCard): number =>
+  (card.price_guide?.trend ?? 0) * card.quantity;
 
-/** Mode de comparaison de valeur des deux colonnes. */
-export type TradeValueMode = 'eur' | 'edh';
+/** Somme des valeurs de toutes les lignes, en centimes. */
+export const tradeCardsTotal = (cards: TradeCard[]): number =>
+  cards.reduce((s, c) => s + tradeCardValue(c), 0);
 
 export const TRADE_STATUS_META: Record<TradeStatus, { label: string; tone: TradeTone }> = {
   PENDING: { label: 'En négociation', tone: 'cyan' },

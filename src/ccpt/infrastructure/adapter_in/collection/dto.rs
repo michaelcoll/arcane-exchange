@@ -210,8 +210,10 @@ pub struct CollectionCardResponse {
     pub collection_entry: Option<CollectionEntryResponse>,
     /// Number of distinct users owning this card (search mode only).
     pub owner_count: Option<u64>,
-    /// `true` if this card is engaged in one of the authenticated user's trades in
-    /// `ONE_ACCEPTED` or `FULLY_ACCEPTED` status. Always `false` in search mode.
+    /// `true` if this card is engaged in an `ONE_ACCEPTED` or `FULLY_ACCEPTED` trade of its
+    /// owner (the authenticated user in collection mode, or the `player_username`-filtered
+    /// owner in search mode). Always `false` in the unscoped multi-owner search, where no
+    /// single owner can be attributed.
     pub reserved: bool,
     pub price_guide: Option<PriceGuideResponse>,
 }
@@ -243,7 +245,10 @@ impl From<Card> for CollectionCardResponse {
                 None,
                 reserved,
             ),
-            CollectionEntry::Public { owner_count } => (None, Some(owner_count), false),
+            CollectionEntry::Public {
+                owner_count,
+                reserved,
+            } => (None, Some(owner_count), reserved),
             CollectionEntry::Owned { .. } => unreachable!(
                 "Card.collection_entry never carries CollectionEntry::Owned; that variant is reserved for /card/offers"
             ),

@@ -6,7 +6,6 @@ const baseProps = {
   counterparty: 'Gandalf',
   accepted: false,
   confirmed: false,
-  abandonedByMe: false,
 };
 
 describe('StatusBanner', () => {
@@ -38,24 +37,17 @@ describe('StatusBanner', () => {
     expect(wrapper.text()).toContain('Procédez à l’échange physique');
   });
 
-  it('attributes the abandon to the current user', async () => {
+  it('shows a neutral abandon message regardless of who abandoned', async () => {
     const wrapper = mount(StatusBanner, {
-      props: { ...baseProps, status: 'ABANDONED', abandonedByMe: true },
+      props: { ...baseProps, status: 'ABANDONED' },
     });
-    expect(wrapper.text()).toContain('Tu as abandonné cet échange');
-  });
-
-  it('attributes the abandon to the counterparty', async () => {
-    const wrapper = mount(StatusBanner, {
-      props: { ...baseProps, status: 'ABANDONED', abandonedByMe: false },
-    });
-    expect(wrapper.text()).toContain('Gandalf a abandonné');
+    expect(wrapper.text()).toContain('Cet échange a été abandonné');
   });
 
   it('falls back to the open-negotiation message for PENDING', async () => {
     const wrapper = mount(StatusBanner, { props: { ...baseProps, status: 'PENDING' } });
     expect(wrapper.text()).toContain('Négociation ouverte');
-    expect(wrapper.text()).toContain('notifie Gandalf');
+    expect(wrapper.text()).toContain('Gandalf');
   });
 
   it('shows the completed message', async () => {

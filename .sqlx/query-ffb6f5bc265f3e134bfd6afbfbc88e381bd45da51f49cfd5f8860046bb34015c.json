@@ -1,0 +1,28 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT EXISTS (\n                 SELECT 1 FROM trade_card tc\n                 JOIN trade t ON t.id = tc.trade_id\n                 WHERE tc.set_code = $1 AND tc.collector_number = $2\n                   AND tc.language_code = $3 AND tc.foil = $4\n                   AND tc.owner_user_id = $5\n                   AND t.id != $6\n                   AND t.status IN ('ONE_ACCEPTED', 'FULLY_ACCEPTED')\n               ) AS \"reserved!\"",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "reserved!",
+        "type_info": "Bool",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text",
+        "Text",
+        "Bool",
+        "Text",
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      null
+    ]
+  },
+  "hash": "ffb6f5bc265f3e134bfd6afbfbc88e381bd45da51f49cfd5f8860046bb34015c"
+}

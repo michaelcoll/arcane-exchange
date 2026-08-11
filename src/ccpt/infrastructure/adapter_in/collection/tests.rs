@@ -289,7 +289,10 @@ async fn get_collection_maps_foil_card_correctly() {
 #[tokio::test]
 async fn get_collection_masks_collection_entry_for_search_style_entries() {
     let mut card = make_card("FDN", "42");
-    card.collection_entry = CollectionEntry::Public { owner_count: 1 };
+    card.collection_entry = CollectionEntry::Public {
+        owner_count: 1,
+        reserved: false,
+    };
 
     let mut mock = MockGetCollectionUseCase::new();
     mock.expect_get_collection().returning(move |_, _| {
