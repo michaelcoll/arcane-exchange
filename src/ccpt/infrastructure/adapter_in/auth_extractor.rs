@@ -68,9 +68,10 @@ mod tests {
             MockEnqueueCardMarketIdUpdateUseCase, MockEnqueueGathererIdUpdateUseCase,
             MockGetCardOffersUseCase, MockGetCardPriceHistoryUseCase,
             MockGetCollectionPriceHistoryUseCase, MockGetCollectionStatsUseCase,
-            MockGetCollectionUseCase, MockGetTradeUseCase, MockImportPriceUseCase,
-            MockListTradesUseCase, MockRateTradeUseCase, MockRegisterUserUseCase,
-            MockRemoveTradeCardUseCase, MockSearchCardsUseCase,
+            MockGetCollectionUseCase, MockGetCollectionVisibilityUseCase, MockGetTradeUseCase,
+            MockImportPriceUseCase, MockListTradesUseCase, MockRateTradeUseCase,
+            MockRegisterUserUseCase, MockRemoveTradeCardUseCase, MockSearchCardsUseCase,
+            MockSetCollectionVisibilityUseCase,
         };
         AppState {
             import_card_use_case: Arc::new(MockImportCardUseCase::new()),
@@ -99,6 +100,8 @@ mod tests {
             list_trades_use_case: Arc::new(MockListTradesUseCase::new()),
             add_trade_card_use_case: Arc::new(MockAddTradeCardUseCase::new()),
             remove_trade_card_use_case: Arc::new(MockRemoveTradeCardUseCase::new()),
+            get_collection_visibility_use_case: Arc::new(MockGetCollectionVisibilityUseCase::new()),
+            set_collection_visibility_use_case: Arc::new(MockSetCollectionVisibilityUseCase::new()),
             max_page_size: 100,
             max_page_number: 10,
         }

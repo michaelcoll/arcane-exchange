@@ -8,7 +8,7 @@ use crate::domain::collection_stats::CollectionStats;
 use crate::domain::price::PriceHistoryEntry;
 use crate::domain::stats::Stats;
 use crate::domain::trade::{PaginatedTrades, TradeDetail, TradeId, TradeListQuery};
-use crate::domain::user::{User, UserId, UserSuggestion};
+use crate::domain::user::{CollectionVisibility, User, UserId, UserSuggestion};
 #[cfg(test)]
 use mockall::automock;
 
@@ -22,6 +22,22 @@ pub trait ImportCardUseCase: Send + Sync {
 #[cfg_attr(test, automock)]
 pub trait RegisterUserUseCase: Send + Sync {
     async fn register_user(&self, user: &User) -> Result<(), AppError>;
+}
+
+#[async_trait]
+#[cfg_attr(test, automock)]
+pub trait GetCollectionVisibilityUseCase: Send + Sync {
+    async fn get_visibility(&self, user_id: UserId) -> Result<CollectionVisibility, AppError>;
+}
+
+#[async_trait]
+#[cfg_attr(test, automock)]
+pub trait SetCollectionVisibilityUseCase: Send + Sync {
+    async fn set_visibility(
+        &self,
+        user_id: UserId,
+        visibility: CollectionVisibility,
+    ) -> Result<(), AppError>;
 }
 
 #[async_trait]

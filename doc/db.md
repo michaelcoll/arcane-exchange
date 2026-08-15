@@ -89,6 +89,7 @@ erDiagram
     users {
         character_varying(50) id PK
         character_varying(100) username UK "not null"
+        character_varying(10) visibility "not null, default: 'private'::character varying"
     }
     set_name ||--o{ card : "set_code"
     card ||--o{ collection_entry : "set_code, collector_number, language_code, foil"
@@ -124,3 +125,4 @@ erDiagram
 - index `idx_users_username_trgm` (expression)
 - unique index `users_username_unique` (`username`)
 - unique constraint `users_username_unique` (`username`)
+- check constraint `users_visibility_check`: `CHECK (((visibility)::text = ANY ((ARRAY['public'::character varying, 'trade'::character varying, 'private'::character varying])::text[])))`

@@ -8,7 +8,7 @@ use crate::domain::set_name::{SetCode, SetName};
 use crate::domain::trade::{
     PaginatedTrades, Trade, TradeCard, TradeCardDetail, TradeId, TradeListQuery, TradeStatus,
 };
-use crate::domain::user::{User, UserId, UserSuggestion};
+use crate::domain::user::{CollectionVisibility, User, UserId, UserSuggestion};
 use async_trait::async_trait;
 use chrono::NaiveDate;
 #[cfg(test)]
@@ -161,6 +161,17 @@ pub trait UserRepository: Send + Sync {
     /// descending similarity score, capped at `limit`. `query` is expected already trimmed
     /// and non-empty (checked at the service level).
     async fn autocomplete(&self, query: &str, limit: i64) -> Result<Vec<UserSuggestion>, AppError>;
+
+    /// Current visibility of `id`'s collection. `None` if the user doesn't exist in `users`.
+    async fn get_visibility(&self, id: &UserId) -> Result<Option<CollectionVisibility>, AppError>;
+
+    /// Updates the visibility of `id`'s collection. Returns `false` if no user with this id exists
+    /// (nothing updated), `true` otherwise.
+    async fn set_visibility(
+        &self,
+        id: &UserId,
+        visibility: CollectionVisibility,
+    ) -> Result<bool, AppError>;
 }
 
 #[async_trait]

@@ -1,7 +1,11 @@
 <script setup lang="ts">
+import type { CollectionVisibility } from '~/bindings/CollectionVisibility';
+
 definePageMeta({ middleware: 'auth' });
 
 const { user } = useUser();
+const { getVisibility, setVisibility } = useUserService();
+const { showError } = useToast();
 
 const initials = computed(() => {
   if (!user.value) return '?';
@@ -14,7 +18,44 @@ const contact = computed(
   () => user.value?.primaryEmailAddress?.emailAddress ?? user.value?.username ?? '',
 );
 
-const vis = ref<'public' | 'trade' | 'private'>('trade');
+const vis = ref<CollectionVisibility>('private');
+const visLoading = ref(true);
+const visSaving = ref(false);
+const visBusy = computed(() => visLoading.value || visSaving.value);
+const visReady = ref(false);
+let suppressVisWatch = false;
+
+onMounted(async () => {
+  try {
+    const data = await getVisibility();
+    vis.value = data.visibility;
+  } catch (e) {
+    const message = (e as { data?: { error?: string } })?.data?.error ?? 'Une erreur est survenue.';
+    showError('Impossible de charger la confidentialité', message);
+  } finally {
+    visLoading.value = false;
+    visReady.value = true;
+  }
+});
+
+watch(vis, async (newValue, oldValue) => {
+  if (!visReady.value || suppressVisWatch) {
+    suppressVisWatch = false;
+    return;
+  }
+  visSaving.value = true;
+  try {
+    await setVisibility(newValue);
+  } catch (e) {
+    const message = (e as { data?: { error?: string } })?.data?.error ?? 'Une erreur est survenue.';
+    showError('Impossible de mettre à jour la confidentialité', message);
+    suppressVisWatch = true;
+    vis.value = oldValue;
+  } finally {
+    visSaving.value = false;
+  }
+});
+
 const manageOpen = ref(false);
 
 const bodyScrollLocked = useScrollLock(document.body);
@@ -119,7 +160,18 @@ const visHelp = [
               >Qui peut voir tes cartes pour proposer un échange</span
             >
           </div>
-          <SegToggle v-model="vis" :options="visOptions" size="sm" class="max-sm:self-start" />
+          <div
+            class="flex items-center gap-2 max-sm:self-start"
+            :class="{ 'pointer-events-none opacity-50': visBusy }"
+          >
+            <Icon
+              v-if="visBusy"
+              name="lucide:loader-circle"
+              size="16"
+              class="animate-spin text-slate-400 dark:text-slate-500"
+            />
+            <SegToggle v-model="vis" :options="visOptions" size="sm" />
+          </div>
         </div>
 
         <div class="mx-3.5 mb-3 flex flex-col gap-0.5 pl-0.5">
