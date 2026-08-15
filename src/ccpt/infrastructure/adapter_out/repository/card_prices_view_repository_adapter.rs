@@ -444,6 +444,7 @@ mod tests {
     async fn get_paginated_returns_cards_for_the_given_user(pool: PgPool) {
         insert_set(&pool, "TST").await;
         insert_card(&pool, "TST", "1", "EN", false, "Test Card", 1).await;
+        insert_user(&pool, "user1", "User1").await;
         insert_collection_entry(&pool, "TST", "1", "EN", false, "user1", 2, 500, Utc::now()).await;
         insert_price(&pool, CardMarketPriceEntity::simple(1, 200)).await;
         refresh_view(&pool).await;
@@ -466,12 +467,12 @@ mod tests {
 
         insert_set(&pool, "TST").await;
         insert_card(&pool, "TST", "1", "EN", false, "Test Card", 1).await;
+        insert_user(&pool, "user1", "alice").await;
+        insert_user(&pool, "user2", "bob").await;
         insert_collection_entry(&pool, "TST", "1", "EN", false, "user1", 2, 500, Utc::now()).await;
         insert_price(&pool, CardMarketPriceEntity::simple(1, 200)).await;
         refresh_view(&pool).await;
 
-        insert_user(&pool, "user1", "alice").await;
-        insert_user(&pool, "user2", "bob").await;
         let trade_id = uuid::Uuid::new_v4();
         insert_trade(&pool, trade_id, "user2", "user1", "ONE_ACCEPTED").await;
         insert_trade_card(&pool, trade_id, "TST", "1", "EN", false, "user1", 1).await;
@@ -497,12 +498,12 @@ mod tests {
 
         insert_set(&pool, "TST").await;
         insert_card(&pool, "TST", "1", "EN", false, "Test Card", 1).await;
+        insert_user(&pool, "user1", "alice").await;
+        insert_user(&pool, "user2", "bob").await;
         insert_collection_entry(&pool, "TST", "1", "EN", false, "user1", 2, 500, Utc::now()).await;
         insert_price(&pool, CardMarketPriceEntity::simple(1, 200)).await;
         refresh_view(&pool).await;
 
-        insert_user(&pool, "user1", "alice").await;
-        insert_user(&pool, "user2", "bob").await;
         let trade_id = uuid::Uuid::new_v4();
         insert_trade(&pool, trade_id, "user2", "user1", "FULLY_ACCEPTED").await;
         insert_trade_card(&pool, trade_id, "TST", "1", "EN", false, "user1", 1).await;
@@ -527,12 +528,12 @@ mod tests {
 
         insert_set(&pool, "TST").await;
         insert_card(&pool, "TST", "1", "EN", false, "Test Card", 1).await;
+        insert_user(&pool, "user1", "alice").await;
+        insert_user(&pool, "user2", "bob").await;
         insert_collection_entry(&pool, "TST", "1", "EN", false, "user1", 2, 500, Utc::now()).await;
         insert_price(&pool, CardMarketPriceEntity::simple(1, 200)).await;
         refresh_view(&pool).await;
 
-        insert_user(&pool, "user1", "alice").await;
-        insert_user(&pool, "user2", "bob").await;
         let trade_id = uuid::Uuid::new_v4();
         insert_trade(&pool, trade_id, "user2", "user1", "PENDING").await;
         insert_trade_card(&pool, trade_id, "TST", "1", "EN", false, "user1", 1).await;
@@ -553,6 +554,7 @@ mod tests {
     async fn get_paginated_does_not_mark_card_as_reserved_when_no_active_trade(pool: PgPool) {
         insert_set(&pool, "TST").await;
         insert_card(&pool, "TST", "1", "EN", false, "Test Card", 1).await;
+        insert_user(&pool, "user1", "User1").await;
         insert_collection_entry(&pool, "TST", "1", "EN", false, "user1", 2, 500, Utc::now()).await;
         insert_price(&pool, CardMarketPriceEntity::simple(1, 200)).await;
         refresh_view(&pool).await;
@@ -571,6 +573,7 @@ mod tests {
 
     #[sqlx::test]
     async fn get_paginated_respects_page_size(pool: PgPool) {
+        insert_user(&pool, "user1", "User1").await;
         for i in 1..=5i32 {
             let set = format!("TS{}", i);
             insert_set(&pool, &set).await;
@@ -599,6 +602,7 @@ mod tests {
 
     #[sqlx::test]
     async fn get_paginated_returns_correct_page(pool: PgPool) {
+        insert_user(&pool, "user1", "User1").await;
         for i in 1..=4i32 {
             let set = format!("TS{}", i);
             insert_set(&pool, &set).await;
@@ -654,6 +658,7 @@ mod tests {
         insert_card(&pool, "TS1", "1", "EN", false, "Test Card", 1).await;
         insert_set(&pool, "TS2").await;
         insert_card(&pool, "TS2", "1", "EN", false, "Test Card", 2).await;
+        insert_user(&pool, "user1", "User1").await;
         insert_collection_entry(&pool, "TS1", "1", "EN", false, "user1", 1, 100, Utc::now()).await;
         insert_collection_entry(&pool, "TS2", "1", "EN", false, "user1", 1, 100, Utc::now()).await;
         insert_price(&pool, CardMarketPriceEntity::simple(1, 300)).await;
@@ -684,6 +689,7 @@ mod tests {
         insert_card(&pool, "ZZZ", "1", "EN", false, "Test Card", 1).await;
         insert_set(&pool, "AAA").await;
         insert_card(&pool, "AAA", "1", "EN", false, "Test Card", 2).await;
+        insert_user(&pool, "user1", "User1").await;
         insert_collection_entry(&pool, "ZZZ", "1", "EN", false, "user1", 1, 100, Utc::now()).await;
         insert_collection_entry(&pool, "AAA", "1", "EN", false, "user1", 1, 100, Utc::now()).await;
         insert_price(&pool, CardMarketPriceEntity::simple(1, 100)).await;
@@ -710,6 +716,7 @@ mod tests {
         insert_set(&pool, "TST").await;
         insert_card(&pool, "TST", "1", "FR", false, "Test Card", 1).await;
         insert_card(&pool, "TST", "2", "EN", false, "Test Card", 2).await;
+        insert_user(&pool, "user1", "User1").await;
         insert_collection_entry(&pool, "TST", "1", "FR", false, "user1", 1, 100, Utc::now()).await;
         insert_collection_entry(&pool, "TST", "2", "EN", false, "user1", 1, 100, Utc::now()).await;
         insert_price(&pool, CardMarketPriceEntity::simple(1, 100)).await;
@@ -737,6 +744,7 @@ mod tests {
     async fn get_paginated_returns_empty_page_when_offset_exceeds_total(pool: PgPool) {
         insert_set(&pool, "TST").await;
         insert_card(&pool, "TST", "1", "EN", false, "Test Card", 1).await;
+        insert_user(&pool, "user1", "User1").await;
         insert_collection_entry(&pool, "TST", "1", "EN", false, "user1", 1, 100, Utc::now()).await;
         insert_price(&pool, CardMarketPriceEntity::simple(1, 100)).await;
         refresh_view(&pool).await;
@@ -763,6 +771,8 @@ mod tests {
         insert_card(&pool, "TS1", "1", "EN", false, "Test Card", 1).await;
         insert_set(&pool, "TS2").await;
         insert_card(&pool, "TS2", "1", "EN", false, "Test Card", 2).await;
+        insert_user(&pool, "userA", "Alice").await;
+        insert_user(&pool, "userB", "Bob").await;
         insert_collection_entry(&pool, "TS1", "1", "EN", false, "userA", 1, 100, Utc::now()).await;
         insert_collection_entry(&pool, "TS2", "1", "EN", false, "userB", 1, 100, Utc::now()).await;
         insert_price(&pool, CardMarketPriceEntity::simple(1, 100)).await;
@@ -1215,6 +1225,7 @@ mod tests {
     async fn get_paginated_uses_latest_price_when_multiple_dates_exist(pool: PgPool) {
         insert_set(&pool, "TST").await;
         insert_card(&pool, "TST", "1", "EN", false, "Test Card", 1).await;
+        insert_user(&pool, "user1", "User1").await;
         insert_collection_entry(&pool, "TST", "1", "EN", false, "user1", 1, 100, Utc::now()).await;
 
         insert_price(
@@ -1248,6 +1259,7 @@ mod tests {
     async fn get_paginated_returns_foil_prices_for_foil_cards(pool: PgPool) {
         insert_set(&pool, "TST").await;
         insert_card(&pool, "TST", "1", "EN", true, "Test Card", 1).await;
+        insert_user(&pool, "user1", "User1").await;
         insert_collection_entry(&pool, "TST", "1", "EN", true, "user1", 1, 100, Utc::now()).await;
         insert_price(&pool, CardMarketPriceEntity::with_foil(1, 50, 777)).await;
         refresh_view(&pool).await;
@@ -1271,6 +1283,7 @@ mod tests {
     async fn get_paginated_returns_correct_quantity_and_purchase_price(pool: PgPool) {
         insert_set(&pool, "TST").await;
         insert_card(&pool, "TST", "1", "EN", false, "Test Card", 1).await;
+        insert_user(&pool, "user1", "User1").await;
         insert_collection_entry(&pool, "TST", "1", "EN", false, "user1", 7, 1234, Utc::now()).await;
         insert_price(&pool, CardMarketPriceEntity::simple(1, 500)).await;
         refresh_view(&pool).await;
@@ -1298,6 +1311,7 @@ mod tests {
     async fn get_paginated_price_guide_is_none_when_no_cardmarket_data(pool: PgPool) {
         insert_set(&pool, "TST").await;
         insert_card(&pool, "TST", "1", "EN", false, "Test Card", 1).await;
+        insert_user(&pool, "user1", "User1").await;
         insert_collection_entry(&pool, "TST", "1", "EN", false, "user1", 1, 100, Utc::now()).await;
         refresh_view(&pool).await;
 
@@ -1316,6 +1330,7 @@ mod tests {
     async fn get_paginated_non_foil_card_does_not_use_foil_prices(pool: PgPool) {
         insert_set(&pool, "TST").await;
         insert_card(&pool, "TST", "1", "EN", false, "Test Card", 1).await;
+        insert_user(&pool, "user1", "User1").await;
         insert_collection_entry(&pool, "TST", "1", "EN", false, "user1", 1, 100, Utc::now()).await;
         insert_price(&pool, CardMarketPriceEntity::with_foil(1, 123, 999)).await;
         refresh_view(&pool).await;
@@ -1356,6 +1371,7 @@ mod tests {
         insert_set(&pool, "TST").await;
         insert_card(&pool, "TST", "1", "EN", false, "Goblin Guide", 1).await;
         insert_card(&pool, "TST", "2", "EN", false, "Sol Ring", 2).await;
+        insert_user(&pool, "user1", "User1").await;
         insert_collection_entry(&pool, "TST", "1", "EN", false, "user1", 1, 100, Utc::now()).await;
         insert_collection_entry(&pool, "TST", "2", "EN", false, "user1", 1, 100, Utc::now()).await;
         insert_price(&pool, CardMarketPriceEntity::simple(1, 100)).await;
@@ -1384,6 +1400,7 @@ mod tests {
         insert_set(&pool, "TST").await;
         insert_card_with_rarity(&pool, "TST", "1", "EN", false, "Common Card", 1, "C").await;
         insert_card_with_rarity(&pool, "TST", "2", "EN", false, "Mythic Card", 2, "M").await;
+        insert_user(&pool, "user1", "User1").await;
         insert_collection_entry(&pool, "TST", "1", "EN", false, "user1", 1, 100, Utc::now()).await;
         insert_collection_entry(&pool, "TST", "2", "EN", false, "user1", 1, 100, Utc::now()).await;
         insert_price(&pool, CardMarketPriceEntity::simple(1, 100)).await;
@@ -1411,6 +1428,7 @@ mod tests {
         insert_set(&pool, "TS2").await;
         insert_card(&pool, "TS1", "1", "EN", false, "Card A", 1).await;
         insert_card(&pool, "TS2", "1", "EN", false, "Card B", 2).await;
+        insert_user(&pool, "user1", "User1").await;
         insert_collection_entry(&pool, "TS1", "1", "EN", false, "user1", 1, 100, Utc::now()).await;
         insert_collection_entry(&pool, "TS2", "1", "EN", false, "user1", 1, 100, Utc::now()).await;
         insert_price(&pool, CardMarketPriceEntity::simple(1, 100)).await;
@@ -1437,6 +1455,7 @@ mod tests {
         insert_set(&pool, "TST").await;
         insert_card(&pool, "TST", "1", "EN", false, "Cheap Card", 1).await;
         insert_card(&pool, "TST", "2", "EN", false, "Expensive Card", 2).await;
+        insert_user(&pool, "user1", "User1").await;
         insert_collection_entry(&pool, "TST", "1", "EN", false, "user1", 1, 100, Utc::now()).await;
         insert_collection_entry(&pool, "TST", "2", "EN", false, "user1", 1, 100, Utc::now()).await;
         insert_price(&pool, CardMarketPriceEntity::simple(1, 100)).await;
@@ -1473,6 +1492,7 @@ mod tests {
     async fn exists_returns_true_when_card_is_owned_by_someone(pool: PgPool) {
         insert_set(&pool, "TST").await;
         insert_card(&pool, "TST", "1", "EN", false, "Test Card", 1).await;
+        insert_user(&pool, "user1", "User1").await;
         insert_collection_entry(&pool, "TST", "1", "EN", false, "user1", 1, 100, Utc::now()).await;
         insert_price(&pool, CardMarketPriceEntity::simple(1, 100)).await;
         refresh_view(&pool).await;
@@ -1490,6 +1510,7 @@ mod tests {
     async fn exists_returns_true_even_when_only_the_requesting_user_owns_it(pool: PgPool) {
         insert_set(&pool, "TST").await;
         insert_card(&pool, "TST", "1", "EN", false, "Test Card", 1).await;
+        insert_user(&pool, "user1", "User1").await;
         insert_collection_entry(&pool, "TST", "1", "EN", false, "user1", 1, 100, Utc::now()).await;
         insert_price(&pool, CardMarketPriceEntity::simple(1, 100)).await;
         refresh_view(&pool).await;

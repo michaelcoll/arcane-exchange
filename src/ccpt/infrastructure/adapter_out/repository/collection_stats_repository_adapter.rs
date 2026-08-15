@@ -93,7 +93,7 @@ impl CollectionStatsRepository for CollectionStatsRepositoryAdapter {
 mod tests {
     use super::*;
     use crate::infrastructure::adapter_out::repository::common_repository_tests::{
-        insert_card_without_cardmarket_id, insert_collection_entry, insert_set,
+        insert_card_without_cardmarket_id, insert_collection_entry, insert_set, insert_user,
     };
     use chrono::Utc;
     use sqlx::PgPool;
@@ -118,6 +118,7 @@ mod tests {
         insert_set(&pool, "TST").await;
         insert_card_without_cardmarket_id(&pool, "TST", "1", "en", false, "Card A").await;
         insert_card_without_cardmarket_id(&pool, "TST", "2", "en", false, "Card B").await;
+        insert_user(&pool, "user-1", "User1").await;
         insert_collection_entry(&pool, "TST", "1", "en", false, "user-1", 3, 100, Utc::now()).await;
         insert_collection_entry(&pool, "TST", "2", "en", false, "user-1", 2, 200, Utc::now()).await;
 
@@ -136,6 +137,7 @@ mod tests {
     async fn does_not_return_other_users_cards(pool: PgPool) {
         insert_set(&pool, "TST").await;
         insert_card_without_cardmarket_id(&pool, "TST", "1", "en", false, "Card A").await;
+        insert_user(&pool, "user-other", "UserOther").await;
         insert_collection_entry(
             &pool,
             "TST",

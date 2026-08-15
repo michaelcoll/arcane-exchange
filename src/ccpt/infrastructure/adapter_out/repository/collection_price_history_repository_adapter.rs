@@ -103,7 +103,7 @@ mod tests {
     use super::*;
     use crate::infrastructure::adapter_out::repository::common_repository_tests::{
         fetch_collection_price_history, insert_card, insert_collection_entry,
-        insert_collection_price_history, insert_price, insert_set,
+        insert_collection_price_history, insert_price, insert_set, insert_user,
     };
     use crate::infrastructure::adapter_out::repository::entities::{
         CardMarketPriceEntity, PriceGuideEntity,
@@ -125,6 +125,7 @@ mod tests {
 
         insert_set(&pool, "SET1").await;
         insert_card(&pool, "SET1", "1", "EN", false, "Test Card", 1).await;
+        insert_user(&pool, "user1", "User1").await;
         insert_collection_entry(&pool, "SET1", "1", "EN", false, "user1", 1, 100, Utc::now()).await;
         insert_price(
             &pool,
@@ -156,6 +157,7 @@ mod tests {
 
         insert_set(&pool, "SET2").await;
         insert_card(&pool, "SET2", "1", "EN", false, "Test Card", 1).await;
+        insert_user(&pool, "user1", "User1").await;
         insert_collection_entry(&pool, "SET2", "1", "EN", false, "user1", 1, 100, Utc::now()).await;
         insert_price(
             &pool,
@@ -190,6 +192,8 @@ mod tests {
 
         insert_set(&pool, "SET3").await;
         insert_card(&pool, "SET3", "1", "EN", false, "Test Card", 1).await;
+        insert_user(&pool, "user1", "User1").await;
+        insert_user(&pool, "user2", "User2").await;
         insert_collection_entry(&pool, "SET3", "1", "EN", false, "user1", 1, 100, Utc::now()).await;
         insert_collection_entry(&pool, "SET3", "1", "EN", false, "user2", 2, 200, Utc::now()).await;
         insert_price(
@@ -236,6 +240,8 @@ mod tests {
 
         insert_set(&pool, "SET6").await;
         insert_card(&pool, "SET6", "1", "EN", false, "Card 1", 5).await;
+        insert_user(&pool, "user1", "User1").await;
+        insert_user(&pool, "user2", "User2").await;
         insert_collection_entry(&pool, "SET6", "1", "EN", false, "user1", 2, 100, added_at).await;
         insert_collection_entry(&pool, "SET6", "1", "EN", false, "user2", 3, 150, added_at).await;
         insert_price(

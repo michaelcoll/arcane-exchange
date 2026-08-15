@@ -212,7 +212,7 @@ mod tests {
     use crate::domain::rarity_code::RarityCode;
     use crate::infrastructure::adapter_out::repository::common_repository_tests::{
         insert_card, insert_card_with_scryfall_id, insert_card_without_cardmarket_id,
-        insert_collection_entry,
+        insert_collection_entry, insert_user,
     };
     use chrono::Utc;
     use sqlx::PgPool;
@@ -231,6 +231,7 @@ mod tests {
     async fn test_get_user_id(pool: PgPool) {
         // FDN="Foundations" est déjà seedé par la migration
         insert_card_without_cardmarket_id(&pool, "FDN", "87", "FR", false, "Goblin Boarders").await;
+        insert_user(&pool, "test-user-id", "testuser").await;
         insert_collection_entry(
             &pool,
             "FDN",
@@ -269,6 +270,7 @@ mod tests {
 
     #[sqlx::test]
     async fn save_card_updates_existing_card(pool: PgPool) {
+        insert_user(&pool, "test-user-id", "testuser").await;
         let repository = CardRepositoryAdapter::new(pool);
 
         let card = Card::new(
@@ -329,6 +331,7 @@ mod tests {
     async fn delete_all_removes_all_cards(pool: PgPool) {
         insert_card_without_cardmarket_id(&pool, "FDN", "87", "FR", false, "Goblin Boarders").await;
         insert_card_without_cardmarket_id(&pool, "FDN", "12", "EN", true, "Goblin Boarders").await;
+        insert_user(&pool, "test-user-id", "testuser").await;
         insert_collection_entry(
             &pool,
             "FDN",
@@ -368,6 +371,7 @@ mod tests {
     async fn get_all_returns_multiple_cards(pool: PgPool) {
         insert_card_without_cardmarket_id(&pool, "FDN", "87", "FR", false, "Goblin Boarders").await;
         insert_card_without_cardmarket_id(&pool, "FDN", "12", "EN", true, "Goblin Boarders").await;
+        insert_user(&pool, "test-user-id", "testuser").await;
         insert_collection_entry(
             &pool,
             "FDN",
@@ -408,6 +412,7 @@ mod tests {
     async fn get_all_without_cardmarket_id_returns_only_cards_without_cardmarket_id(pool: PgPool) {
         insert_card_without_cardmarket_id(&pool, "FDN", "87", "FR", false, "Goblin Boarders").await;
         insert_card(&pool, "FDN", "12", "EN", true, "Goblin Boarders", 123).await;
+        insert_user(&pool, "test-user-id", "testuser").await;
         insert_collection_entry(
             &pool,
             "FDN",

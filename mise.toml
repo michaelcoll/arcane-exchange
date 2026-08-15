@@ -24,10 +24,11 @@ node = "24"
 pnpm = "11"
 "npm:@playwright/cli" = "latest"
 "go:github.com/evilmartians/lefthook/v2" = "latest"
+"cargo:erdify-rs" = "1.2.0"
 
 [tasks.checks]
 description = "Runs all the checks for the project"
-depends = ["openapi", "sqlx-prepare", "test-backend", "test-frontend", "lint-backend", "lint-frontend"]
+depends = ["rebuild-docs", "sqlx-prepare", "test-backend", "test-frontend", "lint-backend", "lint-frontend"]
 
 [tasks.clean-backend]
 run = "cargo clean"
@@ -52,9 +53,17 @@ hide = true
 description = "Setups the project for development"
 depends = ["clean", "install-frontend-deps"]
 
-[tasks.openapi]
-description = "Generates the OpenAPI specification"
+[tasks.rebuild-docs]
+description = "Refreshes the project documentation"
+depends = ["rebuild-openapi-doc", "rebuild-db-doc"]
+
+[tasks.rebuild-openapi-doc]
+hide = true
 run = "cargo run --bin generate-openapi"
+
+[tasks.rebuild-db-doc]
+hide = true
+run = "erdify --full --ignore-tables databases,_sqlx_migrations --output doc/db.md"
 
 [tasks.sqlx-prepare]
 description = "Generates the SQLx metadata for the project"

@@ -1,59 +1,43 @@
-# Database Schema & Data Flow Guide
+# Database Schema Guide
 
-This document details the database structure based on migrations and enhances it with context from the application's
-service layer, explaining _how_ each table is used in the collection tracking system.
+**Source of truth for the schema: [`doc/db.md`](../doc/db.md)** — generated ERD (tables, columns, types, PK/FK,
+indexes, constraints). Read it when you need column names or relations; this file only documents what the ERD cannot
+express.
 
-## Core Tables (Transactional Data)
+## Table roles & ownership
 
-### `set_name`
+Each table is owned by one adapter in `src/ccpt/infrastructure/adapter_out/repository/`.
 
-- **Role:** Stores metadata for each card set. This is a static reference table.
-- **Colonnes:**
-  - `set_code` (PK): Unique identifier for the set.
-  - `name`: Full name of the set.
+| Table                      | Role                                                    | Adapter                                       |
+| -------------------------- | ------------------------------------------------------- | --------------------------------------------- |
+| `set_name`                 | Static reference: card sets                             | `set_names_repository_adapter`                |
+| `card`                     | Card template (game data, no ownership)                 | `card_repository_adapter`                     |
+| `collection_entry`         | A user's ownership of a card (quantity, purchase price) | `card_repository_adapter`                     |
+| `cardmarket_price`         | Append-only ledger of daily CardMarket prices           | `cardmarket_price_repository_adapter`         |
+| `collection_price_history` | Daily valuation of a user's collection                  | `collection_price_history_repository_adapter` |
+| `users`                    | Local mirror of Clerk users (id, username)              | `user_repository_adapter`                     |
+| `trade`, `trade_card`      | Trades and the cards engaged in them                    | `trade_repository_adapter`                    |
+| `mv_card_prices`           | Materialized view: collection joined with latest prices | `card_prices_view_repository_adapter`         |
 
-### `card`
+## Invariants
 
-- **Role:** Defines a unique card template within the game/set. This is the base entity for any collection item.
-- **Colonnes:**
-  - `set_code` (FK): Links to `set_name`.
-  - `collector_number`, `language_code`, `foil`: Composite key components defining the specific card version.
-  - `name`, `rarity`: Descriptive attributes of the card.
-  - `scryfall_id`, `cardmarket_id`: External identifiers used for integration.
-- **Application Flow:** Managed by `CardRepositoryAdapter`. All collection management (adding/updating a card) flows
-  through this adapter, which uses the composite key to ensure uniqueness.
+- **Card identity** is the composite key `(set_code, collector_number, language_code, foil)`. It propagates to
+  `collection_entry`, `trade_card` and `mv_card_prices`. Never key a card by `scryfall_id` or `cardmarket_id`.
+- **All prices are integers in cents** (`purchase_price`, `low`, `trend`, `avg`, and their `_foil` variants).
+- **Upserts, not duplicates**: `card`, `collection_entry`, `users`, `set_name` and `trade_card` writes use
+  `ON CONFLICT ... DO UPDATE` on their natural key.
+- **`cardmarket_price` is append-only** and ingested in chunks (`CHUNK_SIZE = 1000`) per transaction.
+- **`mv_card_prices` is stale by design**: refreshed explicitly with `REFRESH MATERIALIZED VIEW CONCURRENTLY`
+  after every price import and card/collection import (`import_price_service`, `import_card_service`, and the
+  CardMarket/Gatherer update workers). Read-only — never write to it.
+  `CONCURRENTLY` requires the unique index `mv_card_prices_unique`; keep it if the view changes.
+- **Trade card reservation** is derived, not stored: a card is reserved when it appears in `trade_card` of a
+  non-terminal trade (see [trade-workflow.instructions.md](trade-workflow.instructions.md)).
 
-### `card_quantity`
+## Changing the schema
 
-- **Role:** Tracks a specific user's collection instance of a card. This is the transactional record of ownership.
-- **Colonnes:**
-  - `set_code`, `collector_number`, `language_code`, `foil`: Composite FK referencing the base card in `card`.
-  - `user_id`: Identifies the owner.
-  - `quantity`, `purchase_price`: Transactional data specific to this user's acquisition.
-- **Application Flow:** Updated atomically by `CardRepositoryAdapter` upon collection edits, using an `ON CONFLICT`
-  clause to handle quantity adjustments rather than creating duplicate entries.
-
-### `cardmarket_price`
-
-- **Role:** The append-only ledger for all raw price data ingested from external sources (CardMarket). It is the
-  historical record.
-- **Colonnes:**
-  - `id_produit`, `date`: Composite key defining a specific price snapshot.
-  - `low`, `trend`, `avg`, etc.: Raw pricing metrics for the date.
-  - `low_foil`, `trend_foil`, `avg_foil`, etc.: Specific metrics for foil versions.
-- **Application Flow:** Managed by `CardMarketPriceRepositoryAdapter`. Ingestion is batched and transactionalized using
-  a chunking mechanism (`CHUNK_SIZE = 1000`) to efficiently handle high-volume updates.
-
-## Derived/Read Models (Aggregated Data)
-
-### `mv_card_prices` (Materialized View)
-
-- **Role:** Provides a fast, read-optimized snapshot of the most recent market pricing for quick display. It is derived
-  from `cardmarket_price`.
-- **Colonnes:** Contains the most relevant pricing metrics joined with card details.
-- **Application Flow:** This view must be explicitly refreshed (`REFRESH MATERIALIZED VIEW CONCURRENTLY`) by the
-  application to ensure it reflects the latest ingested data. It is used for read operations, not transactional writes.
-
----
-
-_This guide integrates the SQL structure with the application's data persistence layer responsibilities._
+1. Add `migrations/NNNN_description.sql` (4-digit sequence, forward-only — no down migrations). Applied at startup.
+2. If the view's shape changes, drop and recreate `mv_card_prices` in the same migration — dropping it also drops its
+   indexes, so recreate `mv_card_prices_unique` (and any other index the view had).
+3. Run `mise run rebuild-db-doc` to regenerate `doc/db.md`, and `mise run sqlx-prepare` to refresh the SQLx metadata
+   (both are covered by `mise run checks`).
