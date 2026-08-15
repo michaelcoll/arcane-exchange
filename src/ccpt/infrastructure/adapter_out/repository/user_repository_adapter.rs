@@ -1,7 +1,7 @@
 use crate::application::error::AppError;
 use crate::application::repository::UserRepository;
 use crate::domain::error::FunctionalError;
-use crate::domain::user::{User, UserId, UserSuggestion};
+use crate::domain::user::{CollectionVisibility, User, UserId, UserSuggestion};
 use crate::infrastructure::adapter_out::repository::entities::{UserEntity, UserSuggestionEntity};
 use async_trait::async_trait;
 use sqlx::{Pool, Postgres};
@@ -83,6 +83,30 @@ impl UserRepository for UserRepositoryAdapter {
         .await?;
 
         Ok(rows.into_iter().map(UserSuggestion::from).collect())
+    }
+
+    async fn get_visibility(&self, id: &UserId) -> Result<Option<CollectionVisibility>, AppError> {
+        let row = sqlx::query!("SELECT visibility FROM users WHERE id = $1", id.as_str())
+            .fetch_optional(&self.pool)
+            .await?;
+
+        Ok(row.map(|r| CollectionVisibility::from_db_str(&r.visibility)))
+    }
+
+    async fn set_visibility(
+        &self,
+        id: &UserId,
+        visibility: CollectionVisibility,
+    ) -> Result<bool, AppError> {
+        let result = sqlx::query!(
+            "UPDATE users SET visibility = $2 WHERE id = $1",
+            id.as_str(),
+            visibility.as_db_str(),
+        )
+        .execute(&self.pool)
+        .await?;
+
+        Ok(result.rows_affected() > 0)
     }
 }
 
@@ -289,5 +313,79 @@ mod tests {
 
         assert_eq!(result.len(), 1);
         assert_eq!(result[0].card_count, 0);
+    }
+
+    // --- get_visibility / set_visibility ---
+
+    #[sqlx::test]
+    async fn get_visibility_returns_default_private_for_newly_inserted_user(pool: PgPool) {
+        insert_user(&pool, "user_alice", "alice").await;
+
+        let adapter = UserRepositoryAdapter::new(pool);
+        let result = adapter
+            .get_visibility(&UserId::new("user_alice"))
+            .await
+            .unwrap();
+
+        assert_eq!(result, Some(CollectionVisibility::Private));
+    }
+
+    #[sqlx::test]
+    async fn get_visibility_returns_stored_value_after_update(pool: PgPool) {
+        insert_user(&pool, "user_alice", "alice").await;
+
+        let adapter = UserRepositoryAdapter::new(pool);
+        adapter
+            .set_visibility(&UserId::new("user_alice"), CollectionVisibility::Public)
+            .await
+            .unwrap();
+        let result = adapter
+            .get_visibility(&UserId::new("user_alice"))
+            .await
+            .unwrap();
+
+        assert_eq!(result, Some(CollectionVisibility::Public));
+    }
+
+    #[sqlx::test]
+    async fn get_visibility_returns_none_for_unknown_user(pool: PgPool) {
+        let adapter = UserRepositoryAdapter::new(pool);
+        let result = adapter
+            .get_visibility(&UserId::new("nobody"))
+            .await
+            .unwrap();
+
+        assert!(result.is_none());
+    }
+
+    #[sqlx::test]
+    async fn set_visibility_returns_true_and_persists_new_value(pool: PgPool) {
+        insert_user(&pool, "user_alice", "alice").await;
+
+        let adapter = UserRepositoryAdapter::new(pool);
+        let updated = adapter
+            .set_visibility(&UserId::new("user_alice"), CollectionVisibility::Trade)
+            .await
+            .unwrap();
+
+        assert!(updated);
+        assert_eq!(
+            adapter
+                .get_visibility(&UserId::new("user_alice"))
+                .await
+                .unwrap(),
+            Some(CollectionVisibility::Trade)
+        );
+    }
+
+    #[sqlx::test]
+    async fn set_visibility_returns_false_for_unknown_user(pool: PgPool) {
+        let adapter = UserRepositoryAdapter::new(pool);
+        let updated = adapter
+            .set_visibility(&UserId::new("nobody"), CollectionVisibility::Public)
+            .await
+            .unwrap();
+
+        assert!(!updated);
     }
 }

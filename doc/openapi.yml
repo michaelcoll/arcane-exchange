@@ -713,6 +713,45 @@ paths:
           description: Missing or invalid authentication token
       security:
       - bearer_auth: []
+  /user/visibility:
+    get:
+      tags:
+      - auth
+      operationId: get_visibility
+      responses:
+        '200':
+          description: Current collection visibility
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VisibilityResponse'
+        '401':
+          description: Missing or invalid authentication token
+        '404':
+          description: Authenticated user has never registered
+      security:
+      - bearer_auth: []
+    put:
+      tags:
+      - auth
+      operationId: set_visibility
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SetVisibilityRequest'
+        required: true
+      responses:
+        '204':
+          description: Visibility updated successfully
+        '400':
+          description: Invalid visibility value
+        '401':
+          description: Missing or invalid authentication token
+        '404':
+          description: Authenticated user has never registered
+      security:
+      - bearer_auth: []
 components:
   schemas:
     AddTradeCardRequest:
@@ -869,6 +908,12 @@ components:
           type: integer
           format: int64
           minimum: 0
+    CollectionVisibilityParam:
+      type: string
+      enum:
+      - public
+      - trade
+      - private
     CreateTradeRequest:
       type: object
       required:
@@ -1058,6 +1103,13 @@ components:
           type: string
         name:
           type: string
+    SetVisibilityRequest:
+      type: object
+      required:
+      - visibility
+      properties:
+        visibility:
+          $ref: '#/components/schemas/CollectionVisibilityParam'
     SortByParam:
       type: string
       enum:
@@ -1232,6 +1284,13 @@ components:
           minimum: 0
         username:
           type: string
+    VisibilityResponse:
+      type: object
+      required:
+      - visibility
+      properties:
+        visibility:
+          $ref: '#/components/schemas/CollectionVisibilityParam'
   securitySchemes:
     bearer_auth:
       type: http

@@ -8,6 +8,9 @@ use crate::application::service::cardmarket_id_enqueue_service::CardMarketIdEnqu
 use crate::application::service::collection_price_history_service::CollectionPriceHistoryService;
 use crate::application::service::collection_service::CollectionService;
 use crate::application::service::collection_stats_service::CollectionStatsService;
+use crate::application::service::collection_visibility_service::{
+    GetCollectionVisibilityService, SetCollectionVisibilityService,
+};
 use crate::application::service::gatherer_id_enqueue_service::GathererIdEnqueueService;
 use crate::application::service::import_card_service::ImportCardService;
 use crate::application::service::import_price_service::ImportPriceService;
@@ -26,8 +29,9 @@ use crate::application::use_case::{
     ConfirmTradeUseCase, CreateTradeUseCase, EnqueueCardMarketIdUpdateUseCase,
     EnqueueGathererIdUpdateUseCase, GetCardOffersUseCase, GetCardPriceHistoryUseCase,
     GetCollectionPriceHistoryUseCase, GetCollectionStatsUseCase, GetCollectionUseCase,
-    GetTradeUseCase, ImportCardUseCase, ImportPriceUseCase, ListTradesUseCase, RateTradeUseCase,
-    RegisterUserUseCase, RemoveTradeCardUseCase, SearchCardsUseCase, StatsUseCase,
+    GetCollectionVisibilityUseCase, GetTradeUseCase, ImportCardUseCase, ImportPriceUseCase,
+    ListTradesUseCase, RateTradeUseCase, RegisterUserUseCase, RemoveTradeCardUseCase,
+    SearchCardsUseCase, SetCollectionVisibilityUseCase, StatsUseCase,
 };
 use crate::config::Config;
 use crate::domain::card::CardId;
@@ -92,6 +96,8 @@ pub struct AppState {
     pub list_trades_use_case: Arc<dyn ListTradesUseCase>,
     pub add_trade_card_use_case: Arc<dyn AddTradeCardUseCase>,
     pub remove_trade_card_use_case: Arc<dyn RemoveTradeCardUseCase>,
+    pub get_collection_visibility_use_case: Arc<dyn GetCollectionVisibilityUseCase>,
+    pub set_collection_visibility_use_case: Arc<dyn SetCollectionVisibilityUseCase>,
     pub max_page_size: u32,
     pub max_page_number: u32,
 }
@@ -259,6 +265,10 @@ fn create_app_state(
         Arc::new(CollectionStatsService::new(repos.collection_stats));
     let register_user_service: Arc<dyn RegisterUserUseCase> =
         Arc::new(RegisterUserService::new(repos.user.clone()));
+    let get_collection_visibility_service: Arc<dyn GetCollectionVisibilityUseCase> =
+        Arc::new(GetCollectionVisibilityService::new(repos.user.clone()));
+    let set_collection_visibility_service: Arc<dyn SetCollectionVisibilityUseCase> =
+        Arc::new(SetCollectionVisibilityService::new(repos.user.clone()));
     let create_trade_service: Arc<dyn CreateTradeUseCase> = Arc::new(CreateTradeService::new(
         repos.trade.clone(),
         repos.user.clone(),
@@ -313,6 +323,8 @@ fn create_app_state(
         list_trades_use_case: list_trades_service,
         add_trade_card_use_case: add_trade_card_service,
         remove_trade_card_use_case: remove_trade_card_service,
+        get_collection_visibility_use_case: get_collection_visibility_service,
+        set_collection_visibility_use_case: set_collection_visibility_service,
         max_page_size: config.max_page_size,
         max_page_number: config.max_page_number,
     }
@@ -404,9 +416,10 @@ impl AppState {
             MockEnqueueCardMarketIdUpdateUseCase, MockEnqueueGathererIdUpdateUseCase,
             MockGetCardOffersUseCase, MockGetCardPriceHistoryUseCase,
             MockGetCollectionPriceHistoryUseCase, MockGetCollectionStatsUseCase,
-            MockGetCollectionUseCase, MockGetTradeUseCase, MockImportCardUseCase,
-            MockListTradesUseCase, MockRateTradeUseCase, MockRegisterUserUseCase,
-            MockRemoveTradeCardUseCase, MockSearchCardsUseCase,
+            MockGetCollectionUseCase, MockGetCollectionVisibilityUseCase, MockGetTradeUseCase,
+            MockImportCardUseCase, MockListTradesUseCase, MockRateTradeUseCase,
+            MockRegisterUserUseCase, MockRemoveTradeCardUseCase, MockSearchCardsUseCase,
+            MockSetCollectionVisibilityUseCase,
         };
         use crate::domain::card::CardInfo;
         use crate::domain::user::User;
@@ -458,6 +471,8 @@ impl AppState {
             list_trades_use_case: Arc::new(MockListTradesUseCase::new()),
             add_trade_card_use_case: Arc::new(MockAddTradeCardUseCase::new()),
             remove_trade_card_use_case: Arc::new(MockRemoveTradeCardUseCase::new()),
+            get_collection_visibility_use_case: Arc::new(MockGetCollectionVisibilityUseCase::new()),
+            set_collection_visibility_use_case: Arc::new(MockSetCollectionVisibilityUseCase::new()),
             max_page_size: 100,
             max_page_number: 10,
         }

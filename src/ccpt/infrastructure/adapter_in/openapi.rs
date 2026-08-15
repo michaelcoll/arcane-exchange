@@ -13,6 +13,7 @@ use super::trade::dto::{
     RateTradeRequest, RemoveTradeCardRequest, TradeCardResponse, TradeDetailResponse,
     TradePartyStateResponse, TradeStatusParam, TradeSummaryResponse,
 };
+use super::user::dto::{CollectionVisibilityParam, SetVisibilityRequest, VisibilityResponse};
 use utoipa::OpenApi;
 
 #[derive(OpenApi)]
@@ -30,6 +31,8 @@ use utoipa::OpenApi;
         super::maintenance::controller::trigger_price_update,
         super::maintenance::controller::update_cardmarket_ids,
         super::user::controller::register,
+        super::user::controller::get_visibility,
+        super::user::controller::set_visibility,
         super::trade::controller::create_trade,
         super::trade::controller::add_trade_card,
         super::trade::controller::remove_trade_card,
@@ -69,6 +72,9 @@ use utoipa::OpenApi;
         TradeSummaryResponse,
         PaginatedTradesResponse,
         TradeStatusParam,
+        VisibilityResponse,
+        SetVisibilityRequest,
+        CollectionVisibilityParam,
     )),
     modifiers(&SecurityAddon),
     info(
