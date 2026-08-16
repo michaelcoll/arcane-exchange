@@ -27,6 +27,7 @@ pub enum FunctionalError {
     TradeEmpty,
     TradeCardNotFound,
     CardAlreadyReserved,
+    BinderNotFound,
 }
 
 impl From<FunctionalError> for String {
@@ -77,6 +78,7 @@ impl From<FunctionalError> for String {
             FunctionalError::CardAlreadyReserved => {
                 "This card is already reserved by another trade".to_string()
             }
+            FunctionalError::BinderNotFound => "Binder not found in your collection".to_string(),
         }
     }
 }

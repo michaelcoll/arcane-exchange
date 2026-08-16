@@ -1,4 +1,5 @@
 import type { CollectionVisibility } from '~/bindings/CollectionVisibility';
+import type { TradeBindersResponse } from '~/bindings/TradeBindersResponse';
 import type { VisibilityResponse } from '~/bindings/VisibilityResponse';
 
 export const useUserService = () => {
@@ -11,5 +12,20 @@ export const useUserService = () => {
   const setVisibility = (visibility: CollectionVisibility) =>
     apiCall<void>('/user/visibility', { method: 'PUT', body: { visibility } });
 
-  return { register, getVisibility, setVisibility };
+  const getTradeBinders = () => apiCall<TradeBindersResponse>('/user/trade-binders');
+
+  const addTradeBinder = (binderName: string) =>
+    apiCall<void>('/user/trade-binders', { method: 'POST', body: { binder_name: binderName } });
+
+  const removeTradeBinder = (binderName: string) =>
+    apiCall<void>(`/user/trade-binders/${encodeURIComponent(binderName)}`, { method: 'DELETE' });
+
+  return {
+    register,
+    getVisibility,
+    setVisibility,
+    getTradeBinders,
+    addTradeBinder,
+    removeTradeBinder,
+  };
 };

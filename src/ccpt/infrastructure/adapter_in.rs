@@ -30,7 +30,8 @@ impl IntoResponse for AppError {
                 | FunctionalError::CardNotFound
                 | FunctionalError::TradeNotFound
                 | FunctionalError::UserNotFound
-                | FunctionalError::TradeCardNotFound => StatusCode::NOT_FOUND,
+                | FunctionalError::TradeCardNotFound
+                | FunctionalError::BinderNotFound => StatusCode::NOT_FOUND,
                 FunctionalError::TradeAccessDenied => StatusCode::FORBIDDEN,
                 FunctionalError::TradeNotModifiable
                 | FunctionalError::TradeNotAcceptable
@@ -209,6 +210,13 @@ mod tests {
     #[test]
     fn trade_card_not_found_returns_not_found_status() {
         let error = AppError::Functional(FunctionalError::TradeCardNotFound);
+        let response = error.into_response();
+        assert_eq!(response.status(), StatusCode::NOT_FOUND);
+    }
+
+    #[test]
+    fn binder_not_found_returns_not_found_status() {
+        let error = AppError::Functional(FunctionalError::BinderNotFound);
         let response = error.into_response();
         assert_eq!(response.status(), StatusCode::NOT_FOUND);
     }

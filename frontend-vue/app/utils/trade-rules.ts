@@ -1,8 +1,9 @@
 import type { RarityCode } from '~/bindings/RarityCode';
 
 /* Règles de mise à l'échange (écran Profil).
- * Les données ci-dessous sont encore mockées : distribution de la collection et
- * binders ManaBox viendront du backend (import ManaBox + stats collection). */
+ * Les binders ManaBox viennent désormais du backend (/collection/stats et
+ * /user/trade-binders). La distribution par rareté et les poids par binder restent
+ * mockés en attendant que le backend les calcule. */
 
 /** Réglage d'une rareté : ouverte à l'échange, et nombre d'exemplaires toujours gardés. */
 export interface RarityRule {
@@ -19,14 +20,6 @@ export interface RarityDistribution {
   dist: Record<number, number>;
 }
 
-export interface Binder {
-  key: string;
-  name: string;
-  cards: number;
-  /** part des exemplaires de chaque rareté rangée dans ce binder (somme = 1 par rareté) */
-  weights: Record<TradeRuleRarity, number>;
-}
-
 /** Répartition démo : 1 248 cartes uniques, 1 896 exemplaires. */
 export const RARITY_DISTRIBUTION: RarityDistribution[] = [
   { code: 'M', label: 'Mythique', dist: { 1: 62, 2: 9, 3: 3 } },
@@ -35,18 +28,20 @@ export const RARITY_DISTRIBUTION: RarityDistribution[] = [
   { code: 'C', label: 'Commune', dist: { 1: 300, 2: 140, 3: 60, 4: 30 } },
 ];
 
-export const BINDERS: Binder[] = [
-  {
-    key: 'trade',
-    name: 'Trade Binder',
-    cards: 412,
-    weights: { M: 0.15, R: 0.35, U: 0.45, C: 0.3 },
-  },
-  { key: 'bulk', name: 'Bulk', cards: 498, weights: { M: 0.02, R: 0.1, U: 0.3, C: 0.55 } },
-  { key: 'decks', name: 'Decks', cards: 286, weights: { M: 0.55, R: 0.3, U: 0.12, C: 0.08 } },
-  { key: 'edh', name: 'EDH staples', cards: 118, weights: { M: 0.25, R: 0.2, U: 0.08, C: 0.02 } },
-  { key: 'none', name: 'Non classé', cards: 82, weights: { M: 0.03, R: 0.05, U: 0.05, C: 0.05 } },
-];
+/**
+ * Part démo des exemplaires de chaque rareté rangée dans un binder connu (somme = 1 par
+ * rareté). Indexée par nom de binder ManaBox — les binders réels absents de cette table
+ * retombent sur FALLBACK_BINDER_WEIGHT.
+ */
+export const BINDER_WEIGHTS: Record<string, Record<TradeRuleRarity, number>> = {
+  'Trade Binder': { M: 0.15, R: 0.35, U: 0.45, C: 0.3 },
+  Bulk: { M: 0.02, R: 0.1, U: 0.3, C: 0.55 },
+  Decks: { M: 0.55, R: 0.3, U: 0.12, C: 0.08 },
+  'EDH staples': { M: 0.25, R: 0.2, U: 0.08, C: 0.02 },
+};
+
+/** Poids appliqué à un binder sélectionné absent de BINDER_WEIGHTS. */
+export const FALLBACK_BINDER_WEIGHT = 0.1;
 
 export const DEFAULT_RARITY_RULES: Record<TradeRuleRarity, RarityRule> = {
   M: { on: false, keep: 1 },
@@ -76,7 +71,10 @@ export const eligibleCopies = (r: RarityDistribution, keep: number, share = 1): 
 
 /** Part des exemplaires d'une rareté couverte par les binders sélectionnés. */
 export const binderFactor = (rarity: TradeRuleRarity, selected: string[]): number =>
-  BINDERS.reduce((s, b) => s + (selected.includes(b.key) ? b.weights[rarity] : 0), 0);
+  Math.min(
+    1,
+    selected.reduce((s, name) => s + (BINDER_WEIGHTS[name]?.[rarity] ?? FALLBACK_BINDER_WEIGHT), 0),
+  );
 
 export const TOTAL_COPIES = RARITY_DISTRIBUTION.reduce((s, r) => s + copiesOf(r), 0);
 

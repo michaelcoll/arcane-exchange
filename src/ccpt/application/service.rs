@@ -15,6 +15,7 @@ mod parse_service;
 pub mod register_user_service;
 pub mod search_service;
 pub mod stats_service;
+pub mod trade_binder_service;
 pub mod trade_service;
 pub mod update_card_market_service;
 pub mod update_gatherer_service;

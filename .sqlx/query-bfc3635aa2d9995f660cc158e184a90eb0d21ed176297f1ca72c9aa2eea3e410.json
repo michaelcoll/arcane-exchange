@@ -1,0 +1,35 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            SELECT ce.binder_name AS \"binder_name!\", SUM(ce.quantity)::BIGINT AS \"card_count!\"\n            FROM collection_entry ce\n            WHERE ce.user_id = $1 AND ce.binder_name IS NOT NULL\n            GROUP BY ce.binder_name\n            ORDER BY SUM(ce.quantity) DESC, ce.binder_name\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "binder_name!",
+        "type_info": "Varchar",
+        "origin": {
+          "Table": {
+            "table": "collection_entry",
+            "name": "binder_name"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "card_count!",
+        "type_info": "Int8",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": [
+      true,
+      null
+    ]
+  },
+  "hash": "bfc3635aa2d9995f660cc158e184a90eb0d21ed176297f1ca72c9aa2eea3e410"
+}

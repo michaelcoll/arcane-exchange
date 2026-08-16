@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import {
-  BINDERS,
   DEFAULT_RARITY_RULES,
   MAX_KEPT_COPIES,
   RARITY_DISTRIBUTION,
@@ -14,13 +13,57 @@ import {
   type TradeRuleRarity,
 } from '~/utils/trade-rules';
 
-const rules = reactive<Record<TradeRuleRarity, RarityRule>>({ ...DEFAULT_RARITY_RULES });
-const binders = ref<string[]>(['trade', 'bulk']);
+const { getCollectionStats } = useCollectionService();
+const { getTradeBinders, addTradeBinder, removeTradeBinder } = useUserService();
+const { showError } = useToast();
 
-const toggleBinder = (key: string) => {
-  binders.value = binders.value.includes(key)
-    ? binders.value.filter((k) => k !== key)
-    : [...binders.value, key];
+const rules = reactive<Record<TradeRuleRarity, RarityRule>>({ ...DEFAULT_RARITY_RULES });
+
+const errorMessage = (e: unknown) =>
+  (e as { data?: { error?: string } })?.data?.error ?? 'Une erreur est survenue.';
+
+// useAsyncData must be called synchronously during setup, not inside onMounted.
+const { data: statsData, pending: statsPending, error: statsError } = getCollectionStats();
+const binders = computed(() => statsData.value?.binders ?? []);
+
+watch(statsError, (e) => {
+  if (e) showError('Impossible de charger les binders', errorMessage(e));
+});
+
+const selectedBinders = ref<string[]>([]);
+const selectionLoading = ref(true);
+const bindersLoading = computed(() => statsPending.value || selectionLoading.value);
+const binderBusy = ref<string | null>(null);
+
+onMounted(async () => {
+  try {
+    const tradeBinders = await getTradeBinders();
+    selectedBinders.value = tradeBinders.binders;
+  } catch (e) {
+    showError('Impossible de charger ta sélection de binders', errorMessage(e));
+  } finally {
+    selectionLoading.value = false;
+  }
+});
+
+const toggleBinder = async (name: string) => {
+  const previous = selectedBinders.value;
+  const wasSelected = previous.includes(name);
+  selectedBinders.value = wasSelected ? previous.filter((n) => n !== name) : [...previous, name];
+
+  binderBusy.value = name;
+  try {
+    if (wasSelected) {
+      await removeTradeBinder(name);
+    } else {
+      await addTradeBinder(name);
+    }
+  } catch (e) {
+    selectedBinders.value = previous;
+    showError('Impossible de mettre à jour le binder', errorMessage(e));
+  } finally {
+    binderBusy.value = null;
+  }
 };
 
 const setKeep = (code: TradeRuleRarity, value: number) => {
@@ -32,7 +75,7 @@ const rows = computed(() =>
     const rule = rules[r.code];
     const copies = copiesOf(r);
     const proposed = rule.on
-      ? eligibleCopies(r, rule.keep, binderFactor(r.code, binders.value))
+      ? eligibleCopies(r, rule.keep, binderFactor(r.code, selectedBinders.value))
       : 0;
     return {
       rarity: r,
@@ -84,30 +127,45 @@ const stepperBtnClass =
       <div class="flex flex-col gap-2.5">
         <div class="flex flex-wrap items-center justify-between gap-3">
           <span :class="labelClass">Périmètre · binders ManaBox</span>
-          <span class="text-xs text-slate-400 dark:text-slate-500"
-            >issus de ton dernier import</span
-          >
+          <span class="flex items-center gap-1.5 text-xs text-slate-400 dark:text-slate-500">
+            <Icon
+              v-if="bindersLoading"
+              name="lucide:loader-circle"
+              size="14"
+              class="animate-spin"
+            />
+            issus de ton dernier import
+          </span>
         </div>
-        <div class="flex flex-wrap gap-2">
+        <div
+          v-if="!bindersLoading && binders.length === 0"
+          class="text-xs text-slate-400 dark:text-slate-500"
+        >
+          Aucun binder dans ton dernier import ManaBox.
+        </div>
+        <div v-else class="flex flex-wrap gap-2">
           <button
-            v-for="b in BINDERS"
-            :key="b.key"
+            v-for="b in binders"
+            :key="b.name"
+            :disabled="binderBusy === b.name"
             :class="[
-              'inline-flex cursor-pointer items-center gap-1.5 rounded-full border border-solid px-3 py-1.5 text-xs font-medium whitespace-nowrap transition-all duration-150 select-none',
-              binders.includes(b.key)
+              'inline-flex cursor-pointer items-center gap-1.5 rounded-full border border-solid px-3 py-1.5 text-xs font-medium whitespace-nowrap transition-all duration-150 select-none disabled:cursor-default disabled:opacity-60',
+              selectedBinders.includes(b.name)
                 ? 'border-cyan-500/40 bg-cyan-500/10 text-cyan-700 dark:border-cyan-400/40 dark:bg-cyan-400/10 dark:text-cyan-300'
                 : 'border-slate-200 bg-slate-100 text-slate-600 hover:border-slate-300 hover:bg-slate-200 hover:text-slate-800 dark:border-white/10 dark:bg-white/5 dark:text-slate-300 dark:hover:border-white/15 dark:hover:bg-zinc-800 dark:hover:text-slate-100',
             ]"
-            @click="toggleBinder(b.key)"
+            @click="toggleBinder(b.name)"
           >
-            <Icon :name="binders.includes(b.key) ? 'lucide:check' : 'lucide:plus'" size="12" />
+            <Icon
+              :name="selectedBinders.includes(b.name) ? 'lucide:check' : 'lucide:plus'"
+              size="12"
+            />
             {{ b.name }}
-            <span class="font-mono text-xs opacity-60">{{ fmtInt(b.cards) }}</span>
+            <span class="font-mono text-xs opacity-60">{{ fmtInt(b.card_count) }}</span>
           </button>
         </div>
         <span class="text-xs text-slate-400 dark:text-slate-500">
-          Seules les cartes rangées dans un binder coché peuvent partir. Laisser « Decks » décoché
-          suffit à protéger tes listes montées.
+          Seules les cartes rangées dans un binder coché peuvent partir.
         </span>
       </div>
     </div>
