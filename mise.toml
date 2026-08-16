@@ -67,7 +67,7 @@ run = "erdify --full --ignore-tables databases,_sqlx_migrations --output doc/db.
 
 [tasks.sqlx-prepare]
 description = "Generates the SQLx metadata for the project"
-run = "rm -fr .sqlx && cargo sqlx prepare"
+run = "rm -fr .sqlx && cargo sqlx prepare --workspace -- --tests"
 
 [tasks.test-backend]
 description = "Tests the backend"
@@ -80,12 +80,13 @@ dir = "frontend-vue"
 run = "pnpm run test"
 
 [tasks.lint-clippy]
-run = "cargo clippy --locked --workspace --all-features --all-targets -- -A dead_code -D clippy::all"
+depends = ["sqlx-prepare"]
+run = "SQLX_OFFLINE=true cargo clippy --locked --workspace --all-features --all-targets -- -D clippy::all"
 hide = true
 
 [tasks.lint-sqlx]
 depends = ["sqlx-prepare"]
-run = "cargo sqlx prepare --check"
+run = "cargo sqlx prepare --check --workspace -- --tests"
 hide = true
 
 [tasks.lint-backend]

@@ -1,0 +1,27 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT SUM(quantity) AS quantity FROM collection_entry\n                WHERE user_id = $1 AND set_code = $2 AND collector_number = $3\n                  AND language_code = $4 AND foil = $5",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "quantity",
+        "type_info": "Int8",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Bool"
+      ]
+    },
+    "nullable": [
+      null
+    ]
+  },
+  "hash": "8bf8410776ac7771926d0597ce001936ae558bce22a1e84cfef8474361c2a080"
+}

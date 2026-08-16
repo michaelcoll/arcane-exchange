@@ -9,24 +9,6 @@ use chrono::{DateTime, NaiveDate, Utc};
 use uuid::Uuid;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct CardEntity {
-    pub set_code: String,
-    pub collector_number: String,
-    pub language_code: String,
-    pub foil: bool,
-    pub set_name: String,
-    pub name: String,
-    pub rarity: String,
-    pub quantity: i32,
-    /// Price in cents
-    pub purchase_price: i32,
-    pub added_at: Option<DateTime<Utc>>,
-    pub scryfall_id: Uuid,
-    pub cardmarket_id: Option<i32>,
-    pub the_gatherer_id: Option<String>,
-}
-
-#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct CardIdEntity {
     pub set_code: String,
     pub collector_number: String,
@@ -63,40 +45,6 @@ impl From<CardNameEntity> for CardId {
 pub struct SetNameEntity {
     pub set_code: String,
     pub name: String,
-}
-
-impl From<CardEntity> for Card {
-    fn from(entity: CardEntity) -> Card {
-        let set_code =
-            SetCode::try_new(entity.set_code).expect("database contains invalid set_code");
-        Card {
-            id: CardId {
-                set_code: set_code.clone(),
-                collector_number: entity.collector_number,
-                language_code: LanguageCode::try_new(entity.language_code)
-                    .expect("database contains invalid language_code"),
-                foil: entity.foil,
-            },
-            set_name: SetName {
-                code: set_code.clone(),
-                name: entity.set_name,
-            },
-            name: entity.name,
-            rarity_code: from_db_rarity(entity.rarity),
-            collection_entry: CollectionEntry::Mine {
-                quantity: entity.quantity as u8,
-                purchase_price: entity.purchase_price as u32,
-                added_at: entity.added_at.expect(
-                    "collection_entry.added_at should always be set (ManaBox import guarantee)",
-                ),
-                reserved: false,
-            },
-            scryfall_id: entity.scryfall_id,
-            cardmarket_id: entity.cardmarket_id.map(|id| id as u32),
-            the_gatherer_id: entity.the_gatherer_id,
-            price_guide: None,
-        }
-    }
 }
 
 fn from_db_rarity<S: AsRef<str>>(s: S) -> RarityCode {
@@ -554,24 +502,6 @@ impl From<CardOfferEntity> for CollectionEntry {
 mod tests {
     use super::*;
 
-    fn make_card_entity(rarity: &str, foil: bool, cardmarket_id: Option<i32>) -> CardEntity {
-        CardEntity {
-            set_code: "FDN".to_string(),
-            collector_number: "123".to_string(),
-            language_code: "EN".to_string(),
-            foil,
-            set_name: "Foundations".to_string(),
-            name: "Goblin Guide".to_string(),
-            rarity: rarity.to_string(),
-            quantity: 2,
-            purchase_price: 350,
-            scryfall_id: Uuid::parse_str("4409a063-bf2a-4a49-803e-3ce6bd474353").unwrap(),
-            cardmarket_id,
-            the_gatherer_id: None,
-            added_at: Some(chrono::Utc::now()),
-        }
-    }
-
     fn make_card_id_entity(foil: bool) -> CardIdEntity {
         CardIdEntity {
             set_code: "FDN".to_string(),
@@ -581,41 +511,6 @@ mod tests {
             set_name: "Foundations".to_string(),
             scryfall_id: Uuid::parse_str("4409a063-bf2a-4a49-803e-3ce6bd474353").unwrap(),
         }
-    }
-
-    #[test]
-    fn card_entity_converts_to_card_with_all_fields() {
-        let entity = make_card_entity("R", false, Some(42));
-
-        let card: Card = entity.into();
-
-        assert_eq!(card.id.collector_number, "123");
-        assert_eq!(card.id.language_code, LanguageCode::EN);
-        assert!(!card.id.foil);
-        assert_eq!(card.name, "Goblin Guide");
-        assert_eq!(card.set_name.name, "Foundations");
-        assert_eq!(card.rarity_code, RarityCode::R);
-        match &card.collection_entry {
-            CollectionEntry::Mine {
-                quantity,
-                purchase_price,
-                ..
-            } => {
-                assert_eq!(*quantity, 2);
-                assert_eq!(*purchase_price, 350);
-            }
-            _ => panic!("expected CollectionEntry::Mine"),
-        }
-        assert_eq!(card.cardmarket_id, Some(42));
-    }
-
-    #[test]
-    fn card_entity_converts_to_card_without_cardmarket_id() {
-        let entity = make_card_entity("C", false, None);
-
-        let card: Card = entity.into();
-
-        assert_eq!(card.cardmarket_id, None);
     }
 
     #[test]

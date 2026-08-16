@@ -24,7 +24,7 @@ impl CollectionStatsRepository for CollectionStatsRepositoryAdapter {
             r#"
             SELECT
                 COALESCE(SUM(ce.quantity), 0)::BIGINT AS "total_cards!",
-                COUNT(*)::BIGINT                       AS "unique_cards!"
+                COUNT(DISTINCT (ce.set_code, ce.collector_number, ce.language_code, ce.foil))::BIGINT AS "unique_cards!"
             FROM collection_entry ce
             WHERE ce.user_id = $1
             "#,
@@ -93,7 +93,8 @@ impl CollectionStatsRepository for CollectionStatsRepositoryAdapter {
 mod tests {
     use super::*;
     use crate::infrastructure::adapter_out::repository::common_repository_tests::{
-        insert_card_without_cardmarket_id, insert_collection_entry, insert_set, insert_user,
+        insert_card_without_cardmarket_id, insert_collection_entry,
+        insert_collection_entry_with_binder, insert_set, insert_user,
     };
     use chrono::Utc;
     use sqlx::PgPool;
@@ -157,5 +158,47 @@ mod tests {
         let stats = result.unwrap();
         assert_eq!(stats.total_cards, 0);
         assert_eq!(stats.unique_cards, 0);
+    }
+
+    #[sqlx::test]
+    async fn counts_card_split_across_binders_once(pool: PgPool) {
+        insert_set(&pool, "TST").await;
+        insert_card_without_cardmarket_id(&pool, "TST", "1", "en", false, "Card A").await;
+        insert_user(&pool, "user-1", "User1").await;
+        insert_collection_entry_with_binder(
+            &pool,
+            "TST",
+            "1",
+            "en",
+            false,
+            "user-1",
+            2,
+            100,
+            Utc::now(),
+            Some("Binder A"),
+        )
+        .await;
+        insert_collection_entry_with_binder(
+            &pool,
+            "TST",
+            "1",
+            "en",
+            false,
+            "user-1",
+            3,
+            100,
+            Utc::now(),
+            Some("Binder B"),
+        )
+        .await;
+
+        let adapter = CollectionStatsRepositoryAdapter::new(pool);
+        let stats = adapter
+            .get_collection_stats(&UserId::new("user-1"))
+            .await
+            .unwrap();
+
+        assert_eq!(stats.unique_cards, 1);
+        assert_eq!(stats.total_cards, 5);
     }
 }

@@ -21,7 +21,7 @@ jobs:
       - name: Rustfmt Check
         uses: actions-rust-lang/rustfmt@v1
 
-      - run: SQLX_OFFLINE=true cargo clippy --locked --workspace --all-features --all-targets -- -A dead_code -D clippy::all
+      - run: SQLX_OFFLINE=true cargo clippy --locked --workspace --all-features --all-targets -- -D clippy::all
 
   test:
     name: Tests
