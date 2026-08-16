@@ -23,7 +23,7 @@
     "@clerk/vue": "~2.4.29",
     "@nuxt/eslint": "~1.17.0",
     "@nuxt/fonts": "~0.14.0",
-    "@nuxt/icon": "~2.4.1",
+    "@nuxt/icon": "~2.5.0",
     "@nuxtjs/tailwindcss": "~6.14.0",
     "@sentry/nuxt": "~10.69.0",
     "@vueuse/nuxt": "~14.4.0",
