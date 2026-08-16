@@ -6,6 +6,7 @@ use crate::domain::card_offer::{CardOfferSortField, PaginatedCardOffers};
 use crate::domain::collection::{CollectionQuery, PaginatedCollection, SearchQuery};
 use crate::domain::collection_stats::CollectionStats;
 use crate::domain::price::PriceHistoryEntry;
+use crate::domain::rarity_trade_filter::{RarityTradeFilter, RarityTradeFilterRule};
 use crate::domain::stats::Stats;
 use crate::domain::trade::{PaginatedTrades, TradeDetail, TradeId, TradeListQuery};
 use crate::domain::user::{CollectionVisibility, User, UserId, UserSuggestion};
@@ -59,6 +60,25 @@ pub trait RemoveTradeBinderUseCase: Send + Sync {
         &self,
         user_id: UserId,
         binder_name: String,
+    ) -> Result<(), AppError>;
+}
+
+#[async_trait]
+#[cfg_attr(test, automock)]
+pub trait GetRarityTradeFiltersUseCase: Send + Sync {
+    async fn get_rarity_trade_filters(
+        &self,
+        user_id: UserId,
+    ) -> Result<Vec<RarityTradeFilter>, AppError>;
+}
+
+#[async_trait]
+#[cfg_attr(test, automock)]
+pub trait SetRarityTradeFilterUseCase: Send + Sync {
+    async fn set_rarity_trade_filter(
+        &self,
+        user_id: UserId,
+        rule: RarityTradeFilterRule,
     ) -> Result<(), AppError>;
 }
 

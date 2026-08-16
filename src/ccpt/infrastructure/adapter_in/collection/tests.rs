@@ -48,6 +48,28 @@ fn make_app_state_with_price_history(
     }
 }
 
+fn make_app_state_with_rarity_filters(
+    mock: crate::application::use_case::MockGetRarityTradeFiltersUseCase,
+) -> AppState {
+    AppState {
+        get_rarity_trade_filters_use_case: Arc::new(mock),
+        ..AppState::for_testing(Arc::new(
+            crate::application::use_case::MockStatsUseCase::new(),
+        ))
+    }
+}
+
+fn make_app_state_with_set_rarity_filter(
+    mock: crate::application::use_case::MockSetRarityTradeFilterUseCase,
+) -> AppState {
+    AppState {
+        set_rarity_trade_filter_use_case: Arc::new(mock),
+        ..AppState::for_testing(Arc::new(
+            crate::application::use_case::MockStatsUseCase::new(),
+        ))
+    }
+}
+
 fn make_card(set_code: &str, collector_number: &str) -> Card {
     Card::new(
         set_code,
@@ -1010,4 +1032,186 @@ fn collection_params_serde_partial_fields() {
     assert!(params.0.sets.is_none());
     assert_eq!(params.0.price_min, Some(1000));
     assert!(params.0.price_max.is_none());
+}
+
+// ============================================================
+// get_rarity_filters / set_rarity_filter
+// ============================================================
+
+#[tokio::test]
+async fn get_rarity_filters_returns_filters_from_use_case() {
+    use crate::application::use_case::MockGetRarityTradeFiltersUseCase;
+    use crate::domain::rarity_trade_filter::RarityTradeFilter;
+
+    let mut mock = MockGetRarityTradeFiltersUseCase::new();
+    mock.expect_get_rarity_trade_filters().returning(|_| {
+        Box::pin(async {
+            Ok(vec![RarityTradeFilter {
+                rarity: RarityCode::R,
+                is_open: true,
+                kept_copies: 1,
+                copies: 4,
+                proposed: 2,
+            }])
+        })
+    });
+
+    let app_state = make_app_state_with_rarity_filters(mock);
+    let result = get_rarity_filters(AuthenticatedUser(User::for_testing()), State(app_state)).await;
+
+    assert!(result.is_ok());
+    let axum::Json(response) = result.unwrap();
+    assert_eq!(response.rarities.len(), 1);
+    assert_eq!(response.rarities[0].rarity, "R");
+    assert!(response.rarities[0].is_open);
+    assert_eq!(response.rarities[0].kept_copies, 1);
+    assert_eq!(response.rarities[0].copies, 4);
+    assert_eq!(response.rarities[0].proposed, 2);
+}
+
+#[tokio::test]
+async fn get_rarity_filters_returns_empty_list() {
+    use crate::application::use_case::MockGetRarityTradeFiltersUseCase;
+
+    let mut mock = MockGetRarityTradeFiltersUseCase::new();
+    mock.expect_get_rarity_trade_filters()
+        .returning(|_| Box::pin(async { Ok(vec![]) }));
+
+    let app_state = make_app_state_with_rarity_filters(mock);
+    let result = get_rarity_filters(AuthenticatedUser(User::for_testing()), State(app_state)).await;
+
+    assert!(result.is_ok());
+    let axum::Json(response) = result.unwrap();
+    assert!(response.rarities.is_empty());
+}
+
+#[tokio::test]
+async fn get_rarity_filters_propagates_error_from_use_case() {
+    use crate::application::use_case::MockGetRarityTradeFiltersUseCase;
+
+    let mut mock = MockGetRarityTradeFiltersUseCase::new();
+    mock.expect_get_rarity_trade_filters().returning(|_| {
+        Box::pin(async {
+            Err(AppError::Infra(InfraError::RepositoryError(
+                "db failure".to_string(),
+            )))
+        })
+    });
+
+    let app_state = make_app_state_with_rarity_filters(mock);
+    let result = get_rarity_filters(AuthenticatedUser(User::for_testing()), State(app_state)).await;
+
+    match result.unwrap_err() {
+        AppError::Infra(InfraError::RepositoryError(msg)) => assert_eq!(msg, "db failure"),
+        _ => panic!("Expected RepositoryError"),
+    }
+}
+
+#[tokio::test]
+async fn set_rarity_filter_forwards_payload_to_use_case() {
+    use crate::application::use_case::MockSetRarityTradeFilterUseCase;
+
+    let mut mock = MockSetRarityTradeFilterUseCase::new();
+    mock.expect_set_rarity_trade_filter()
+        .withf(|user_id, rule| {
+            user_id.as_str() == "test-user-id"
+                && rule.rarity == RarityCode::M
+                && rule.is_open
+                && rule.kept_copies == 2
+        })
+        .times(1)
+        .returning(|_, _| Box::pin(async { Ok(()) }));
+
+    let app_state = make_app_state_with_set_rarity_filter(mock);
+    let result = set_rarity_filter(
+        AuthenticatedUser(User::for_testing()),
+        State(app_state),
+        axum::Json(SetRarityFilterRequest {
+            rarity: "M".to_string(),
+            is_open: true,
+            kept_copies: 2,
+        }),
+    )
+    .await;
+
+    assert_eq!(result.unwrap(), axum::http::StatusCode::NO_CONTENT);
+}
+
+#[tokio::test]
+async fn set_rarity_filter_rejects_unknown_rarity_without_calling_use_case() {
+    use crate::application::use_case::MockSetRarityTradeFilterUseCase;
+
+    let mock = MockSetRarityTradeFilterUseCase::new();
+
+    let app_state = make_app_state_with_set_rarity_filter(mock);
+    let result = set_rarity_filter(
+        AuthenticatedUser(User::for_testing()),
+        State(app_state),
+        axum::Json(SetRarityFilterRequest {
+            rarity: "X".to_string(),
+            is_open: true,
+            kept_copies: 1,
+        }),
+    )
+    .await;
+
+    match result.unwrap_err() {
+        AppError::Functional(FunctionalError::InvalidRarityCode(msg)) => assert_eq!(msg, "X"),
+        other => panic!("Expected InvalidRarityCode, got {other:?}"),
+    }
+}
+
+#[tokio::test]
+async fn set_rarity_filter_rejects_negative_kept_copies_without_calling_use_case() {
+    use crate::application::use_case::MockSetRarityTradeFilterUseCase;
+
+    let mock = MockSetRarityTradeFilterUseCase::new();
+
+    let app_state = make_app_state_with_set_rarity_filter(mock);
+    let result = set_rarity_filter(
+        AuthenticatedUser(User::for_testing()),
+        State(app_state),
+        axum::Json(SetRarityFilterRequest {
+            rarity: "M".to_string(),
+            is_open: true,
+            kept_copies: -1,
+        }),
+    )
+    .await;
+
+    match result.unwrap_err() {
+        AppError::Functional(FunctionalError::WrongFormat(_)) => {}
+        other => panic!("Expected WrongFormat, got {other:?}"),
+    }
+}
+
+#[tokio::test]
+async fn set_rarity_filter_propagates_error_from_use_case() {
+    use crate::application::use_case::MockSetRarityTradeFilterUseCase;
+
+    let mut mock = MockSetRarityTradeFilterUseCase::new();
+    mock.expect_set_rarity_trade_filter().returning(|_, _| {
+        Box::pin(async {
+            Err(AppError::Functional(FunctionalError::WrongFormat(
+                "Kept copies must be between 0 and 4".to_string(),
+            )))
+        })
+    });
+
+    let app_state = make_app_state_with_set_rarity_filter(mock);
+    let result = set_rarity_filter(
+        AuthenticatedUser(User::for_testing()),
+        State(app_state),
+        axum::Json(SetRarityFilterRequest {
+            rarity: "M".to_string(),
+            is_open: true,
+            kept_copies: 5,
+        }),
+    )
+    .await;
+
+    match result.unwrap_err() {
+        AppError::Functional(FunctionalError::WrongFormat(_)) => {}
+        other => panic!("Expected WrongFormat, got {other:?}"),
+    }
 }

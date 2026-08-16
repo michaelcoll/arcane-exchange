@@ -6,6 +6,7 @@ pub mod card_prices_view_repository_adapter;
 pub mod card_repository_adapter;
 pub mod cardmarket_price_repository_adapter;
 pub mod collection_price_history_repository_adapter;
+pub mod collection_rarity_filters_repository_adapter;
 pub mod collection_stats_repository_adapter;
 #[cfg(test)]
 pub mod common_repository_tests;

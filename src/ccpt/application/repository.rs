@@ -5,6 +5,7 @@ use crate::domain::card_offer::{CardOfferSortField, PaginatedCardOffers};
 use crate::domain::collection::{CollectionQuery, PaginatedCollection, SearchQuery};
 use crate::domain::collection_stats::CollectionStats;
 use crate::domain::price::{FullPriceGuide, PriceHistoryEntry};
+use crate::domain::rarity_trade_filter::{RarityTradeFilter, RarityTradeFilterRule};
 use crate::domain::set_name::{SetCode, SetName};
 use crate::domain::trade::{
     PaginatedTrades, Trade, TradeCard, TradeCardDetail, TradeId, TradeListQuery, TradeStatus,
@@ -195,6 +196,19 @@ pub trait TradingBinderRepository: Send + Sync {
     /// `collection_entry` rows. Reads `collection_entry` (read-only) to determine which
     /// selections are now orphaned.
     async fn purge_missing(&self, user_id: &UserId) -> Result<(), AppError>;
+}
+
+#[async_trait]
+#[cfg_attr(test, automock)]
+pub trait RarityTradeFilterRepository: Send + Sync {
+    /// Rarities actually owned by `user_id` within their binders selected for trade
+    /// (`trading_binders`), each with its trade rule (defaulting to closed / 0 kept copies
+    /// when no `collection_rarity_filters` row exists), its total copies, and the copies
+    /// still proposable under that rule. Ordered `M, R, U, C, S`.
+    async fn list_with_counts(&self, user_id: &UserId) -> Result<Vec<RarityTradeFilter>, AppError>;
+
+    /// Creates or updates `user_id`'s trade rule for `rule.rarity`.
+    async fn upsert(&self, user_id: &UserId, rule: &RarityTradeFilterRule) -> Result<(), AppError>;
 }
 
 #[async_trait]

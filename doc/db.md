@@ -41,6 +41,12 @@ erDiagram
         integer trend "not null"
         integer avg "not null"
     }
+    collection_rarity_filters {
+        character_varying(50) user_id PK, FK
+        character_varying(1) rarity PK
+        boolean is_open "not null, default: false"
+        smallint kept_copies "not null, default: 0"
+    }
     mv_card_prices {
         character_varying(5) set_code
         character_varying(10) collector_number
@@ -99,6 +105,7 @@ erDiagram
     set_name ||--o{ card : "set_code"
     card ||--o{ collection_entry : "set_code, collector_number, language_code, foil"
     users ||--o{ collection_entry : "user_id"
+    users ||--o{ collection_rarity_filters : "user_id"
     users ||--o{ trade : "initiator_user_id"
     users ||--o{ trade : "respondent_user_id"
     card ||--o{ trade_card : "set_code, collector_number, language_code, foil"
@@ -117,6 +124,11 @@ erDiagram
 
 - unique index `collection_entry_uk` (`set_code`, `collector_number`, `language_code`, `foil`, `user_id`, `binder_name`)
 - unique constraint `collection_entry_uk` (`set_code`, `collector_number`, `language_code`, `foil`, `user_id`, `binder_name`)
+
+### collection_rarity_filters
+
+- check constraint `collection_rarity_filters_kept_copies_check`: `CHECK (((kept_copies >= 0) AND (kept_copies <= 4)))`
+- check constraint `collection_rarity_filters_rarity_check`: `CHECK (((rarity)::text = ANY ((ARRAY['C'::character varying, 'U'::character varying, 'R'::character varying, 'M'::character varying, 'S'::character varying])::text[])))`
 
 ### mv_card_prices
 
