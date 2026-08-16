@@ -21,8 +21,8 @@ importers:
         specifier: ~0.14.0
         version: 0.14.0(db0@0.3.4)(esbuild@0.28.2)(ioredis@5.11.1(supports-color@10.2.2))(magic-string@1.2.0)(magicast@0.5.4)(oxc-parser@0.140.0)(rolldown@1.2.4)(rollup@4.62.4)(vite@8.2.1(@types/node@24.1.0)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.50.0)(yaml@2.9.0))
       '@nuxt/icon':
-        specifier: ~2.4.1
-        version: 2.4.1(magic-string@1.2.0)(magicast@0.5.4)(oxc-parser@0.140.0)(rolldown@1.2.4)(unplugin@3.3.0(esbuild@0.28.2)(rolldown@1.2.4)(rollup@4.62.4)(vite@8.2.1(@types/node@24.1.0)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.50.0)(yaml@2.9.0)))(vite@8.2.1(@types/node@24.1.0)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.50.0)(yaml@2.9.0))(vue@3.5.41(typescript@6.0.3))
+        specifier: ~2.5.0
+        version: 2.5.0(magic-string@1.2.0)(magicast@0.5.4)(oxc-parser@0.140.0)(rolldown@1.2.4)(unplugin@3.3.0(esbuild@0.28.2)(rolldown@1.2.4)(rollup@4.62.4)(vite@8.2.1(@types/node@24.1.0)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.50.0)(yaml@2.9.0)))(vite@8.2.1(@types/node@24.1.0)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.50.0)(yaml@2.9.0))(vue@3.5.41(typescript@6.0.3))
       '@nuxtjs/tailwindcss':
         specifier: ~6.14.0
         version: 6.14.0(magicast@0.5.4)(supports-color@10.2.2)(yaml@2.9.0)
@@ -916,8 +916,8 @@ packages:
   '@nuxt/fonts@0.14.0':
     resolution: {integrity: sha512-4uXQl9fa5F4ibdgU8zomoOcyMdnwgdem+Pi8JEqeDYI5yPR32Kam6HnuRr47dTb97CstaepAvXPWQUUHMtjsFQ==}
 
-  '@nuxt/icon@2.4.1':
-    resolution: {integrity: sha512-fOY3kiT6OoL4bWXVmMLc1VgoCm1PxIGSBmsSaLO090NEgtd1ub441dZ7MEoOD5UIilWzba1kCWdwJcAkGCOwLg==}
+  '@nuxt/icon@2.5.0':
+    resolution: {integrity: sha512-EBczSfd3QmAD7GoSmJ5jCPvQ5zzNaPPuWPU9DSMcBuBM10A3JIvjaMLEOEniHQRz4iVPb05cJRO/JdC60oiiwg==}
 
   '@nuxt/kit@3.21.11':
     resolution: {integrity: sha512-0Xi3tgwN77w43Q8GCPIrvWmF1J7Peehkts44E0uKNIml9lB8WoUn8YxyUjxBv47XtVR86NWoWALAT+/IEMHJEA==}
@@ -6720,7 +6720,7 @@ snapshots:
       - vite
       - webpack
 
-  '@nuxt/icon@2.4.1(magic-string@1.2.0)(magicast@0.5.4)(oxc-parser@0.140.0)(rolldown@1.2.4)(unplugin@3.3.0(esbuild@0.28.2)(rolldown@1.2.4)(rollup@4.62.4)(vite@8.2.1(@types/node@24.1.0)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.50.0)(yaml@2.9.0)))(vite@8.2.1(@types/node@24.1.0)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.50.0)(yaml@2.9.0))(vue@3.5.41(typescript@6.0.3))':
+  '@nuxt/icon@2.5.0(magic-string@1.2.0)(magicast@0.5.4)(oxc-parser@0.140.0)(rolldown@1.2.4)(unplugin@3.3.0(esbuild@0.28.2)(rolldown@1.2.4)(rollup@4.62.4)(vite@8.2.1(@types/node@24.1.0)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.50.0)(yaml@2.9.0)))(vite@8.2.1(@types/node@24.1.0)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.50.0)(yaml@2.9.0))(vue@3.5.41(typescript@6.0.3))':
     dependencies:
       '@iconify/collections': 1.0.724
       '@iconify/types': 2.0.0
