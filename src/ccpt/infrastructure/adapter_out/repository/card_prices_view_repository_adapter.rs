@@ -371,12 +371,13 @@ mod tests {
     use crate::domain::collection::{CollectionSortField, SortDirection};
     use crate::domain::rarity_code::RarityCode;
     use crate::infrastructure::adapter_out::repository::common_repository_tests::{
-        insert_card, insert_collection_entry, insert_price, insert_set, insert_user, refresh_view,
+        insert_card, insert_collection_entry, insert_collection_entry_with_binder, insert_price,
+        insert_set, insert_user, refresh_view,
     };
     use crate::infrastructure::adapter_out::repository::entities::{
         CardMarketPriceEntity, PriceGuideEntity,
     };
-    use chrono::{NaiveDate, Utc};
+    use chrono::{DateTime, NaiveDate, Utc};
     use sqlx::{PgPool, Pool, Postgres};
 
     impl CardMarketPriceEntity {
@@ -457,6 +458,74 @@ mod tests {
 
         assert_eq!(result.items.len(), 1);
         assert_eq!(result.total, 1);
+    }
+
+    #[sqlx::test]
+    async fn get_paginated_aggregates_card_split_across_binders(pool: PgPool) {
+        insert_set(&pool, "TST").await;
+        insert_card(&pool, "TST", "1", "EN", false, "Test Card", 1).await;
+        insert_user(&pool, "user1", "User1").await;
+        // Postgres TIMESTAMPTZ only keeps microsecond precision, but `Utc::now()` carries
+        // nanoseconds — truncate before comparing, or the round-trip through the DB drops
+        // digits `added_at` (read back) would never match.
+        let older = Utc::now() - chrono::Duration::days(2);
+        let older = DateTime::from_timestamp_micros(older.timestamp_micros()).unwrap();
+        let newer = Utc::now();
+        insert_collection_entry_with_binder(
+            &pool,
+            "TST",
+            "1",
+            "EN",
+            false,
+            "user1",
+            2,
+            100,
+            older,
+            Some("Binder A"),
+        )
+        .await;
+        insert_collection_entry_with_binder(
+            &pool,
+            "TST",
+            "1",
+            "EN",
+            false,
+            "user1",
+            3,
+            200,
+            newer,
+            Some("Binder B"),
+        )
+        .await;
+        insert_price(&pool, CardMarketPriceEntity::simple(1, 200)).await;
+        refresh_view(&pool).await;
+
+        let adapter = CardPricesViewRepositoryAdapter::new(pool);
+        let result = adapter
+            .get_paginated(&UserId::new("user1"), CollectionQuery::default())
+            .await
+            .unwrap();
+
+        assert_eq!(
+            result.items.len(),
+            1,
+            "card split across 2 binders must appear once"
+        );
+        assert_eq!(result.total, 1);
+        match result.items[0].collection_entry {
+            CollectionEntry::Mine {
+                quantity,
+                purchase_price,
+                added_at,
+                ..
+            } => {
+                assert_eq!(quantity, 5, "quantity must be summed across binders");
+                // weighted average, truncated like the import parser: (2*100+3*200)/5 = 800/5 = 160
+                assert_eq!(purchase_price, 160);
+                assert_eq!(added_at, older, "added_at must be the earliest of the two");
+            }
+            _ => panic!("expected CollectionEntry::Mine"),
+        }
     }
 
     #[sqlx::test]

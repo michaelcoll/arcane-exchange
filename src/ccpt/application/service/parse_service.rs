@@ -1,4 +1,5 @@
 use crate::application::error::AppError;
+use crate::application::imported_card::ImportedCard;
 use crate::domain::card::{Card, CardId, CollectionEntry};
 use crate::domain::error::FunctionalError;
 use crate::domain::language_code::LanguageCode;
@@ -9,7 +10,7 @@ use csv::{ReaderBuilder, Trim};
 use std::collections::HashMap;
 use uuid::Uuid;
 
-pub fn parse_cards(csv: &str) -> Result<Vec<Card>, AppError> {
+pub fn parse_cards(csv: &str) -> Result<Vec<ImportedCard>, AppError> {
     let mut cards = Vec::new();
 
     if csv.lines().count() <= 1 {
@@ -44,6 +45,8 @@ pub fn parse_cards(csv: &str) -> Result<Vec<Card>, AppError> {
             ))
             .into());
         }
+
+        let binder_name = (!field_refs[0].is_empty()).then(|| field_refs[0].to_string());
 
         let name = field_refs[2];
         let set_code =
@@ -149,19 +152,20 @@ pub fn parse_cards(csv: &str) -> Result<Vec<Card>, AppError> {
                 reserved: false,
             },
         );
-        cards.push(card);
+        cards.push(ImportedCard { card, binder_name });
     }
 
-    let mut seen: HashMap<CardId, Card> = HashMap::new();
-    let mut order: Vec<CardId> = Vec::new();
-    for card in cards {
-        if let Some(existing) = seen.get_mut(&card.id) {
+    let mut seen: HashMap<(CardId, Option<String>), ImportedCard> = HashMap::new();
+    let mut order: Vec<(CardId, Option<String>)> = Vec::new();
+    for imported in cards {
+        let key = (imported.card.id.clone(), imported.binder_name.clone());
+        if let Some(existing) = seen.get_mut(&key) {
             let CollectionEntry::Mine {
                 quantity: existing_quantity,
                 purchase_price: existing_purchase_price,
                 added_at: existing_added_at,
                 ..
-            } = existing.collection_entry
+            } = existing.card.collection_entry
             else {
                 unreachable!("parsed cards always carry a CollectionEntry::Mine");
             };
@@ -170,7 +174,7 @@ pub fn parse_cards(csv: &str) -> Result<Vec<Card>, AppError> {
                 purchase_price: new_purchase_price,
                 added_at: new_added_at,
                 ..
-            } = card.collection_entry
+            } = imported.card.collection_entry
             else {
                 unreachable!("parsed cards always carry a CollectionEntry::Mine");
             };
@@ -180,21 +184,21 @@ pub fn parse_cards(csv: &str) -> Result<Vec<Card>, AppError> {
                 + new_purchase_price * new_quantity as u32;
             let added_at = existing_added_at.min(new_added_at);
 
-            existing.collection_entry = CollectionEntry::Mine {
+            existing.card.collection_entry = CollectionEntry::Mine {
                 quantity: new_qty.min(u8::MAX as u32) as u8,
                 purchase_price: total_cost / new_qty,
                 added_at,
                 reserved: false,
             };
         } else {
-            order.push(card.id.clone());
-            seen.insert(card.id.clone(), card);
+            order.push(key.clone());
+            seen.insert(key, imported);
         }
     }
 
     Ok(order
         .into_iter()
-        .map(|id| seen.remove(&id).unwrap())
+        .map(|key| seen.remove(&key).unwrap())
         .collect())
 }
 
@@ -215,45 +219,46 @@ mod tests {
 
         assert_eq!(cards.len(), 3);
 
-        assert_eq!(cards[0].id.set_code, SetCode::new("FDN"));
-        assert_eq!(cards[0].id.collector_number, "87");
-        assert_eq!(cards[0].id.language_code, LanguageCode::FR);
-        assert!(!cards[0].id.foil);
+        assert_eq!(cards[0].card.id.set_code, SetCode::new("FDN"));
+        assert_eq!(cards[0].card.id.collector_number, "87");
+        assert_eq!(cards[0].card.id.language_code, LanguageCode::FR);
+        assert!(!cards[0].card.id.foil);
+        assert_eq!(cards[0].binder_name, Some("bulk".to_string()));
         let CollectionEntry::Mine {
             quantity: q0,
             purchase_price: p0,
             ..
-        } = cards[0].collection_entry
+        } = cards[0].card.collection_entry
         else {
             panic!("expected CollectionEntry::Mine");
         };
         assert_eq!(q0, 3);
         assert_eq!(p0, 8);
 
-        assert_eq!(cards[1].id.set_code, SetCode::new("GPT"));
-        assert_eq!(cards[1].id.collector_number, "32");
-        assert_eq!(cards[1].id.language_code, LanguageCode::FR);
-        assert!(!cards[1].id.foil);
+        assert_eq!(cards[1].card.id.set_code, SetCode::new("GPT"));
+        assert_eq!(cards[1].card.id.collector_number, "32");
+        assert_eq!(cards[1].card.id.language_code, LanguageCode::FR);
+        assert!(!cards[1].card.id.foil);
         let CollectionEntry::Mine {
             quantity: q1,
             purchase_price: p1,
             ..
-        } = cards[1].collection_entry
+        } = cards[1].card.collection_entry
         else {
             panic!("expected CollectionEntry::Mine");
         };
         assert_eq!(q1, 2);
         assert_eq!(p1, 17);
 
-        assert_eq!(cards[2].id.set_code, SetCode::new("FDN"));
-        assert_eq!(cards[2].id.collector_number, "217");
-        assert_eq!(cards[2].id.language_code, LanguageCode::FR);
-        assert!(!cards[2].id.foil);
+        assert_eq!(cards[2].card.id.set_code, SetCode::new("FDN"));
+        assert_eq!(cards[2].card.id.collector_number, "217");
+        assert_eq!(cards[2].card.id.language_code, LanguageCode::FR);
+        assert!(!cards[2].card.id.foil);
         let CollectionEntry::Mine {
             quantity: q2,
             purchase_price: p2,
             ..
-        } = cards[2].collection_entry
+        } = cards[2].card.collection_entry
         else {
             panic!("expected CollectionEntry::Mine");
         };
@@ -271,9 +276,9 @@ mod tests {
         let cards = parse_cards(csv)?;
 
         assert_eq!(cards.len(), 1);
-        assert_eq!(cards[0].name, "Dwynen, Gilt-Leaf Daen");
-        assert_eq!(cards[0].id.set_code, SetCode::new("FDN"));
-        assert_eq!(cards[0].id.collector_number, "217");
+        assert_eq!(cards[0].card.name, "Dwynen, Gilt-Leaf Daen");
+        assert_eq!(cards[0].card.id.set_code, SetCode::new("FDN"));
+        assert_eq!(cards[0].card.id.collector_number, "217");
 
         Ok(())
     }
@@ -406,19 +411,20 @@ mod tests {
     fn import_cards_deduplicates_by_set_code_collector_number_language_foil() {
         let csv = "Binder Name,Binder Type,Name,Set code,Set name,Collector number,Foil,Rarity,Quantity,ManaBox ID,Scryfall ID,Purchase price,Misprint,Altered,Condition,Language,Purchase price currency,Added\n\
                    bulk,binder,Goblin Boarders,FDN,Foundations,87,normal,common,3,101506,4409a063-bf2a-4a49-803e-3ce6bd474353,0.08,false,false,near_mint,fr,EUR,2026-02-05T20:44:45.815Z\n\
-                   My Deck,deck,Goblin Boarders,FDN,Foundations,87,normal,common,2,101506,4409a063-bf2a-4a49-803e-3ce6bd474353,0.10,false,false,near_mint,fr,EUR,2026-03-01T10:00:00.000Z";
+                   bulk,binder,Goblin Boarders,FDN,Foundations,87,normal,common,2,101506,4409a063-bf2a-4a49-803e-3ce6bd474353,0.10,false,false,near_mint,fr,EUR,2026-03-01T10:00:00.000Z";
 
         let cards = parse_cards(csv).unwrap();
 
         assert_eq!(cards.len(), 1);
-        assert_eq!(cards[0].id.set_code, SetCode::new("FDN"));
-        assert_eq!(cards[0].id.collector_number, "87");
+        assert_eq!(cards[0].card.id.set_code, SetCode::new("FDN"));
+        assert_eq!(cards[0].card.id.collector_number, "87");
+        assert_eq!(cards[0].binder_name, Some("bulk".to_string()));
         let CollectionEntry::Mine {
             quantity,
             purchase_price,
             added_at,
             ..
-        } = cards[0].collection_entry
+        } = cards[0].card.collection_entry
         else {
             panic!("expected CollectionEntry::Mine");
         };
@@ -427,6 +433,51 @@ mod tests {
         assert_eq!(purchase_price, 8);
         // earliest date kept
         assert_eq!(added_at.to_rfc3339(), "2026-02-05T20:44:45.815+00:00");
+    }
+
+    #[test]
+    fn parse_cards_does_not_merge_rows_with_different_binder_names() {
+        let csv = "Binder Name,Binder Type,Name,Set code,Set name,Collector number,Foil,Rarity,Quantity,ManaBox ID,Scryfall ID,Purchase price,Misprint,Altered,Condition,Language,Purchase price currency,Added\n\
+                   bulk,binder,Goblin Boarders,FDN,Foundations,87,normal,common,3,101506,4409a063-bf2a-4a49-803e-3ce6bd474353,0.08,false,false,near_mint,fr,EUR,2026-02-05T20:44:45.815Z\n\
+                   My Deck,deck,Goblin Boarders,FDN,Foundations,87,normal,common,2,101506,4409a063-bf2a-4a49-803e-3ce6bd474353,0.10,false,false,near_mint,fr,EUR,2026-03-01T10:00:00.000Z";
+
+        let cards = parse_cards(csv).unwrap();
+
+        assert_eq!(cards.len(), 2);
+        assert_eq!(cards[0].binder_name, Some("bulk".to_string()));
+        assert_eq!(cards[1].binder_name, Some("My Deck".to_string()));
+        let CollectionEntry::Mine { quantity: q0, .. } = cards[0].card.collection_entry else {
+            panic!("expected CollectionEntry::Mine");
+        };
+        let CollectionEntry::Mine { quantity: q1, .. } = cards[1].card.collection_entry else {
+            panic!("expected CollectionEntry::Mine");
+        };
+        assert_eq!(q0, 3);
+        assert_eq!(q1, 2);
+    }
+
+    #[test]
+    fn parse_cards_does_not_merge_named_binder_with_null_binder() {
+        let csv = "Binder Name,Binder Type,Name,Set code,Set name,Collector number,Foil,Rarity,Quantity,ManaBox ID,Scryfall ID,Purchase price,Misprint,Altered,Condition,Language,Purchase price currency,Added\n\
+                   bulk,binder,Goblin Boarders,FDN,Foundations,87,normal,common,3,101506,4409a063-bf2a-4a49-803e-3ce6bd474353,0.08,false,false,near_mint,fr,EUR,2026-02-05T20:44:45.815Z\n\
+                   ,binder,Goblin Boarders,FDN,Foundations,87,normal,common,2,101506,4409a063-bf2a-4a49-803e-3ce6bd474353,0.10,false,false,near_mint,fr,EUR,2026-03-01T10:00:00.000Z";
+
+        let cards = parse_cards(csv).unwrap();
+
+        assert_eq!(cards.len(), 2);
+        assert_eq!(cards[0].binder_name, Some("bulk".to_string()));
+        assert_eq!(cards[1].binder_name, None);
+    }
+
+    #[test]
+    fn parse_cards_maps_empty_binder_name_to_none() {
+        let csv = "Binder Name,Binder Type,Name,Set code,Set name,Collector number,Foil,Rarity,Quantity,ManaBox ID,Scryfall ID,Purchase price,Misprint,Altered,Condition,Language,Purchase price currency,Added\n\
+                   ,binder,Goblin Boarders,FDN,Foundations,87,normal,common,3,101506,4409a063-bf2a-4a49-803e-3ce6bd474353,0.08,false,false,near_mint,fr,EUR,2026-02-05T20:44:45.815Z";
+
+        let cards = parse_cards(csv).unwrap();
+
+        assert_eq!(cards.len(), 1);
+        assert_eq!(cards[0].binder_name, None);
     }
 
     #[test]
@@ -491,7 +542,9 @@ mod tests {
             },
         );
 
-        assert_eq!(result.clone().unwrap().len(), 1);
-        assert_eq!(result.clone().unwrap()[0], card);
+        let cards = result.unwrap();
+        assert_eq!(cards.len(), 1);
+        assert_eq!(cards[0].card, card);
+        assert_eq!(cards[0].binder_name, Some("bulk".to_string()));
     }
 }

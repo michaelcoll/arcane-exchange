@@ -29,8 +29,12 @@ impl TradeRepository for TradeRepositoryAdapter {
         user_id: &UserId,
         card_id: &CardId,
     ) -> Result<Option<i32>, AppError> {
+        // Sums across all binders: a card split across multiple `collection_entry` rows
+        // (one per binder) must still count as fully owned. `SUM` over a filter matching no
+        // rows returns a single row with `NULL`, not zero rows — `fetch_one` (not
+        // `fetch_optional`) plus mapping the `Option` keeps "card not owned" as `None`.
         let row = sqlx::query!(
-            r#"SELECT quantity FROM collection_entry
+            r#"SELECT SUM(quantity) AS quantity FROM collection_entry
                 WHERE user_id = $1 AND set_code = $2 AND collector_number = $3
                   AND language_code = $4 AND foil = $5"#,
             user_id.as_str(),
@@ -39,10 +43,10 @@ impl TradeRepository for TradeRepositoryAdapter {
             card_id.language_code.to_string(),
             card_id.foil,
         )
-        .fetch_optional(&self.pool)
+        .fetch_one(&self.pool)
         .await?;
 
-        Ok(row.map(|r| r.quantity))
+        Ok(row.quantity.map(|q| q as i32))
     }
 
     async fn is_card_reserved_elsewhere(
@@ -453,9 +457,9 @@ mod tests {
     use super::*;
     use crate::domain::language_code::LanguageCode;
     use crate::infrastructure::adapter_out::repository::common_repository_tests::{
-        insert_card, insert_collection_entry, insert_price, insert_trade, insert_trade_card,
-        insert_user, mark_trade_accepted_by_both, mark_trade_party_accepted,
-        mark_trade_party_confirmed, mark_trade_party_rated,
+        insert_card, insert_collection_entry, insert_collection_entry_with_binder, insert_price,
+        insert_trade, insert_trade_card, insert_user, mark_trade_accepted_by_both,
+        mark_trade_party_accepted, mark_trade_party_confirmed, mark_trade_party_rated,
     };
     use crate::infrastructure::adapter_out::repository::entities::{
         CardMarketPriceEntity, PriceGuideEntity,
@@ -514,6 +518,46 @@ mod tests {
             .unwrap();
 
         assert_eq!(result, None);
+    }
+
+    #[sqlx::test]
+    async fn find_collection_entry_quantity_sums_across_binders(pool: PgPool) {
+        insert_user(&pool, "user_b", "bob").await;
+        insert_card(&pool, "FDN", "87", "FR", false, "Goblin Boarders", 1).await;
+        insert_collection_entry_with_binder(
+            &pool,
+            "FDN",
+            "87",
+            "FR",
+            false,
+            "user_b",
+            2,
+            100,
+            chrono::Utc::now(),
+            Some("Binder A"),
+        )
+        .await;
+        insert_collection_entry_with_binder(
+            &pool,
+            "FDN",
+            "87",
+            "FR",
+            false,
+            "user_b",
+            3,
+            100,
+            chrono::Utc::now(),
+            Some("Binder B"),
+        )
+        .await;
+
+        let repository = TradeRepositoryAdapter::new(pool);
+        let result = repository
+            .find_collection_entry_quantity(&UserId::new("user_b"), &make_card_id())
+            .await
+            .unwrap();
+
+        assert_eq!(result, Some(5));
     }
 
     #[sqlx::test]

@@ -41,17 +41,17 @@ impl ImportCardUseCase for ImportCardService {
 
         self.card_repository.delete_all(user.clone()).await?;
 
-        for card in cards {
+        for imported in cards {
             if !self
                 .set_name_repository
-                .exists_by_code(card.id.set_code.clone())
+                .exists_by_code(imported.card.id.set_code.clone())
                 .await?
             {
-                let set_name = card.set_name.clone();
+                let set_name = imported.card.set_name.clone();
                 self.set_name_repository.save(set_name).await?;
             }
 
-            self.card_repository.save(user.clone(), card).await?;
+            self.card_repository.save(user.clone(), imported).await?;
         }
 
         self.enqueue_cardmarket_ids
@@ -68,6 +68,7 @@ impl ImportCardUseCase for ImportCardService {
 mod tests {
     use super::*;
     use crate::application::error::InfraError;
+    use crate::application::imported_card::ImportedCard;
     use crate::application::repository::{
         MockCardPricesViewRepository, MockCardRepository, MockSetNameRepository,
     };
@@ -114,6 +115,10 @@ mod tests {
                 reserved: false,
             },
         );
+        let imported_card = ImportedCard {
+            card: card.clone(),
+            binder_name: Some("bulk".to_string()),
+        };
 
         card_repository
             .expect_delete_all()
@@ -129,7 +134,7 @@ mod tests {
             .returning(|_| Box::pin(async { Ok(()) }));
         card_repository
             .expect_save()
-            .with(eq(User::for_testing()), eq(card.clone()))
+            .with(eq(User::for_testing()), eq(imported_card.clone()))
             .returning(|_, _| Box::pin(async { Ok(()) }));
         enqueue_use_case
             .expect_enqueue_pending_updates()
@@ -188,6 +193,10 @@ mod tests {
                 reserved: false,
             },
         );
+        let imported_card = ImportedCard {
+            card: card.clone(),
+            binder_name: Some("bulk".to_string()),
+        };
 
         card_repository
             .expect_delete_all()
@@ -203,7 +212,7 @@ mod tests {
             .returning(|_| Box::pin(async { Ok(()) }));
         card_repository
             .expect_save()
-            .with(eq(User::for_testing()), eq(card.clone()))
+            .with(eq(User::for_testing()), eq(imported_card.clone()))
             .returning(|_, _| {
                 Box::pin(async {
                     Err(AppError::Infra(InfraError::RepositoryError(
@@ -259,6 +268,10 @@ mod tests {
                 reserved: false,
             },
         );
+        let imported_card = ImportedCard {
+            card: card.clone(),
+            binder_name: Some("bulk".to_string()),
+        };
 
         card_repository
             .expect_delete_all()
@@ -269,7 +282,7 @@ mod tests {
             .returning(|_| Box::pin(async { Ok(true) }));
         card_repository
             .expect_save()
-            .with(eq(User::for_testing()), eq(card.clone()))
+            .with(eq(User::for_testing()), eq(imported_card.clone()))
             .returning(|_, _| Box::pin(async { Ok(()) }));
         enqueue_use_case
             .expect_enqueue_pending_updates()

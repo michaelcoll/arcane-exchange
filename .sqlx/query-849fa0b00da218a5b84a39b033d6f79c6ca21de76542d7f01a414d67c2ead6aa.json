@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n            SELECT\n                COALESCE(SUM(ce.quantity), 0)::BIGINT AS \"total_cards!\",\n                COUNT(*)::BIGINT                       AS \"unique_cards!\"\n            FROM collection_entry ce\n            WHERE ce.user_id = $1\n            ",
+  "query": "\n            SELECT\n                COALESCE(SUM(ce.quantity), 0)::BIGINT AS \"total_cards!\",\n                COUNT(DISTINCT (ce.set_code, ce.collector_number, ce.language_code, ce.foil))::BIGINT AS \"unique_cards!\"\n            FROM collection_entry ce\n            WHERE ce.user_id = $1\n            ",
   "describe": {
     "columns": [
       {
@@ -26,5 +26,5 @@
       null
     ]
   },
-  "hash": "ee3804ef436d551b64215e7b58840af4a821790082090c435dcf441a83f9d851"
+  "hash": "849fa0b00da218a5b84a39b033d6f79c6ca21de76542d7f01a414d67c2ead6aa"
 }

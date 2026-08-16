@@ -80,9 +80,37 @@ pub async fn insert_collection_entry(
     purchase_price: i32,
     date: chrono::DateTime<chrono::Utc>,
 ) {
+    insert_collection_entry_with_binder(
+        pool,
+        set_code,
+        collector_number,
+        language_code,
+        foil,
+        user_id,
+        quantity,
+        purchase_price,
+        date,
+        None,
+    )
+    .await;
+}
+
+#[allow(clippy::too_many_arguments)]
+pub async fn insert_collection_entry_with_binder(
+    pool: &PgPool,
+    set_code: &str,
+    collector_number: &str,
+    language_code: &str,
+    foil: bool,
+    user_id: &str,
+    quantity: i32,
+    purchase_price: i32,
+    date: chrono::DateTime<chrono::Utc>,
+    binder_name: Option<&str>,
+) {
     sqlx::query(
-        r#"INSERT INTO collection_entry (set_code, collector_number, language_code, foil, user_id, quantity, purchase_price, added_at)
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8)"#)
+        r#"INSERT INTO collection_entry (set_code, collector_number, language_code, foil, user_id, quantity, purchase_price, added_at, binder_name)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)"#)
         .bind(set_code)
         .bind(collector_number)
         .bind(language_code)
@@ -91,9 +119,28 @@ pub async fn insert_collection_entry(
         .bind(quantity)
         .bind(purchase_price)
         .bind(date)
+        .bind(binder_name)
     .execute(pool)
     .await
     .unwrap();
+}
+
+pub struct CollectionEntryRow {
+    pub binder_name: Option<String>,
+    pub quantity: i32,
+    pub purchase_price: i32,
+}
+
+pub async fn fetch_collection_entries(pool: &PgPool, user_id: &str) -> Vec<CollectionEntryRow> {
+    sqlx::query_as!(
+        CollectionEntryRow,
+        r#"SELECT binder_name, quantity, purchase_price FROM collection_entry
+             WHERE user_id = $1 ORDER BY binder_name"#,
+        user_id
+    )
+    .fetch_all(pool)
+    .await
+    .unwrap()
 }
 
 #[allow(clippy::too_many_arguments)]

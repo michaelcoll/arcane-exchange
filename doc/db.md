@@ -24,14 +24,15 @@ erDiagram
         integer avg_foil
     }
     collection_entry {
-        character_varying(5) set_code PK, FK
-        character_varying(10) collector_number PK, FK
-        character_varying(2) language_code PK, FK
-        boolean foil PK, FK
-        character_varying(50) user_id PK, FK
+        character_varying(5) set_code FK "not null"
+        character_varying(10) collector_number FK "not null"
+        character_varying(2) language_code FK "not null"
+        boolean foil FK "not null"
+        character_varying(50) user_id FK "not null"
         integer quantity "not null"
         integer purchase_price "not null"
         timestamp_with_time_zone added_at
+        character_varying(255) binder_name
     }
     collection_price_history {
         date date PK
@@ -106,6 +107,11 @@ erDiagram
 - `mv_card_prices` (materialized view)
 
 ## Indexes and constraints
+
+### collection_entry
+
+- unique index `collection_entry_uk` (`set_code`, `collector_number`, `language_code`, `foil`, `user_id`, `binder_name`)
+- unique constraint `collection_entry_uk` (`set_code`, `collector_number`, `language_code`, `foil`, `user_id`, `binder_name`)
 
 ### mv_card_prices
 

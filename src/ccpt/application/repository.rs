@@ -1,5 +1,6 @@
 use crate::application::error::AppError;
-use crate::domain::card::{Card, CardId};
+use crate::application::imported_card::ImportedCard;
+use crate::domain::card::CardId;
 use crate::domain::card_offer::{CardOfferSortField, PaginatedCardOffers};
 use crate::domain::collection::{CollectionQuery, PaginatedCollection, SearchQuery};
 use crate::domain::collection_stats::CollectionStats;
@@ -30,8 +31,6 @@ impl From<PersistenceError> for String {
 #[async_trait]
 #[cfg_attr(test, automock)]
 pub trait CardRepository: Send + Sync {
-    #[allow(dead_code)]
-    async fn get_all(&self, user: User) -> Result<Vec<Card>, AppError>;
     async fn get_all_without_cardmarket_id(&self) -> Result<Vec<(CardId, uuid::Uuid)>, AppError>;
     async fn get_all_without_gatherer_id(&self) -> Result<Vec<(CardId, String)>, AppError>;
     /// Returns `(cardmarket_id, foil)` for the card matching `scryfall_id`, if any.
@@ -39,7 +38,7 @@ pub trait CardRepository: Send + Sync {
         &self,
         scryfall_id: uuid::Uuid,
     ) -> Result<Option<(Option<u32>, bool)>, AppError>;
-    async fn save(&self, user: User, card: Card) -> Result<(), AppError>;
+    async fn save(&self, user: User, card: ImportedCard) -> Result<(), AppError>;
     async fn update_cardmarket_id(
         &self,
         id: CardId,
