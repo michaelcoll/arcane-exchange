@@ -221,6 +221,33 @@ async fn add_trade_card_propagates_trade_not_found_from_use_case() {
 }
 
 #[tokio::test]
+async fn add_trade_card_propagates_card_not_found_from_use_case() {
+    // Covers both a nonexistent card and a card the owner doesn't actually offer to trade
+    // (visibility/binders/rarity filters) — the use case surfaces both as `CardNotFound`.
+    let mut mock_use_case = MockAddTradeCardUseCase::new();
+    mock_use_case
+        .expect_add_card()
+        .times(1)
+        .returning(|_, _, _, _, _| {
+            Box::pin(async { Err(AppError::Functional(FunctionalError::CardNotFound)) })
+        });
+
+    let state = make_app_state_add_trade_card(mock_use_case);
+    let result = add_trade_card(
+        AuthenticatedUser(User::for_testing()),
+        State(state),
+        Path(uuid::Uuid::new_v4()),
+        axum::Json(make_add_card_payload()),
+    )
+    .await;
+
+    assert!(matches!(
+        result,
+        Err(AppError::Functional(FunctionalError::CardNotFound))
+    ));
+}
+
+#[tokio::test]
 async fn add_trade_card_propagates_trade_access_denied_from_use_case() {
     let mut mock_use_case = MockAddTradeCardUseCase::new();
     mock_use_case

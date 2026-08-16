@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n            SELECT u.username,\n                   COALESCE(SUM(ce.quantity), 0)::BIGINT AS \"card_count!\"\n            FROM users u\n            LEFT JOIN collection_entry ce ON ce.user_id = u.id\n            WHERE LOWER(u.username) ILIKE '%' || LOWER($1) || '%'\n               OR LOWER($1) <% LOWER(u.username)\n            GROUP BY u.id, u.username\n            ORDER BY word_similarity(LOWER($1), LOWER(u.username)) DESC\n            LIMIT $2\n            ",
+  "query": "\n            SELECT u.username,\n                   SUM(t.proposed_quantity)::BIGINT AS \"card_count!\"\n            FROM users u\n            JOIN v_tradable_entry t ON t.user_id = u.id\n            WHERE LOWER(u.username) ILIKE '%' || LOWER($1) || '%'\n               OR LOWER($1) <% LOWER(u.username)\n            GROUP BY u.id, u.username\n            ORDER BY word_similarity(LOWER($1), LOWER(u.username)) DESC\n            LIMIT $2\n            ",
   "describe": {
     "columns": [
       {
@@ -32,5 +32,5 @@
       null
     ]
   },
-  "hash": "0ae9d106ea1017a7570c02cbb4abbd5b623eee34c7d59b61bfba2cb2c824b777"
+  "hash": "86d357c319f1fa12e71ba53d9b2e2e435f81c97f1ac7652b889c7eed22eb71ec"
 }

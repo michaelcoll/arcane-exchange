@@ -1,0 +1,29 @@
+meta {
+  name: add trade card - not offered (404)
+  type: http
+  seq: 10
+}
+
+post {
+  url: {{baseUrl}}/trades/{{tradeId}}/cards
+  body: json
+  auth: inherit
+}
+
+body:json {
+  {
+    "set_code": "ECL",
+    "collector_number": "166",
+    "language_code": "FR",
+    "foil": false,
+    "owner_username": "{{otherUsername}}",
+    "quantity": 1
+  }
+}
+
+docs {
+  Expects 404: the other party's collection visibility, trade binder selection or rarity
+  filters keep this card out of `v_tradable_entry`, so it is not actually offered to trade
+  even though they may own it. Set `otherUsername` to a player who is `private`, or `trade`
+  with the relevant binder unchecked / rarity closed, to reproduce.
+}

@@ -1,0 +1,32 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT proposed_quantity FROM v_tradable_entry\n                WHERE user_id = $1 AND set_code = $2 AND collector_number = $3\n                  AND language_code = $4 AND foil = $5",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "proposed_quantity",
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "v_tradable_entry",
+            "name": "proposed_quantity"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Bool"
+      ]
+    },
+    "nullable": [
+      true
+    ]
+  },
+  "hash": "d4ecf440a1c27f6d323f296f19488f8d13548ea900053e73dc712badbbef6ee8"
+}

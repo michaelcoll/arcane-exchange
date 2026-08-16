@@ -16,7 +16,9 @@ export type CollectionCard = {
    */
   collection_entry: CollectionEntry | null;
   /**
-   * Number of distinct users owning this card (search mode only).
+   * Number of distinct users actually offering this card to trade (search mode only) —
+   * after applying each owner's visibility, trade binder selection and rarity filters. A
+   * card no one offers anymore never appears in search results at all.
    */
   owner_count: number | null;
   /**

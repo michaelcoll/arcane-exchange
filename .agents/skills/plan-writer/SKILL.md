@@ -14,11 +14,11 @@ Tu rédiges des plans d'implémentation à partir d'une spec existante dans `doc
 ## Méthode de travail
 
 1. Lis la spec source en entier avant de commencer.
-2. Explore le code existant en lecture seule (Read, Grep, Glob) pour identifier les fichiers/modules à modifier, les
-   conventions en place, les endpoints/schémas déjà existants. Consulte les fichiers
-   `../../../.agents/*.instructions.md`
-   référencés dans
-   `AGENTS.md` si pertinent (backend, database-schema, endpoints, authentication).
+2. Délègue la phase exploratoire à un sous-agent (`Agent`, `subagent_type: "Explore"` ou `"general-purpose"`, avec
+   `model: "haiku"`) plutôt que d'explorer toi-même : demande-lui de lire en lecture seule (Read, Grep, Glob) le code
+   existant pour identifier les fichiers/modules à modifier, les conventions en place, les endpoints/schémas déjà
+   existants, ainsi que les fichiers `../../../.agents/*.instructions.md` référencés dans `AGENTS.md` si pertinent
+   (backend, database-schema, endpoints, authentication), et de te faire un rapport factuel sans proposer de solution.
 3. La spec ne contient volontairement pas de solution technique complète (elle ne donne que des choix d'implémentation
    de haut niveau) — c'est ici que les décisions techniques restantes se tranchent. Pose des questions de clarification
    ciblées (une ou deux à la fois) sur les points non tranchés par la spec : structure de données précise, découpage en

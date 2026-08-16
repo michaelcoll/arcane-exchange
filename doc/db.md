@@ -102,6 +102,14 @@ erDiagram
         character_varying(100) username UK "not null"
         character_varying(10) visibility "not null, default: 'private'::character varying"
     }
+    v_tradable_entry {
+        character_varying(50) user_id
+        character_varying(5) set_code
+        character_varying(10) collector_number
+        character_varying(2) language_code
+        boolean foil
+        integer proposed_quantity
+    }
     set_name ||--o{ card : "set_code"
     card ||--o{ collection_entry : "set_code, collector_number, language_code, foil"
     users ||--o{ collection_entry : "user_id"
@@ -117,6 +125,7 @@ erDiagram
 ## Views
 
 - `mv_card_prices` (materialized view)
+- `v_tradable_entry` (view)
 
 ## Indexes and constraints
 

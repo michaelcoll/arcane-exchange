@@ -63,13 +63,16 @@ impl UserRepository for UserRepositoryAdapter {
     }
 
     async fn autocomplete(&self, query: &str, limit: i64) -> Result<Vec<UserSuggestion>, AppError> {
+        // Inner join on `v_tradable_entry`: a user who offers nothing to trade (private,
+        // no binder selected, every rarity closed) is never suggested — see
+        // `.agents/database-schema.instructions.md`.
         let rows = sqlx::query_as!(
             UserSuggestionEntity,
             r#"
             SELECT u.username,
-                   COALESCE(SUM(ce.quantity), 0)::BIGINT AS "card_count!"
+                   SUM(t.proposed_quantity)::BIGINT AS "card_count!"
             FROM users u
-            LEFT JOIN collection_entry ce ON ce.user_id = u.id
+            JOIN v_tradable_entry t ON t.user_id = u.id
             WHERE LOWER(u.username) ILIKE '%' || LOWER($1) || '%'
                OR LOWER($1) <% LOWER(u.username)
             GROUP BY u.id, u.username
@@ -114,7 +117,9 @@ impl UserRepository for UserRepositoryAdapter {
 mod tests {
     use super::*;
     use crate::infrastructure::adapter_out::repository::common_repository_tests::{
-        insert_card_without_cardmarket_id, insert_collection_entry, insert_set, insert_user,
+        insert_card_with_rarity, insert_card_without_cardmarket_id, insert_collection_entry,
+        insert_collection_entry_with_binder, insert_rarity_filter, insert_set,
+        insert_trading_binder, insert_user, insert_user_with_visibility,
     };
     use chrono::Utc;
     use sqlx::PgPool;
@@ -207,7 +212,21 @@ mod tests {
 
     #[sqlx::test]
     async fn autocomplete_returns_users_matching_substring(pool: PgPool) {
-        insert_user(&pool, "user_alice", "alice").await;
+        insert_set(&pool, "TST").await;
+        insert_card_without_cardmarket_id(&pool, "TST", "1", "en", false, "Card A").await;
+        insert_user_with_visibility(&pool, "user_alice", "alice", "public").await;
+        insert_collection_entry(
+            &pool,
+            "TST",
+            "1",
+            "en",
+            false,
+            "user_alice",
+            1,
+            100,
+            Utc::now(),
+        )
+        .await;
         insert_user(&pool, "user_bob", "bob").await;
 
         let adapter = UserRepositoryAdapter::new(pool);
@@ -219,7 +238,21 @@ mod tests {
 
     #[sqlx::test]
     async fn autocomplete_is_case_insensitive(pool: PgPool) {
-        insert_user(&pool, "user_alice", "Alice").await;
+        insert_set(&pool, "TST").await;
+        insert_card_without_cardmarket_id(&pool, "TST", "1", "en", false, "Card A").await;
+        insert_user_with_visibility(&pool, "user_alice", "Alice", "public").await;
+        insert_collection_entry(
+            &pool,
+            "TST",
+            "1",
+            "en",
+            false,
+            "user_alice",
+            1,
+            100,
+            Utc::now(),
+        )
+        .await;
 
         let adapter = UserRepositoryAdapter::new(pool);
 
@@ -234,8 +267,34 @@ mod tests {
 
     #[sqlx::test]
     async fn autocomplete_orders_results_by_similarity(pool: PgPool) {
-        insert_user(&pool, "user_alice", "alice").await;
-        insert_user(&pool, "user_malice", "malice").await;
+        insert_set(&pool, "TST").await;
+        insert_card_without_cardmarket_id(&pool, "TST", "1", "en", false, "Card A").await;
+        insert_user_with_visibility(&pool, "user_alice", "alice", "public").await;
+        insert_user_with_visibility(&pool, "user_malice", "malice", "public").await;
+        insert_collection_entry(
+            &pool,
+            "TST",
+            "1",
+            "en",
+            false,
+            "user_alice",
+            1,
+            100,
+            Utc::now(),
+        )
+        .await;
+        insert_collection_entry(
+            &pool,
+            "TST",
+            "1",
+            "en",
+            false,
+            "user_malice",
+            1,
+            100,
+            Utc::now(),
+        )
+        .await;
 
         let adapter = UserRepositoryAdapter::new(pool);
         let result = adapter.autocomplete("alice", 10).await.unwrap();
@@ -246,7 +305,21 @@ mod tests {
 
     #[sqlx::test]
     async fn autocomplete_returns_empty_for_no_match(pool: PgPool) {
-        insert_user(&pool, "user_alice", "alice").await;
+        insert_set(&pool, "TST").await;
+        insert_card_without_cardmarket_id(&pool, "TST", "1", "en", false, "Card A").await;
+        insert_user_with_visibility(&pool, "user_alice", "alice", "public").await;
+        insert_collection_entry(
+            &pool,
+            "TST",
+            "1",
+            "en",
+            false,
+            "user_alice",
+            1,
+            100,
+            Utc::now(),
+        )
+        .await;
 
         let adapter = UserRepositoryAdapter::new(pool);
         let result = adapter.autocomplete("xyz", 10).await.unwrap();
@@ -256,8 +329,13 @@ mod tests {
 
     #[sqlx::test]
     async fn autocomplete_respects_limit(pool: PgPool) {
+        insert_set(&pool, "TST").await;
+        insert_card_without_cardmarket_id(&pool, "TST", "1", "en", false, "Card A").await;
         for i in 0..15 {
-            insert_user(&pool, &format!("user_ali_{i}"), &format!("ali_{i}")).await;
+            let id = format!("user_ali_{i}");
+            let username = format!("ali_{i}");
+            insert_user_with_visibility(&pool, &id, &username, "public").await;
+            insert_collection_entry(&pool, "TST", "1", "en", false, &id, 1, 100, Utc::now()).await;
         }
 
         let adapter = UserRepositoryAdapter::new(pool);
@@ -268,7 +346,7 @@ mod tests {
 
     #[sqlx::test]
     async fn autocomplete_sums_quantities_across_multiple_cards(pool: PgPool) {
-        insert_user(&pool, "user_alice", "alice").await;
+        insert_user_with_visibility(&pool, "user_alice", "alice", "public").await;
         insert_set(&pool, "TST").await;
         insert_card_without_cardmarket_id(&pool, "TST", "1", "en", false, "Card A").await;
         insert_card_without_cardmarket_id(&pool, "TST", "2", "en", false, "Card B").await;
@@ -305,14 +383,129 @@ mod tests {
     }
 
     #[sqlx::test]
-    async fn autocomplete_returns_zero_card_count_for_user_without_cards(pool: PgPool) {
-        insert_user(&pool, "user_alice", "alice").await;
+    async fn autocomplete_excludes_user_without_any_tradable_card(pool: PgPool) {
+        insert_user_with_visibility(&pool, "user_alice", "alice", "public").await;
 
         let adapter = UserRepositoryAdapter::new(pool);
         let result = adapter.autocomplete("ali", 10).await.unwrap();
 
+        assert!(result.is_empty());
+    }
+
+    #[sqlx::test]
+    async fn autocomplete_excludes_private_user(pool: PgPool) {
+        insert_set(&pool, "TST").await;
+        insert_card_without_cardmarket_id(&pool, "TST", "1", "en", false, "Card A").await;
+        insert_user_with_visibility(&pool, "user_bob", "bob", "private").await;
+        insert_collection_entry(
+            &pool,
+            "TST",
+            "1",
+            "en",
+            false,
+            "user_bob",
+            40,
+            100,
+            Utc::now(),
+        )
+        .await;
+
+        let adapter = UserRepositoryAdapter::new(pool);
+        let result = adapter.autocomplete("bob", 10).await.unwrap();
+
+        assert!(result.is_empty());
+    }
+
+    #[sqlx::test]
+    async fn autocomplete_excludes_trade_user_without_binder_selected(pool: PgPool) {
+        insert_set(&pool, "TST").await;
+        insert_card_without_cardmarket_id(&pool, "TST", "1", "en", false, "Card A").await;
+        insert_user_with_visibility(&pool, "user_bob", "bob", "trade").await;
+        insert_collection_entry(
+            &pool,
+            "TST",
+            "1",
+            "en",
+            false,
+            "user_bob",
+            40,
+            100,
+            Utc::now(),
+        )
+        .await;
+
+        let adapter = UserRepositoryAdapter::new(pool);
+        let result = adapter.autocomplete("bob", 10).await.unwrap();
+
+        assert!(result.is_empty());
+    }
+
+    #[sqlx::test]
+    async fn autocomplete_trade_user_card_count_is_the_proposed_quantity(pool: PgPool) {
+        // Bob owns 40 copies total, but only 9 sit in his selected "Trade Binder" (the rest
+        // are in an unselected binder) and he keeps 4 of that rarity — proposed = 9 - 4 = 5.
+        insert_set(&pool, "TST").await;
+        insert_card_with_rarity(&pool, "TST", "1", "EN", false, "Card A", 1, "R").await;
+        insert_user_with_visibility(&pool, "user_bob", "bob", "trade").await;
+        insert_trading_binder(&pool, "user_bob", "Trade Binder").await;
+        insert_rarity_filter(&pool, "user_bob", "R", true, 4).await;
+        insert_collection_entry_with_binder(
+            &pool,
+            "TST",
+            "1",
+            "EN",
+            false,
+            "user_bob",
+            9,
+            100,
+            Utc::now(),
+            Some("Trade Binder"),
+        )
+        .await;
+        insert_collection_entry_with_binder(
+            &pool,
+            "TST",
+            "1",
+            "EN",
+            false,
+            "user_bob",
+            31,
+            100,
+            Utc::now(),
+            Some("Bulk Binder"),
+        )
+        .await;
+
+        let adapter = UserRepositoryAdapter::new(pool);
+        let result = adapter.autocomplete("bob", 10).await.unwrap();
+
         assert_eq!(result.len(), 1);
-        assert_eq!(result[0].card_count, 0);
+        assert_eq!(result[0].card_count, 5);
+    }
+
+    #[sqlx::test]
+    async fn autocomplete_public_user_card_count_is_the_total_owned(pool: PgPool) {
+        insert_set(&pool, "TST").await;
+        insert_card_without_cardmarket_id(&pool, "TST", "1", "en", false, "Card A").await;
+        insert_user_with_visibility(&pool, "user_bob", "bob", "public").await;
+        insert_collection_entry(
+            &pool,
+            "TST",
+            "1",
+            "en",
+            false,
+            "user_bob",
+            40,
+            100,
+            Utc::now(),
+        )
+        .await;
+
+        let adapter = UserRepositoryAdapter::new(pool);
+        let result = adapter.autocomplete("bob", 10).await.unwrap();
+
+        assert_eq!(result.len(), 1);
+        assert_eq!(result[0].card_count, 40);
     }
 
     // --- get_visibility / set_visibility ---

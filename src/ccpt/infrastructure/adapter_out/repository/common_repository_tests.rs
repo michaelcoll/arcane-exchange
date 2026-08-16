@@ -285,6 +285,41 @@ pub async fn insert_user(pool: &PgPool, id: &str, username: &str) {
         .unwrap();
 }
 
+pub async fn insert_user_with_visibility(
+    pool: &PgPool,
+    id: &str,
+    username: &str,
+    visibility: &str,
+) {
+    sqlx::query(r#"INSERT INTO users (id, username, visibility) VALUES ($1, $2, $3)"#)
+        .bind(id)
+        .bind(username)
+        .bind(visibility)
+        .execute(pool)
+        .await
+        .unwrap();
+}
+
+pub async fn insert_rarity_filter(
+    pool: &PgPool,
+    user_id: &str,
+    rarity: &str,
+    is_open: bool,
+    kept_copies: i16,
+) {
+    sqlx::query(
+        r#"INSERT INTO collection_rarity_filters (user_id, rarity, is_open, kept_copies)
+             VALUES ($1, $2, $3, $4)"#,
+    )
+    .bind(user_id)
+    .bind(rarity)
+    .bind(is_open)
+    .bind(kept_copies)
+    .execute(pool)
+    .await
+    .unwrap();
+}
+
 pub async fn insert_trading_binder(pool: &PgPool, user_id: &str, binder_name: &str) {
     sqlx::query(r#"INSERT INTO trading_binders (user_id, binder_name) VALUES ($1, $2)"#)
         .bind(user_id)

@@ -635,7 +635,7 @@ paths:
         '403':
           description: Caller is not a party to this trade
         '404':
-          description: Trade not found, owner username unknown, or card not owned in sufficient quantity
+          description: Trade not found, owner username unknown, the caller doesn't own enough of the card, or the other party doesn't offer enough of it to trade (visibility/binders/rarity filters)
         '409':
           description: Trade cannot be modified in its current status, or the card is already reserved by another trade
       security:
@@ -900,6 +900,10 @@ components:
         quantity:
           type: integer
           format: int32
+          description: |-
+            Quantity this owner actually offers to trade — after applying their collection
+            visibility, trade binder selection and rarity filters. Never the raw quantity they own:
+            an owner offering `0` never appears in the list.
           minimum: 0
         reserved:
           type: boolean
@@ -946,7 +950,10 @@ components:
           - integer
           - 'null'
           format: int64
-          description: Number of distinct users owning this card (search mode only).
+          description: |-
+            Number of distinct users actually offering this card to trade (search mode only) —
+            after applying each owner's visibility, trade binder selection and rarity filters. A
+            card no one offers anymore never appears in search results at all.
           minimum: 0
         price_guide:
           oneOf:
@@ -1443,6 +1450,10 @@ components:
           description: RFC 3339 timestamp
     UserSuggestionResponse:
       type: object
+      description: |-
+        A suggested user only appears if they offer at least one card to trade — a `private` user,
+        or one offering nothing under their current visibility/binders/rarity filters, is never
+        suggested.
       required:
       - username
       - note
@@ -1451,6 +1462,9 @@ components:
         card_count:
           type: integer
           format: int64
+          description: |-
+            Sum of the quantities this user actually offers to trade across their whole collection —
+            not their total collection size.
           minimum: 0
         note:
           type: integer
