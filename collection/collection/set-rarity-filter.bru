@@ -1,0 +1,19 @@
+meta {
+  name: set-rarity-filter
+  type: http
+  seq: 6
+}
+
+post {
+  url: {{baseUrl}}/collection/visibility/rarities
+  body: json
+  auth: inherit
+}
+
+body:json {
+  {
+    "rarity": "R",
+    "is_open": true,
+    "kept_copies": 1
+  }
+}

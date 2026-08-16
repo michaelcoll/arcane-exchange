@@ -304,6 +304,41 @@ paths:
           description: Missing or invalid token
       security:
       - bearer_auth: []
+  /collection/visibility/rarities:
+    get:
+      tags:
+      - collection
+      operationId: get_rarity_filters
+      responses:
+        '200':
+          description: Rarities owned within the binders selected for trade, with their trade rule and computed counts
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RarityFiltersResponse'
+        '401':
+          description: Missing or invalid token
+      security:
+      - bearer_auth: []
+    post:
+      tags:
+      - collection
+      operationId: set_rarity_filter
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SetRarityFilterRequest'
+        required: true
+      responses:
+        '204':
+          description: Trade rule updated successfully
+        '400':
+          description: Invalid rarity code or kept_copies out of range
+        '401':
+          description: Missing or invalid token
+      security:
+      - bearer_auth: []
   /maintenance/stats:
     get:
       tags:
@@ -1144,6 +1179,40 @@ components:
       - R
       - M
       - S
+    RarityFilterResponse:
+      type: object
+      required:
+      - rarity
+      - is_open
+      - kept_copies
+      - copies
+      - proposed
+      properties:
+        copies:
+          type: integer
+          format: int64
+          minimum: 0
+        is_open:
+          type: boolean
+        kept_copies:
+          type: integer
+          format: int32
+          minimum: 0
+        proposed:
+          type: integer
+          format: int64
+          minimum: 0
+        rarity:
+          type: string
+    RarityFiltersResponse:
+      type: object
+      required:
+      - rarities
+      properties:
+        rarities:
+          type: array
+          items:
+            $ref: '#/components/schemas/RarityFilterResponse'
     RateTradeRequest:
       type: object
       required:
@@ -1182,6 +1251,23 @@ components:
         code:
           type: string
         name:
+          type: string
+    SetRarityFilterRequest:
+      type: object
+      required:
+      - rarity
+      - is_open
+      - kept_copies
+      properties:
+        is_open:
+          type: boolean
+        kept_copies:
+          type: integer
+          format: int32
+          description: |-
+            Signed so out-of-range values (e.g. negative) fail domain validation with a clean 400
+            instead of being rejected by the JSON extractor as a 422 before reaching the handler.
+        rarity:
           type: string
     SetVisibilityRequest:
       type: object

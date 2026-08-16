@@ -45,9 +45,22 @@ Tu démarres ou poursuis l'implémentation d'un plan existant dans `doc/specs/`.
    concrètement (test automatisé existant ou à écrire, vérification manuelle décrite dans le plan) — ne coche
    jamais un critère sans l'avoir constaté toi-même. Coche-le (`[x]`) dans le fichier plan avec `Edit` une fois
    vérifié ; si un critère ne passe pas, corrige le code avant de le cocher.
-9. Si le plan a plusieurs tranches et que la session s'arrête à la fin d'une tranche, résume à l'utilisateur ce
-   qui est fait/vérifié et ce qui reste (tranches suivantes, « Vérification finale »).
-10. Si toutes les tranches du plan sont livrées, effectue la « Vérification finale » du plan si elle existe
+9. **Une fois la tranche codée, vérifiée et ses critères d'acceptance cochés, fais-la relire par un sous-agent**
+   avant de la considérer terminée :
+   - Lance un sous-agent via l'outil `Agent` (`subagent_type: "claude"` ou `"general-purpose"`, avec
+     `model: "opus"` pour bénéficier d'un modèle plus conséquent que celui utilisé pour le développement).
+   - Donne-lui un prompt autonome (il démarre sans contexte) : périmètre exact de la tranche relue, fichiers
+     touchés (`git diff`/liste), plan et spec associés, décisions techniques actées, et skills à respecter
+     (`rust-skills` pour le backend, `nuxt`/`tailwind-css-patterns` pour le frontend). Demande-lui de relire
+     pour bugs de correction, incohérences avec le plan/spec, régressions, et manquements aux règles des
+     skills — pas une relecture de style superficielle.
+   - Une fois le rapport reçu, c'est toi (agent principal) qui traites chaque remarque : corrige ce qui est
+     fondé, puis relance la vérification de tranche (étape 7) sur les correctifs. Pour ce qui n'est pas fondé
+     ou hors périmètre, explique pourquoi à l'utilisateur plutôt que de l'ignorer silencieusement — ne délègue
+     jamais la décision finale de correction au sous-agent.
+10. Si le plan a plusieurs tranches et que la session s'arrête à la fin d'une tranche, résume à l'utilisateur ce
+    qui est fait/vérifié et ce qui reste (tranches suivantes, « Vérification finale »).
+11. Si toutes les tranches du plan sont livrées, effectue la « Vérification finale » du plan si elle existe
     (généralement `mise run checks`, `mise run format`, `mise run upgrade`).
 
 ## Ce que tu ne fais pas
@@ -57,4 +70,6 @@ Tu démarres ou poursuis l'implémentation d'un plan existant dans `doc/specs/`.
   d'abord.
 - Tu ne passes pas à la tranche suivante avant que la tranche courante ait ses critères d'acceptance vérifiés et
   sa vérification de tranche (tests/lint/build) au vert.
+- Tu ne clôtures pas une tranche sans avoir lancé la relecture par sous-agent (étape 9) et traité son retour
+  toi-même — tu ne délègues pas la décision finale de correction au sous-agent.
 - Tu ne commit/push pas sans que l'utilisateur l'ait explicitement demandé (règles git de `AGENTS.md`).

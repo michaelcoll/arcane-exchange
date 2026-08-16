@@ -14,6 +14,9 @@ use crate::application::service::collection_visibility_service::{
 use crate::application::service::gatherer_id_enqueue_service::GathererIdEnqueueService;
 use crate::application::service::import_card_service::ImportCardService;
 use crate::application::service::import_price_service::ImportPriceService;
+use crate::application::service::rarity_trade_filter_service::{
+    GetRarityTradeFiltersService, SetRarityTradeFilterService,
+};
 use crate::application::service::register_user_service::RegisterUserService;
 use crate::application::service::search_service::SearchService;
 use crate::application::service::stats_service::StatsService;
@@ -32,10 +35,11 @@ use crate::application::use_case::{
     AutocompleteUsersUseCase, ConfirmTradeUseCase, CreateTradeUseCase,
     EnqueueCardMarketIdUpdateUseCase, EnqueueGathererIdUpdateUseCase, GetCardOffersUseCase,
     GetCardPriceHistoryUseCase, GetCollectionPriceHistoryUseCase, GetCollectionStatsUseCase,
-    GetCollectionUseCase, GetCollectionVisibilityUseCase, GetTradeBindersUseCase, GetTradeUseCase,
-    ImportCardUseCase, ImportPriceUseCase, ListTradesUseCase, RateTradeUseCase,
-    RegisterUserUseCase, RemoveTradeBinderUseCase, RemoveTradeCardUseCase, SearchCardsUseCase,
-    SetCollectionVisibilityUseCase, StatsUseCase,
+    GetCollectionUseCase, GetCollectionVisibilityUseCase, GetRarityTradeFiltersUseCase,
+    GetTradeBindersUseCase, GetTradeUseCase, ImportCardUseCase, ImportPriceUseCase,
+    ListTradesUseCase, RateTradeUseCase, RegisterUserUseCase, RemoveTradeBinderUseCase,
+    RemoveTradeCardUseCase, SearchCardsUseCase, SetCollectionVisibilityUseCase,
+    SetRarityTradeFilterUseCase, StatsUseCase,
 };
 use crate::config::Config;
 use crate::domain::card::CardId;
@@ -50,6 +54,7 @@ use crate::infrastructure::adapter_out::caller::edhrec_caller_adapter::EdhRecCal
 use crate::infrastructure::adapter_out::repository::card_prices_view_repository_adapter::CardPricesViewRepositoryAdapter;
 use crate::infrastructure::adapter_out::repository::cardmarket_price_repository_adapter::CardMarketPriceRepositoryAdapter;
 use crate::infrastructure::adapter_out::repository::collection_price_history_repository_adapter::CollectionPriceHistoryRepositoryAdapter;
+use crate::infrastructure::adapter_out::repository::collection_rarity_filters_repository_adapter::CollectionRarityFiltersRepositoryAdapter;
 use crate::infrastructure::adapter_out::repository::collection_stats_repository_adapter::CollectionStatsRepositoryAdapter;
 use crate::infrastructure::adapter_out::repository::stats_repository_adapter::StatsRepositoryAdapter;
 use crate::infrastructure::adapter_out::repository::trade_repository_adapter::TradeRepositoryAdapter;
@@ -106,6 +111,8 @@ pub struct AppState {
     pub get_trade_binders_use_case: Arc<dyn GetTradeBindersUseCase>,
     pub add_trade_binder_use_case: Arc<dyn AddTradeBinderUseCase>,
     pub remove_trade_binder_use_case: Arc<dyn RemoveTradeBinderUseCase>,
+    pub get_rarity_trade_filters_use_case: Arc<dyn GetRarityTradeFiltersUseCase>,
+    pub set_rarity_trade_filter_use_case: Arc<dyn SetRarityTradeFilterUseCase>,
     pub max_page_size: u32,
     pub max_page_number: u32,
 }
@@ -122,6 +129,7 @@ struct Repositories {
     collection_price_history: Arc<CollectionPriceHistoryRepositoryAdapter>,
     collection_stats: Arc<CollectionStatsRepositoryAdapter>,
     trading_binders: Arc<TradingBindersRepositoryAdapter>,
+    collection_rarity_filters: Arc<CollectionRarityFiltersRepositoryAdapter>,
 }
 
 fn create_repositories(pool: &Pool<Postgres>) -> Repositories {
@@ -138,6 +146,9 @@ fn create_repositories(pool: &Pool<Postgres>) -> Repositories {
         )),
         collection_stats: Arc::new(CollectionStatsRepositoryAdapter::new(pool.clone())),
         trading_binders: Arc::new(TradingBindersRepositoryAdapter::new(pool.clone())),
+        collection_rarity_filters: Arc::new(CollectionRarityFiltersRepositoryAdapter::new(
+            pool.clone(),
+        )),
     }
 }
 
@@ -286,6 +297,12 @@ fn create_app_state(
         Arc::new(AddTradeBinderService::new(repos.trading_binders.clone()));
     let remove_trade_binder_service: Arc<dyn RemoveTradeBinderUseCase> =
         Arc::new(RemoveTradeBinderService::new(repos.trading_binders));
+    let get_rarity_trade_filters_service: Arc<dyn GetRarityTradeFiltersUseCase> = Arc::new(
+        GetRarityTradeFiltersService::new(repos.collection_rarity_filters.clone()),
+    );
+    let set_rarity_trade_filter_service: Arc<dyn SetRarityTradeFilterUseCase> = Arc::new(
+        SetRarityTradeFilterService::new(repos.collection_rarity_filters),
+    );
     let create_trade_service: Arc<dyn CreateTradeUseCase> = Arc::new(CreateTradeService::new(
         repos.trade.clone(),
         repos.user.clone(),
@@ -345,6 +362,8 @@ fn create_app_state(
         get_trade_binders_use_case: get_trade_binders_service,
         add_trade_binder_use_case: add_trade_binder_service,
         remove_trade_binder_use_case: remove_trade_binder_service,
+        get_rarity_trade_filters_use_case: get_rarity_trade_filters_service,
+        set_rarity_trade_filter_use_case: set_rarity_trade_filter_service,
         max_page_size: config.max_page_size,
         max_page_number: config.max_page_number,
     }
@@ -437,10 +456,11 @@ impl AppState {
             MockEnqueueGathererIdUpdateUseCase, MockGetCardOffersUseCase,
             MockGetCardPriceHistoryUseCase, MockGetCollectionPriceHistoryUseCase,
             MockGetCollectionStatsUseCase, MockGetCollectionUseCase,
-            MockGetCollectionVisibilityUseCase, MockGetTradeBindersUseCase, MockGetTradeUseCase,
-            MockImportCardUseCase, MockListTradesUseCase, MockRateTradeUseCase,
-            MockRegisterUserUseCase, MockRemoveTradeBinderUseCase, MockRemoveTradeCardUseCase,
-            MockSearchCardsUseCase, MockSetCollectionVisibilityUseCase,
+            MockGetCollectionVisibilityUseCase, MockGetRarityTradeFiltersUseCase,
+            MockGetTradeBindersUseCase, MockGetTradeUseCase, MockImportCardUseCase,
+            MockListTradesUseCase, MockRateTradeUseCase, MockRegisterUserUseCase,
+            MockRemoveTradeBinderUseCase, MockRemoveTradeCardUseCase, MockSearchCardsUseCase,
+            MockSetCollectionVisibilityUseCase, MockSetRarityTradeFilterUseCase,
         };
         use crate::domain::card::CardInfo;
         use crate::domain::user::User;
@@ -497,6 +517,8 @@ impl AppState {
             get_trade_binders_use_case: Arc::new(MockGetTradeBindersUseCase::new()),
             add_trade_binder_use_case: Arc::new(MockAddTradeBinderUseCase::new()),
             remove_trade_binder_use_case: Arc::new(MockRemoveTradeBinderUseCase::new()),
+            get_rarity_trade_filters_use_case: Arc::new(MockGetRarityTradeFiltersUseCase::new()),
+            set_rarity_trade_filter_use_case: Arc::new(MockSetRarityTradeFilterUseCase::new()),
             max_page_size: 100,
             max_page_number: 10,
         }

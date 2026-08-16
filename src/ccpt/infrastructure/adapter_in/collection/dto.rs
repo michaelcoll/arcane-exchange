@@ -3,6 +3,7 @@ use crate::domain::collection::{CollectionSortField, SortDirection};
 use crate::domain::collection_stats::{BinderInfo, CollectionStats};
 use crate::domain::price::PriceGuide;
 use crate::domain::rarity_code::RarityCode;
+use crate::domain::rarity_trade_filter::RarityTradeFilter;
 use serde::{Deserialize, Serialize};
 use ts_rs::TS;
 use utoipa::ToSchema;
@@ -74,6 +75,47 @@ impl From<CollectionStats> for CollectionStatsResponse {
                 .collect(),
         }
     }
+}
+
+// --- Rarity trade filters ---
+#[derive(Serialize, Debug, TS, ToSchema)]
+#[serde(rename = "RarityFilter")]
+#[ts(export, export_to = "RarityFilter.ts")]
+pub struct RarityFilterResponse {
+    pub rarity: String,
+    pub is_open: bool,
+    pub kept_copies: u8,
+    pub copies: u64,
+    pub proposed: u64,
+}
+
+impl From<RarityTradeFilter> for RarityFilterResponse {
+    fn from(f: RarityTradeFilter) -> Self {
+        Self {
+            rarity: f.rarity.to_string(),
+            is_open: f.is_open,
+            kept_copies: f.kept_copies,
+            copies: f.copies,
+            proposed: f.proposed,
+        }
+    }
+}
+
+#[derive(Serialize, Debug, TS, ToSchema)]
+#[serde(rename = "RarityFilters")]
+#[ts(export, export_to = "RarityFilters.ts")]
+pub struct RarityFiltersResponse {
+    pub rarities: Vec<RarityFilterResponse>,
+}
+
+#[derive(Deserialize, Debug, TS, ToSchema)]
+#[ts(export, export_to = "SetRarityFilterRequest.ts")]
+pub(crate) struct SetRarityFilterRequest {
+    pub(crate) rarity: String,
+    pub(crate) is_open: bool,
+    /// Signed so out-of-range values (e.g. negative) fail domain validation with a clean 400
+    /// instead of being rejected by the JSON extractor as a 422 before reaching the handler.
+    pub(crate) kept_copies: i32,
 }
 
 // --- Query params ---

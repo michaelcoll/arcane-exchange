@@ -1,23 +1,11 @@
 <script setup lang="ts">
-import {
-  DEFAULT_RARITY_RULES,
-  MAX_KEPT_COPIES,
-  RARITY_DISTRIBUTION,
-  TOTAL_COPIES,
-  binderFactor,
-  copiesOf,
-  eligibleCopies,
-  fmtInt,
-  uniqueOf,
-  type RarityRule,
-  type TradeRuleRarity,
-} from '~/utils/trade-rules';
+import type { RarityCode } from '~/bindings/RarityCode';
+import { MAX_KEPT_COPIES, fmtInt } from '~/utils/trade-rules';
+import { RARITY_LABELS } from '~/utils/rarity';
 
-const { getCollectionStats } = useCollectionService();
+const { getCollectionStats, getRarityFilters, setRarityFilter } = useCollectionService();
 const { getTradeBinders, addTradeBinder, removeTradeBinder } = useUserService();
 const { showError } = useToast();
-
-const rules = reactive<Record<TradeRuleRarity, RarityRule>>({ ...DEFAULT_RARITY_RULES });
 
 const errorMessage = (e: unknown) =>
   (e as { data?: { error?: string } })?.data?.error ?? 'Une erreur est survenue.';
@@ -26,14 +14,27 @@ const errorMessage = (e: unknown) =>
 const { data: statsData, pending: statsPending, error: statsError } = getCollectionStats();
 const binders = computed(() => statsData.value?.binders ?? []);
 
+const {
+  data: filtersData,
+  pending: filtersPending,
+  error: filtersError,
+  refresh: refreshFilters,
+} = getRarityFilters();
+const rows = computed(() => filtersData.value?.rarities ?? []);
+
 watch(statsError, (e) => {
   if (e) showError('Impossible de charger les binders', errorMessage(e));
+});
+
+watch(filtersError, (e) => {
+  if (e) showError('Impossible de charger tes règles de rareté', errorMessage(e));
 });
 
 const selectedBinders = ref<string[]>([]);
 const selectionLoading = ref(true);
 const bindersLoading = computed(() => statsPending.value || selectionLoading.value);
 const binderBusy = ref<string | null>(null);
+const rarityBusy = ref<string | null>(null);
 
 onMounted(async () => {
   try {
@@ -58,6 +59,7 @@ const toggleBinder = async (name: string) => {
     } else {
       await addTradeBinder(name);
     }
+    await refreshFilters();
   } catch (e) {
     selectedBinders.value = previous;
     showError('Impossible de mettre à jour le binder', errorMessage(e));
@@ -66,42 +68,47 @@ const toggleBinder = async (name: string) => {
   }
 };
 
-const setKeep = (code: TradeRuleRarity, value: number) => {
-  rules[code].keep = Math.min(MAX_KEPT_COPIES, Math.max(0, value));
+const toggleRarity = async (rarity: string, isOpen: boolean, keptCopies: number) => {
+  rarityBusy.value = rarity;
+  try {
+    await setRarityFilter(rarity, !isOpen, keptCopies);
+  } catch (e) {
+    showError('Impossible de mettre à jour la rareté', errorMessage(e));
+  } finally {
+    await refreshFilters();
+    rarityBusy.value = null;
+  }
 };
 
-const rows = computed(() =>
-  RARITY_DISTRIBUTION.map((r) => {
-    const rule = rules[r.code];
-    const copies = copiesOf(r);
-    const proposed = rule.on
-      ? eligibleCopies(r, rule.keep, binderFactor(r.code, selectedBinders.value))
-      : 0;
-    return {
-      rarity: r,
-      rule,
-      unique: uniqueOf(r),
-      copies,
-      proposed,
-      kept: rule.on ? copies - proposed : 0,
-      excluded: rule.on ? 0 : copies,
-    };
-  }),
-);
+const setKeep = async (rarity: string, isOpen: boolean, value: number) => {
+  const keep = Math.min(MAX_KEPT_COPIES, Math.max(0, value));
+  rarityBusy.value = rarity;
+  try {
+    await setRarityFilter(rarity, isOpen, keep);
+  } catch (e) {
+    showError('Impossible de mettre à jour la rareté', errorMessage(e));
+  } finally {
+    await refreshFilters();
+    rarityBusy.value = null;
+  }
+};
 
 const totals = computed(() => ({
-  proposed: rows.value.reduce((s, x) => s + x.proposed, 0),
-  kept: rows.value.reduce((s, x) => s + x.kept, 0),
-  excluded: rows.value.reduce((s, x) => s + x.excluded, 0),
+  proposed: rows.value.reduce((s, r) => s + r.proposed, 0),
+  kept: rows.value.reduce((s, r) => s + (r.is_open ? r.copies - r.proposed : 0), 0),
+  excluded: rows.value.reduce((s, r) => s + (r.is_open ? 0 : r.copies), 0),
 }));
 
-const pct = (n: number) => (n / TOTAL_COPIES) * 100;
+const totalCopies = computed(() => rows.value.reduce((s, r) => s + r.copies, 0));
 
-const RARITY_INK: Record<TradeRuleRarity, string> = {
+const pct = (n: number) => (totalCopies.value === 0 ? 0 : (n / totalCopies.value) * 100);
+
+const RARITY_INK: Record<RarityCode, string> = {
   M: 'text-slate-800 dark:text-slate-100',
   R: 'text-slate-600 dark:text-slate-300',
   U: 'text-slate-500 dark:text-slate-400',
   C: 'text-slate-400 dark:text-slate-500',
+  S: 'text-slate-400 dark:text-slate-500',
 };
 
 const labelClass =
@@ -170,8 +177,18 @@ const stepperBtnClass =
       </div>
     </div>
 
+    <!-- ÉTAT VIDE -->
+    <div
+      v-if="!filtersPending && rows.length === 0"
+      class="rounded-2xl border border-slate-200 bg-white/60 px-4 py-6 text-center text-xs text-slate-400 shadow-lg backdrop-blur-md dark:border-white/10 dark:bg-zinc-900/60 dark:text-slate-500"
+    >
+      Coche au moins un binder ci-dessus pour voir apparaître les raretés que tu peux proposer à
+      l'échange.
+    </div>
+
     <!-- MATRICE DES RARETÉS -->
     <div
+      v-else
       class="rounded-2xl border border-slate-200 bg-white/60 px-1.5 pt-3.5 pb-1.5 shadow-lg backdrop-blur-md dark:border-white/10 dark:bg-zinc-900/60"
     >
       <div
@@ -185,27 +202,27 @@ const stepperBtnClass =
 
       <div
         v-for="row in rows"
-        :key="row.rarity.code"
+        :key="row.rarity"
         :class="[
           'grid grid-cols-[1fr_58px_132px_104px] items-center gap-2.5 rounded-xl px-3.5 py-2.5 transition-all duration-150 hover:bg-slate-100/70 dark:hover:bg-white/5',
           'max-sm:mb-2 max-sm:grid-cols-1 max-sm:gap-0 max-sm:border max-sm:border-slate-200 max-sm:bg-white max-sm:px-3 max-sm:pt-3 max-sm:pb-2.5 max-sm:hover:bg-white dark:max-sm:border-white/10 dark:max-sm:bg-zinc-900 dark:max-sm:hover:bg-zinc-900',
-          row.rule.on ? '' : 'opacity-45',
+          row.is_open ? '' : 'opacity-45',
         ]"
       >
         <div class="flex items-center gap-3 max-sm:mt-1.5">
           <span
             :class="[
               'grid h-7 w-7 shrink-0 place-items-center rounded-lg border border-slate-300 bg-slate-100 font-mono text-xs font-bold dark:border-white/15 dark:bg-zinc-800',
-              RARITY_INK[row.rarity.code],
+              RARITY_INK[row.rarity as RarityCode],
             ]"
-            >{{ row.rarity.code }}</span
+            >{{ row.rarity }}</span
           >
           <div class="flex flex-col gap-px">
             <span class="text-sm font-semibold text-slate-800 dark:text-slate-100">{{
-              row.rarity.label
+              RARITY_LABELS[row.rarity as RarityCode]
             }}</span>
             <span class="text-xs text-slate-400 dark:text-slate-500">
-              {{ fmtInt(row.unique) }} cartes · {{ fmtInt(row.copies) }} ex.
+              {{ fmtInt(row.copies) }} ex.
             </span>
           </div>
         </div>
@@ -218,20 +235,21 @@ const stepperBtnClass =
             >Ouverte</span
           >
           <button
-            :aria-pressed="row.rule.on"
-            :aria-label="`Ouvrir la rareté ${row.rarity.label} à l'échange`"
+            :aria-pressed="row.is_open"
+            :aria-label="`Ouvrir la rareté ${RARITY_LABELS[row.rarity as RarityCode]} à l'échange`"
+            :disabled="rarityBusy === row.rarity"
             :class="[
-              'relative h-7 w-12 shrink-0 cursor-pointer rounded-full transition-all duration-200',
-              row.rule.on
+              'relative h-7 w-12 shrink-0 cursor-pointer rounded-full transition-all duration-200 disabled:cursor-default disabled:opacity-60',
+              row.is_open
                 ? 'border border-transparent bg-cyan-500 dark:bg-cyan-400'
                 : 'border border-slate-300 bg-slate-200 dark:border-white/15 dark:bg-zinc-800',
             ]"
-            @click="row.rule.on = !row.rule.on"
+            @click="toggleRarity(row.rarity, row.is_open, row.kept_copies)"
           >
             <span
               :class="[
                 'absolute top-1 h-5 w-5 rounded-full transition-[left] duration-200 ease-out',
-                row.rule.on ? 'left-6 bg-zinc-950' : 'left-1 bg-slate-500 dark:bg-slate-400',
+                row.is_open ? 'left-6 bg-zinc-950' : 'left-1 bg-slate-500 dark:bg-slate-400',
               ]"
             />
           </button>
@@ -249,21 +267,21 @@ const stepperBtnClass =
           >
             <button
               :class="stepperBtnClass"
-              :disabled="row.rule.keep <= 0"
+              :disabled="rarityBusy === row.rarity || row.kept_copies <= 0"
               aria-label="Moins"
-              @click="setKeep(row.rarity.code, row.rule.keep - 1)"
+              @click="setKeep(row.rarity, row.is_open, row.kept_copies - 1)"
             >
               −
             </button>
             <b
               class="min-w-[38px] text-center font-mono text-xs font-semibold text-slate-800 dark:text-slate-100"
-              >{{ row.rule.keep }}</b
+              >{{ row.kept_copies }}</b
             >
             <button
               :class="stepperBtnClass"
-              :disabled="row.rule.keep >= MAX_KEPT_COPIES"
+              :disabled="rarityBusy === row.rarity || row.kept_copies >= MAX_KEPT_COPIES"
               aria-label="Plus"
-              @click="setKeep(row.rarity.code, row.rule.keep + 1)"
+              @click="setKeep(row.rarity, row.is_open, row.kept_copies + 1)"
             >
               +
             </button>

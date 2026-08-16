@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { RarityCode } from '~/bindings/RarityCode';
 import type { SetInfo } from '~/bindings/SetInfo';
+import { RARITY_LABELS, RARITY_ORDER } from '~/utils/rarity';
 
 const props = withDefaults(
   defineProps<{
@@ -19,15 +20,6 @@ const emit = defineEmits<{
   toggle: [k: 'rar' | 'sets', v: string];
   'price-change': [lo: number, hi: number];
 }>();
-
-const RARITY_LABELS: Record<RarityCode, string> = {
-  M: 'Mythique',
-  R: 'Rare',
-  U: 'Unco',
-  C: 'Commune',
-  S: 'Special',
-};
-const RARITIES: RarityCode[] = ['M', 'R', 'U', 'C', 'S'];
 
 const q = defineModel<string>('q', { default: '' });
 
@@ -126,7 +118,7 @@ const clearSets = () => {
       >
       <div class="flex flex-wrap gap-2">
         <button
-          v-for="r in RARITIES"
+          v-for="r in RARITY_ORDER"
           :key="r"
           :class="[
             'inline-flex cursor-pointer items-center gap-1.5 rounded-full border border-solid px-3 py-1.5 text-xs font-medium whitespace-nowrap transition-all duration-150 select-none',

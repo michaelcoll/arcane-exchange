@@ -4,6 +4,7 @@ import type { Message } from '~/bindings/Message';
 import type { PaginatedCollection } from '~/bindings/PaginatedCollection';
 import type { PriceHistoryEntry } from '~/bindings/PriceHistoryEntry';
 import type { PriceHistoryParams } from '~/bindings/PriceHistoryParams';
+import type { RarityFilters } from '~/bindings/RarityFilters';
 
 export const useCollectionService = () => {
   const { apiCall } = useApi();
@@ -34,10 +35,25 @@ export const useCollectionService = () => {
       { lazy: true },
     );
 
+  const getRarityFilters = () =>
+    useAsyncData(
+      'collection-rarity-filters',
+      () => apiCall<RarityFilters>('/collection/visibility/rarities'),
+      { lazy: true },
+    );
+
+  const setRarityFilter = (rarity: string, isOpen: boolean, keptCopies: number) =>
+    apiCall<void>('/collection/visibility/rarities', {
+      method: 'POST',
+      body: { rarity, is_open: isOpen, kept_copies: keptCopies },
+    });
+
   return {
     getCollection,
     importCards,
     getCollectionStats,
     getPriceHistory,
+    getRarityFilters,
+    setRarityFilter,
   };
 };

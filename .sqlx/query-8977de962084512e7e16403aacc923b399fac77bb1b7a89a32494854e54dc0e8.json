@@ -1,0 +1,17 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            INSERT INTO collection_rarity_filters (user_id, rarity, is_open, kept_copies)\n            VALUES ($1, $2, $3, $4)\n            ON CONFLICT (user_id, rarity) DO UPDATE\n            SET is_open = EXCLUDED.is_open, kept_copies = EXCLUDED.kept_copies\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Varchar",
+        "Varchar",
+        "Bool",
+        "Int2"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "8977de962084512e7e16403aacc923b399fac77bb1b7a89a32494854e54dc0e8"
+}

@@ -285,6 +285,15 @@ pub async fn insert_user(pool: &PgPool, id: &str, username: &str) {
         .unwrap();
 }
 
+pub async fn insert_trading_binder(pool: &PgPool, user_id: &str, binder_name: &str) {
+    sqlx::query(r#"INSERT INTO trading_binders (user_id, binder_name) VALUES ($1, $2)"#)
+        .bind(user_id)
+        .bind(binder_name)
+        .execute(pool)
+        .await
+        .unwrap();
+}
+
 pub async fn insert_trade(
     pool: &PgPool,
     id: Uuid,
