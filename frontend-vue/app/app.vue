@@ -159,7 +159,7 @@ const bottomNavLinkClass = (path: string) => [
         <Icon name="lucide:search" size="21" />
         Rechercher
       </NuxtLink>
-      <NuxtLink to="/pages/profile" :class="bottomNavLinkClass('/profile')">
+      <NuxtLink to="/profile" :class="bottomNavLinkClass('/profile')">
         <Icon name="lucide:user" size="21" />
         Profil
       </NuxtLink>
