@@ -175,6 +175,30 @@ pub trait UserRepository: Send + Sync {
 
 #[async_trait]
 #[cfg_attr(test, automock)]
+pub trait TradingBinderRepository: Send + Sync {
+    /// Names of the binders selected by `user_id`, sorted by name.
+    async fn list(&self, user_id: &UserId) -> Result<Vec<String>, AppError>;
+
+    /// Selects `binder_name` for `user_id`. Idempotent: selecting an already-selected binder
+    /// is a no-op.
+    async fn add(&self, user_id: &UserId, binder_name: &str) -> Result<(), AppError>;
+
+    /// Deselects `binder_name` for `user_id`. Idempotent: removing a binder that isn't selected
+    /// is a no-op.
+    async fn remove(&self, user_id: &UserId, binder_name: &str) -> Result<(), AppError>;
+
+    /// `true` if `binder_name` is used by at least one of `user_id`'s `collection_entry` rows.
+    /// Reads `collection_entry` (read-only) rather than `trading_binders`.
+    async fn binder_exists(&self, user_id: &UserId, binder_name: &str) -> Result<bool, AppError>;
+
+    /// Removes `user_id`'s selected binders that no longer match any of their
+    /// `collection_entry` rows. Reads `collection_entry` (read-only) to determine which
+    /// selections are now orphaned.
+    async fn purge_missing(&self, user_id: &UserId) -> Result<(), AppError>;
+}
+
+#[async_trait]
+#[cfg_attr(test, automock)]
 pub trait TradeRepository: Send + Sync {
     async fn find_collection_entry_quantity(
         &self,

@@ -4,8 +4,9 @@ use super::card::dto::{
     PriceHistoryEntryResponse,
 };
 use super::collection::dto::{
-    CollectionCardResponse, CollectionStatsResponse, MessageResponse, PaginatedCollectionResponse,
-    PriceGuideResponse, RarityCodeParam, SetInfoResponse, SortByParam, SortDirParam,
+    BinderInfoResponse, CollectionCardResponse, CollectionStatsResponse, MessageResponse,
+    PaginatedCollectionResponse, PriceGuideResponse, RarityCodeParam, SetInfoResponse, SortByParam,
+    SortDirParam,
 };
 use super::maintenance::dto::{EnqueueResponse, StatsResponse};
 use super::trade::dto::{
@@ -13,7 +14,10 @@ use super::trade::dto::{
     RateTradeRequest, RemoveTradeCardRequest, TradeCardResponse, TradeDetailResponse,
     TradePartyStateResponse, TradeStatusParam, TradeSummaryResponse,
 };
-use super::user::dto::{CollectionVisibilityParam, SetVisibilityRequest, VisibilityResponse};
+use super::user::dto::{
+    AddTradeBinderRequest, CollectionVisibilityParam, SetVisibilityRequest, TradeBindersResponse,
+    VisibilityResponse,
+};
 use utoipa::OpenApi;
 
 #[derive(OpenApi)]
@@ -33,6 +37,9 @@ use utoipa::OpenApi;
         super::user::controller::register,
         super::user::controller::get_visibility,
         super::user::controller::set_visibility,
+        super::user::controller::get_trade_binders,
+        super::user::controller::add_trade_binder,
+        super::user::controller::remove_trade_binder,
         super::trade::controller::create_trade,
         super::trade::controller::add_trade_card,
         super::trade::controller::remove_trade_card,
@@ -55,6 +62,7 @@ use utoipa::OpenApi;
         RarityCodeParam,
         CollectionStatsResponse,
         SetInfoResponse,
+        BinderInfoResponse,
         StatsResponse,
         EnqueueResponse,
         CreateTradeRequest,
@@ -75,6 +83,8 @@ use utoipa::OpenApi;
         VisibilityResponse,
         SetVisibilityRequest,
         CollectionVisibilityParam,
+        TradeBindersResponse,
+        AddTradeBinderRequest,
     )),
     modifiers(&SecurityAddon),
     info(

@@ -1,0 +1,17 @@
+meta {
+  name: add trade binder
+  type: http
+  seq: 4
+}
+
+post {
+  url: {{baseUrl}}/user/trade-binders
+  body: json
+  auth: inherit
+}
+
+body:json {
+  {
+    "binder_name": "Trade Binder"
+  }
+}

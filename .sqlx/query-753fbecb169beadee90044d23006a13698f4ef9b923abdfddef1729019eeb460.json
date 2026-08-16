@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            DELETE FROM trading_binders\n            WHERE user_id = $1\n              AND binder_name NOT IN (\n                  SELECT DISTINCT binder_name\n                  FROM collection_entry\n                  WHERE user_id = $1 AND binder_name IS NOT NULL\n              )\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "753fbecb169beadee90044d23006a13698f4ef9b923abdfddef1729019eeb460"
+}

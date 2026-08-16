@@ -672,7 +672,7 @@ async fn import_cards_fails_with_invalid_utf8() {
 #[tokio::test]
 async fn get_collection_stats_returns_stats_from_use_case() {
     use crate::application::use_case::MockGetCollectionStatsUseCase;
-    use crate::domain::collection_stats::CollectionStats;
+    use crate::domain::collection_stats::{BinderInfo, CollectionStats};
     use crate::domain::price::Price;
     use crate::domain::set_name::{SetCode, SetName};
 
@@ -685,6 +685,10 @@ async fn get_collection_stats_returns_stats_from_use_case() {
                 price_trend_min: Price::from_cents(100),
                 price_trend_max: Price::from_cents(5000),
                 sets: vec![SetName::new(SetCode::new("FDN"), "Foundations")],
+                binders: vec![BinderInfo {
+                    name: "Trade Binder".to_string(),
+                    card_count: 12,
+                }],
             })
         })
     });
@@ -702,6 +706,9 @@ async fn get_collection_stats_returns_stats_from_use_case() {
     assert_eq!(response.sets.len(), 1);
     assert_eq!(response.sets[0].code, "FDN");
     assert_eq!(response.sets[0].name, "Foundations");
+    assert_eq!(response.binders.len(), 1);
+    assert_eq!(response.binders[0].name, "Trade Binder");
+    assert_eq!(response.binders[0].card_count, 12);
 }
 
 #[tokio::test]
@@ -719,6 +726,7 @@ async fn get_collection_stats_returns_empty_for_empty_collection() {
                 price_trend_min: Price::empty(),
                 price_trend_max: Price::empty(),
                 sets: vec![],
+                binders: vec![],
             })
         })
     });
@@ -734,6 +742,7 @@ async fn get_collection_stats_returns_empty_for_empty_collection() {
     assert_eq!(response.price_trend_min, None);
     assert_eq!(response.price_trend_max, None);
     assert!(response.sets.is_empty());
+    assert!(response.binders.is_empty());
 }
 
 #[tokio::test]

@@ -1,6 +1,6 @@
 use crate::application::error::AppError;
 use crate::application::repository::CollectionStatsRepository;
-use crate::domain::collection_stats::CollectionStats;
+use crate::domain::collection_stats::{BinderInfo, CollectionStats};
 use crate::domain::price::Price;
 use crate::domain::set_name::{SetCode, SetName};
 use crate::domain::user::UserId;
@@ -70,6 +70,19 @@ impl CollectionStatsRepository for CollectionStatsRepositoryAdapter {
         .fetch_all(&self.pool)
         .await?;
 
+        let binders = sqlx::query!(
+            r#"
+            SELECT ce.binder_name AS "binder_name!", SUM(ce.quantity)::BIGINT AS "card_count!"
+            FROM collection_entry ce
+            WHERE ce.user_id = $1 AND ce.binder_name IS NOT NULL
+            GROUP BY ce.binder_name
+            ORDER BY SUM(ce.quantity) DESC, ce.binder_name
+            "#,
+            user_id.as_str()
+        )
+        .fetch_all(&self.pool)
+        .await?;
+
         Ok(CollectionStats {
             total_cards: totals.total_cards as u64,
             unique_cards: totals.unique_cards as u64,
@@ -84,6 +97,13 @@ impl CollectionStatsRepository for CollectionStatsRepositoryAdapter {
             sets: sets
                 .into_iter()
                 .map(|r| SetName::new(SetCode::new(r.set_code), r.name))
+                .collect(),
+            binders: binders
+                .into_iter()
+                .map(|r| BinderInfo {
+                    name: r.binder_name,
+                    card_count: r.card_count as u64,
+                })
                 .collect(),
         })
     }
@@ -112,6 +132,7 @@ mod tests {
         assert!(stats.price_trend_min.value.is_none());
         assert!(stats.price_trend_max.value.is_none());
         assert!(stats.sets.is_empty());
+        assert!(stats.binders.is_empty());
     }
 
     #[sqlx::test]
@@ -200,5 +221,109 @@ mod tests {
 
         assert_eq!(stats.unique_cards, 1);
         assert_eq!(stats.total_cards, 5);
+    }
+
+    #[sqlx::test]
+    async fn binders_are_ordered_by_card_count_descending(pool: PgPool) {
+        insert_set(&pool, "TST").await;
+        insert_card_without_cardmarket_id(&pool, "TST", "1", "en", false, "Card A").await;
+        insert_card_without_cardmarket_id(&pool, "TST", "2", "en", false, "Card B").await;
+        insert_user(&pool, "user-1", "User1").await;
+        insert_collection_entry_with_binder(
+            &pool,
+            "TST",
+            "1",
+            "en",
+            false,
+            "user-1",
+            4,
+            100,
+            Utc::now(),
+            Some("Trade Binder"),
+        )
+        .await;
+        insert_collection_entry_with_binder(
+            &pool,
+            "TST",
+            "2",
+            "en",
+            false,
+            "user-1",
+            2,
+            200,
+            Utc::now(),
+            Some("Bulk"),
+        )
+        .await;
+
+        let adapter = CollectionStatsRepositoryAdapter::new(pool);
+        let stats = adapter
+            .get_collection_stats(&UserId::new("user-1"))
+            .await
+            .unwrap();
+
+        assert_eq!(stats.binders.len(), 2);
+        assert_eq!(stats.binders[0].name, "Trade Binder");
+        assert_eq!(stats.binders[0].card_count, 4);
+        assert_eq!(stats.binders[1].name, "Bulk");
+        assert_eq!(stats.binders[1].card_count, 2);
+    }
+
+    #[sqlx::test]
+    async fn entries_without_binder_are_excluded_from_binders(pool: PgPool) {
+        insert_set(&pool, "TST").await;
+        insert_card_without_cardmarket_id(&pool, "TST", "1", "en", false, "Card A").await;
+        insert_user(&pool, "user-1", "User1").await;
+        insert_collection_entry_with_binder(
+            &pool,
+            "TST",
+            "1",
+            "en",
+            false,
+            "user-1",
+            3,
+            100,
+            Utc::now(),
+            None,
+        )
+        .await;
+
+        let adapter = CollectionStatsRepositoryAdapter::new(pool);
+        let stats = adapter
+            .get_collection_stats(&UserId::new("user-1"))
+            .await
+            .unwrap();
+
+        assert!(stats.binders.is_empty());
+        assert_eq!(stats.total_cards, 3);
+        assert_eq!(stats.unique_cards, 1);
+    }
+
+    #[sqlx::test]
+    async fn binders_do_not_leak_between_users(pool: PgPool) {
+        insert_set(&pool, "TST").await;
+        insert_card_without_cardmarket_id(&pool, "TST", "1", "en", false, "Card A").await;
+        insert_user(&pool, "user-other", "UserOther").await;
+        insert_collection_entry_with_binder(
+            &pool,
+            "TST",
+            "1",
+            "en",
+            false,
+            "user-other",
+            5,
+            100,
+            Utc::now(),
+            Some("Trade Binder"),
+        )
+        .await;
+
+        let adapter = CollectionStatsRepositoryAdapter::new(pool);
+        let stats = adapter
+            .get_collection_stats(&UserId::new("user-1"))
+            .await
+            .unwrap();
+
+        assert!(stats.binders.is_empty());
     }
 }

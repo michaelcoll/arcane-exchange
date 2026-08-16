@@ -13,6 +13,7 @@ pub mod entities;
 pub mod set_names_repository_adapter;
 pub mod stats_repository_adapter;
 pub mod trade_repository_adapter;
+pub mod trading_binders_repository_adapter;
 pub mod user_repository_adapter;
 
 impl From<Error> for AppError {

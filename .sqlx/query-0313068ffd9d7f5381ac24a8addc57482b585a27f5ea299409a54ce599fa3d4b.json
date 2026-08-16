@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            DELETE FROM trading_binders\n            WHERE user_id = $1 AND binder_name = $2\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "0313068ffd9d7f5381ac24a8addc57482b585a27f5ea299409a54ce599fa3d4b"
+}

@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
-  BINDERS,
+  BINDER_WEIGHTS,
+  FALLBACK_BINDER_WEIGHT,
   RARITY_DISTRIBUTION,
   TOTAL_COPIES,
   binderFactor,
@@ -50,12 +51,22 @@ describe('binderFactor', () => {
     expect(binderFactor('R', [])).toBe(0);
   });
 
-  it('additionne les parts des binders sélectionnés', () => {
-    expect(binderFactor('R', ['trade', 'bulk'])).toBeCloseTo(0.45);
+  it('additionne les parts des binders connus sélectionnés', () => {
+    expect(binderFactor('R', ['Trade Binder', 'Bulk'])).toBeCloseTo(0.45);
   });
 
-  it('couvre la totalité d’une rareté avec tous les binders', () => {
-    const all = BINDERS.map((b) => b.key);
-    expect(binderFactor('C', all)).toBeCloseTo(1);
+  it('additionne le poids de chaque binder connu quand tous sont sélectionnés', () => {
+    const all = Object.keys(BINDER_WEIGHTS);
+    const expected = all.reduce((s, name) => s + BINDER_WEIGHTS[name]!.C, 0);
+    expect(binderFactor('C', all)).toBeCloseTo(expected);
+  });
+
+  it('retombe sur le poids de repli pour un binder inconnu', () => {
+    expect(binderFactor('R', ['Un binder ManaBox jamais vu'])).toBeCloseTo(FALLBACK_BINDER_WEIGHT);
+  });
+
+  it('borne le résultat à 1 même si la somme des poids le dépasse', () => {
+    const all = Object.keys(BINDER_WEIGHTS);
+    expect(binderFactor('C', [...all, 'Encore un binder inconnu'])).toBe(1);
   });
 });

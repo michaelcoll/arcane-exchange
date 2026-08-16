@@ -1,0 +1,28 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            SELECT binder_name\n            FROM trading_binders\n            WHERE user_id = $1\n            ORDER BY binder_name\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "binder_name",
+        "type_info": "Varchar",
+        "origin": {
+          "Table": {
+            "table": "trading_binders",
+            "name": "binder_name"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "a0180c3da322950a023ed00e09a51e7783809af841a974dceae98120df59f578"
+}

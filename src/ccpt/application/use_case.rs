@@ -42,6 +42,28 @@ pub trait SetCollectionVisibilityUseCase: Send + Sync {
 
 #[async_trait]
 #[cfg_attr(test, automock)]
+pub trait GetTradeBindersUseCase: Send + Sync {
+    async fn get_trade_binders(&self, user_id: UserId) -> Result<Vec<String>, AppError>;
+}
+
+#[async_trait]
+#[cfg_attr(test, automock)]
+pub trait AddTradeBinderUseCase: Send + Sync {
+    async fn add_trade_binder(&self, user_id: UserId, binder_name: String) -> Result<(), AppError>;
+}
+
+#[async_trait]
+#[cfg_attr(test, automock)]
+pub trait RemoveTradeBinderUseCase: Send + Sync {
+    async fn remove_trade_binder(
+        &self,
+        user_id: UserId,
+        binder_name: String,
+    ) -> Result<(), AppError>;
+}
+
+#[async_trait]
+#[cfg_attr(test, automock)]
 pub trait EnqueueCardMarketIdUpdateUseCase: Send + Sync {
     async fn enqueue_pending_updates(&self) -> Result<usize, AppError>;
 }

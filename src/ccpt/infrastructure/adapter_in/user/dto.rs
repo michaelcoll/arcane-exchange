@@ -44,3 +44,15 @@ pub struct VisibilityResponse {
 pub(crate) struct SetVisibilityRequest {
     pub(crate) visibility: CollectionVisibilityParam,
 }
+
+#[derive(Debug, Serialize, TS, ToSchema)]
+#[ts(export, export_to = "TradeBindersResponse.ts")]
+pub struct TradeBindersResponse {
+    pub binders: Vec<String>,
+}
+
+#[derive(Debug, Deserialize, TS, ToSchema)]
+#[ts(export, export_to = "AddTradeBinderRequest.ts")]
+pub(crate) struct AddTradeBinderRequest {
+    pub(crate) binder_name: String,
+}

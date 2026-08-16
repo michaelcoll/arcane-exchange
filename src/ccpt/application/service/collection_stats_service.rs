@@ -43,6 +43,7 @@ mod tests {
                         price_trend_min: Price::from_cents(100),
                         price_trend_max: Price::from_cents(1000),
                         sets: vec![],
+                        binders: vec![],
                     })
                 })
             });

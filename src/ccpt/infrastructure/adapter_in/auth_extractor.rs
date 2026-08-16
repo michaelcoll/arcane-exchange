@@ -63,15 +63,16 @@ mod tests {
 
     fn create_test_app_state_with_auth(auth_service: Arc<dyn AuthService>) -> AppState {
         use crate::application::use_case::{
-            MockAbandonTradeUseCase, MockAcceptTradeUseCase, MockAddTradeCardUseCase,
-            MockAutocompleteUsersUseCase, MockConfirmTradeUseCase, MockCreateTradeUseCase,
-            MockEnqueueCardMarketIdUpdateUseCase, MockEnqueueGathererIdUpdateUseCase,
-            MockGetCardOffersUseCase, MockGetCardPriceHistoryUseCase,
-            MockGetCollectionPriceHistoryUseCase, MockGetCollectionStatsUseCase,
-            MockGetCollectionUseCase, MockGetCollectionVisibilityUseCase, MockGetTradeUseCase,
+            MockAbandonTradeUseCase, MockAcceptTradeUseCase, MockAddTradeBinderUseCase,
+            MockAddTradeCardUseCase, MockAutocompleteUsersUseCase, MockConfirmTradeUseCase,
+            MockCreateTradeUseCase, MockEnqueueCardMarketIdUpdateUseCase,
+            MockEnqueueGathererIdUpdateUseCase, MockGetCardOffersUseCase,
+            MockGetCardPriceHistoryUseCase, MockGetCollectionPriceHistoryUseCase,
+            MockGetCollectionStatsUseCase, MockGetCollectionUseCase,
+            MockGetCollectionVisibilityUseCase, MockGetTradeBindersUseCase, MockGetTradeUseCase,
             MockImportPriceUseCase, MockListTradesUseCase, MockRateTradeUseCase,
-            MockRegisterUserUseCase, MockRemoveTradeCardUseCase, MockSearchCardsUseCase,
-            MockSetCollectionVisibilityUseCase,
+            MockRegisterUserUseCase, MockRemoveTradeBinderUseCase, MockRemoveTradeCardUseCase,
+            MockSearchCardsUseCase, MockSetCollectionVisibilityUseCase,
         };
         AppState {
             import_card_use_case: Arc::new(MockImportCardUseCase::new()),
@@ -102,6 +103,9 @@ mod tests {
             remove_trade_card_use_case: Arc::new(MockRemoveTradeCardUseCase::new()),
             get_collection_visibility_use_case: Arc::new(MockGetCollectionVisibilityUseCase::new()),
             set_collection_visibility_use_case: Arc::new(MockSetCollectionVisibilityUseCase::new()),
+            get_trade_binders_use_case: Arc::new(MockGetTradeBindersUseCase::new()),
+            add_trade_binder_use_case: Arc::new(MockAddTradeBinderUseCase::new()),
+            remove_trade_binder_use_case: Arc::new(MockRemoveTradeBinderUseCase::new()),
             max_page_size: 100,
             max_page_number: 10,
         }

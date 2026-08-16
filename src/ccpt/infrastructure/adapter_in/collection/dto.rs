@@ -1,6 +1,6 @@
 use crate::domain::card::{Card, CollectionEntry};
 use crate::domain::collection::{CollectionSortField, SortDirection};
-use crate::domain::collection_stats::CollectionStats;
+use crate::domain::collection_stats::{BinderInfo, CollectionStats};
 use crate::domain::price::PriceGuide;
 use crate::domain::rarity_code::RarityCode;
 use serde::{Deserialize, Serialize};
@@ -24,6 +24,23 @@ pub struct SetInfoResponse {
 }
 
 #[derive(Serialize, Debug, TS, ToSchema)]
+#[serde(rename = "BinderInfo")]
+#[ts(export, export_to = "BinderInfo.ts")]
+pub struct BinderInfoResponse {
+    pub name: String,
+    pub card_count: u64,
+}
+
+impl From<BinderInfo> for BinderInfoResponse {
+    fn from(b: BinderInfo) -> Self {
+        Self {
+            name: b.name,
+            card_count: b.card_count,
+        }
+    }
+}
+
+#[derive(Serialize, Debug, TS, ToSchema)]
 #[serde(rename = "CollectionStats")]
 #[ts(export, export_to = "CollectionStats.ts")]
 pub struct CollectionStatsResponse {
@@ -32,6 +49,7 @@ pub struct CollectionStatsResponse {
     pub price_trend_min: Option<u32>,
     pub price_trend_max: Option<u32>,
     pub sets: Vec<SetInfoResponse>,
+    pub binders: Vec<BinderInfoResponse>,
 }
 
 impl From<CollectionStats> for CollectionStatsResponse {
@@ -48,6 +66,11 @@ impl From<CollectionStats> for CollectionStatsResponse {
                     code: sn.code.to_string(),
                     name: sn.name,
                 })
+                .collect(),
+            binders: s
+                .binders
+                .into_iter()
+                .map(BinderInfoResponse::from)
                 .collect(),
         }
     }

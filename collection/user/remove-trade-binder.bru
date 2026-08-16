@@ -1,0 +1,11 @@
+meta {
+  name: remove trade binder
+  type: http
+  seq: 5
+}
+
+delete {
+  url: {{baseUrl}}/user/trade-binders/Trade%20Binder
+  body: none
+  auth: inherit
+}

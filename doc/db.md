@@ -87,6 +87,10 @@ erDiagram
         character_varying(50) owner_user_id PK, FK
         integer quantity "not null"
     }
+    trading_binders {
+        character_varying(50) user_id PK, FK
+        character_varying(255) binder_name PK
+    }
     users {
         character_varying(50) id PK
         character_varying(100) username UK "not null"
@@ -100,6 +104,7 @@ erDiagram
     card ||--o{ trade_card : "set_code, collector_number, language_code, foil"
     users ||--o{ trade_card : "owner_user_id"
     trade ||--o{ trade_card : "trade_id"
+    users ||--o{ trading_binders : "user_id"
 ```
 
 ## Views

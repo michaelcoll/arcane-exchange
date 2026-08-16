@@ -17,6 +17,9 @@ use crate::application::service::import_price_service::ImportPriceService;
 use crate::application::service::register_user_service::RegisterUserService;
 use crate::application::service::search_service::SearchService;
 use crate::application::service::stats_service::StatsService;
+use crate::application::service::trade_binder_service::{
+    AddTradeBinderService, GetTradeBindersService, RemoveTradeBinderService,
+};
 use crate::application::service::trade_service::{
     AbandonTradeService, AcceptTradeService, AddTradeCardService, ConfirmTradeService,
     CreateTradeService, GetTradeService, ListTradesService, RateTradeService,
@@ -25,13 +28,14 @@ use crate::application::service::trade_service::{
 use crate::application::service::update_card_market_service::CardMarketIdWorker;
 use crate::application::service::update_gatherer_service::GathererIdWorker;
 use crate::application::use_case::{
-    AbandonTradeUseCase, AcceptTradeUseCase, AddTradeCardUseCase, AutocompleteUsersUseCase,
-    ConfirmTradeUseCase, CreateTradeUseCase, EnqueueCardMarketIdUpdateUseCase,
-    EnqueueGathererIdUpdateUseCase, GetCardOffersUseCase, GetCardPriceHistoryUseCase,
-    GetCollectionPriceHistoryUseCase, GetCollectionStatsUseCase, GetCollectionUseCase,
-    GetCollectionVisibilityUseCase, GetTradeUseCase, ImportCardUseCase, ImportPriceUseCase,
-    ListTradesUseCase, RateTradeUseCase, RegisterUserUseCase, RemoveTradeCardUseCase,
-    SearchCardsUseCase, SetCollectionVisibilityUseCase, StatsUseCase,
+    AbandonTradeUseCase, AcceptTradeUseCase, AddTradeBinderUseCase, AddTradeCardUseCase,
+    AutocompleteUsersUseCase, ConfirmTradeUseCase, CreateTradeUseCase,
+    EnqueueCardMarketIdUpdateUseCase, EnqueueGathererIdUpdateUseCase, GetCardOffersUseCase,
+    GetCardPriceHistoryUseCase, GetCollectionPriceHistoryUseCase, GetCollectionStatsUseCase,
+    GetCollectionUseCase, GetCollectionVisibilityUseCase, GetTradeBindersUseCase, GetTradeUseCase,
+    ImportCardUseCase, ImportPriceUseCase, ListTradesUseCase, RateTradeUseCase,
+    RegisterUserUseCase, RemoveTradeBinderUseCase, RemoveTradeCardUseCase, SearchCardsUseCase,
+    SetCollectionVisibilityUseCase, StatsUseCase,
 };
 use crate::config::Config;
 use crate::domain::card::CardId;
@@ -49,6 +53,7 @@ use crate::infrastructure::adapter_out::repository::collection_price_history_rep
 use crate::infrastructure::adapter_out::repository::collection_stats_repository_adapter::CollectionStatsRepositoryAdapter;
 use crate::infrastructure::adapter_out::repository::stats_repository_adapter::StatsRepositoryAdapter;
 use crate::infrastructure::adapter_out::repository::trade_repository_adapter::TradeRepositoryAdapter;
+use crate::infrastructure::adapter_out::repository::trading_binders_repository_adapter::TradingBindersRepositoryAdapter;
 use adapter_in::maintenance::controller::create_maintenance_router;
 use adapter_out::caller::gatherer_caller_adapter::GathererCallerAdapter;
 use adapter_out::caller::scryfall_caller_adapter::ScryfallCallerAdapter;
@@ -98,6 +103,9 @@ pub struct AppState {
     pub remove_trade_card_use_case: Arc<dyn RemoveTradeCardUseCase>,
     pub get_collection_visibility_use_case: Arc<dyn GetCollectionVisibilityUseCase>,
     pub set_collection_visibility_use_case: Arc<dyn SetCollectionVisibilityUseCase>,
+    pub get_trade_binders_use_case: Arc<dyn GetTradeBindersUseCase>,
+    pub add_trade_binder_use_case: Arc<dyn AddTradeBinderUseCase>,
+    pub remove_trade_binder_use_case: Arc<dyn RemoveTradeBinderUseCase>,
     pub max_page_size: u32,
     pub max_page_number: u32,
 }
@@ -113,6 +121,7 @@ struct Repositories {
     trade: Arc<TradeRepositoryAdapter>,
     collection_price_history: Arc<CollectionPriceHistoryRepositoryAdapter>,
     collection_stats: Arc<CollectionStatsRepositoryAdapter>,
+    trading_binders: Arc<TradingBindersRepositoryAdapter>,
 }
 
 fn create_repositories(pool: &Pool<Postgres>) -> Repositories {
@@ -128,6 +137,7 @@ fn create_repositories(pool: &Pool<Postgres>) -> Repositories {
             pool.clone(),
         )),
         collection_stats: Arc::new(CollectionStatsRepositoryAdapter::new(pool.clone())),
+        trading_binders: Arc::new(TradingBindersRepositoryAdapter::new(pool.clone())),
     }
 }
 
@@ -242,6 +252,7 @@ fn create_app_state(
         enqueue_cardmarket_id_use_case.clone(),
         enqueue_gatherer_id_use_case.clone(),
         repos.card_prices_view.clone(),
+        repos.trading_binders.clone(),
     ));
 
     let import_price_use_case: Arc<dyn ImportPriceUseCase> = Arc::new(ImportPriceService::new(
@@ -269,6 +280,12 @@ fn create_app_state(
         Arc::new(GetCollectionVisibilityService::new(repos.user.clone()));
     let set_collection_visibility_service: Arc<dyn SetCollectionVisibilityUseCase> =
         Arc::new(SetCollectionVisibilityService::new(repos.user.clone()));
+    let get_trade_binders_service: Arc<dyn GetTradeBindersUseCase> =
+        Arc::new(GetTradeBindersService::new(repos.trading_binders.clone()));
+    let add_trade_binder_service: Arc<dyn AddTradeBinderUseCase> =
+        Arc::new(AddTradeBinderService::new(repos.trading_binders.clone()));
+    let remove_trade_binder_service: Arc<dyn RemoveTradeBinderUseCase> =
+        Arc::new(RemoveTradeBinderService::new(repos.trading_binders));
     let create_trade_service: Arc<dyn CreateTradeUseCase> = Arc::new(CreateTradeService::new(
         repos.trade.clone(),
         repos.user.clone(),
@@ -325,6 +342,9 @@ fn create_app_state(
         remove_trade_card_use_case: remove_trade_card_service,
         get_collection_visibility_use_case: get_collection_visibility_service,
         set_collection_visibility_use_case: set_collection_visibility_service,
+        get_trade_binders_use_case: get_trade_binders_service,
+        add_trade_binder_use_case: add_trade_binder_service,
+        remove_trade_binder_use_case: remove_trade_binder_service,
         max_page_size: config.max_page_size,
         max_page_number: config.max_page_number,
     }
@@ -411,15 +431,16 @@ impl AppState {
         use crate::application::caller::MockEdhRecCaller;
         use crate::application::service::auth_service::MockAuthService;
         use crate::application::use_case::{
-            MockAbandonTradeUseCase, MockAcceptTradeUseCase, MockAddTradeCardUseCase,
-            MockAutocompleteUsersUseCase, MockConfirmTradeUseCase, MockCreateTradeUseCase,
-            MockEnqueueCardMarketIdUpdateUseCase, MockEnqueueGathererIdUpdateUseCase,
-            MockGetCardOffersUseCase, MockGetCardPriceHistoryUseCase,
-            MockGetCollectionPriceHistoryUseCase, MockGetCollectionStatsUseCase,
-            MockGetCollectionUseCase, MockGetCollectionVisibilityUseCase, MockGetTradeUseCase,
+            MockAbandonTradeUseCase, MockAcceptTradeUseCase, MockAddTradeBinderUseCase,
+            MockAddTradeCardUseCase, MockAutocompleteUsersUseCase, MockConfirmTradeUseCase,
+            MockCreateTradeUseCase, MockEnqueueCardMarketIdUpdateUseCase,
+            MockEnqueueGathererIdUpdateUseCase, MockGetCardOffersUseCase,
+            MockGetCardPriceHistoryUseCase, MockGetCollectionPriceHistoryUseCase,
+            MockGetCollectionStatsUseCase, MockGetCollectionUseCase,
+            MockGetCollectionVisibilityUseCase, MockGetTradeBindersUseCase, MockGetTradeUseCase,
             MockImportCardUseCase, MockListTradesUseCase, MockRateTradeUseCase,
-            MockRegisterUserUseCase, MockRemoveTradeCardUseCase, MockSearchCardsUseCase,
-            MockSetCollectionVisibilityUseCase,
+            MockRegisterUserUseCase, MockRemoveTradeBinderUseCase, MockRemoveTradeCardUseCase,
+            MockSearchCardsUseCase, MockSetCollectionVisibilityUseCase,
         };
         use crate::domain::card::CardInfo;
         use crate::domain::user::User;
@@ -473,6 +494,9 @@ impl AppState {
             remove_trade_card_use_case: Arc::new(MockRemoveTradeCardUseCase::new()),
             get_collection_visibility_use_case: Arc::new(MockGetCollectionVisibilityUseCase::new()),
             set_collection_visibility_use_case: Arc::new(MockSetCollectionVisibilityUseCase::new()),
+            get_trade_binders_use_case: Arc::new(MockGetTradeBindersUseCase::new()),
+            add_trade_binder_use_case: Arc::new(MockAddTradeBinderUseCase::new()),
+            remove_trade_binder_use_case: Arc::new(MockRemoveTradeBinderUseCase::new()),
             max_page_size: 100,
             max_page_number: 10,
         }

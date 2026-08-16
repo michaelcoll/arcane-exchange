@@ -713,6 +713,62 @@ paths:
           description: Missing or invalid authentication token
       security:
       - bearer_auth: []
+  /user/trade-binders:
+    get:
+      tags:
+      - auth
+      operationId: get_trade_binders
+      responses:
+        '200':
+          description: Binders selected for trade by the authenticated user
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TradeBindersResponse'
+        '401':
+          description: Missing or invalid authentication token
+      security:
+      - bearer_auth: []
+    post:
+      tags:
+      - auth
+      operationId: add_trade_binder
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AddTradeBinderRequest'
+        required: true
+      responses:
+        '204':
+          description: Binder selected for trade
+        '400':
+          description: Binder name is empty
+        '401':
+          description: Missing or invalid authentication token
+        '404':
+          description: Binder not found in the authenticated user's collection
+      security:
+      - bearer_auth: []
+  /user/trade-binders/{name}:
+    delete:
+      tags:
+      - auth
+      operationId: remove_trade_binder
+      parameters:
+      - name: name
+        in: path
+        description: Binder name
+        required: true
+        schema:
+          type: string
+      responses:
+        '204':
+          description: Binder deselected for trade
+        '401':
+          description: Missing or invalid authentication token
+      security:
+      - bearer_auth: []
   /user/visibility:
     get:
       tags:
@@ -754,6 +810,13 @@ paths:
       - bearer_auth: []
 components:
   schemas:
+    AddTradeBinderRequest:
+      type: object
+      required:
+      - binder_name
+      properties:
+        binder_name:
+          type: string
     AddTradeCardRequest:
       type: object
       required:
@@ -777,6 +840,18 @@ components:
           format: int32
           minimum: 0
         set_code:
+          type: string
+    BinderInfoResponse:
+      type: object
+      required:
+      - name
+      - card_count
+      properties:
+        card_count:
+          type: integer
+          format: int64
+          minimum: 0
+        name:
           type: string
     CardOfferResponse:
       type: object
@@ -883,7 +958,12 @@ components:
       - total_cards
       - unique_cards
       - sets
+      - binders
       properties:
+        binders:
+          type: array
+          items:
+            $ref: '#/components/schemas/BinderInfoResponse'
         price_trend_max:
           type:
           - integer
@@ -1141,6 +1221,15 @@ components:
           type: integer
           format: int32
           minimum: 0
+    TradeBindersResponse:
+      type: object
+      required:
+      - binders
+      properties:
+        binders:
+          type: array
+          items:
+            type: string
     TradeCardResponse:
       type: object
       description: |-
