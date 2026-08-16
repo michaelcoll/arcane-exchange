@@ -1,0 +1,27 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT COUNT(*) FROM mv_card_prices cp\n                 JOIN v_tradable_entry t ON (t.user_id, t.set_code, t.collector_number, t.language_code, t.foil) =\n                                             (cp.user_id, cp.set_code, cp.collector_number, cp.language_code, cp.foil)\n                 WHERE cp.set_code = $1 AND cp.collector_number = $2 AND cp.language_code = $3\n                   AND cp.foil = $4 AND cp.user_id != $5",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "count",
+        "type_info": "Int8",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text",
+        "Text",
+        "Bool",
+        "Text"
+      ]
+    },
+    "nullable": [
+      null
+    ]
+  },
+  "hash": "e93959aacde706ac9de5781e69e7de17a565e8be48db57189518c2c8553f1301"
+}

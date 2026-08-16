@@ -162,21 +162,49 @@ impl AddTradeCardUseCase for AddTradeCardService {
         let owner_id = resolve_owner(&self.user_repository, &trade, &owner_username).await?;
         let reopen = reopen_flag_for_modification(&trade.status)?;
 
+        // `merge_card_into_trade` adds `quantity` to whatever is already in the trade for this
+        // (card, owner) pair, so the availability check must cover the resulting total — not
+        // just this call's `quantity` — or repeated calls could add more than is actually
+        // available one bite at a time.
+        let already_in_trade = self
+            .trade_repository
+            .find_trade_cards(trade_id)
+            .await?
+            .into_iter()
+            .find(|c| c.owner_user_id == owner_id && c.card_id == card_id)
+            .map_or(0, |c| c.quantity);
+        let total_requested = already_in_trade.saturating_add(u32::from(quantity));
+
+        // The caller disposes freely of their own side of the trade (checked against what they
+        // actually own); a card put up on the other party's behalf must be one that party
+        // actually offers to trade (visibility/binders/rarity filters applied) — see
+        // `.agents/database-schema.instructions.md` on `v_tradable_entry`. Both cases surface as
+        // `CardNotFound`: from the caller's perspective, an unavailable card is indistinguishable
+        // from a nonexistent one, and this avoids leaking the other party's trade settings. This
+        // check runs before the reservation check below so an unavailable card never leaks
+        // through a `CardAlreadyReserved` (409) response instead.
+        let available: u32 = if owner_id == caller_id {
+            self.trade_repository
+                .find_collection_entry_quantity(&owner_id, &card_id)
+                .await?
+                .map_or(0, |q| q as u32)
+        } else {
+            u32::from(
+                self.trade_repository
+                    .find_proposed_quantity(&owner_id, &card_id)
+                    .await?,
+            )
+        };
+        if total_requested > available {
+            return Err(FunctionalError::CardNotFound.into());
+        }
+
         if self
             .trade_repository
             .is_card_reserved_elsewhere(trade_id, &owner_id, &card_id)
             .await?
         {
             return Err(FunctionalError::CardAlreadyReserved.into());
-        }
-
-        let owned_quantity = self
-            .trade_repository
-            .find_collection_entry_quantity(&owner_id, &card_id)
-            .await?;
-        match owned_quantity {
-            Some(q) if q >= quantity as i32 => {}
-            _ => return Err(FunctionalError::CardNotFound.into()),
         }
 
         self.trade_repository
@@ -550,6 +578,14 @@ mod tests {
         )
     }
 
+    fn make_initiator_user() -> User {
+        User::new(
+            make_initiator_id().to_string(),
+            None,
+            Some("initiator".to_string()),
+        )
+    }
+
     #[tokio::test]
     async fn create_trade_creates_new_trade_when_no_active_trade_exists() {
         let mut mock_trade_repository = MockTradeRepository::new();
@@ -777,13 +813,17 @@ mod tests {
                 Box::pin(async move { Ok(Some(trade)) })
             });
         mock_trade_repository
+            .expect_find_trade_cards()
+            .times(1)
+            .returning(|_| Box::pin(async { Ok(vec![]) }));
+        mock_trade_repository
+            .expect_find_proposed_quantity()
+            .times(1)
+            .returning(|_, _| Box::pin(async { Ok(3) }));
+        mock_trade_repository
             .expect_is_card_reserved_elsewhere()
             .times(1)
             .returning(|_, _, _| Box::pin(async { Ok(false) }));
-        mock_trade_repository
-            .expect_find_collection_entry_quantity()
-            .times(1)
-            .returning(|_, _| Box::pin(async { Ok(Some(3)) }));
         mock_trade_repository
             .expect_merge_card_into_trade()
             .times(1)
@@ -827,13 +867,17 @@ mod tests {
                 Box::pin(async move { Ok(Some(trade)) })
             });
         mock_trade_repository
+            .expect_find_trade_cards()
+            .times(1)
+            .returning(|_| Box::pin(async { Ok(vec![]) }));
+        mock_trade_repository
+            .expect_find_proposed_quantity()
+            .times(1)
+            .returning(|_, _| Box::pin(async { Ok(3) }));
+        mock_trade_repository
             .expect_is_card_reserved_elsewhere()
             .times(1)
             .returning(|_, _, _| Box::pin(async { Ok(false) }));
-        mock_trade_repository
-            .expect_find_collection_entry_quantity()
-            .times(1)
-            .returning(|_, _| Box::pin(async { Ok(Some(3)) }));
         mock_trade_repository
             .expect_merge_card_into_trade()
             .times(1)
@@ -1005,7 +1049,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn add_card_fails_when_owner_does_not_own_enough_quantity() {
+    async fn add_card_fails_when_owner_does_not_propose_enough_quantity() {
         let trade = make_base_trade();
         let mut mock_trade_repository = MockTradeRepository::new();
         mock_trade_repository
@@ -1016,13 +1060,13 @@ mod tests {
                 Box::pin(async move { Ok(Some(trade)) })
             });
         mock_trade_repository
-            .expect_is_card_reserved_elsewhere()
+            .expect_find_trade_cards()
             .times(1)
-            .returning(|_, _, _| Box::pin(async { Ok(false) }));
+            .returning(|_| Box::pin(async { Ok(vec![]) }));
         mock_trade_repository
-            .expect_find_collection_entry_quantity()
+            .expect_find_proposed_quantity()
             .times(1)
-            .returning(|_, _| Box::pin(async { Ok(Some(0)) }));
+            .returning(|_, _| Box::pin(async { Ok(0) }));
         let mut mock_user_repository = MockUserRepository::new();
         mock_user_repository
             .expect_find_by_username()
@@ -1050,6 +1094,211 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn add_card_fails_when_requested_quantity_exceeds_proposed_quantity() {
+        let trade = make_base_trade();
+        let mut mock_trade_repository = MockTradeRepository::new();
+        mock_trade_repository
+            .expect_find_by_id()
+            .times(1)
+            .returning(move |_| {
+                let trade = trade.clone();
+                Box::pin(async move { Ok(Some(trade)) })
+            });
+        mock_trade_repository
+            .expect_find_trade_cards()
+            .times(1)
+            .returning(|_| Box::pin(async { Ok(vec![]) }));
+        mock_trade_repository
+            .expect_find_proposed_quantity()
+            .times(1)
+            .returning(|_, _| Box::pin(async { Ok(2) }));
+        let mut mock_user_repository = MockUserRepository::new();
+        mock_user_repository
+            .expect_find_by_username()
+            .times(1)
+            .returning(|_| Box::pin(async { Ok(Some(make_respondent_user())) }));
+
+        let service = AddTradeCardService::new(
+            Arc::new(mock_trade_repository),
+            Arc::new(mock_user_repository),
+        );
+        let result = service
+            .add_card(
+                TradeId::new(),
+                make_initiator_id(),
+                "respondent".to_string(),
+                make_card_id(),
+                3,
+            )
+            .await;
+
+        assert!(matches!(
+            result,
+            Err(AppError::Functional(FunctionalError::CardNotFound))
+        ));
+    }
+
+    #[tokio::test]
+    async fn add_card_fails_when_quantity_already_in_trade_plus_requested_exceeds_proposed() {
+        // Bob offers 2 copies total. Alice already has 1 in the trade and asks for 2 more —
+        // merge_card_into_trade would sum to 3, which Bob never actually offered.
+        let trade = make_base_trade();
+        let mut mock_trade_repository = MockTradeRepository::new();
+        mock_trade_repository
+            .expect_find_by_id()
+            .times(1)
+            .returning(move |_| {
+                let trade = trade.clone();
+                Box::pin(async move { Ok(Some(trade)) })
+            });
+        mock_trade_repository
+            .expect_find_trade_cards()
+            .times(1)
+            .returning(|_| {
+                Box::pin(async {
+                    Ok(vec![TradeCard {
+                        card_id: make_card_id(),
+                        owner_user_id: make_respondent_id(),
+                        quantity: 1,
+                    }])
+                })
+            });
+        mock_trade_repository
+            .expect_find_proposed_quantity()
+            .times(1)
+            .returning(|_, _| Box::pin(async { Ok(2) }));
+        let mut mock_user_repository = MockUserRepository::new();
+        mock_user_repository
+            .expect_find_by_username()
+            .times(1)
+            .returning(|_| Box::pin(async { Ok(Some(make_respondent_user())) }));
+
+        let service = AddTradeCardService::new(
+            Arc::new(mock_trade_repository),
+            Arc::new(mock_user_repository),
+        );
+        let result = service
+            .add_card(
+                TradeId::new(),
+                make_initiator_id(),
+                "respondent".to_string(),
+                make_card_id(),
+                2,
+            )
+            .await;
+
+        assert!(matches!(
+            result,
+            Err(AppError::Functional(FunctionalError::CardNotFound))
+        ));
+    }
+
+    #[tokio::test]
+    async fn add_card_succeeds_when_requested_quantity_equals_proposed_quantity() {
+        let trade = make_base_trade();
+        let mut mock_trade_repository = MockTradeRepository::new();
+        mock_trade_repository
+            .expect_find_by_id()
+            .times(1)
+            .returning(move |_| {
+                let trade = trade.clone();
+                Box::pin(async move { Ok(Some(trade)) })
+            });
+        mock_trade_repository
+            .expect_find_trade_cards()
+            .times(1)
+            .returning(|_| Box::pin(async { Ok(vec![]) }));
+        mock_trade_repository
+            .expect_find_proposed_quantity()
+            .times(1)
+            .returning(|_, _| Box::pin(async { Ok(2) }));
+        mock_trade_repository
+            .expect_is_card_reserved_elsewhere()
+            .times(1)
+            .returning(|_, _, _| Box::pin(async { Ok(false) }));
+        mock_trade_repository
+            .expect_merge_card_into_trade()
+            .times(1)
+            .returning(|_, _, _, _, _| Box::pin(async { Ok(()) }));
+        let mut mock_user_repository = MockUserRepository::new();
+        mock_user_repository
+            .expect_find_by_username()
+            .times(1)
+            .returning(|_| Box::pin(async { Ok(Some(make_respondent_user())) }));
+
+        let service = AddTradeCardService::new(
+            Arc::new(mock_trade_repository),
+            Arc::new(mock_user_repository),
+        );
+        let result = service
+            .add_card(
+                TradeId::new(),
+                make_initiator_id(),
+                "respondent".to_string(),
+                make_card_id(),
+                2,
+            )
+            .await;
+
+        assert!(result.is_ok());
+    }
+
+    #[tokio::test]
+    async fn add_card_uses_owned_quantity_when_owner_is_the_caller() {
+        // Adding a card to one's own side of the trade is never subject to the tradability
+        // rule — only how much the caller actually owns.
+        let trade = make_base_trade();
+        let mut mock_trade_repository = MockTradeRepository::new();
+        mock_trade_repository
+            .expect_find_by_id()
+            .times(1)
+            .returning(move |_| {
+                let trade = trade.clone();
+                Box::pin(async move { Ok(Some(trade)) })
+            });
+        mock_trade_repository
+            .expect_find_trade_cards()
+            .times(1)
+            .returning(|_| Box::pin(async { Ok(vec![]) }));
+        mock_trade_repository
+            .expect_find_collection_entry_quantity()
+            .times(1)
+            .returning(|_, _| Box::pin(async { Ok(Some(3)) }));
+        mock_trade_repository
+            .expect_find_proposed_quantity()
+            .times(0);
+        mock_trade_repository
+            .expect_is_card_reserved_elsewhere()
+            .times(1)
+            .returning(|_, _, _| Box::pin(async { Ok(false) }));
+        mock_trade_repository
+            .expect_merge_card_into_trade()
+            .times(1)
+            .returning(|_, _, _, _, _| Box::pin(async { Ok(()) }));
+        let mut mock_user_repository = MockUserRepository::new();
+        mock_user_repository
+            .expect_find_by_username()
+            .times(1)
+            .returning(|_| Box::pin(async { Ok(Some(make_initiator_user())) }));
+
+        let service = AddTradeCardService::new(
+            Arc::new(mock_trade_repository),
+            Arc::new(mock_user_repository),
+        );
+        let result = service
+            .add_card(
+                TradeId::new(),
+                make_initiator_id(),
+                "initiator".to_string(),
+                make_card_id(),
+                1,
+            )
+            .await;
+
+        assert!(result.is_ok());
+    }
+
+    #[tokio::test]
     async fn add_card_fails_when_card_already_reserved_elsewhere() {
         let trade = make_base_trade();
         let mut mock_trade_repository = MockTradeRepository::new();
@@ -1060,6 +1309,14 @@ mod tests {
                 let trade = trade.clone();
                 Box::pin(async move { Ok(Some(trade)) })
             });
+        mock_trade_repository
+            .expect_find_trade_cards()
+            .times(1)
+            .returning(|_| Box::pin(async { Ok(vec![]) }));
+        mock_trade_repository
+            .expect_find_proposed_quantity()
+            .times(1)
+            .returning(|_, _| Box::pin(async { Ok(1) }));
         mock_trade_repository
             .expect_is_card_reserved_elsewhere()
             .times(1)

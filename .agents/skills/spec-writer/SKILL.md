@@ -50,10 +50,12 @@ critère doit être testable (manuellement ou automatiquement) — pas de formul
 1. **Toujours poser des questions de clarification avant d'écrire quoi que ce soit.**
    Ne jamais supposer l'architecture, la stack ou le périmètre. Pose des questions ciblées (une ou deux à la fois)
    jusqu'à avoir assez d'info pour couvrir Contexte / Objectif / Solution / Cas d'erreurs / Critères d'acceptance.
-2. Explore le code existant en lecture seule (Read, Grep, Glob) pour vérifier les conventions, schémas de base de
-   données, endpoints ou composants déjà en place avant de proposer une solution — ne jamais inventer une structure qui
-   contredit l'existant. Consulte aussi les fichiers `../../../.agents/*.instructions.md` référencés dans `AGENTS.md`
-   (backend, database-schema, endpoints, authentication) si pertinent.
+2. Délègue la phase exploratoire à un sous-agent (`Agent`, `subagent_type: "Explore"` ou `"general-purpose"`, avec
+   `model: "haiku"`) plutôt que d'explorer toi-même : demande-lui de lire en lecture seule (Read, Grep, Glob) le code
+   existant pour vérifier les conventions, schémas de base de données, endpoints ou composants déjà en place, ainsi que
+   les fichiers `../../../.agents/*.instructions.md` référencés dans `AGENTS.md` (backend, database-schema, endpoints,
+   authentication) si pertinent, et de te faire un rapport factuel (fichiers, structures, conventions trouvées) sans
+   proposer de solution. Utilise ce rapport pour ne jamais inventer une structure qui contredit l'existant.
 3. Une fois les questions répondues, écris un premier jet complet du fichier spec avec
    `Write`, dans `doc/specs/`, avec le prochain numéro disponible.
 4. Soumets le contenu à l'utilisateur pour relecture, ajuste avec `Edit` selon ses retours.

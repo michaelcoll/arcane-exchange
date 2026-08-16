@@ -65,7 +65,7 @@ pub(crate) async fn create_trade(
         (status = 400, description = "Invalid payload, or owner_username is not a party to this trade"),
         (status = 401, description = "Missing or invalid token"),
         (status = 403, description = "Caller is not a party to this trade"),
-        (status = 404, description = "Trade not found, owner username unknown, or card not owned in sufficient quantity"),
+        (status = 404, description = "Trade not found, owner username unknown, the caller doesn't own enough of the card, or the other party doesn't offer enough of it to trade (visibility/binders/rarity filters)"),
         (status = 409, description = "Trade cannot be modified in its current status, or the card is already reserved by another trade"),
     ),
     security(("bearer_auth" = [])),

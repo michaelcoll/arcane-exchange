@@ -273,7 +273,9 @@ pub struct CollectionCardResponse {
     pub the_gatherer_id: Option<String>,
     /// Present only when the card is owned by the authenticated user.
     pub collection_entry: Option<CollectionEntryResponse>,
-    /// Number of distinct users owning this card (search mode only).
+    /// Number of distinct users actually offering this card to trade (search mode only) —
+    /// after applying each owner's visibility, trade binder selection and rarity filters. A
+    /// card no one offers anymore never appears in search results at all.
     pub owner_count: Option<u64>,
     /// `true` if this card is engaged in an `ONE_ACCEPTED` or `FULLY_ACCEPTED` trade of its
     /// owner (the authenticated user in collection mode, or the `player_username`-filtered

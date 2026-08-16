@@ -2,6 +2,11 @@
 
 export type CardOffer = {
   owner_username: string;
+  /**
+   * Quantity this owner actually offers to trade — after applying their collection
+   * visibility, trade binder selection and rarity filters. Never the raw quantity they own:
+   * an owner offering `0` never appears in the list.
+   */
   quantity: number;
   selling_price: number | null;
   /**

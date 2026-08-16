@@ -72,6 +72,9 @@ pub(crate) struct CardOffersParams {
 #[ts(export, export_to = "CardOffer.ts")]
 pub struct CardOfferResponse {
     pub owner_username: String,
+    /// Quantity this owner actually offers to trade — after applying their collection
+    /// visibility, trade binder selection and rarity filters. Never the raw quantity they own:
+    /// an owner offering `0` never appears in the list.
     pub quantity: u8,
     pub selling_price: Option<u32>,
     /// `true` if this exact copy is engaged in one of the owner's trades in `ONE_ACCEPTED` or

@@ -49,6 +49,30 @@ impl TradeRepository for TradeRepositoryAdapter {
         Ok(row.quantity.map(|q| q as i32))
     }
 
+    async fn find_proposed_quantity(
+        &self,
+        owner_id: &UserId,
+        card_id: &CardId,
+    ) -> Result<u8, AppError> {
+        let quantity = sqlx::query_scalar!(
+            r#"SELECT proposed_quantity FROM v_tradable_entry
+                WHERE user_id = $1 AND set_code = $2 AND collector_number = $3
+                  AND language_code = $4 AND foil = $5"#,
+            owner_id.as_str(),
+            card_id.set_code.to_string(),
+            card_id.collector_number,
+            card_id.language_code.to_string(),
+            card_id.foil,
+        )
+        .fetch_optional(&self.pool)
+        .await?
+        .flatten();
+
+        // The view clamps to `LEAST(..., 255)`, so this always fits — `try_from` makes that
+        // invariant explicit instead of silently truncating if the clamp is ever dropped.
+        Ok(quantity.map_or(0, |q| u8::try_from(q).unwrap_or(u8::MAX)))
+    }
+
     async fn is_card_reserved_elsewhere(
         &self,
         trade_id: TradeId,
@@ -457,9 +481,11 @@ mod tests {
     use super::*;
     use crate::domain::language_code::LanguageCode;
     use crate::infrastructure::adapter_out::repository::common_repository_tests::{
-        insert_card, insert_collection_entry, insert_collection_entry_with_binder, insert_price,
-        insert_trade, insert_trade_card, insert_user, mark_trade_accepted_by_both,
-        mark_trade_party_accepted, mark_trade_party_confirmed, mark_trade_party_rated,
+        insert_card, insert_card_with_rarity, insert_collection_entry,
+        insert_collection_entry_with_binder, insert_price, insert_rarity_filter, insert_trade,
+        insert_trade_card, insert_trading_binder, insert_user, insert_user_with_visibility,
+        mark_trade_accepted_by_both, mark_trade_party_accepted, mark_trade_party_confirmed,
+        mark_trade_party_rated,
     };
     use crate::infrastructure::adapter_out::repository::entities::{
         CardMarketPriceEntity, PriceGuideEntity,
@@ -558,6 +584,246 @@ mod tests {
             .unwrap();
 
         assert_eq!(result, Some(5));
+    }
+
+    #[sqlx::test]
+    async fn find_proposed_quantity_is_zero_for_private_user(pool: PgPool) {
+        insert_user_with_visibility(&pool, "user_b", "bob", "private").await;
+        insert_card(&pool, "FDN", "87", "FR", false, "Goblin Boarders", 1).await;
+        insert_trading_binder(&pool, "user_b", "Trade Binder").await;
+        insert_collection_entry_with_binder(
+            &pool,
+            "FDN",
+            "87",
+            "FR",
+            false,
+            "user_b",
+            3,
+            100,
+            chrono::Utc::now(),
+            Some("Trade Binder"),
+        )
+        .await;
+
+        let repository = TradeRepositoryAdapter::new(pool);
+        let result = repository
+            .find_proposed_quantity(&UserId::new("user_b"), &make_card_id())
+            .await
+            .unwrap();
+
+        assert_eq!(result, 0);
+    }
+
+    #[sqlx::test]
+    async fn find_proposed_quantity_is_zero_when_unknown_owner(pool: PgPool) {
+        let repository = TradeRepositoryAdapter::new(pool);
+        let result = repository
+            .find_proposed_quantity(&UserId::new("user_unknown"), &make_card_id())
+            .await
+            .unwrap();
+
+        assert_eq!(result, 0);
+    }
+
+    #[sqlx::test]
+    async fn find_proposed_quantity_is_total_for_public_user(pool: PgPool) {
+        insert_user_with_visibility(&pool, "user_b", "bob", "public").await;
+        insert_card(&pool, "FDN", "87", "FR", false, "Goblin Boarders", 1).await;
+        insert_collection_entry_with_binder(
+            &pool,
+            "FDN",
+            "87",
+            "FR",
+            false,
+            "user_b",
+            2,
+            100,
+            chrono::Utc::now(),
+            None,
+        )
+        .await;
+        insert_collection_entry_with_binder(
+            &pool,
+            "FDN",
+            "87",
+            "FR",
+            false,
+            "user_b",
+            1,
+            100,
+            chrono::Utc::now(),
+            Some("Binder A"),
+        )
+        .await;
+
+        let repository = TradeRepositoryAdapter::new(pool);
+        let result = repository
+            .find_proposed_quantity(&UserId::new("user_b"), &make_card_id())
+            .await
+            .unwrap();
+
+        assert_eq!(result, 3);
+    }
+
+    #[sqlx::test]
+    async fn find_proposed_quantity_applies_rarity_kept_copies_for_trade_user(pool: PgPool) {
+        insert_user_with_visibility(&pool, "user_b", "bob", "trade").await;
+        insert_card_with_rarity(&pool, "FDN", "87", "FR", false, "Goblin Boarders", 1, "R").await;
+        insert_trading_binder(&pool, "user_b", "Trade Binder").await;
+        insert_rarity_filter(&pool, "user_b", "R", true, 1).await;
+        insert_collection_entry_with_binder(
+            &pool,
+            "FDN",
+            "87",
+            "FR",
+            false,
+            "user_b",
+            3,
+            100,
+            chrono::Utc::now(),
+            Some("Trade Binder"),
+        )
+        .await;
+
+        let repository = TradeRepositoryAdapter::new(pool);
+        let result = repository
+            .find_proposed_quantity(&UserId::new("user_b"), &make_card_id())
+            .await
+            .unwrap();
+
+        assert_eq!(result, 2);
+    }
+
+    #[sqlx::test]
+    async fn find_proposed_quantity_deducts_kept_copies_per_binder_row(pool: PgPool) {
+        // Same card split across two checked binders, 3 copies each, `kept_copies = 1`.
+        // `kept_copies` must be deducted per `collection_entry` row (2 + 2 = 4), matching
+        // `collection_rarity_filters_repository_adapter::list_with_counts`'s "Proposés" counter
+        // — not once on the aggregated total (which would wrongly yield 3 + 3 - 1 = 5).
+        insert_user_with_visibility(&pool, "user_b", "bob", "trade").await;
+        insert_card_with_rarity(&pool, "FDN", "87", "FR", false, "Goblin Boarders", 1, "R").await;
+        insert_trading_binder(&pool, "user_b", "Binder A").await;
+        insert_trading_binder(&pool, "user_b", "Binder B").await;
+        insert_rarity_filter(&pool, "user_b", "R", true, 1).await;
+        insert_collection_entry_with_binder(
+            &pool,
+            "FDN",
+            "87",
+            "FR",
+            false,
+            "user_b",
+            3,
+            100,
+            chrono::Utc::now(),
+            Some("Binder A"),
+        )
+        .await;
+        insert_collection_entry_with_binder(
+            &pool,
+            "FDN",
+            "87",
+            "FR",
+            false,
+            "user_b",
+            3,
+            100,
+            chrono::Utc::now(),
+            Some("Binder B"),
+        )
+        .await;
+
+        let repository = TradeRepositoryAdapter::new(pool);
+        let result = repository
+            .find_proposed_quantity(&UserId::new("user_b"), &make_card_id())
+            .await
+            .unwrap();
+
+        assert_eq!(result, 4);
+    }
+
+    #[sqlx::test]
+    async fn find_proposed_quantity_is_zero_when_rarity_closed(pool: PgPool) {
+        insert_user_with_visibility(&pool, "user_b", "bob", "trade").await;
+        insert_card_with_rarity(&pool, "FDN", "87", "FR", false, "Goblin Boarders", 1, "R").await;
+        insert_trading_binder(&pool, "user_b", "Trade Binder").await;
+        insert_collection_entry_with_binder(
+            &pool,
+            "FDN",
+            "87",
+            "FR",
+            false,
+            "user_b",
+            3,
+            100,
+            chrono::Utc::now(),
+            Some("Trade Binder"),
+        )
+        .await;
+
+        let repository = TradeRepositoryAdapter::new(pool);
+        let result = repository
+            .find_proposed_quantity(&UserId::new("user_b"), &make_card_id())
+            .await
+            .unwrap();
+
+        assert_eq!(result, 0);
+    }
+
+    #[sqlx::test]
+    async fn find_proposed_quantity_is_zero_when_binder_not_selected(pool: PgPool) {
+        insert_user_with_visibility(&pool, "user_b", "bob", "trade").await;
+        insert_card_with_rarity(&pool, "FDN", "87", "FR", false, "Goblin Boarders", 1, "R").await;
+        insert_rarity_filter(&pool, "user_b", "R", true, 0).await;
+        insert_collection_entry_with_binder(
+            &pool,
+            "FDN",
+            "87",
+            "FR",
+            false,
+            "user_b",
+            3,
+            100,
+            chrono::Utc::now(),
+            Some("Untracked Binder"),
+        )
+        .await;
+
+        let repository = TradeRepositoryAdapter::new(pool);
+        let result = repository
+            .find_proposed_quantity(&UserId::new("user_b"), &make_card_id())
+            .await
+            .unwrap();
+
+        assert_eq!(result, 0);
+    }
+
+    #[sqlx::test]
+    async fn find_proposed_quantity_is_zero_when_kept_copies_covers_quantity(pool: PgPool) {
+        insert_user_with_visibility(&pool, "user_b", "bob", "trade").await;
+        insert_card_with_rarity(&pool, "FDN", "87", "FR", false, "Goblin Boarders", 1, "R").await;
+        insert_trading_binder(&pool, "user_b", "Trade Binder").await;
+        insert_rarity_filter(&pool, "user_b", "R", true, 2).await;
+        insert_collection_entry_with_binder(
+            &pool,
+            "FDN",
+            "87",
+            "FR",
+            false,
+            "user_b",
+            2,
+            100,
+            chrono::Utc::now(),
+            Some("Trade Binder"),
+        )
+        .await;
+
+        let repository = TradeRepositoryAdapter::new(pool);
+        let result = repository
+            .find_proposed_quantity(&UserId::new("user_b"), &make_card_id())
+            .await
+            .unwrap();
+
+        assert_eq!(result, 0);
     }
 
     #[sqlx::test]

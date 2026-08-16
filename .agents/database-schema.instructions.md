@@ -19,6 +19,13 @@ Each table is owned by one adapter in `src/ccpt/infrastructure/adapter_out/repos
 | `trade`, `trade_card`      | Trades and the cards engaged in them                    | `trade_repository_adapter`                    |
 | `mv_card_prices`           | Materialized view: collection joined with latest prices | `card_prices_view_repository_adapter`         |
 
+`v_tradable_entry` (plain, non-materialized view) is an exception to "one table, one adapter": it derives the
+quantity of each card a user actually offers to trade (from `users.visibility`, `trading_binders` and
+`collection_rarity_filters`) and is read directly, in SQL, by three adapters —
+`card_prices_view_repository_adapter` (`/card/offers`, public mode of `/search/card`), `user_repository_adapter`
+(`/autocomplete/user`) and `trade_repository_adapter` (validating cards added to a trade). It owns no table and
+is never written to.
+
 ## Invariants
 
 - **Card identity** is the composite key `(set_code, collector_number, language_code, foil)`. It propagates to
@@ -33,6 +40,11 @@ Each table is owned by one adapter in `src/ccpt/infrastructure/adapter_out/repos
   `CONCURRENTLY` requires the unique index `mv_card_prices_unique`; keep it if the view changes.
 - **Trade card reservation** is derived, not stored: a card is reserved when it appears in `trade_card` of a
   non-terminal trade (see [trade-workflow.instructions.md](trade-workflow.instructions.md)).
+- **`v_tradable_entry` deducts `kept_copies` per `collection_entry` row (per binder), not once per aggregated
+  card total.** This must stay numerically identical to `collection_rarity_filters_repository_adapter`'s
+  "Proposés" counter (`/collection/visibility/rarities`), which does the same per-row deduction — a card split
+  across several checked binders must not offer more copies for trade than the profile screen shows as
+  proposed.
 
 ## Changing the schema
 

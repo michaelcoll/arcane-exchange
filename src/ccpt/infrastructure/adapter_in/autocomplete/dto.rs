@@ -10,6 +10,9 @@ pub(crate) struct AutocompleteUserParams {
     pub(crate) q: Option<String>,
 }
 
+/// A suggested user only appears if they offer at least one card to trade — a `private` user,
+/// or one offering nothing under their current visibility/binders/rarity filters, is never
+/// suggested.
 #[derive(Serialize, Debug, TS, ToSchema)]
 #[serde(rename = "UserSuggestion")]
 #[ts(export, export_to = "UserSuggestion.ts")]
@@ -17,6 +20,8 @@ pub struct UserSuggestionResponse {
     pub username: String,
     /// Always 5 — hardcoded display value, not backed by any stored rating yet.
     pub note: u8,
+    /// Sum of the quantities this user actually offers to trade across their whole collection —
+    /// not their total collection size.
     pub card_count: u64,
 }
 

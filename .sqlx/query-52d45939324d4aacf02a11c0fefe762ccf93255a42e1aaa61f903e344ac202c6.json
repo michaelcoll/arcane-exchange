@@ -1,0 +1,65 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT u.username AS owner_username, t.proposed_quantity AS \"quantity!\", cp.trend AS selling_price,\n                     EXISTS (\n                         SELECT 1 FROM trade_card tc\n                         JOIN trade tr ON tr.id = tc.trade_id\n                         WHERE tc.set_code = cp.set_code AND tc.collector_number = cp.collector_number\n                           AND tc.language_code = cp.language_code AND tc.foil = cp.foil\n                           AND tc.owner_user_id = cp.user_id\n                           AND tr.status IN ('ONE_ACCEPTED', 'FULLY_ACCEPTED')\n                     ) AS \"reserved!\"\n                     FROM mv_card_prices cp\n                     JOIN users u ON u.id = cp.user_id\n                     JOIN v_tradable_entry t ON (t.user_id, t.set_code, t.collector_number, t.language_code, t.foil) =\n                                                 (cp.user_id, cp.set_code, cp.collector_number, cp.language_code, cp.foil)\n                     WHERE cp.set_code = $1 AND cp.collector_number = $2 AND cp.language_code = $3\n                       AND cp.foil = $4 AND cp.user_id != $5\n                     ORDER BY cp.trend ASC NULLS LAST, u.username\n                     LIMIT $6 OFFSET $7",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "owner_username",
+        "type_info": "Varchar",
+        "origin": {
+          "Table": {
+            "table": "users",
+            "name": "username"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "quantity!",
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "v_tradable_entry",
+            "name": "proposed_quantity"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "selling_price",
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "mv_card_prices",
+            "name": "trend"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "reserved!",
+        "type_info": "Bool",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text",
+        "Text",
+        "Bool",
+        "Text",
+        "Int8",
+        "Int8"
+      ]
+    },
+    "nullable": [
+      false,
+      true,
+      true,
+      null
+    ]
+  },
+  "hash": "52d45939324d4aacf02a11c0fefe762ccf93255a42e1aaa61f903e344ac202c6"
+}

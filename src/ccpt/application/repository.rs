@@ -220,6 +220,15 @@ pub trait TradeRepository: Send + Sync {
         card_id: &CardId,
     ) -> Result<Option<i32>, AppError>;
 
+    /// Quantity of `card_id` that `owner_id` actually offers to trade (`v_tradable_entry`), i.e.
+    /// after applying their visibility, trade binders and rarity filters. Returns `0` when the
+    /// owner doesn't offer this card at all (private, closed rarity, or unselected binder).
+    async fn find_proposed_quantity(
+        &self,
+        owner_id: &UserId,
+        card_id: &CardId,
+    ) -> Result<u8, AppError>;
+
     /// True when `card_id` (owned by `owner_id`) already appears in a trade other than `trade_id`
     /// with status `ONE_ACCEPTED` or `FULLY_ACCEPTED` — i.e. it is already committed to another
     /// trade and cannot be added to this one.
