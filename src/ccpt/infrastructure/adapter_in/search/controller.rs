@@ -33,7 +33,7 @@ pub fn create_search_router() -> axum::Router<AppState> {
     ),
     responses(
         (status = 200, description = "Paginated card search results", body = PaginatedCollectionResponse),
-        (status = 400, description = "Pagination out of bounds"),
+        (status = 400, description = "Pagination out of bounds, or sort_by=added_at without player_username"),
         (status = 401, description = "Missing or invalid token"),
     ),
     security(("bearer_auth" = [])),
@@ -65,8 +65,8 @@ pub(crate) async fn search_cards(
         .filter(|s| !s.is_empty())
         .map(str::to_string);
 
-    let query = SearchQuery {
-        collection_query: CollectionQuery {
+    let query = SearchQuery::try_new(
+        CollectionQuery {
             pagination,
             sort_by: params.sort_by.into(),
             sort_dir: params.sort_dir.into(),
@@ -77,7 +77,7 @@ pub(crate) async fn search_cards(
             price_max: params.price_max,
         },
         player_username,
-    };
+    )?;
 
     let result = state.search_cards_use_case.search_cards(query).await?;
 

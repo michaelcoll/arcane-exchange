@@ -615,3 +615,110 @@ async fn search_cards_defaults_player_username_to_none_when_absent() {
 
     assert!(result.is_ok());
 }
+
+#[tokio::test]
+async fn search_cards_rejects_added_at_sort_without_player_username() {
+    // The use case must never be reached: the combination is rejected before that.
+    let mock = MockSearchCardsUseCase::new();
+
+    let app_state = make_app_state_with_search(mock);
+    let params = SearchParams {
+        sort_by: SortByParam::AddedAt,
+        ..Default::default()
+    };
+
+    let result = search_cards(
+        AuthenticatedUser(User::for_testing()),
+        State(app_state),
+        Query(params),
+    )
+    .await;
+
+    match result.err().unwrap() {
+        AppError::Functional(FunctionalError::AddedAtSortRequiresPlayerUsername) => {}
+        other => panic!(
+            "Expected AddedAtSortRequiresPlayerUsername, got {:?}",
+            other
+        ),
+    }
+}
+
+#[tokio::test]
+async fn search_cards_rejects_added_at_sort_with_empty_player_username() {
+    let mock = MockSearchCardsUseCase::new();
+
+    let app_state = make_app_state_with_search(mock);
+    let params = SearchParams {
+        sort_by: SortByParam::AddedAt,
+        player_username: Some("".to_string()),
+        ..Default::default()
+    };
+
+    let result = search_cards(
+        AuthenticatedUser(User::for_testing()),
+        State(app_state),
+        Query(params),
+    )
+    .await;
+
+    match result.err().unwrap() {
+        AppError::Functional(FunctionalError::AddedAtSortRequiresPlayerUsername) => {}
+        other => panic!(
+            "Expected AddedAtSortRequiresPlayerUsername, got {:?}",
+            other
+        ),
+    }
+}
+
+#[tokio::test]
+async fn search_cards_passes_sort_by_added_at_to_use_case() {
+    let mut mock = MockSearchCardsUseCase::new();
+    mock.expect_search_cards()
+        .withf(|q| q.collection_query.sort_by == CollectionSortField::AddedAt)
+        .returning(|_| Box::pin(async { Ok(make_paginated(vec![], 0, 20)) }));
+
+    let app_state = make_app_state_with_search(mock);
+    let params = SearchParams {
+        sort_by: SortByParam::AddedAt,
+        player_username: Some("alice".to_string()),
+        ..Default::default()
+    };
+
+    let result = search_cards(
+        AuthenticatedUser(User::for_testing()),
+        State(app_state),
+        Query(params),
+    )
+    .await;
+
+    assert!(result.is_ok());
+}
+
+#[tokio::test]
+async fn search_cards_with_added_at_sort_and_unknown_player_username_still_reaches_use_case() {
+    // Whether the username matches a real user is a repository concern (cf. spec 013); the
+    // controller-level validation only cares that `player_username` is present.
+    let mut mock = MockSearchCardsUseCase::new();
+    mock.expect_search_cards()
+        .withf(|q| {
+            q.collection_query.sort_by == CollectionSortField::AddedAt
+                && q.player_username.as_deref() == Some("no-such-user")
+        })
+        .returning(|_| Box::pin(async { Ok(make_paginated(vec![], 0, 20)) }));
+
+    let app_state = make_app_state_with_search(mock);
+    let params = SearchParams {
+        sort_by: SortByParam::AddedAt,
+        player_username: Some("no-such-user".to_string()),
+        ..Default::default()
+    };
+
+    let result = search_cards(
+        AuthenticatedUser(User::for_testing()),
+        State(app_state),
+        Query(params),
+    )
+    .await;
+
+    assert!(result.is_ok());
+}

@@ -1069,6 +1069,10 @@ fn sort_by_param_from_mapping_is_complete() {
         CollectionSortField::from(SortByParam::LanguageCode),
         CollectionSortField::LanguageCode
     );
+    assert_eq!(
+        CollectionSortField::from(SortByParam::AddedAt),
+        CollectionSortField::AddedAt
+    );
 }
 
 #[test]

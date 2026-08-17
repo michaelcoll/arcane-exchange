@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import type { CollectionCard } from '~/bindings/CollectionCard';
 import type { RarityCode } from '~/bindings/RarityCode';
+import type { SortBy } from '~/bindings/SortBy';
+import type { SortDir } from '~/bindings/SortDir';
 import type { UserSuggestion } from '~/bindings/UserSuggestion';
 
 import { useRoute, useRouter } from 'nuxt/app';
@@ -39,8 +41,8 @@ const isDesktop = useMediaQuery('(min-width: 768px)');
 const pageSize = useCardPageSize(size, isDesktop);
 
 const params = ref({
-  sort_by: 'trend' as const,
-  sort_dir: 'desc' as const,
+  sort_by: 'trend' as SortBy,
+  sort_dir: 'desc' as SortDir,
   page: 0,
   page_size: pageSize.value,
   q: '',
@@ -50,6 +52,19 @@ const params = ref({
   price_max: undefined as number | undefined,
   player_username: undefined as string | undefined,
 });
+
+const priceSortOption = {
+  value: 'trend' as SortBy,
+  label: 'Prix',
+  ascLabel: 'Prix croissant',
+  descLabel: 'Prix décroissant',
+};
+const addedAtSortOption = {
+  value: 'added_at' as SortBy,
+  label: 'Date d’ajout',
+  ascLabel: 'Plus ancien d’abord',
+  descLabel: 'Plus récent d’abord',
+};
 
 const { data: collectionData, pending, refresh } = await getSearch(params);
 const { data: statsData } = await getCollectionStats();
@@ -91,6 +106,20 @@ const pageTitle = computed(() =>
     : 'Cartes chez les autres joueurs',
 );
 
+// `added_at` n'a de sens que scopé à un joueur unique (cf. spec 024) : hors de ce cas, seul
+// le tri prix est proposé.
+const playerScoped = computed(() => mode.value === 'player' && !!player.value);
+
+const sortOptions = computed(() =>
+  playerScoped.value ? [priceSortOption, addedAtSortOption] : [priceSortOption],
+);
+
+const onSortChange = (v: { sort_by: SortBy; sort_dir: SortDir }) => {
+  params.value.sort_by = v.sort_by;
+  params.value.sort_dir = v.sort_dir;
+  resetAndRefresh();
+};
+
 const clearPlayer = () => {
   player.value = null;
 };
@@ -122,7 +151,16 @@ watch(player, (p) => {
   if (p) {
     playerFilterQ.value = '';
     params.value.q = '';
+    params.value.sort_by = 'added_at';
+    params.value.sort_dir = 'desc';
     resetAndRefresh();
+  } else {
+    // Pas de resetAndRefresh ici : cohérent avec le comportement existant où clearPlayer()
+    // seul ne déclenche pas de requête immédiate. Le tri repasse quand même sur le prix par
+    // défaut dès maintenant, pour que la prochaine requête (quel que soit ce qui la déclenche)
+    // n'envoie jamais sort_by=added_at sans player_username.
+    params.value.sort_by = 'trend';
+    params.value.sort_dir = 'desc';
   }
 });
 
@@ -137,6 +175,12 @@ watch(
 
 watch(mode, (m, prevM) => {
   if (prevM === 'player' && m !== 'player') {
+    // Le tri est réinitialisé ici, avant `player.value = null` : ce dernier déclenche aussi
+    // `watch(player)` (branche `else`) dans le même flush, qui répéterait le même repli — le
+    // faire ici en premier garantit qu'aucune requête n'est jamais émise avec `sort_by=
+    // added_at` sans `player_username`, quel que soit l'ordre d'exécution des deux watchers.
+    params.value.sort_by = 'trend';
+    params.value.sort_dir = 'desc';
     player.value = null;
     q.value = '';
     submittedQ.value = '';
@@ -427,7 +471,7 @@ const decklist = ref(
 
         <!-- Main content -->
         <div class="min-w-0 flex-1">
-          <div class="mb-3.5 flex min-h-[22px] items-center justify-between">
+          <div class="mb-3.5 flex min-h-[22px] items-center justify-between gap-2.5">
             <span
               v-if="mode === 'player' && player"
               class="text-sm text-slate-400 dark:text-slate-500"
@@ -447,7 +491,13 @@ const decklist = ref(
               >
               pour « {{ submittedQ }} »
             </span>
-            <SegToggle v-model="size" :options="sizeOptions" size="sm" class="ml-auto" />
+            <SortToggle
+              :model-value="{ sort_by: params.sort_by, sort_dir: params.sort_dir }"
+              :options="sortOptions"
+              class="ml-auto"
+              @update:model-value="onSortChange"
+            />
+            <SegToggle v-model="size" :options="sizeOptions" size="sm" />
           </div>
 
           <!-- Loading state (initial) -->

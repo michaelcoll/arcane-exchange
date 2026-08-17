@@ -1,3 +1,4 @@
+use crate::domain::error::FunctionalError;
 use crate::domain::pagination::Pagination;
 use crate::domain::rarity_code::RarityCode;
 use std::fmt;
@@ -9,6 +10,7 @@ pub enum CollectionSortField {
     Trend,
     SetCode,
     LanguageCode,
+    AddedAt,
 }
 
 impl fmt::Display for CollectionSortField {
@@ -18,6 +20,7 @@ impl fmt::Display for CollectionSortField {
             Self::Trend => write!(f, "trend"),
             Self::SetCode => write!(f, "set_code"),
             Self::LanguageCode => write!(f, "language_code"),
+            Self::AddedAt => write!(f, "added_at"),
         }
     }
 }
@@ -58,6 +61,30 @@ pub struct SearchQuery {
     pub player_username: Option<String>,
 }
 
+impl SearchQuery {
+    /// Builds a `SearchQuery`, rejecting combinations that don't make sense together.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`FunctionalError::AddedAtSortRequiresPlayerUsername`] when `sort_by` is
+    /// [`CollectionSortField::AddedAt`] and no `player_username` is set: an unscoped search can
+    /// group cards from several owners into a single row, so there is no single `added_at` value
+    /// to sort by.
+    pub fn try_new(
+        collection_query: CollectionQuery,
+        player_username: Option<String>,
+    ) -> Result<Self, FunctionalError> {
+        if collection_query.sort_by == CollectionSortField::AddedAt && player_username.is_none() {
+            return Err(FunctionalError::AddedAtSortRequiresPlayerUsername);
+        }
+
+        Ok(Self {
+            collection_query,
+            player_username,
+        })
+    }
+}
+
 impl From<CollectionQuery> for SearchQuery {
     fn from(collection_query: CollectionQuery) -> Self {
         Self {
@@ -84,6 +111,7 @@ mod tests {
             CollectionSortField::LanguageCode.to_string(),
             "language_code"
         );
+        assert_eq!(CollectionSortField::AddedAt.to_string(), "added_at");
     }
 
     #[test]
@@ -117,5 +145,42 @@ mod tests {
     fn search_query_from_collection_query_has_no_player_username() {
         let q: SearchQuery = CollectionQuery::default().into();
         assert_eq!(q.player_username, None);
+    }
+
+    #[test]
+    fn search_query_try_new_rejects_added_at_sort_without_player_username() {
+        let query = CollectionQuery {
+            sort_by: CollectionSortField::AddedAt,
+            ..Default::default()
+        };
+
+        let result = SearchQuery::try_new(query, None);
+
+        assert!(matches!(
+            result,
+            Err(FunctionalError::AddedAtSortRequiresPlayerUsername)
+        ));
+    }
+
+    #[test]
+    fn search_query_try_new_accepts_added_at_sort_with_player_username() {
+        let query = CollectionQuery {
+            sort_by: CollectionSortField::AddedAt,
+            ..Default::default()
+        };
+
+        let result = SearchQuery::try_new(query, Some("alice".to_string()));
+
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap().player_username, Some("alice".to_string()));
+    }
+
+    #[test]
+    fn search_query_try_new_accepts_non_added_at_sort_without_player_username() {
+        let query = CollectionQuery::default();
+
+        let result = SearchQuery::try_new(query, None);
+
+        assert!(result.is_ok());
     }
 }

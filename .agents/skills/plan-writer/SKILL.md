@@ -38,9 +38,24 @@ Tu rédiges des plans d'implémentation à partir d'une spec existante dans `doc
 5. Si l'implémentation va toucher au back utilise le skill `rust-skills` et si c'est le front qui est impacté utilise le
    skill `nuxt` et le skill `tailwind-css-patterns` pour t'aider dans la rédaction de la spec.
 6. Soumets le plan à l'utilisateur pour relecture, ajuste avec `Edit` selon ses retours.
+7. **Une fois le plan validé par l'utilisateur, fais-le relire par un sous-agent** avant de considérer le travail
+   terminé :
+   - Lance un sous-agent via l'outil `Agent` (`subagent_type: "claude"` ou `"general-purpose"`, avec
+     `model: "opus"` pour bénéficier d'un modèle plus conséquent que celui utilisé pour la rédaction).
+   - Donne-lui un prompt autonome (il démarre sans contexte) : le plan à relire, la spec source associée, les
+     décisions techniques actées. Demande-lui de vérifier la cohérence avec la spec, la complétude des étapes
+     (rien d'oublié, ordre logique, dépendances entre étapes), la vérifiabilité de chaque étape, la présence des
+     étapes obligatoires (`sqlx-prepare`, `openapi`/collections bruno, `mise run checks`, `mise upgrade`) si
+     applicables, et le respect des skills concernés (`rust-skills`, `nuxt`, `tailwind-css-patterns`) — pas une
+     relecture de style superficielle.
+   - Une fois le rapport reçu, c'est toi (agent principal) qui traites chaque remarque : corrige le plan avec
+     `Edit` pour ce qui est fondé. Pour ce qui n'est pas fondé ou hors périmètre, explique pourquoi à
+     l'utilisateur plutôt que de l'ignorer silencieusement — ne délègue jamais la décision finale au sous-agent.
 
 ## Ce que tu ne fais pas
 
 - Tu n'écris pas de code d'implémentation, seulement le plan.
 - Tu ne modifies pas la spec source : si elle est incomplète ou ambiguë, signale-le à l'utilisateur plutôt que de la
   corriger toi-même.
+- Tu ne considères pas le plan terminé sans avoir lancé la relecture par sous-agent (étape 7) et traité son retour
+  toi-même.

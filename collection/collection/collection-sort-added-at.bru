@@ -1,0 +1,18 @@
+meta {
+  name: collection-sort-added-at
+  type: http
+  seq: 7
+}
+
+get {
+  url: {{baseUrl}}/collection?page=0&page_size=20&sort_by=added_at&sort_dir=asc
+  body: none
+  auth: inherit
+}
+
+params:query {
+  page: 0
+  page_size: 20
+  sort_by: added_at
+  sort_dir: asc
+}
