@@ -7,8 +7,6 @@ pub struct Config {
     pub database_max_connections: u32,
     pub port: u16,
     pub scryfall_rate_limit_tokens: u32,
-    pub max_page_size: u32,
-    pub max_page_number: u32,
     pub cardmarket_price_guides_url: String,
     pub edh_rec_base_url: String,
     pub scryfall_base_url: String,
@@ -24,8 +22,6 @@ impl Config {
             database_max_connections: parse_env_or("DATABASE_MAX_CONNECTIONS", 5),
             port: parse_env_or("BACKEND_PORT", 8080),
             scryfall_rate_limit_tokens: parse_env_or("SCRYFALL_RATE_LIMIT_TOKENS", 8),
-            max_page_size: parse_env_or("MAX_PAGE_SIZE", 100),
-            max_page_number: parse_env_or("MAX_PAGE_NUMBER", 10),
             cardmarket_price_guides_url: env::var("CARDMARKET_PRICE_GUIDES_URL").unwrap_or_else(
                 |_| {
                     "https://downloads.s3.cardmarket.com/productCatalog/priceGuide/price_guide_1.json"
@@ -70,8 +66,6 @@ mod tests {
         "DATABASE_MAX_CONNECTIONS",
         "BACKEND_PORT",
         "SCRYFALL_RATE_LIMIT_TOKENS",
-        "MAX_PAGE_SIZE",
-        "MAX_PAGE_NUMBER",
         "CARDMARKET_PRICE_GUIDES_URL",
         "EDHREC_BASE_URL",
         "SCRYFALL_BASE_URL",
@@ -109,8 +103,6 @@ mod tests {
         assert_eq!(config.database_max_connections, 5);
         assert_eq!(config.port, 8080);
         assert_eq!(config.scryfall_rate_limit_tokens, 8);
-        assert_eq!(config.max_page_size, 100);
-        assert_eq!(config.max_page_number, 10);
         assert_eq!(
             config.cardmarket_price_guides_url,
             "https://downloads.s3.cardmarket.com/productCatalog/priceGuide/price_guide_1.json"
@@ -124,8 +116,6 @@ mod tests {
         set("DATABASE_MAX_CONNECTIONS", "42");
         set("BACKEND_PORT", "9090");
         set("SCRYFALL_RATE_LIMIT_TOKENS", "16");
-        set("MAX_PAGE_SIZE", "50");
-        set("MAX_PAGE_NUMBER", "5");
         set("CLERK_FRONTEND_API_URL", "https://clerk.example.com");
 
         let config = Config::from_env();
@@ -133,8 +123,6 @@ mod tests {
         assert_eq!(config.database_max_connections, 42);
         assert_eq!(config.port, 9090);
         assert_eq!(config.scryfall_rate_limit_tokens, 16);
-        assert_eq!(config.max_page_size, 50);
-        assert_eq!(config.max_page_number, 5);
 
         reset_env();
         let result = std::panic::catch_unwind(Config::from_env);

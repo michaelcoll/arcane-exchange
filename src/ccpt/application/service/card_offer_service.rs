@@ -1,12 +1,17 @@
 use crate::application::error::AppError;
 use crate::application::repository::CardPricesViewRepository;
 use crate::application::use_case::GetCardOffersUseCase;
-use crate::domain::card::CardId;
-use crate::domain::card_offer::{CardOfferSortField, PaginatedCardOffers};
+use crate::domain::card::{CardId, CollectionEntry};
+use crate::domain::card_offer::CardOfferSortField;
 use crate::domain::error::FunctionalError;
+use crate::domain::pagination::{Paginated, Pagination};
 use crate::domain::user::UserId;
 use async_trait::async_trait;
 use std::sync::Arc;
+
+/// Only the first few offers for a given card are ever useful to a buyer, so pagination depth
+/// stays shallow here — unlike the collection or search endpoints.
+pub(crate) const CARD_OFFERS_MAX_OFFSET: u32 = 60;
 
 pub struct CardOfferService {
     repository: Arc<dyn CardPricesViewRepository>,
@@ -25,15 +30,14 @@ impl GetCardOffersUseCase for CardOfferService {
         user_id: &UserId,
         card_id: CardId,
         sort_by: CardOfferSortField,
-        page: u32,
-        page_size: u32,
-    ) -> Result<PaginatedCardOffers, AppError> {
+        pagination: Pagination,
+    ) -> Result<Paginated<CollectionEntry>, AppError> {
         if !self.repository.exists(&card_id).await? {
             return Err(FunctionalError::CardNotFound.into());
         }
 
         self.repository
-            .get_offers(user_id, &card_id, sort_by, page, page_size)
+            .get_offers(user_id, &card_id, sort_by, pagination)
             .await
     }
 }
@@ -57,13 +61,12 @@ mod tests {
             .returning(|_| Box::pin(async { Ok(true) }));
         mock_repo
             .expect_get_offers()
-            .returning(|_, _, _, page, page_size| {
+            .returning(|_, _, _, pagination| {
                 Box::pin(async move {
-                    Ok(PaginatedCardOffers {
+                    Ok(Paginated {
                         items: vec![],
                         total: 0,
-                        page,
-                        page_size,
+                        pagination,
                     })
                 })
             });
@@ -74,8 +77,7 @@ mod tests {
                 &UserId::new("user-1"),
                 card_id(),
                 CardOfferSortField::SellingPrice,
-                0,
-                20,
+                Pagination::try_new(0, 20, CARD_OFFERS_MAX_OFFSET).unwrap(),
             )
             .await;
 
@@ -96,8 +98,7 @@ mod tests {
                 &UserId::new("user-1"),
                 card_id(),
                 CardOfferSortField::SellingPrice,
-                0,
-                20,
+                Pagination::try_new(0, 20, CARD_OFFERS_MAX_OFFSET).unwrap(),
             )
             .await;
 
@@ -125,8 +126,7 @@ mod tests {
                 &UserId::new("user-1"),
                 card_id(),
                 CardOfferSortField::SellingPrice,
-                0,
-                20,
+                Pagination::try_new(0, 20, CARD_OFFERS_MAX_OFFSET).unwrap(),
             )
             .await;
 
@@ -139,7 +139,7 @@ mod tests {
         mock_repo
             .expect_exists()
             .returning(|_| Box::pin(async { Ok(true) }));
-        mock_repo.expect_get_offers().returning(|_, _, _, _, _| {
+        mock_repo.expect_get_offers().returning(|_, _, _, _| {
             Box::pin(async {
                 Err(AppError::Infra(InfraError::RepositoryError(
                     "db error".to_string(),
@@ -153,8 +153,7 @@ mod tests {
                 &UserId::new("user-1"),
                 card_id(),
                 CardOfferSortField::SellingPrice,
-                0,
-                20,
+                Pagination::try_new(0, 20, CARD_OFFERS_MAX_OFFSET).unwrap(),
             )
             .await;
 

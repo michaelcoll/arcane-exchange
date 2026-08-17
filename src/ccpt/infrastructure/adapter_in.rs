@@ -25,6 +25,8 @@ impl IntoResponse for AppError {
                 | FunctionalError::InvalidRarityCode(_)
                 | FunctionalError::InvalidCollectorNumber(_)
                 | FunctionalError::WrongFormat(_)
+                | FunctionalError::InvalidPageSize { .. }
+                | FunctionalError::PaginationTooDeep { .. }
                 | FunctionalError::SelfTrade => StatusCode::BAD_REQUEST,
                 FunctionalError::PriceNotFound
                 | FunctionalError::CardNotFound
@@ -226,6 +228,26 @@ mod tests {
         let error = AppError::Functional(FunctionalError::CardAlreadyReserved);
         let response = error.into_response();
         assert_eq!(response.status(), StatusCode::CONFLICT);
+    }
+
+    #[test]
+    fn invalid_page_size_returns_bad_request_status() {
+        let error = AppError::Functional(FunctionalError::InvalidPageSize {
+            requested: 0,
+            max: 100,
+        });
+        let response = error.into_response();
+        assert_eq!(response.status(), StatusCode::BAD_REQUEST);
+    }
+
+    #[test]
+    fn pagination_too_deep_returns_bad_request_status() {
+        let error = AppError::Functional(FunctionalError::PaginationTooDeep {
+            requested_offset: 500,
+            max: 100,
+        });
+        let response = error.into_response();
+        assert_eq!(response.status(), StatusCode::BAD_REQUEST);
     }
 
     #[test]

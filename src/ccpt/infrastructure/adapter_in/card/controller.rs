@@ -3,8 +3,10 @@ use super::dto::{
     PriceHistoryParams,
 };
 use crate::application::error::AppError;
+use crate::application::service::card_offer_service::CARD_OFFERS_MAX_OFFSET;
 use crate::domain::card::CardId;
 use crate::domain::language_code::LanguageCode;
+use crate::domain::pagination::Pagination;
 use crate::infrastructure::AppState;
 use crate::infrastructure::adapter_in::auth_extractor::AuthenticatedUser;
 use axum::extract::{Path, Query, State};
@@ -94,12 +96,12 @@ pub(crate) async fn get_card_price_history(
         ("language_code" = String, Query, description = "Card's language code"),
         ("foil" = bool, Query, description = "Whether the card is foil"),
         ("sort_by" = Option<super::dto::CardOffersSortByParam>, Query, description = "Sort field (only selling_price supported for now)"),
-        ("page" = Option<u32>, Query, description = "Page number (starts at 0, max 10)"),
-        ("page_size" = Option<u32>, Query, description = "Items per page (1 to 100)"),
+        ("page" = Option<u32>, Query, description = "Page number, 0-based (default 0). `page * page_size` must not exceed 60"),
+        ("page_size" = Option<u32>, Query, description = "Items per page, 1 to 100 (default 20)"),
     ),
     responses(
         (status = 200, description = "Paginated list of sale offers for this card", body = PaginatedCardOffersResponse),
-        (status = 400, description = "Invalid or missing query params"),
+        (status = 400, description = "Invalid or missing query params, or pagination out of bounds"),
         (status = 401, description = "Missing or invalid token"),
         (status = 404, description = "No card found for this CardId"),
     ),
@@ -118,12 +120,11 @@ pub(crate) async fn get_card_offers(
         language_code,
         params.foil,
     )?;
-    let page_size = params.page_size.clamp(1, state.max_page_size);
-    let page = params.page.min(state.max_page_number);
+    let pagination = Pagination::try_new(params.page, params.page_size, CARD_OFFERS_MAX_OFFSET)?;
 
     let result = state
         .get_card_offers_use_case
-        .get_card_offers(&user.id, card_id, params.sort_by.into(), page, page_size)
+        .get_card_offers(&user.id, card_id, params.sort_by.into(), pagination)
         .await?;
 
     Ok(axum::Json(PaginatedCardOffersResponse {
@@ -133,7 +134,7 @@ pub(crate) async fn get_card_offers(
             .map(CardOfferResponse::from)
             .collect(),
         total: result.total,
-        page: result.page,
-        page_size: result.page_size,
+        page: result.pagination.page(),
+        page_size: result.pagination.page_size(),
     }))
 }

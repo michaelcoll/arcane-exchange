@@ -4,6 +4,7 @@ pub mod collection;
 pub mod collection_stats;
 pub mod error;
 pub mod language_code;
+pub mod pagination;
 pub mod price;
 pub mod rarity_code;
 pub mod rarity_trade_filter;

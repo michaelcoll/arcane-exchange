@@ -1,5 +1,6 @@
 use crate::domain::card::CollectionEntry;
 use crate::domain::card_offer::CardOfferSortField;
+use crate::infrastructure::adapter_in::collection::dto::default_page_size;
 use chrono::NaiveDate;
 use serde::{Deserialize, Serialize};
 use ts_rs::TS;
@@ -31,10 +32,6 @@ pub struct PriceHistoryEntryResponse {
 }
 
 // --- Offers ---
-
-pub(crate) fn default_page_size() -> u32 {
-    6
-}
 
 #[derive(Deserialize, Default, TS, ToSchema)]
 #[serde(rename = "CardOffersSortBy", rename_all = "snake_case")]

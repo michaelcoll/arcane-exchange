@@ -109,8 +109,6 @@ mod tests {
             remove_trade_binder_use_case: Arc::new(MockRemoveTradeBinderUseCase::new()),
             get_rarity_trade_filters_use_case: Arc::new(MockGetRarityTradeFiltersUseCase::new()),
             set_rarity_trade_filter_use_case: Arc::new(MockSetRarityTradeFilterUseCase::new()),
-            max_page_size: 100,
-            max_page_number: 10,
         }
     }
 

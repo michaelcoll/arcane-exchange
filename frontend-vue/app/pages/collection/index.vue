@@ -73,9 +73,16 @@ watch(
   },
 );
 
-const hasMore = computed(() =>
+const moreResultsExist = computed(() =>
   collectionData.value ? allCards.value.length < collectionData.value.total : false,
 );
+const withinOffsetLimit = computed(() =>
+  canLoadPage(params.value.page + 1, params.value.page_size, COLLECTION_MAX_OFFSET),
+);
+const hasMore = computed(() => moreResultsExist.value && withinOffsetLimit.value);
+// Distinct from "no more results": there are more cards, but paging further would hit the
+// backend's offset limit. Surfaced so the stop doesn't read as an empty/bugged list.
+const offsetLimitReached = computed(() => moreResultsExist.value && !withinOffsetLimit.value);
 
 const sentinel = ref<HTMLElement | null>(null);
 let io: IntersectionObserver | null = null;
@@ -552,6 +559,13 @@ const onDragLeave = () => {
           >
             <Icon name="lucide:loader-circle" :size="16" class="mr-2 animate-spin" />
             Chargement…
+          </div>
+          <div
+            v-else-if="offsetLimitReached"
+            class="flex items-center justify-center py-8 text-center font-mono text-sm text-slate-400 dark:text-slate-500"
+          >
+            Affichage limité aux {{ allCards.length }} premières cartes — affine tes filtres pour
+            voir le reste.
           </div>
         </template>
       </div>

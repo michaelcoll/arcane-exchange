@@ -1,11 +1,13 @@
 use super::controller::*;
 use super::dto::*;
 use crate::application::error::{AppError, InfraError};
+use crate::application::service::collection_service::COLLECTION_MAX_OFFSET;
 use crate::application::use_case::MockGetCollectionUseCase;
 use crate::domain::card::{Card, CollectionEntry};
-use crate::domain::collection::{CollectionSortField, PaginatedCollection, SortDirection};
+use crate::domain::collection::{CollectionSortField, SortDirection};
 use crate::domain::error::FunctionalError;
 use crate::domain::language_code::LanguageCode;
+use crate::domain::pagination::{Paginated, Pagination};
 use crate::domain::rarity_code::RarityCode;
 use crate::domain::user::User;
 use crate::infrastructure::AppState;
@@ -84,13 +86,13 @@ fn make_card(set_code: &str, collector_number: &str) -> Card {
     )
 }
 
-fn make_paginated(items: Vec<Card>, page: u32, page_size: u32) -> PaginatedCollection {
+fn make_paginated(items: Vec<Card>, page: u32, page_size: u32) -> Paginated<Card> {
     let total = items.len() as u64;
-    PaginatedCollection {
+    let pagination = Pagination::try_new(page, page_size, COLLECTION_MAX_OFFSET).unwrap();
+    Paginated {
         items,
         total,
-        page,
-        page_size,
+        pagination,
     }
 }
 
@@ -119,6 +121,38 @@ async fn get_collection_returns_empty_response_when_collection_is_empty() {
     assert_eq!(response.total, 0);
     assert_eq!(response.page, 0);
     assert_eq!(response.page_size, 20);
+}
+
+#[tokio::test]
+async fn get_collection_returns_empty_items_with_nonzero_total_for_page_beyond_last_result() {
+    let mut mock = MockGetCollectionUseCase::new();
+    mock.expect_get_collection().returning(|_, _| {
+        Box::pin(async {
+            Ok(Paginated {
+                items: vec![],
+                total: 12,
+                pagination: Pagination::try_new(5, 20, COLLECTION_MAX_OFFSET).unwrap(),
+            })
+        })
+    });
+
+    let app_state = make_app_state_with_collection(mock);
+    let params = CollectionParams {
+        page: 5,
+        ..Default::default()
+    };
+
+    let result = get_collection(
+        AuthenticatedUser(User::for_testing()),
+        State(app_state),
+        Query(params),
+    )
+    .await;
+
+    assert!(result.is_ok());
+    let axum::Json(response) = result.unwrap();
+    assert!(response.items.is_empty());
+    assert_eq!(response.total, 12);
 }
 
 #[tokio::test]
@@ -178,14 +212,45 @@ async fn get_collection_propagates_error_from_use_case() {
 }
 
 #[tokio::test]
-async fn get_collection_caps_page_size_at_100() {
-    let mut mock = MockGetCollectionUseCase::new();
-    mock.expect_get_collection()
-        .withf(|_, q| q.page_size == 100)
-        .returning(|_, q| {
-            let page_size = q.page_size;
-            Box::pin(async move { Ok(make_paginated(vec![], 0, page_size)) })
-        });
+async fn collection_params_rejects_negative_page_with_bad_request() {
+    use axum::extract::FromRequestParts;
+    use axum::response::IntoResponse;
+
+    let request = axum::http::Request::builder()
+        .uri("/collection?page=-1&page_size=20")
+        .body(Body::empty())
+        .unwrap();
+    let (mut parts, _) = request.into_parts();
+
+    let response = match Query::<CollectionParams>::from_request_parts(&mut parts, &()).await {
+        Err(rejection) => rejection.into_response(),
+        Ok(_) => panic!("expected a rejection for page=-1"),
+    };
+    assert_eq!(response.status(), axum::http::StatusCode::BAD_REQUEST);
+}
+
+#[tokio::test]
+async fn collection_params_rejects_non_numeric_page_size_with_bad_request() {
+    use axum::extract::FromRequestParts;
+    use axum::response::IntoResponse;
+
+    let request = axum::http::Request::builder()
+        .uri("/collection?page=0&page_size=abc")
+        .body(Body::empty())
+        .unwrap();
+    let (mut parts, _) = request.into_parts();
+
+    let response = match Query::<CollectionParams>::from_request_parts(&mut parts, &()).await {
+        Err(rejection) => rejection.into_response(),
+        Ok(_) => panic!("expected a rejection for page_size=abc"),
+    };
+    assert_eq!(response.status(), axum::http::StatusCode::BAD_REQUEST);
+}
+
+#[tokio::test]
+async fn get_collection_rejects_page_size_above_max() {
+    // The use case must never be reached: the pagination is rejected before that.
+    let mock = MockGetCollectionUseCase::new();
 
     let app_state = make_app_state_with_collection(mock);
     let params = CollectionParams {
@@ -200,18 +265,78 @@ async fn get_collection_caps_page_size_at_100() {
     )
     .await;
 
+    match result.err().unwrap() {
+        AppError::Functional(FunctionalError::InvalidPageSize {
+            requested: 9999,
+            max: 100,
+        }) => {}
+        other => panic!("Expected InvalidPageSize, got {:?}", other),
+    }
+}
+
+#[tokio::test]
+async fn get_collection_rejects_offset_beyond_max() {
+    let mock = MockGetCollectionUseCase::new();
+
+    let app_state = make_app_state_with_collection(mock);
+    let params = CollectionParams {
+        page: COLLECTION_MAX_OFFSET,
+        page_size: 100,
+        ..Default::default()
+    };
+
+    let result = get_collection(
+        AuthenticatedUser(User::for_testing()),
+        State(app_state),
+        Query(params),
+    )
+    .await;
+
+    match result.err().unwrap() {
+        AppError::Functional(FunctionalError::PaginationTooDeep { max, .. }) => {
+            assert_eq!(max, COLLECTION_MAX_OFFSET);
+        }
+        other => panic!("Expected PaginationTooDeep, got {:?}", other),
+    }
+}
+
+#[tokio::test]
+async fn get_collection_accepts_low_page_size_with_high_page_under_the_offset_limit() {
+    let mut mock = MockGetCollectionUseCase::new();
+    mock.expect_get_collection().returning(|_, q| {
+        Box::pin(async move {
+            Ok(make_paginated(
+                vec![],
+                q.pagination.page(),
+                q.pagination.page_size(),
+            ))
+        })
+    });
+
+    let app_state = make_app_state_with_collection(mock);
+    let params = CollectionParams {
+        page: 400,
+        page_size: 20,
+        ..Default::default()
+    };
+
+    let result = get_collection(
+        AuthenticatedUser(User::for_testing()),
+        State(app_state),
+        Query(params),
+    )
+    .await;
+
     assert!(result.is_ok());
-    let axum::Json(response) = result.unwrap();
-    assert_eq!(response.page_size, 100);
 }
 
 #[tokio::test]
 async fn get_collection_passes_pagination_params_to_use_case() {
     let mut mock = MockGetCollectionUseCase::new();
     mock.expect_get_collection()
-        .withf(|_, q| q.page == 3 && q.page_size == 5)
+        .withf(|_, q| q.pagination.page() == 3 && q.pagination.page_size() == 5)
         .returning(|_, q| {
-            let (page, page_size) = (q.page, q.page_size);
+            let (page, page_size) = (q.pagination.page(), q.pagination.page_size());
             Box::pin(async move { Ok(make_paginated(vec![], page, page_size)) })
         });
 
@@ -379,11 +504,10 @@ async fn get_collection_preserves_total_independent_of_page_items() {
     let mut mock = MockGetCollectionUseCase::new();
     mock.expect_get_collection().returning(|_, _| {
         Box::pin(async {
-            Ok(PaginatedCollection {
+            Ok(Paginated {
                 items: vec![make_card("FDN", "1")],
                 total: 42,
-                page: 2,
-                page_size: 1,
+                pagination: Pagination::try_new(2, 1, COLLECTION_MAX_OFFSET).unwrap(),
             })
         })
     });

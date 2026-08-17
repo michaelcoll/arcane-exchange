@@ -1,4 +1,5 @@
 use crate::domain::card::CardId;
+use crate::domain::pagination::Pagination;
 use crate::domain::price::PriceGuide;
 use crate::domain::user::UserId;
 use chrono::{DateTime, Utc};
@@ -133,20 +134,11 @@ pub struct TradeSummary {
     pub updated_at: DateTime<Utc>,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct PaginatedTrades {
-    pub items: Vec<TradeSummary>,
-    pub total: u64,
-    pub page: u32,
-    pub page_size: u32,
-}
-
 /// `statuses` empty means no filter (every status included).
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct TradeListQuery {
     pub statuses: Vec<TradeStatus>,
-    pub page: u32,
-    pub page_size: u32,
+    pub pagination: Pagination,
 }
 
 #[cfg(test)]

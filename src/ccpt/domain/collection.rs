@@ -1,4 +1,4 @@
-use crate::domain::card::Card;
+use crate::domain::pagination::Pagination;
 use crate::domain::rarity_code::RarityCode;
 use std::fmt;
 
@@ -38,10 +38,9 @@ impl fmt::Display for SortDirection {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Default)]
 pub struct CollectionQuery {
-    pub page: u32,
-    pub page_size: u32,
+    pub pagination: Pagination,
     pub sort_by: CollectionSortField,
     pub sort_dir: SortDirection,
     pub search_query: Option<String>,
@@ -49,22 +48,6 @@ pub struct CollectionQuery {
     pub sets: Vec<String>,
     pub price_min: Option<u32>,
     pub price_max: Option<u32>,
-}
-
-impl Default for CollectionQuery {
-    fn default() -> Self {
-        Self {
-            page: 0,
-            page_size: 20,
-            sort_by: CollectionSortField::default(),
-            sort_dir: SortDirection::default(),
-            search_query: None,
-            rarity: Vec::new(),
-            sets: Vec::new(),
-            price_min: None,
-            price_max: None,
-        }
-    }
 }
 
 /// A search across every user's cards, adding an optional exact-match filter on the
@@ -82,14 +65,6 @@ impl From<CollectionQuery> for SearchQuery {
             player_username: None,
         }
     }
-}
-
-#[derive(Clone, Debug)]
-pub struct PaginatedCollection {
-    pub items: Vec<Card>,
-    pub total: u64,
-    pub page: u32,
-    pub page_size: u32,
 }
 
 #[cfg(test)]
@@ -125,8 +100,8 @@ mod tests {
     #[test]
     fn collection_query_default_values() {
         let q = CollectionQuery::default();
-        assert_eq!(q.page, 0);
-        assert_eq!(q.page_size, 20);
+        assert_eq!(q.pagination.page(), 0);
+        assert_eq!(q.pagination.page_size(), 20);
         assert_eq!(q.sort_by, CollectionSortField::Trend);
         assert_eq!(q.sort_dir, SortDirection::Desc);
         assert_eq!(q.search_query, None);

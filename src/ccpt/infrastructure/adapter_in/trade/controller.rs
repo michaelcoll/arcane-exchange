@@ -3,9 +3,11 @@ use super::dto::{
     PaginatedTradesResponse, RateTradeRequest, RemoveTradeCardRequest, TradeDetailResponse,
 };
 use crate::application::error::AppError;
+use crate::application::service::trade_service::TRADES_MAX_OFFSET;
 use crate::domain::card::CardId;
 use crate::domain::error::FunctionalError;
 use crate::domain::language_code::LanguageCode;
+use crate::domain::pagination::Pagination;
 use crate::domain::trade::{TradeId, TradeListQuery};
 use crate::infrastructure::AppState;
 use crate::infrastructure::adapter_in::auth_extractor::AuthenticatedUser;
@@ -292,13 +294,13 @@ pub(crate) async fn get_trade(
     get,
     path = "/trades",
     params(
-        ("page" = Option<u32>, Query, description = "Page number (starts at 0)"),
-        ("page_size" = Option<u32>, Query, description = "Items per page (max 100)"),
+        ("page" = Option<u32>, Query, description = "Page number, 0-based (default 0). `page * page_size` must not exceed 2000"),
+        ("page_size" = Option<u32>, Query, description = "Items per page, 1 to 100 (default 20)"),
         ("status" = Option<Vec<super::dto::TradeStatusParam>>, Query, description = "Trade status, repeated for multiple values (e.g. status=PENDING&status=CLOSED)"),
     ),
     responses(
         (status = 200, description = "Paginated list of trades the caller is a party to", body = PaginatedTradesResponse),
-        (status = 400, description = "Invalid status filter"),
+        (status = 400, description = "Invalid status filter, or pagination out of bounds"),
         (status = 401, description = "Missing or invalid token"),
     ),
     security(("bearer_auth" = [])),
@@ -309,13 +311,11 @@ pub(crate) async fn list_trades(
     State(state): State<AppState>,
     Query(params): Query<ListTradesParams>,
 ) -> Result<axum::Json<PaginatedTradesResponse>, AppError> {
-    let page_size = params.page_size.clamp(1, state.max_page_size);
-    let page = params.page.min(state.max_page_number);
+    let pagination = Pagination::try_new(params.page, params.page_size, TRADES_MAX_OFFSET)?;
 
     let query = TradeListQuery {
         statuses: params.status.into_iter().map(Into::into).collect(),
-        page,
-        page_size,
+        pagination,
     };
 
     let result = state
@@ -330,7 +330,7 @@ pub(crate) async fn list_trades(
             .map(super::dto::TradeSummaryResponse::from)
             .collect(),
         total: result.total,
-        page: result.page,
-        page_size: result.page_size,
+        page: result.pagination.page(),
+        page_size: result.pagination.page_size(),
     }))
 }

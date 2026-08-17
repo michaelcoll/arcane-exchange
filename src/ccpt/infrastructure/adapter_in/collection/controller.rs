@@ -4,8 +4,10 @@ use super::dto::{
     SetRarityFilterRequest,
 };
 use crate::application::error::AppError;
+use crate::application::service::collection_service::COLLECTION_MAX_OFFSET;
 use crate::domain::collection::CollectionQuery;
 use crate::domain::error::FunctionalError;
+use crate::domain::pagination::Pagination;
 use crate::domain::rarity_code::RarityCode;
 use crate::domain::rarity_trade_filter::RarityTradeFilterRule;
 use crate::infrastructure::AppState;
@@ -74,8 +76,8 @@ pub(crate) async fn import_cards(
     get,
     path = "/collection",
     params(
-        ("page" = Option<u32>, Query, description = "Page number (starts at 0)"),
-        ("page_size" = Option<u32>, Query, description = "Items per page (max 100)"),
+        ("page" = Option<u32>, Query, description = "Page number, 0-based (default 0). `page * page_size` must not exceed 10000"),
+        ("page_size" = Option<u32>, Query, description = "Items per page, 1 to 100 (default 20)"),
         ("sort_by" = Option<super::dto::SortByParam>, Query, description = "Sort field"),
         ("sort_dir" = Option<super::dto::SortDirParam>, Query, description = "Sort direction"),
         ("q" = Option<String>, Query, description = "Fuzzy search on card name or set"),
@@ -86,6 +88,7 @@ pub(crate) async fn import_cards(
     ),
     responses(
         (status = 200, description = "Paginated card collection", body = PaginatedCollectionResponse),
+        (status = 400, description = "Pagination out of bounds"),
         (status = 401, description = "Missing or invalid token"),
     ),
     security(("bearer_auth" = [])),
@@ -96,7 +99,7 @@ pub(crate) async fn get_collection(
     State(state): State<AppState>,
     Query(params): Query<CollectionParams>,
 ) -> Result<axum::Json<PaginatedCollectionResponse>, AppError> {
-    let page_size = params.page_size.min(state.max_page_size);
+    let pagination = Pagination::try_new(params.page, params.page_size, COLLECTION_MAX_OFFSET)?;
 
     let rarity = params.rarity.into_iter().map(Into::into).collect();
 
@@ -111,8 +114,7 @@ pub(crate) async fn get_collection(
         .collect::<Vec<_>>();
 
     let query = CollectionQuery {
-        page: params.page,
-        page_size,
+        pagination,
         sort_by: params.sort_by.into(),
         sort_dir: params.sort_dir.into(),
         search_query: params.q,
@@ -134,8 +136,8 @@ pub(crate) async fn get_collection(
             .map(CollectionCardResponse::from)
             .collect(),
         total: result.total,
-        page: result.page,
-        page_size: result.page_size,
+        page: result.pagination.page(),
+        page_size: result.pagination.page_size(),
     }))
 }
 

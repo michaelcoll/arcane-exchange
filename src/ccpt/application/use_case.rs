@@ -1,14 +1,15 @@
 use crate::application::error::AppError;
 use async_trait::async_trait;
 
-use crate::domain::card::CardId;
-use crate::domain::card_offer::{CardOfferSortField, PaginatedCardOffers};
-use crate::domain::collection::{CollectionQuery, PaginatedCollection, SearchQuery};
+use crate::domain::card::{Card, CardId, CollectionEntry};
+use crate::domain::card_offer::CardOfferSortField;
+use crate::domain::collection::{CollectionQuery, SearchQuery};
 use crate::domain::collection_stats::CollectionStats;
+use crate::domain::pagination::{Paginated, Pagination};
 use crate::domain::price::PriceHistoryEntry;
 use crate::domain::rarity_trade_filter::{RarityTradeFilter, RarityTradeFilterRule};
 use crate::domain::stats::Stats;
-use crate::domain::trade::{PaginatedTrades, TradeDetail, TradeId, TradeListQuery};
+use crate::domain::trade::{TradeDetail, TradeId, TradeListQuery, TradeSummary};
 use crate::domain::user::{CollectionVisibility, User, UserId, UserSuggestion};
 #[cfg(test)]
 use mockall::automock;
@@ -119,13 +120,13 @@ pub trait GetCollectionUseCase: Send + Sync {
         &self,
         user_id: &UserId,
         query: CollectionQuery,
-    ) -> Result<PaginatedCollection, AppError>;
+    ) -> Result<Paginated<Card>, AppError>;
 }
 
 #[async_trait]
 #[cfg_attr(test, automock)]
 pub trait SearchCardsUseCase: Send + Sync {
-    async fn search_cards(&self, query: SearchQuery) -> Result<PaginatedCollection, AppError>;
+    async fn search_cards(&self, query: SearchQuery) -> Result<Paginated<Card>, AppError>;
 }
 
 #[async_trait]
@@ -164,9 +165,8 @@ pub trait GetCardOffersUseCase: Send + Sync {
         user_id: &UserId,
         card_id: CardId,
         sort_by: CardOfferSortField,
-        page: u32,
-        page_size: u32,
-    ) -> Result<PaginatedCardOffers, AppError>;
+        pagination: Pagination,
+    ) -> Result<Paginated<CollectionEntry>, AppError>;
 }
 
 #[async_trait]
@@ -251,5 +251,5 @@ pub trait ListTradesUseCase: Send + Sync {
         &self,
         caller_id: UserId,
         query: TradeListQuery,
-    ) -> Result<PaginatedTrades, AppError>;
+    ) -> Result<Paginated<TradeSummary>, AppError>;
 }

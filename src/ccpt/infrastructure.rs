@@ -113,8 +113,6 @@ pub struct AppState {
     pub remove_trade_binder_use_case: Arc<dyn RemoveTradeBinderUseCase>,
     pub get_rarity_trade_filters_use_case: Arc<dyn GetRarityTradeFiltersUseCase>,
     pub set_rarity_trade_filter_use_case: Arc<dyn SetRarityTradeFilterUseCase>,
-    pub max_page_size: u32,
-    pub max_page_number: u32,
 }
 
 // ---- Repositories ----
@@ -255,7 +253,6 @@ fn create_app_state(
     card_collection_service: Arc<CardCollectionService>,
     enqueue_cardmarket_id_use_case: Arc<CardMarketIdEnqueueService>,
     enqueue_gatherer_id_use_case: Arc<GathererIdEnqueueService>,
-    config: &Config,
 ) -> AppState {
     let import_card_service = Arc::new(ImportCardService::new(
         repos.card.clone(),
@@ -364,8 +361,6 @@ fn create_app_state(
         remove_trade_binder_use_case: remove_trade_binder_service,
         get_rarity_trade_filters_use_case: get_rarity_trade_filters_service,
         set_rarity_trade_filter_use_case: set_rarity_trade_filter_service,
-        max_page_size: config.max_page_size,
-        max_page_number: config.max_page_number,
     }
 }
 
@@ -424,7 +419,6 @@ pub async fn create_infra(pool: Pool<Postgres>, config: &Config) -> Router {
         card_collection_service,
         enqueue_cardmarket_id_use_case,
         enqueue_gatherer_id_use_case,
-        config,
     );
 
     schedule_price_import_job(app_state.import_price_use_case.clone()).await;
@@ -519,8 +513,6 @@ impl AppState {
             remove_trade_binder_use_case: Arc::new(MockRemoveTradeBinderUseCase::new()),
             get_rarity_trade_filters_use_case: Arc::new(MockGetRarityTradeFiltersUseCase::new()),
             set_rarity_trade_filter_use_case: Arc::new(MockSetRarityTradeFilterUseCase::new()),
-            max_page_size: 100,
-            max_page_number: 10,
         }
     }
 
