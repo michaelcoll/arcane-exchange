@@ -7,13 +7,18 @@ use crate::application::use_case::{
 };
 use crate::domain::card::CardId;
 use crate::domain::error::FunctionalError;
+use crate::domain::pagination::Paginated;
 use crate::domain::trade::{
-    PaginatedTrades, Trade, TradeDetail, TradeId, TradeListQuery, TradePartyState, TradeStatus,
+    Trade, TradeDetail, TradeId, TradeListQuery, TradePartyState, TradeStatus, TradeSummary,
 };
 use crate::domain::user::UserId;
 use async_trait::async_trait;
 use std::sync::Arc;
 use tokio::sync::Mutex;
+
+/// Trade history is bounded by how many trades a user can realistically accumulate, so it
+/// needs less depth than the collection or search endpoints, but more than card offers.
+pub(crate) const TRADES_MAX_OFFSET: u32 = 2_000;
 
 /// Determines whether `caller_id` is the initiator (`true`) or the respondent (`false`) of
 /// `trade`. Fails when the caller is neither.
@@ -545,7 +550,7 @@ impl ListTradesUseCase for ListTradesService {
         &self,
         caller_id: UserId,
         query: TradeListQuery,
-    ) -> Result<PaginatedTrades, AppError> {
+    ) -> Result<Paginated<TradeSummary>, AppError> {
         self.trade_repository.list_trades(&caller_id, query).await
     }
 }
@@ -555,6 +560,7 @@ mod tests {
     use super::*;
     use crate::application::repository::{MockTradeRepository, MockUserRepository};
     use crate::domain::language_code::LanguageCode;
+    use crate::domain::pagination::Pagination;
     use crate::domain::trade::{TradeCard, TradeCardDetail};
     use crate::domain::user::User;
 
@@ -2449,8 +2455,7 @@ mod tests {
     async fn list_trades_delegates_to_repository_with_caller_id_and_query() {
         let query = TradeListQuery {
             statuses: vec![TradeStatus::Pending],
-            page: 0,
-            page_size: 20,
+            pagination: Pagination::try_new(0, 20, TRADES_MAX_OFFSET).unwrap(),
         };
         let mut mock_repository = MockTradeRepository::new();
         mock_repository
@@ -2461,11 +2466,10 @@ mod tests {
             })
             .returning(|_, query| {
                 Box::pin(async move {
-                    Ok(PaginatedTrades {
+                    Ok(Paginated {
                         items: vec![],
                         total: 0,
-                        page: query.page,
-                        page_size: query.page_size,
+                        pagination: query.pagination,
                     })
                 })
             });

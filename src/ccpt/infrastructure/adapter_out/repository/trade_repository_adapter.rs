@@ -1,9 +1,9 @@
 use crate::application::error::AppError;
 use crate::application::repository::TradeRepository;
 use crate::domain::card::CardId;
+use crate::domain::pagination::Paginated;
 use crate::domain::trade::{
-    PaginatedTrades, Trade, TradeCard, TradeCardDetail, TradeId, TradeListQuery, TradeStatus,
-    TradeSummary,
+    Trade, TradeCard, TradeCardDetail, TradeId, TradeListQuery, TradeStatus, TradeSummary,
 };
 use crate::domain::user::UserId;
 use crate::infrastructure::adapter_out::repository::entities::{
@@ -190,7 +190,7 @@ impl TradeRepository for TradeRepositoryAdapter {
         &self,
         caller_id: &UserId,
         query: TradeListQuery,
-    ) -> Result<PaginatedTrades, AppError> {
+    ) -> Result<Paginated<TradeSummary>, AppError> {
         let statuses: Option<Vec<String>> = if query.statuses.is_empty() {
             None
         } else {
@@ -202,8 +202,8 @@ impl TradeRepository for TradeRepositoryAdapter {
                     .collect(),
             )
         };
-        let limit = query.page_size as i64;
-        let offset = (query.page * query.page_size) as i64;
+        let limit = i64::from(query.pagination.limit());
+        let offset = i64::from(query.pagination.offset());
 
         let rows = sqlx::query_as!(
             TradeSummaryEntity,
@@ -238,11 +238,10 @@ impl TradeRepository for TradeRepositoryAdapter {
         .await?
         .unwrap_or(0);
 
-        Ok(PaginatedTrades {
+        Ok(Paginated {
             items: rows.into_iter().map(TradeSummary::from).collect(),
             total: total as u64,
-            page: query.page,
-            page_size: query.page_size,
+            pagination: query.pagination,
         })
     }
 
@@ -479,7 +478,9 @@ impl TradeRepository for TradeRepositoryAdapter {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::application::service::trade_service::TRADES_MAX_OFFSET;
     use crate::domain::language_code::LanguageCode;
+    use crate::domain::pagination::Pagination;
     use crate::infrastructure::adapter_out::repository::common_repository_tests::{
         insert_card, insert_card_with_rarity, insert_collection_entry,
         insert_collection_entry_with_binder, insert_price, insert_rarity_filter, insert_trade,
@@ -2021,8 +2022,7 @@ mod tests {
                 &UserId::new("user_a"),
                 TradeListQuery {
                     statuses: vec![],
-                    page: 0,
-                    page_size: 20,
+                    pagination: Pagination::try_new(0, 20, TRADES_MAX_OFFSET).unwrap(),
                 },
             )
             .await
@@ -2045,8 +2045,7 @@ mod tests {
                 &UserId::new("user_a"),
                 TradeListQuery {
                     statuses: vec![],
-                    page: 0,
-                    page_size: 20,
+                    pagination: Pagination::try_new(0, 20, TRADES_MAX_OFFSET).unwrap(),
                 },
             )
             .await
@@ -2069,8 +2068,7 @@ mod tests {
                 &UserId::new("user_a"),
                 TradeListQuery {
                     statuses: vec![TradeStatus::Closed],
-                    page: 0,
-                    page_size: 20,
+                    pagination: Pagination::try_new(0, 20, TRADES_MAX_OFFSET).unwrap(),
                 },
             )
             .await
@@ -2108,8 +2106,7 @@ mod tests {
                 &UserId::new("user_a"),
                 TradeListQuery {
                     statuses: vec![],
-                    page: 0,
-                    page_size: 20,
+                    pagination: Pagination::try_new(0, 20, TRADES_MAX_OFFSET).unwrap(),
                 },
             )
             .await
@@ -2133,8 +2130,7 @@ mod tests {
                 &UserId::new("user_a"),
                 TradeListQuery {
                     statuses: vec![],
-                    page: 0,
-                    page_size: 2,
+                    pagination: Pagination::try_new(0, 2, TRADES_MAX_OFFSET).unwrap(),
                 },
             )
             .await
@@ -2144,8 +2140,7 @@ mod tests {
                 &UserId::new("user_a"),
                 TradeListQuery {
                     statuses: vec![],
-                    page: 1,
-                    page_size: 2,
+                    pagination: Pagination::try_new(1, 2, TRADES_MAX_OFFSET).unwrap(),
                 },
             )
             .await
@@ -2154,7 +2149,7 @@ mod tests {
         assert_eq!(page0.items.len(), 2);
         assert_eq!(page1.items.len(), 2);
         assert_eq!(page0.total, 5);
-        assert_eq!(page0.page_size, 2);
+        assert_eq!(page0.pagination.page_size(), 2);
     }
 
     #[sqlx::test]
@@ -2174,8 +2169,7 @@ mod tests {
                 &UserId::new("user_a"),
                 TradeListQuery {
                     statuses: vec![],
-                    page: 0,
-                    page_size: 20,
+                    pagination: Pagination::try_new(0, 20, TRADES_MAX_OFFSET).unwrap(),
                 },
             )
             .await
@@ -2202,8 +2196,7 @@ mod tests {
                 &UserId::new("user_a"),
                 TradeListQuery {
                     statuses: vec![],
-                    page: 0,
-                    page_size: 20,
+                    pagination: Pagination::try_new(0, 20, TRADES_MAX_OFFSET).unwrap(),
                 },
             )
             .await

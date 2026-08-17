@@ -1,6 +1,8 @@
 use super::dto::SearchParams;
 use crate::application::error::AppError;
+use crate::application::service::search_service::SEARCH_MAX_OFFSET;
 use crate::domain::collection::{CollectionQuery, SearchQuery};
+use crate::domain::pagination::Pagination;
 use crate::infrastructure::AppState;
 use crate::infrastructure::adapter_in::auth_extractor::AuthenticatedUser;
 use crate::infrastructure::adapter_in::collection::dto::{
@@ -18,8 +20,8 @@ pub fn create_search_router() -> axum::Router<AppState> {
     get,
     path = "/search/card",
     params(
-        ("page" = Option<u32>, Query, description = "Page number (starts at 0)"),
-        ("page_size" = Option<u32>, Query, description = "Items per page (max 100)"),
+        ("page" = Option<u32>, Query, description = "Page number, 0-based (default 0). `page * page_size` must not exceed 10000"),
+        ("page_size" = Option<u32>, Query, description = "Items per page, 1 to 100 (default 20)"),
         ("sort_by" = Option<super::dto::SortByParam>, Query, description = "Sort field"),
         ("sort_dir" = Option<super::dto::SortDirParam>, Query, description = "Sort direction"),
         ("q" = Option<String>, Query, description = "Fuzzy search on card name or set"),
@@ -31,6 +33,7 @@ pub fn create_search_router() -> axum::Router<AppState> {
     ),
     responses(
         (status = 200, description = "Paginated card search results", body = PaginatedCollectionResponse),
+        (status = 400, description = "Pagination out of bounds"),
         (status = 401, description = "Missing or invalid token"),
     ),
     security(("bearer_auth" = [])),
@@ -41,7 +44,7 @@ pub(crate) async fn search_cards(
     State(state): State<AppState>,
     Query(params): Query<SearchParams>,
 ) -> Result<axum::Json<PaginatedCollectionResponse>, AppError> {
-    let page_size = params.page_size.min(state.max_page_size);
+    let pagination = Pagination::try_new(params.page, params.page_size, SEARCH_MAX_OFFSET)?;
 
     let rarity = params.rarity.into_iter().map(Into::into).collect();
 
@@ -64,8 +67,7 @@ pub(crate) async fn search_cards(
 
     let query = SearchQuery {
         collection_query: CollectionQuery {
-            page: params.page,
-            page_size,
+            pagination,
             sort_by: params.sort_by.into(),
             sort_dir: params.sort_dir.into(),
             search_query: params.q,
@@ -86,7 +88,7 @@ pub(crate) async fn search_cards(
             .map(CollectionCardResponse::from)
             .collect(),
         total: result.total,
-        page: result.page,
-        page_size: result.page_size,
+        page: result.pagination.page(),
+        page_size: result.pagination.page_size(),
     }))
 }

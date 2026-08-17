@@ -1,8 +1,9 @@
 use crate::application::error::{AppError, InfraError};
 use crate::application::repository::CardPricesViewRepository;
 use crate::domain::card::{Card, CardId, CollectionEntry};
-use crate::domain::card_offer::{CardOfferSortField, PaginatedCardOffers};
-use crate::domain::collection::{CollectionQuery, PaginatedCollection, SearchQuery};
+use crate::domain::card_offer::CardOfferSortField;
+use crate::domain::collection::{CollectionQuery, SearchQuery};
+use crate::domain::pagination::{Paginated, Pagination};
 use crate::domain::user::UserId;
 use crate::infrastructure::adapter_out::repository::entities::{
     CardOfferEntity, CardWithPriceEntity,
@@ -82,7 +83,7 @@ impl CardPricesViewRepositoryAdapter {
         user_id: Option<&UserId>,
         query: CollectionQuery,
         player_username: Option<&str>,
-    ) -> Result<PaginatedCollection, AppError> {
+    ) -> Result<Paginated<Card>, AppError> {
         let limit_idx = if user_id.is_some() { 2 } else { 1 };
         let offset_idx = limit_idx + 1;
         let (filter_clause, order_prefix, _) =
@@ -175,8 +176,8 @@ impl CardPricesViewRepositoryAdapter {
             query.sort_by, query.sort_dir,
         );
 
-        let offset = (query.page * query.page_size) as i64;
-        let limit = query.page_size as i64;
+        let offset = i64::from(query.pagination.offset());
+        let limit = i64::from(query.pagination.limit());
 
         let mut base_query = query_as::<_, CardWithPriceEntity>(AssertSqlSafe(sql.as_str()));
         if let Some(uid) = user_id {
@@ -258,11 +259,10 @@ impl CardPricesViewRepositoryAdapter {
             .await
             .map_err(|e| AppError::Infra(InfraError::RepositoryError(e.to_string())))?;
 
-        Ok(PaginatedCollection {
+        Ok(Paginated {
             items: entities.into_iter().map(Card::from).collect(),
             total: total as u64,
-            page: query.page,
-            page_size: query.page_size,
+            pagination: query.pagination,
         })
     }
 }
@@ -281,11 +281,11 @@ impl CardPricesViewRepository for CardPricesViewRepositoryAdapter {
         &self,
         user_id: &UserId,
         query: CollectionQuery,
-    ) -> Result<PaginatedCollection, AppError> {
+    ) -> Result<Paginated<Card>, AppError> {
         self.fetch_paginated(Some(user_id), query, None).await
     }
 
-    async fn search_paginated(&self, query: SearchQuery) -> Result<PaginatedCollection, AppError> {
+    async fn search_paginated(&self, query: SearchQuery) -> Result<Paginated<Card>, AppError> {
         self.fetch_paginated(
             None,
             query.collection_query,
@@ -315,11 +315,10 @@ impl CardPricesViewRepository for CardPricesViewRepositoryAdapter {
         user_id: &UserId,
         card_id: &CardId,
         sort_by: CardOfferSortField,
-        page: u32,
-        page_size: u32,
-    ) -> Result<PaginatedCardOffers, AppError> {
-        let offset = (page * page_size) as i64;
-        let limit = page_size as i64;
+        pagination: Pagination,
+    ) -> Result<Paginated<CollectionEntry>, AppError> {
+        let offset = i64::from(pagination.offset());
+        let limit = i64::from(pagination.limit());
 
         let entities = match sort_by {
             CardOfferSortField::SellingPrice => sqlx::query_as!(
@@ -371,11 +370,10 @@ impl CardPricesViewRepository for CardPricesViewRepositoryAdapter {
         .map_err(|e| AppError::Infra(InfraError::RepositoryError(e.to_string())))?
         .unwrap_or(0);
 
-        Ok(PaginatedCardOffers {
+        Ok(Paginated {
             items: entities.into_iter().map(CollectionEntry::from).collect(),
             total: total as u64,
-            page,
-            page_size,
+            pagination,
         })
     }
 }
@@ -383,6 +381,9 @@ impl CardPricesViewRepository for CardPricesViewRepositoryAdapter {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::application::service::card_offer_service::CARD_OFFERS_MAX_OFFSET;
+    use crate::application::service::collection_service::COLLECTION_MAX_OFFSET;
+    use crate::application::service::search_service::SEARCH_MAX_OFFSET;
     use crate::domain::collection::{CollectionSortField, SortDirection};
     use crate::domain::rarity_code::RarityCode;
     use crate::infrastructure::adapter_out::repository::common_repository_tests::{
@@ -671,8 +672,7 @@ mod tests {
 
         let adapter = CardPricesViewRepositoryAdapter::new(pool);
         let query = CollectionQuery {
-            page: 0,
-            page_size: 2,
+            pagination: Pagination::try_new(0, 2, COLLECTION_MAX_OFFSET).unwrap(),
             ..CollectionQuery::default()
         };
         let result = adapter
@@ -682,7 +682,7 @@ mod tests {
 
         assert_eq!(result.items.len(), 2);
         assert_eq!(result.total, 5);
-        assert_eq!(result.page_size, 2);
+        assert_eq!(result.pagination.page_size(), 2);
     }
 
     #[sqlx::test]
@@ -700,13 +700,11 @@ mod tests {
 
         let adapter = CardPricesViewRepositoryAdapter::new(pool);
         let query_page0 = CollectionQuery {
-            page: 0,
-            page_size: 2,
+            pagination: Pagination::try_new(0, 2, COLLECTION_MAX_OFFSET).unwrap(),
             ..CollectionQuery::default()
         };
         let query_page1 = CollectionQuery {
-            page: 1,
-            page_size: 2,
+            pagination: Pagination::try_new(1, 2, COLLECTION_MAX_OFFSET).unwrap(),
             ..CollectionQuery::default()
         };
 
@@ -721,8 +719,8 @@ mod tests {
 
         assert_eq!(page0.items.len(), 2);
         assert_eq!(page1.items.len(), 2);
-        assert_eq!(page0.page, 0);
-        assert_eq!(page1.page, 1);
+        assert_eq!(page0.pagination.page(), 0);
+        assert_eq!(page1.pagination.page(), 1);
 
         let ids_page0: Vec<_> = page0
             .items
@@ -836,8 +834,7 @@ mod tests {
 
         let adapter = CardPricesViewRepositoryAdapter::new(pool);
         let query = CollectionQuery {
-            page: 5,
-            page_size: 10,
+            pagination: Pagination::try_new(5, 10, COLLECTION_MAX_OFFSET).unwrap(),
             ..CollectionQuery::default()
         };
         let result = adapter
@@ -847,7 +844,7 @@ mod tests {
 
         assert!(result.items.is_empty());
         assert_eq!(result.total, 1);
-        assert_eq!(result.page, 5);
+        assert_eq!(result.pagination.page(), 5);
     }
 
     #[sqlx::test]
@@ -1084,15 +1081,14 @@ mod tests {
 
         let adapter = CardPricesViewRepositoryAdapter::new(pool);
         let query = CollectionQuery {
-            page: 0,
-            page_size: 2,
+            pagination: Pagination::try_new(0, 2, SEARCH_MAX_OFFSET).unwrap(),
             ..CollectionQuery::default()
         };
         let result = adapter.search_paginated(query.into()).await.unwrap();
 
         assert_eq!(result.items.len(), 2);
         assert_eq!(result.total, 5);
-        assert_eq!(result.page_size, 2);
+        assert_eq!(result.pagination.page_size(), 2);
     }
 
     #[sqlx::test]
@@ -1783,8 +1779,7 @@ mod tests {
                 &UserId::new("userA"),
                 &card_id("TST", "1", "EN", false),
                 CardOfferSortField::SellingPrice,
-                0,
-                20,
+                Pagination::try_new(0, 20, CARD_OFFERS_MAX_OFFSET).unwrap(),
             )
             .await
             .unwrap();
@@ -1840,8 +1835,7 @@ mod tests {
                 &UserId::new("userA"),
                 &card_id("TST", "1", "EN", false),
                 CardOfferSortField::SellingPrice,
-                0,
-                20,
+                Pagination::try_new(0, 20, CARD_OFFERS_MAX_OFFSET).unwrap(),
             )
             .await
             .unwrap();
@@ -1884,8 +1878,7 @@ mod tests {
                 &UserId::new("userA"),
                 &card_id("TST", "1", "EN", false),
                 CardOfferSortField::SellingPrice,
-                0,
-                20,
+                Pagination::try_new(0, 20, CARD_OFFERS_MAX_OFFSET).unwrap(),
             )
             .await
             .unwrap();
@@ -1920,8 +1913,7 @@ mod tests {
                 &UserId::new("userA"),
                 &card_id("TST", "1", "EN", false),
                 CardOfferSortField::SellingPrice,
-                0,
-                20,
+                Pagination::try_new(0, 20, CARD_OFFERS_MAX_OFFSET).unwrap(),
             )
             .await
             .unwrap();
@@ -1947,16 +1939,15 @@ mod tests {
                 &UserId::new("userA"),
                 &card_id("TST", "1", "EN", false),
                 CardOfferSortField::SellingPrice,
-                0,
-                2,
+                Pagination::try_new(0, 2, CARD_OFFERS_MAX_OFFSET).unwrap(),
             )
             .await
             .unwrap();
 
         assert_eq!(result.items.len(), 2);
         assert_eq!(result.total, 3);
-        assert_eq!(result.page, 0);
-        assert_eq!(result.page_size, 2);
+        assert_eq!(result.pagination.page(), 0);
+        assert_eq!(result.pagination.page_size(), 2);
     }
 
     #[sqlx::test]
@@ -2002,8 +1993,7 @@ mod tests {
                 &UserId::new("userA"),
                 &card_id("TST", "1", "EN", false),
                 CardOfferSortField::SellingPrice,
-                0,
-                20,
+                Pagination::try_new(0, 20, CARD_OFFERS_MAX_OFFSET).unwrap(),
             )
             .await
             .unwrap();
@@ -2045,8 +2035,7 @@ mod tests {
                 &UserId::new("userA"),
                 &card_id("TST", "1", "EN", false),
                 CardOfferSortField::SellingPrice,
-                0,
-                20,
+                Pagination::try_new(0, 20, CARD_OFFERS_MAX_OFFSET).unwrap(),
             )
             .await
             .unwrap();
@@ -2087,8 +2076,7 @@ mod tests {
                 &UserId::new("userA"),
                 &card_id("TST", "1", "EN", false),
                 CardOfferSortField::SellingPrice,
-                0,
-                20,
+                Pagination::try_new(0, 20, CARD_OFFERS_MAX_OFFSET).unwrap(),
             )
             .await
             .unwrap();
@@ -2126,8 +2114,7 @@ mod tests {
                 &UserId::new("userA"),
                 &card_id("TST", "1", "EN", false),
                 CardOfferSortField::SellingPrice,
-                0,
-                20,
+                Pagination::try_new(0, 20, CARD_OFFERS_MAX_OFFSET).unwrap(),
             )
             .await
             .unwrap();
@@ -2165,8 +2152,7 @@ mod tests {
                 &UserId::new("userA"),
                 &card_id("TST", "1", "EN", false),
                 CardOfferSortField::SellingPrice,
-                0,
-                20,
+                Pagination::try_new(0, 20, CARD_OFFERS_MAX_OFFSET).unwrap(),
             )
             .await
             .unwrap();
@@ -2204,8 +2190,7 @@ mod tests {
                 &UserId::new("userA"),
                 &card_id("TST", "1", "EN", false),
                 CardOfferSortField::SellingPrice,
-                0,
-                20,
+                Pagination::try_new(0, 20, CARD_OFFERS_MAX_OFFSET).unwrap(),
             )
             .await
             .unwrap();
@@ -2244,8 +2229,7 @@ mod tests {
                 &UserId::new("userA"),
                 &card_id("TST", "1", "EN", false),
                 CardOfferSortField::SellingPrice,
-                0,
-                20,
+                Pagination::try_new(0, 20, CARD_OFFERS_MAX_OFFSET).unwrap(),
             )
             .await
             .unwrap();
@@ -2278,8 +2262,7 @@ mod tests {
                 &UserId::new("userA"),
                 &card_id("TST", "1", "EN", false),
                 CardOfferSortField::SellingPrice,
-                0,
-                20,
+                Pagination::try_new(0, 20, CARD_OFFERS_MAX_OFFSET).unwrap(),
             )
             .await
             .unwrap();

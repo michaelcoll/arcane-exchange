@@ -78,7 +78,7 @@ paths:
           $ref: '#/components/schemas/CardOffersSortByParam'
       - name: page
         in: query
-        description: Page number (starts at 0, max 10)
+        description: Page number, 0-based (default 0). `page * page_size` must not exceed 60
         required: false
         schema:
           type: integer
@@ -86,7 +86,7 @@ paths:
           minimum: 0
       - name: page_size
         in: query
-        description: Items per page (1 to 100)
+        description: Items per page, 1 to 100 (default 20)
         required: false
         schema:
           type: integer
@@ -100,7 +100,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/PaginatedCardOffersResponse'
         '400':
-          description: Invalid or missing query params
+          description: Invalid or missing query params, or pagination out of bounds
         '401':
           description: Missing or invalid token
         '404':
@@ -157,7 +157,7 @@ paths:
       parameters:
       - name: page
         in: query
-        description: Page number (starts at 0)
+        description: Page number, 0-based (default 0). `page * page_size` must not exceed 10000
         required: false
         schema:
           type: integer
@@ -165,7 +165,7 @@ paths:
           minimum: 0
       - name: page_size
         in: query
-        description: Items per page (max 100)
+        description: Items per page, 1 to 100 (default 20)
         required: false
         schema:
           type: integer
@@ -226,6 +226,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/PaginatedCollectionResponse'
+        '400':
+          description: Pagination out of bounds
         '401':
           description: Missing or invalid token
       security:
@@ -379,7 +381,7 @@ paths:
       parameters:
       - name: page
         in: query
-        description: Page number (starts at 0)
+        description: Page number, 0-based (default 0). `page * page_size` must not exceed 10000
         required: false
         schema:
           type: integer
@@ -387,7 +389,7 @@ paths:
           minimum: 0
       - name: page_size
         in: query
-        description: Items per page (max 100)
+        description: Items per page, 1 to 100 (default 20)
         required: false
         schema:
           type: integer
@@ -454,6 +456,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/PaginatedCollectionResponse'
+        '400':
+          description: Pagination out of bounds
         '401':
           description: Missing or invalid token
       security:
@@ -466,7 +470,7 @@ paths:
       parameters:
       - name: page
         in: query
-        description: Page number (starts at 0)
+        description: Page number, 0-based (default 0). `page * page_size` must not exceed 2000
         required: false
         schema:
           type: integer
@@ -474,7 +478,7 @@ paths:
           minimum: 0
       - name: page_size
         in: query
-        description: Items per page (max 100)
+        description: Items per page, 1 to 100 (default 20)
         required: false
         schema:
           type: integer
@@ -496,7 +500,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/PaginatedTradesResponse'
         '400':
-          description: Invalid status filter
+          description: Invalid status filter, or pagination out of bounds
         '401':
           description: Missing or invalid token
       security:

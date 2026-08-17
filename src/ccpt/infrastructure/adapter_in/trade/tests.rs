@@ -4,6 +4,7 @@ use super::dto::{
     RemoveTradeCardRequest, TradeStatusParam,
 };
 use crate::application::error::AppError;
+use crate::application::service::trade_service::TRADES_MAX_OFFSET;
 use crate::application::use_case::{
     MockAbandonTradeUseCase, MockAcceptTradeUseCase, MockAddTradeCardUseCase,
     MockConfirmTradeUseCase, MockCreateTradeUseCase, MockGetTradeUseCase, MockListTradesUseCase,
@@ -12,10 +13,10 @@ use crate::application::use_case::{
 use crate::domain::card::CardId;
 use crate::domain::error::FunctionalError;
 use crate::domain::language_code::LanguageCode;
+use crate::domain::pagination::{Paginated, Pagination};
 use crate::domain::price::PriceGuide;
 use crate::domain::trade::{
-    PaginatedTrades, TradeCardDetail, TradeDetail, TradeId, TradePartyState, TradeStatus,
-    TradeSummary,
+    TradeCardDetail, TradeDetail, TradeId, TradePartyState, TradeStatus, TradeSummary,
 };
 use crate::domain::user::User;
 use crate::infrastructure::AppState;
@@ -1021,6 +1022,13 @@ fn make_list_params() -> ListTradesParams {
     }
 }
 
+#[test]
+fn list_trades_params_deserializes_with_default_page_and_page_size() {
+    let params: ListTradesParams = serde_json::from_value(serde_json::json!({})).unwrap();
+    assert_eq!(params.page, 0);
+    assert_eq!(params.page_size, 20);
+}
+
 #[tokio::test]
 async fn list_trades_returns_paginated_response_on_success() {
     let mut mock_use_case = MockListTradesUseCase::new();
@@ -1029,11 +1037,10 @@ async fn list_trades_returns_paginated_response_on_success() {
         .times(1)
         .returning(|_, _| {
             Box::pin(async {
-                Ok(PaginatedTrades {
+                Ok(Paginated {
                     items: vec![],
                     total: 0,
-                    page: 0,
-                    page_size: 20,
+                    pagination: Pagination::try_new(0, 20, TRADES_MAX_OFFSET).unwrap(),
                 })
             })
         });
@@ -1052,19 +1059,17 @@ async fn list_trades_returns_paginated_response_on_success() {
 }
 
 #[tokio::test]
-async fn list_trades_clamps_page_size_to_max() {
+async fn list_trades_returns_empty_items_with_nonzero_total_for_page_beyond_last_result() {
     let mut mock_use_case = MockListTradesUseCase::new();
     mock_use_case
         .expect_list_trades()
         .times(1)
-        .withf(|_, query| query.page_size == 100)
         .returning(|_, _| {
             Box::pin(async {
-                Ok(PaginatedTrades {
+                Ok(Paginated {
                     items: vec![],
-                    total: 0,
-                    page: 0,
-                    page_size: 100,
+                    total: 9,
+                    pagination: Pagination::try_new(5, 20, TRADES_MAX_OFFSET).unwrap(),
                 })
             })
         });
@@ -1074,8 +1079,91 @@ async fn list_trades_clamps_page_size_to_max() {
         AuthenticatedUser(User::for_testing()),
         State(state),
         Query(ListTradesParams {
+            page: 5,
+            page_size: 20,
+            status: vec![],
+        }),
+    )
+    .await;
+
+    let response = result.unwrap();
+    assert!(response.0.items.is_empty());
+    assert_eq!(response.0.total, 9);
+}
+
+#[tokio::test]
+async fn list_trades_rejects_page_size_above_max() {
+    // The use case must never be reached: the pagination is rejected before that.
+    let mock_use_case = MockListTradesUseCase::new();
+
+    let state = make_app_state_list_trades(mock_use_case);
+    let result = list_trades(
+        AuthenticatedUser(User::for_testing()),
+        State(state),
+        Query(ListTradesParams {
             page: 0,
             page_size: 500,
+            status: vec![],
+        }),
+    )
+    .await;
+
+    match result.err().unwrap() {
+        AppError::Functional(FunctionalError::InvalidPageSize {
+            requested: 500,
+            max: 100,
+        }) => {}
+        other => panic!("Expected InvalidPageSize, got {:?}", other),
+    }
+}
+
+#[tokio::test]
+async fn list_trades_rejects_offset_beyond_max() {
+    let mock_use_case = MockListTradesUseCase::new();
+
+    let state = make_app_state_list_trades(mock_use_case);
+    let result = list_trades(
+        AuthenticatedUser(User::for_testing()),
+        State(state),
+        Query(ListTradesParams {
+            page: TRADES_MAX_OFFSET,
+            page_size: 100,
+            status: vec![],
+        }),
+    )
+    .await;
+
+    match result.err().unwrap() {
+        AppError::Functional(FunctionalError::PaginationTooDeep { max, .. }) => {
+            assert_eq!(max, TRADES_MAX_OFFSET);
+        }
+        other => panic!("Expected PaginationTooDeep, got {:?}", other),
+    }
+}
+
+#[tokio::test]
+async fn list_trades_accepts_low_page_size_with_high_page_under_the_offset_limit() {
+    let mut mock_use_case = MockListTradesUseCase::new();
+    mock_use_case
+        .expect_list_trades()
+        .times(1)
+        .returning(|_, query| {
+            Box::pin(async move {
+                Ok(Paginated {
+                    items: vec![],
+                    total: 0,
+                    pagination: query.pagination,
+                })
+            })
+        });
+
+    let state = make_app_state_list_trades(mock_use_case);
+    let result = list_trades(
+        AuthenticatedUser(User::for_testing()),
+        State(state),
+        Query(ListTradesParams {
+            page: 200,
+            page_size: 10,
             status: vec![],
         }),
     )
@@ -1094,7 +1182,7 @@ async fn list_trades_response_maps_trade_summaries() {
         .times(1)
         .returning(move |_, _| {
             Box::pin(async move {
-                Ok(PaginatedTrades {
+                Ok(Paginated {
                     items: vec![TradeSummary {
                         id: trade_id,
                         status: TradeStatus::OneAccepted,
@@ -1104,8 +1192,7 @@ async fn list_trades_response_maps_trade_summaries() {
                         updated_at,
                     }],
                     total: 1,
-                    page: 0,
-                    page_size: 20,
+                    pagination: Pagination::try_new(0, 20, TRADES_MAX_OFFSET).unwrap(),
                 })
             })
         });
@@ -1148,11 +1235,10 @@ async fn list_trades_maps_every_status_param_variant_to_domain_status() {
         })
         .returning(|_, query| {
             Box::pin(async move {
-                Ok(PaginatedTrades {
+                Ok(Paginated {
                     items: vec![],
                     total: 0,
-                    page: query.page,
-                    page_size: query.page_size,
+                    pagination: query.pagination,
                 })
             })
         });

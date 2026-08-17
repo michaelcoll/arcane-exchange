@@ -26,9 +26,11 @@
 - **Typed config**: `config.rs` (`Config::from_env()`) centralizes all startup config; `create_infra()` never reads
   env vars directly.
 - **Env Vars**: `DATABASE_URL`, `DATABASE_MAX_CONNECTIONS` (default: 5), `BACKEND_PORT` (default: 8080),
-  `SCRYFALL_RATE_LIMIT_TOKENS` (default: 8), `MAX_PAGE_SIZE` (default: 100), `MAX_PAGE_NUMBER` (default: 10),
-  `CARDMARKET_PRICE_GUIDES_URL`, `EDHREC_BASE_URL`, `SCRYFALL_BASE_URL`, `GATHERER_BASE_URL`,
-  `CLERK_FRONTEND_API_URL` (required).
+  `SCRYFALL_RATE_LIMIT_TOKENS` (default: 8), `CARDMARKET_PRICE_GUIDES_URL`, `EDHREC_BASE_URL`, `SCRYFALL_BASE_URL`,
+  `GATHERER_BASE_URL`, `CLERK_FRONTEND_API_URL` (required).
+- **Pagination**: `domain::pagination::Pagination` centralizes page/page_size validation (default page_size: 20, max:
+  100). Each paginated endpoint's max offset is a `pub(crate)` constant next to its `application::service` (e.g.
+  `CARD_OFFERS_MAX_OFFSET`, `COLLECTION_MAX_OFFSET`) — no env var involved.
 - **Scheduled Tasks**: Price import every 12 hours via `AsyncCron` in `infrastructure.rs`.
 
 ## Data Ingestion

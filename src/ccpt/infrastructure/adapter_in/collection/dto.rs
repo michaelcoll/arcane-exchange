@@ -183,7 +183,7 @@ impl From<RarityCodeParam> for RarityCode {
 }
 
 pub(crate) fn default_page_size() -> u32 {
-    20
+    crate::domain::pagination::DEFAULT_PAGE_SIZE
 }
 
 #[derive(Deserialize, TS)]

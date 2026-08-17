@@ -10,6 +10,14 @@ pub enum FunctionalError {
     InvalidRarityCode(String),
     InvalidCollectorNumber(String),
     WrongFormat(String),
+    InvalidPageSize {
+        requested: u32,
+        max: u32,
+    },
+    PaginationTooDeep {
+        requested_offset: u64,
+        max: u32,
+    },
     PriceNotFound,
     CardNotFound,
     SelfTrade,
@@ -42,6 +50,15 @@ impl From<FunctionalError> for String {
             FunctionalError::InvalidRarityCode(msg) => format!("Invalid rarity code '{}'", msg),
             FunctionalError::InvalidCollectorNumber(msg) => msg,
             FunctionalError::WrongFormat(msg) => msg,
+            FunctionalError::InvalidPageSize { requested, max } => {
+                format!("Invalid page_size '{requested}' (must be between 1 and {max})")
+            }
+            FunctionalError::PaginationTooDeep {
+                requested_offset,
+                max,
+            } => format!(
+                "Pagination too deep: requested offset '{requested_offset}' exceeds the maximum of {max} for this endpoint"
+            ),
             FunctionalError::PriceNotFound => "Price not found".to_string(),
             FunctionalError::CardNotFound => "Card not found".to_string(),
             FunctionalError::SelfTrade => "Cannot request your own card".to_string(),
@@ -114,6 +131,29 @@ mod tests {
         assert_eq!(
             msg,
             "collector number must be 10 characters or less (got X)"
+        );
+    }
+
+    #[test]
+    fn string_from_invalid_page_size_mentions_requested_value_and_max() {
+        let msg: String = FunctionalError::InvalidPageSize {
+            requested: 500,
+            max: 100,
+        }
+        .into();
+        assert_eq!(msg, "Invalid page_size '500' (must be between 1 and 100)");
+    }
+
+    #[test]
+    fn string_from_pagination_too_deep_mentions_requested_offset_and_max() {
+        let msg: String = FunctionalError::PaginationTooDeep {
+            requested_offset: 20000,
+            max: 60,
+        }
+        .into();
+        assert_eq!(
+            msg,
+            "Pagination too deep: requested offset '20000' exceeds the maximum of 60 for this endpoint"
         );
     }
 }

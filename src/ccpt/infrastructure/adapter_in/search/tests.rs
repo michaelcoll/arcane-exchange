@@ -1,10 +1,13 @@
 use super::controller::*;
 use super::dto::*;
 use crate::application::error::{AppError, InfraError};
+use crate::application::service::search_service::SEARCH_MAX_OFFSET;
 use crate::application::use_case::MockSearchCardsUseCase;
 use crate::domain::card::{Card, CollectionEntry};
-use crate::domain::collection::{CollectionSortField, PaginatedCollection, SortDirection};
+use crate::domain::collection::{CollectionSortField, SortDirection};
+use crate::domain::error::FunctionalError;
 use crate::domain::language_code::LanguageCode;
+use crate::domain::pagination::{Paginated, Pagination};
 use crate::domain::rarity_code::RarityCode;
 use crate::domain::user::User;
 use crate::infrastructure::AppState;
@@ -36,13 +39,13 @@ fn make_card(set_code: &str, collector_number: &str) -> Card {
     )
 }
 
-fn make_paginated(items: Vec<Card>, page: u32, page_size: u32) -> PaginatedCollection {
+fn make_paginated(items: Vec<Card>, page: u32, page_size: u32) -> Paginated<Card> {
     let total = items.len() as u64;
-    PaginatedCollection {
+    let pagination = Pagination::try_new(page, page_size, SEARCH_MAX_OFFSET).unwrap();
+    Paginated {
         items,
         total,
-        page,
-        page_size,
+        pagination,
     }
 }
 
@@ -98,6 +101,38 @@ async fn search_cards_returns_cards_from_use_case() {
 }
 
 #[tokio::test]
+async fn search_cards_returns_empty_items_with_nonzero_total_for_page_beyond_last_result() {
+    let mut mock = MockSearchCardsUseCase::new();
+    mock.expect_search_cards().returning(|_| {
+        Box::pin(async {
+            Ok(Paginated {
+                items: vec![],
+                total: 7,
+                pagination: Pagination::try_new(5, 20, SEARCH_MAX_OFFSET).unwrap(),
+            })
+        })
+    });
+
+    let app_state = make_app_state_with_search(mock);
+    let params = SearchParams {
+        page: 5,
+        ..Default::default()
+    };
+
+    let result = search_cards(
+        AuthenticatedUser(User::for_testing()),
+        State(app_state),
+        Query(params),
+    )
+    .await;
+
+    assert!(result.is_ok());
+    let axum::Json(response) = result.unwrap();
+    assert!(response.items.is_empty());
+    assert_eq!(response.total, 7);
+}
+
+#[tokio::test]
 async fn search_cards_propagates_error_from_use_case() {
     let mut mock = MockSearchCardsUseCase::new();
     mock.expect_search_cards().returning(|_| {
@@ -125,14 +160,9 @@ async fn search_cards_propagates_error_from_use_case() {
 }
 
 #[tokio::test]
-async fn search_cards_caps_page_size_at_100() {
-    let mut mock = MockSearchCardsUseCase::new();
-    mock.expect_search_cards()
-        .withf(|q| q.collection_query.page_size == 100)
-        .returning(|q| {
-            let page_size = q.collection_query.page_size;
-            Box::pin(async move { Ok(make_paginated(vec![], 0, page_size)) })
-        });
+async fn search_cards_rejects_page_size_above_max() {
+    // The use case must never be reached: the pagination is rejected before that.
+    let mock = MockSearchCardsUseCase::new();
 
     let app_state = make_app_state_with_search(mock);
     let params = SearchParams {
@@ -147,18 +177,82 @@ async fn search_cards_caps_page_size_at_100() {
     )
     .await;
 
+    match result.err().unwrap() {
+        AppError::Functional(FunctionalError::InvalidPageSize {
+            requested: 9999,
+            max: 100,
+        }) => {}
+        other => panic!("Expected InvalidPageSize, got {:?}", other),
+    }
+}
+
+#[tokio::test]
+async fn search_cards_rejects_offset_beyond_max() {
+    let mock = MockSearchCardsUseCase::new();
+
+    let app_state = make_app_state_with_search(mock);
+    let params = SearchParams {
+        page: SEARCH_MAX_OFFSET,
+        page_size: 100,
+        ..Default::default()
+    };
+
+    let result = search_cards(
+        AuthenticatedUser(User::for_testing()),
+        State(app_state),
+        Query(params),
+    )
+    .await;
+
+    match result.err().unwrap() {
+        AppError::Functional(FunctionalError::PaginationTooDeep { max, .. }) => {
+            assert_eq!(max, SEARCH_MAX_OFFSET);
+        }
+        other => panic!("Expected PaginationTooDeep, got {:?}", other),
+    }
+}
+
+#[tokio::test]
+async fn search_cards_accepts_low_page_size_with_high_page_under_the_offset_limit() {
+    let mut mock = MockSearchCardsUseCase::new();
+    mock.expect_search_cards().returning(|q| {
+        let (page, page_size) = (
+            q.collection_query.pagination.page(),
+            q.collection_query.pagination.page_size(),
+        );
+        Box::pin(async move { Ok(make_paginated(vec![], page, page_size)) })
+    });
+
+    let app_state = make_app_state_with_search(mock);
+    let params = SearchParams {
+        page: 400,
+        page_size: 20,
+        ..Default::default()
+    };
+
+    let result = search_cards(
+        AuthenticatedUser(User::for_testing()),
+        State(app_state),
+        Query(params),
+    )
+    .await;
+
     assert!(result.is_ok());
-    let axum::Json(response) = result.unwrap();
-    assert_eq!(response.page_size, 100);
 }
 
 #[tokio::test]
 async fn search_cards_passes_pagination_params_to_use_case() {
     let mut mock = MockSearchCardsUseCase::new();
     mock.expect_search_cards()
-        .withf(|q| q.collection_query.page == 3 && q.collection_query.page_size == 5)
+        .withf(|q| {
+            q.collection_query.pagination.page() == 3
+                && q.collection_query.pagination.page_size() == 5
+        })
         .returning(|q| {
-            let (page, page_size) = (q.collection_query.page, q.collection_query.page_size);
+            let (page, page_size) = (
+                q.collection_query.pagination.page(),
+                q.collection_query.pagination.page_size(),
+            );
             Box::pin(async move { Ok(make_paginated(vec![], page, page_size)) })
         });
 

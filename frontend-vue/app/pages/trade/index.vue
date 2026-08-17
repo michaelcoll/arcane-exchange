@@ -24,7 +24,16 @@ watch(
   { immediate: true },
 );
 
-const hasMore = computed(() => (data.value ? items.value.length < data.value.total : false));
+const moreResultsExist = computed(() =>
+  data.value ? items.value.length < data.value.total : false,
+);
+const withinOffsetLimit = computed(() =>
+  canLoadPage(params.value.page + 1, params.value.page_size, TRADES_MAX_OFFSET),
+);
+const hasMore = computed(() => moreResultsExist.value && withinOffsetLimit.value);
+// Distinct from "no more results": there are more trades, but paging further would hit the
+// backend's offset limit. Surfaced so the stop doesn't read as an empty/bugged list.
+const offsetLimitReached = computed(() => moreResultsExist.value && !withinOffsetLimit.value);
 
 const loadMore = () => {
   params.value.page += 1;
@@ -101,6 +110,12 @@ const formatUpdatedAt = (iso: string) =>
           Voir plus
         </button>
       </div>
+      <p
+        v-else-if="offsetLimitReached"
+        class="mt-4 text-center font-mono text-sm text-slate-400 dark:text-slate-500"
+      >
+        Affichage limité aux {{ items.length }} échanges les plus récents.
+      </p>
     </template>
   </div>
 </template>
