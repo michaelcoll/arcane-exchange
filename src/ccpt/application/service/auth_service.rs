@@ -455,6 +455,38 @@ mod tests {
         }
     }
 
+    /// Clerk emits a non-standard `oiat` (original issued at) header as a JSON **integer**.
+    /// jsonwebtoken <= 10.x typed `Header.extras` as `HashMap<String, String>`, so such a header
+    /// failed to deserialize and every Clerk token was rejected at `decode_header` — the reason a
+    /// patched fork of the crate was used. Since 11.0.0 `extras` holds `serde_json::Value`, which
+    /// accepts it. Reaching "Unknown key ID" (and not "Invalid token header") proves the header was
+    /// parsed and the `kid` read, so this test guards against reintroducing that regression.
+    #[tokio::test]
+    async fn accepts_token_header_with_integer_oiat_field() {
+        let jwks_json = r#"{ "keys": [] }"#;
+        let jwks: JwkSet = serde_json::from_str(jwks_json).unwrap();
+        let service = ClerkAuthService {
+            jwks,
+            frontend_api_url: "https://musical-pup-67.clerk.accounts.dev".to_string(),
+        };
+
+        // Header decodes to {"alg":"RS256","kid":"ins_2abcTESTkey","typ":"JWT","oiat":1778751753}
+        let token_with_oiat_header = "eyJhbGciOiJSUzI1NiIsImtpZCI6Imluc18yYWJjVEVTVGtleSIsInR5cCI6IkpXVCIsIm9pYXQiOjE3Nzg3NTE3NTN9.eyJzdWIiOiJ1c2VyX2NsZXJrMTIzIiwiZXhwIjo5OTk5OTk5OTk5LCJpc3MiOiJodHRwczovL211c2ljYWwtcHVwLTY3LmNsZXJrLmFjY291bnRzLmRldiJ9.signature";
+
+        let result = service.validate_token(token_with_oiat_header).await;
+
+        match result {
+            Err(AppError::Authentication(AuthenticationError::InvalidToken(msg))) => {
+                assert!(
+                    msg.contains("Unknown key ID"),
+                    "header with an integer `oiat` must parse; got: {}",
+                    msg
+                );
+            }
+            _ => panic!("Expected AuthenticationError with unknown key ID message"),
+        }
+    }
+
     #[tokio::test]
     async fn rejects_malformed_token() {
         let jwks_json = r#"{ "keys": [] }"#;
