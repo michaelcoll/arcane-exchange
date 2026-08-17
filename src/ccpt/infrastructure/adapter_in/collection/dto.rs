@@ -128,6 +128,7 @@ pub enum SortByParam {
     Trend,
     SetCode,
     LanguageCode,
+    AddedAt,
 }
 
 #[derive(Deserialize, Default, Debug, PartialEq, TS, ToSchema)]
@@ -146,6 +147,7 @@ impl From<SortByParam> for CollectionSortField {
             SortByParam::Trend => CollectionSortField::Trend,
             SortByParam::SetCode => CollectionSortField::SetCode,
             SortByParam::LanguageCode => CollectionSortField::LanguageCode,
+            SortByParam::AddedAt => CollectionSortField::AddedAt,
         }
     }
 }

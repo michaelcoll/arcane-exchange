@@ -27,6 +27,7 @@ impl IntoResponse for AppError {
                 | FunctionalError::WrongFormat(_)
                 | FunctionalError::InvalidPageSize { .. }
                 | FunctionalError::PaginationTooDeep { .. }
+                | FunctionalError::AddedAtSortRequiresPlayerUsername
                 | FunctionalError::SelfTrade => StatusCode::BAD_REQUEST,
                 FunctionalError::PriceNotFound
                 | FunctionalError::CardNotFound
@@ -246,6 +247,13 @@ mod tests {
             requested_offset: 500,
             max: 100,
         });
+        let response = error.into_response();
+        assert_eq!(response.status(), StatusCode::BAD_REQUEST);
+    }
+
+    #[test]
+    fn added_at_sort_requires_player_username_returns_bad_request_status() {
+        let error = AppError::Functional(FunctionalError::AddedAtSortRequiresPlayerUsername);
         let response = error.into_response();
         assert_eq!(response.status(), StatusCode::BAD_REQUEST);
     }

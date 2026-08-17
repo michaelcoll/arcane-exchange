@@ -17,7 +17,7 @@ const isDesktop = useMediaQuery('(min-width: 768px)');
 const pageSize = useCardPageSize(size, isDesktop);
 
 const params = ref({
-  sort_by: 'trend' as SortBy,
+  sort_by: 'added_at' as SortBy,
   sort_dir: 'desc' as SortDir,
   page: 0,
   page_size: pageSize.value,
@@ -26,6 +26,29 @@ const params = ref({
   sets: undefined as string | undefined,
   price_min: undefined as number | undefined,
   price_max: undefined as number | undefined,
+});
+
+const collectionSortOptions: {
+  value: SortBy;
+  label: string;
+  ascLabel: string;
+  descLabel: string;
+}[] = [
+  { value: 'trend', label: 'Prix', ascLabel: 'Prix croissant', descLabel: 'Prix décroissant' },
+  {
+    value: 'added_at',
+    label: 'Date d’ajout',
+    ascLabel: 'Plus ancien d’abord',
+    descLabel: 'Plus récent d’abord',
+  },
+];
+
+const sortState = computed({
+  get: () => ({ sort_by: params.value.sort_by, sort_dir: params.value.sort_dir }),
+  set: (v: { sort_by: SortBy; sort_dir: SortDir }) => {
+    params.value.sort_by = v.sort_by;
+    params.value.sort_dir = v.sort_dir;
+  },
 });
 
 const { data: collectionData, pending, refresh } = await getCollection(params);
@@ -475,21 +498,7 @@ const onDragLeave = () => {
               size="sm"
               class="max-md:hidden"
             />
-            <button
-              :class="[
-                'inline-flex cursor-pointer items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium whitespace-nowrap transition-all duration-150 select-none',
-                params.sort_dir === 'asc'
-                  ? 'border-cyan-500/30 bg-cyan-500/10 text-cyan-700 dark:border-cyan-400/30 dark:bg-cyan-400/10 dark:text-cyan-300'
-                  : 'border-slate-200 bg-slate-100 text-slate-600 hover:border-slate-300 hover:bg-slate-50 hover:text-slate-800 dark:border-white/10 dark:bg-white/5 dark:text-slate-300 dark:hover:border-white/15 dark:hover:bg-zinc-800 dark:hover:text-slate-100',
-              ]"
-              @click="params.sort_dir = params.sort_dir === 'desc' ? 'asc' : 'desc'"
-            >
-              {{ params.sort_dir === 'asc' ? 'Prix croissant' : 'Prix décroissant' }}
-              <Icon
-                :name="params.sort_dir === 'asc' ? 'lucide:chevron-up' : 'lucide:chevron-down'"
-                :size="13"
-              />
-            </button>
+            <SortToggle v-model="sortState" :options="collectionSortOptions" />
           </div>
         </div>
 

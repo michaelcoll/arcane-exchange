@@ -2,7 +2,7 @@ use crate::application::error::{AppError, InfraError};
 use crate::application::repository::CardPricesViewRepository;
 use crate::domain::card::{Card, CardId, CollectionEntry};
 use crate::domain::card_offer::CardOfferSortField;
-use crate::domain::collection::{CollectionQuery, SearchQuery};
+use crate::domain::collection::{CollectionQuery, CollectionSortField, SearchQuery};
 use crate::domain::pagination::{Paginated, Pagination};
 use crate::domain::user::UserId;
 use crate::infrastructure::adapter_out::repository::entities::{
@@ -150,6 +150,26 @@ impl CardPricesViewRepositoryAdapter {
             )
         };
 
+        // `added_at` is never part of the public branch's `SELECT`/`GROUP BY` (it stays
+        // `NULL::timestamptz AS added_at`, see `owned_columns` above), so a bare `added_at` in
+        // `ORDER BY` would silently sort on that constant `NULL` instead of the real per-row
+        // value. `MAX(cp.added_at)` is a valid aggregate there regardless of `GROUP BY`
+        // membership; the personal-collection branch has no `GROUP BY` at all, where the plain
+        // column name already works like for every other sort field.
+        //
+        // Note that `MAX` here is purely a SQL-validity device, not a semantic choice: the
+        // unique index on `mv_card_prices` guarantees at most one row per (card, user) once
+        // `player_username` scopes the search, so the aggregate never actually picks among
+        // several values. The value it sees is already `MIN(added_at)` across a player's
+        // binders for that card, computed upstream by the view (see
+        // `migrations/0019_add_binder_name_to_collection_entry.sql`) — so sorting by `added_at`
+        // orders by each card's *earliest* addition among binders, not its most recent one.
+        let sort_expr = if query.sort_by == CollectionSortField::AddedAt && user_id.is_none() {
+            "MAX(cp.added_at)".to_string()
+        } else {
+            query.sort_by.to_string()
+        };
+
         let sql = format!(
             r#"SELECT
                  cp.set_code,
@@ -171,9 +191,9 @@ impl CardPricesViewRepositoryAdapter {
                {where_clause}
                {filter_clause}
                {group_by_clause}
-               ORDER BY {order_prefix} {} {} NULLS LAST, cp.name
+               ORDER BY {order_prefix} {sort_expr} {} NULLS LAST, cp.name
                LIMIT ${limit_idx} OFFSET ${offset_idx}"#,
-            query.sort_by, query.sort_dir,
+            query.sort_dir,
         );
 
         let offset = i64::from(query.pagination.offset());
@@ -824,6 +844,79 @@ mod tests {
     }
 
     #[sqlx::test]
+    async fn get_paginated_sorts_by_added_at_ascending(pool: PgPool) {
+        insert_set(&pool, "TS1").await;
+        insert_card(&pool, "TS1", "1", "EN", false, "Card A", 1).await;
+        insert_set(&pool, "TS2").await;
+        insert_card(&pool, "TS2", "1", "EN", false, "Card B", 2).await;
+        insert_user(&pool, "user1", "User1").await;
+        let older = Utc::now() - chrono::Duration::days(2);
+        let older = DateTime::from_timestamp_micros(older.timestamp_micros()).unwrap();
+        let newer = Utc::now();
+        insert_collection_entry(&pool, "TS1", "1", "EN", false, "user1", 1, 100, newer).await;
+        insert_collection_entry(&pool, "TS2", "1", "EN", false, "user1", 1, 100, older).await;
+        insert_price(&pool, CardMarketPriceEntity::simple(1, 100)).await;
+        insert_price(&pool, CardMarketPriceEntity::simple(2, 100)).await;
+        refresh_view(&pool).await;
+
+        let adapter = CardPricesViewRepositoryAdapter::new(pool);
+        let query = CollectionQuery {
+            sort_by: CollectionSortField::AddedAt,
+            sort_dir: SortDirection::Asc,
+            ..CollectionQuery::default()
+        };
+        let result = adapter
+            .get_paginated(&UserId::new("user1"), query)
+            .await
+            .unwrap();
+
+        assert_eq!(result.items.len(), 2);
+        assert_eq!(
+            result.items[0].name, "Card B",
+            "the older entry sorts first"
+        );
+        assert_eq!(result.items[1].name, "Card A");
+    }
+
+    #[sqlx::test]
+    async fn get_paginated_sorts_by_added_at_descending(pool: PgPool) {
+        insert_set(&pool, "TS1").await;
+        insert_card(&pool, "TS1", "1", "EN", false, "Card A", 1).await;
+        insert_set(&pool, "TS2").await;
+        insert_card(&pool, "TS2", "1", "EN", false, "Card B", 2).await;
+        insert_user(&pool, "user1", "User1").await;
+        // Card B is the newer entry here (unlike the ascending test above), so the
+        // alphabetical name tie-break would put Card A first if the `added_at` sort were a
+        // no-op — this test only passes if the sort genuinely orders by date.
+        let older = Utc::now() - chrono::Duration::days(2);
+        let older = DateTime::from_timestamp_micros(older.timestamp_micros()).unwrap();
+        let newer = Utc::now();
+        insert_collection_entry(&pool, "TS1", "1", "EN", false, "user1", 1, 100, older).await;
+        insert_collection_entry(&pool, "TS2", "1", "EN", false, "user1", 1, 100, newer).await;
+        insert_price(&pool, CardMarketPriceEntity::simple(1, 100)).await;
+        insert_price(&pool, CardMarketPriceEntity::simple(2, 100)).await;
+        refresh_view(&pool).await;
+
+        let adapter = CardPricesViewRepositoryAdapter::new(pool);
+        let query = CollectionQuery {
+            sort_by: CollectionSortField::AddedAt,
+            sort_dir: SortDirection::Desc,
+            ..CollectionQuery::default()
+        };
+        let result = adapter
+            .get_paginated(&UserId::new("user1"), query)
+            .await
+            .unwrap();
+
+        assert_eq!(result.items.len(), 2);
+        assert_eq!(
+            result.items[0].name, "Card B",
+            "the newer entry sorts first"
+        );
+        assert_eq!(result.items[1].name, "Card A");
+    }
+
+    #[sqlx::test]
     async fn get_paginated_returns_empty_page_when_offset_exceeds_total(pool: PgPool) {
         insert_set(&pool, "TST").await;
         insert_card(&pool, "TST", "1", "EN", false, "Test Card", 1).await;
@@ -1169,6 +1262,175 @@ mod tests {
         let adapter = CardPricesViewRepositoryAdapter::new(pool);
         let query = SearchQuery {
             collection_query: CollectionQuery::default(),
+            player_username: Some("unknown-user".to_string()),
+        };
+        let result = adapter.search_paginated(query).await.unwrap();
+
+        assert!(result.items.is_empty());
+        assert_eq!(result.total, 0);
+    }
+
+    #[sqlx::test]
+    async fn search_paginated_sorts_by_added_at_for_scoped_player_ascending(pool: PgPool) {
+        insert_set(&pool, "TS1").await;
+        insert_card(&pool, "TS1", "1", "EN", false, "Card A", 1).await;
+        insert_set(&pool, "TS2").await;
+        insert_card(&pool, "TS2", "1", "EN", false, "Card B", 2).await;
+        insert_user_with_visibility(&pool, "userA", "Alice", "public").await;
+        let older = Utc::now() - chrono::Duration::days(2);
+        let older = DateTime::from_timestamp_micros(older.timestamp_micros()).unwrap();
+        let newer = Utc::now();
+        insert_collection_entry(&pool, "TS1", "1", "EN", false, "userA", 1, 100, newer).await;
+        insert_collection_entry(&pool, "TS2", "1", "EN", false, "userA", 1, 100, older).await;
+        insert_price(&pool, CardMarketPriceEntity::simple(1, 100)).await;
+        insert_price(&pool, CardMarketPriceEntity::simple(2, 100)).await;
+        refresh_view(&pool).await;
+
+        let adapter = CardPricesViewRepositoryAdapter::new(pool);
+        let query = SearchQuery {
+            collection_query: CollectionQuery {
+                sort_by: CollectionSortField::AddedAt,
+                sort_dir: SortDirection::Asc,
+                ..CollectionQuery::default()
+            },
+            player_username: Some("Alice".to_string()),
+        };
+        let result = adapter.search_paginated(query).await.unwrap();
+
+        assert_eq!(result.items.len(), 2);
+        assert_eq!(
+            result.items[0].name, "Card B",
+            "the older entry sorts first"
+        );
+        assert_eq!(result.items[1].name, "Card A");
+    }
+
+    #[sqlx::test]
+    async fn search_paginated_sorts_by_added_at_for_scoped_player_descending(pool: PgPool) {
+        insert_set(&pool, "TS1").await;
+        insert_card(&pool, "TS1", "1", "EN", false, "Card A", 1).await;
+        insert_set(&pool, "TS2").await;
+        insert_card(&pool, "TS2", "1", "EN", false, "Card B", 2).await;
+        insert_user_with_visibility(&pool, "userA", "Alice", "public").await;
+        // Card B is the newer entry here (unlike the ascending test above), so the
+        // alphabetical name tie-break would put Card A first if the `added_at` sort were a
+        // no-op — this test only passes if the sort genuinely orders by date.
+        let older = Utc::now() - chrono::Duration::days(2);
+        let older = DateTime::from_timestamp_micros(older.timestamp_micros()).unwrap();
+        let newer = Utc::now();
+        insert_collection_entry(&pool, "TS1", "1", "EN", false, "userA", 1, 100, older).await;
+        insert_collection_entry(&pool, "TS2", "1", "EN", false, "userA", 1, 100, newer).await;
+        insert_price(&pool, CardMarketPriceEntity::simple(1, 100)).await;
+        insert_price(&pool, CardMarketPriceEntity::simple(2, 100)).await;
+        refresh_view(&pool).await;
+
+        let adapter = CardPricesViewRepositoryAdapter::new(pool);
+        let query = SearchQuery {
+            collection_query: CollectionQuery {
+                sort_by: CollectionSortField::AddedAt,
+                sort_dir: SortDirection::Desc,
+                ..CollectionQuery::default()
+            },
+            player_username: Some("Alice".to_string()),
+        };
+        let result = adapter.search_paginated(query).await.unwrap();
+
+        assert_eq!(result.items.len(), 2);
+        assert_eq!(
+            result.items[0].name, "Card B",
+            "the newer entry sorts first"
+        );
+        assert_eq!(result.items[1].name, "Card A");
+    }
+
+    #[sqlx::test]
+    async fn search_paginated_text_relevance_outranks_added_at_sort(pool: PgPool) {
+        // Both cards match the `q` filter (name contains "Foo"), but "Foo" is an exact match
+        // (word_similarity 1.0) while "Foobar" is only a partial match. "Foo" is also the
+        // *older* entry and `sort_dir=desc` is requested: if `added_at` took priority over
+        // text relevance, "Foobar" (newer) would sort first. It must not.
+        insert_set(&pool, "TS1").await;
+        insert_card(&pool, "TS1", "1", "EN", false, "Foo", 1).await;
+        insert_set(&pool, "TS2").await;
+        insert_card(&pool, "TS2", "1", "EN", false, "Foobar", 2).await;
+        insert_user_with_visibility(&pool, "userA", "Alice", "public").await;
+        let older = Utc::now() - chrono::Duration::days(2);
+        let older = DateTime::from_timestamp_micros(older.timestamp_micros()).unwrap();
+        let newer = Utc::now();
+        insert_collection_entry(&pool, "TS1", "1", "EN", false, "userA", 1, 100, older).await;
+        insert_collection_entry(&pool, "TS2", "1", "EN", false, "userA", 1, 100, newer).await;
+        insert_price(&pool, CardMarketPriceEntity::simple(1, 100)).await;
+        insert_price(&pool, CardMarketPriceEntity::simple(2, 100)).await;
+        refresh_view(&pool).await;
+
+        let adapter = CardPricesViewRepositoryAdapter::new(pool);
+        let query = SearchQuery {
+            collection_query: CollectionQuery {
+                search_query: Some("Foo".to_string()),
+                sort_by: CollectionSortField::AddedAt,
+                sort_dir: SortDirection::Desc,
+                ..CollectionQuery::default()
+            },
+            player_username: Some("Alice".to_string()),
+        };
+        let result = adapter.search_paginated(query).await.unwrap();
+
+        assert_eq!(result.items.len(), 2);
+        assert_eq!(
+            result.items[0].name, "Foo",
+            "the exact text match must outrank the more recent added_at"
+        );
+        assert_eq!(result.items[1].name, "Foobar");
+    }
+
+    #[sqlx::test]
+    async fn search_paginated_added_at_stays_masked_when_sorted_by_added_at(pool: PgPool) {
+        insert_set(&pool, "TST").await;
+        insert_card(&pool, "TST", "1", "EN", false, "Card A", 1).await;
+        insert_user_with_visibility(&pool, "userA", "Alice", "public").await;
+        insert_collection_entry(&pool, "TST", "1", "EN", false, "userA", 1, 100, Utc::now()).await;
+        insert_price(&pool, CardMarketPriceEntity::simple(1, 100)).await;
+        refresh_view(&pool).await;
+
+        let adapter = CardPricesViewRepositoryAdapter::new(pool);
+        let query = SearchQuery {
+            collection_query: CollectionQuery {
+                sort_by: CollectionSortField::AddedAt,
+                ..CollectionQuery::default()
+            },
+            player_username: Some("Alice".to_string()),
+        };
+        let result = adapter.search_paginated(query).await.unwrap();
+
+        assert_eq!(result.items.len(), 1);
+        // `CollectionEntry::Public` structurally has no `added_at` field: the response schema
+        // stays unchanged even though the sort itself uses the real value internally.
+        assert_eq!(
+            result.items[0].collection_entry,
+            CollectionEntry::Public {
+                owner_count: 1,
+                reserved: false
+            }
+        );
+    }
+
+    #[sqlx::test]
+    async fn search_paginated_returns_empty_for_unknown_player_username_with_added_at_sort(
+        pool: PgPool,
+    ) {
+        insert_set(&pool, "TST").await;
+        insert_card(&pool, "TST", "1", "EN", false, "Card A", 1).await;
+        insert_user_with_visibility(&pool, "userA", "Alice", "public").await;
+        insert_collection_entry(&pool, "TST", "1", "EN", false, "userA", 1, 100, Utc::now()).await;
+        insert_price(&pool, CardMarketPriceEntity::simple(1, 100)).await;
+        refresh_view(&pool).await;
+
+        let adapter = CardPricesViewRepositoryAdapter::new(pool);
+        let query = SearchQuery {
+            collection_query: CollectionQuery {
+                sort_by: CollectionSortField::AddedAt,
+                ..CollectionQuery::default()
+            },
             player_username: Some("unknown-user".to_string()),
         };
         let result = adapter.search_paginated(query).await.unwrap();

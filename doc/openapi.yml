@@ -457,7 +457,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/PaginatedCollectionResponse'
         '400':
-          description: Pagination out of bounds
+          description: Pagination out of bounds, or sort_by=added_at without player_username
         '401':
           description: Missing or invalid token
       security:
@@ -1294,6 +1294,7 @@ components:
       - trend
       - set_code
       - language_code
+      - added_at
     SortDirParam:
       type: string
       enum:
