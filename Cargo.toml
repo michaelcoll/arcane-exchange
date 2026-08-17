@@ -23,7 +23,7 @@ chrono = { version = "0.4", features = ["serde"] }
 cron_tab = { version = "0.2", features = ["async"] }
 csv = "1"
 dotenv = "0.15"
-jsonwebtoken = { git = "https://github.com/michaelcoll/jsonwebtoken", branch = "fix/headers-cant-accept-integer-field", features = ["rust_crypto"] }
+jsonwebtoken = { version = "11", features = ["rust_crypto"] }
 ratelimit = "2.0"
 reqwest = { version = "0.13", features = ["json"] }
 scraper = "0.27"
