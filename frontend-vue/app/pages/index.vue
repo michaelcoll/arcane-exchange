@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import type { TradeStatusParam } from '~/bindings/TradeStatusParam';
 import type { UserSuggestion } from '~/bindings/UserSuggestion';
 
 const mode = ref<'name' | 'decklist' | 'player'>('name');
@@ -49,10 +50,18 @@ const trends = [
   },
 ];
 
-const trades = [
-  { u: '@mizzix_42', s: 'En attente de réponse', t: 'them' },
-  { u: '@golgari_jo', s: 'À toi de jouer', t: 'me' },
-];
+const { listTrades } = useTradeService();
+const activeTradesParams = {
+  page: 0,
+  page_size: 3,
+  status: ['PENDING', 'ONE_ACCEPTED', 'FULLY_ACCEPTED'] as TradeStatusParam[],
+};
+const { data: activeTradesData, pending: activeTradesPending } =
+  await listTrades(activeTradesParams);
+const activeTrades = computed(() => activeTradesData.value?.items ?? []);
+const activeTradesTotal = computed(
+  () => activeTradesData.value?.total ?? activeTrades.value.length,
+);
 
 const searchOptions = [
   { value: 'name', label: 'Nom de carte', tone: 'cyan', kbd: '1' },
@@ -202,9 +211,9 @@ const handleDecklistSearch = () => {
             class="flex flex-col items-start gap-3 rounded-2xl border border-slate-300 bg-black/20 py-2 pr-2 pl-4 transition-all duration-200 focus-within:border-cyan-500/40 focus-within:bg-black/10 focus-within:ring-4 focus-within:ring-cyan-500/10 dark:border-white/15 dark:focus-within:border-cyan-400/40"
           >
             <div class="flex w-full items-center gap-2.5">
-              <AppIcon
-                name="layers"
-                :size="20"
+              <Icon
+                name="lucide:layers"
+                size="20"
                 class="flex-none text-slate-400 dark:text-slate-500"
               />
               <span class="text-sm text-slate-400 dark:text-slate-500"
@@ -249,7 +258,7 @@ const handleDecklistSearch = () => {
             class="inline-flex cursor-pointer items-center gap-1.5 rounded-full border border-slate-200 bg-slate-100 px-3 py-1.5 text-xs font-medium whitespace-nowrap text-slate-600 transition-all duration-150 select-none hover:border-slate-300 hover:bg-slate-50 hover:text-slate-800 dark:border-white/10 dark:bg-white/5 dark:text-slate-300 dark:hover:border-white/15 dark:hover:bg-zinc-800 dark:hover:text-slate-100"
             @click="selectRecent(r)"
           >
-            <AppIcon name="clock" :size="12" />
+            <Icon name="lucide:clock" size="12" />
             {{ r }}
           </button>
         </div>
@@ -261,7 +270,7 @@ const handleDecklistSearch = () => {
       <div class="mb-3.5 flex items-center justify-between gap-3">
         <div class="flex items-center gap-2">
           <span class="text-cyan-600 dark:text-cyan-400"
-            ><AppIcon name="trending" :size="18"
+            ><Icon name="lucide:trending-up" size="18"
           /></span>
           <h2 class="font-display m-0 text-base font-semibold tracking-tight">
             Tendances cette semaine
@@ -272,7 +281,7 @@ const handleDecklistSearch = () => {
           href="#"
         >
           voir tout
-          <AppIcon name="chevron" :size="14" class="-rotate-90" />
+          <Icon name="lucide:chevron-right" size="14" />
         </a>
       </div>
 
@@ -314,7 +323,7 @@ const handleDecklistSearch = () => {
           @click="navigateTo('/collection')"
         >
           Ouvrir ma collection
-          <AppIcon name="arrowUR" :size="15" />
+          <Icon name="lucide:arrow-up-right" size="15" />
         </button>
       </div>
 
@@ -322,29 +331,64 @@ const handleDecklistSearch = () => {
       <div
         class="min-w-[260px] flex-1 rounded-2xl border border-slate-200 bg-white/60 p-5 shadow-lg backdrop-blur-md dark:border-white/10 dark:bg-zinc-900/60"
       >
-        <span
-          class="text-2xs font-mono font-medium tracking-widest whitespace-nowrap text-slate-400 uppercase dark:text-slate-500"
-          >Échanges en cours</span
-        >
-        <div class="mt-3 flex flex-col gap-2">
-          <button
-            v-for="e in trades"
-            :key="e.u"
-            class="flex w-full items-center gap-3 rounded-xl border border-slate-200 bg-white px-3.5 py-3 text-left transition-all duration-150 hover:border-slate-300 hover:bg-slate-50 dark:border-white/10 dark:bg-zinc-900 dark:hover:border-white/15 dark:hover:bg-zinc-800"
-            @click="navigateTo('/trade')"
+        <div class="flex items-center justify-between gap-3">
+          <div class="flex items-center gap-2">
+            <span
+              class="text-2xs font-mono font-medium tracking-widest whitespace-nowrap text-slate-400 uppercase dark:text-slate-500"
+              >Échanges en cours</span
+            >
+            <span class="font-mono text-[11px] text-slate-400 dark:text-slate-500">{{
+              activeTradesTotal
+            }}</span>
+          </div>
+          <a
+            class="inline-flex items-center gap-1 text-sm text-slate-600 transition-colors duration-150 hover:text-cyan-600 dark:text-slate-300 dark:hover:text-cyan-400"
+            href="#"
+            @click.prevent="navigateTo('/trade')"
           >
-            <PlayerAvatar :initials="e.u.slice(1, 3).toUpperCase()" />
+            voir tout
+            <Icon name="lucide:chevron-right" size="13" />
+          </a>
+        </div>
+
+        <div
+          v-if="activeTradesPending && activeTrades.length === 0"
+          class="flex items-center justify-center py-8 font-mono text-xs text-slate-400 dark:text-slate-500"
+        >
+          <Icon name="lucide:loader-circle" size="16" class="mr-2 animate-spin" />
+          Chargement…
+        </div>
+
+        <p
+          v-else-if="activeTrades.length === 0"
+          class="mt-3 py-4 text-center font-mono text-xs text-slate-400 dark:text-slate-500"
+        >
+          Aucun échange en cours.
+        </p>
+
+        <div v-else class="mt-3 flex flex-col gap-2">
+          <button
+            v-for="t in activeTrades"
+            :key="t.id"
+            class="flex w-full items-center gap-3 rounded-xl border border-slate-200 bg-white px-3.5 py-3 text-left transition-all duration-150 hover:border-slate-300 hover:bg-slate-50 dark:border-white/10 dark:bg-zinc-900 dark:hover:border-white/15 dark:hover:bg-zinc-800"
+            @click="navigateTo(`/trade/${t.id}`)"
+          >
+            <PlayerAvatar :initials="t.partner_username.slice(0, 2).toUpperCase()" />
             <span class="flex min-w-0 flex-1 flex-col">
               <span
                 class="overflow-hidden text-sm font-semibold text-ellipsis whitespace-nowrap text-slate-800 dark:text-slate-100"
-                >{{ e.u }}</span
+                >{{ t.partner_username }}</span
               >
-              <span class="text-xs text-slate-400 dark:text-slate-500">{{ e.s }}</span>
+              <span class="text-xs text-slate-400 dark:text-slate-500"
+                >{{ t.my_card_count }} donnée{{ t.my_card_count > 1 ? 's' : '' }} ·
+                {{ t.partner_card_count }} reçue{{ t.partner_card_count > 1 ? 's' : '' }}</span
+              >
             </span>
-            <AppIcon
-              name="chevron"
-              :size="16"
-              class="flex-none -rotate-90 text-slate-400 dark:text-slate-500"
+            <TradeStatusPill :status="toTradeStatus(t.status)" size="sm" />
+            <Icon
+              name="lucide:chevron-right"
+              size="16"
+              class="flex-none text-slate-400 dark:text-slate-500"
             />
           </button>
         </div>
