@@ -50,6 +50,21 @@ const trends = [
   },
 ];
 
+const { getCollectionStats, getPriceHistory } = useCollectionService();
+const { data: collectionStatsData } = await getCollectionStats();
+
+const collectionHistoryParams = ref(lastNDaysRange(30));
+const { data: collectionHistoryData, pending: collectionHistoryPending } =
+  await getPriceHistory(collectionHistoryParams);
+
+const collectionEnvelopeData = computed(() => toEnvelopeData(collectionHistoryData.value ?? []));
+const hasEnoughCollectionHistory = computed(() => collectionEnvelopeData.value.length >= 2);
+const collectionTotalValueCents = computed(() => {
+  const entries = collectionHistoryData.value;
+  return entries && entries.length > 0 ? entries[entries.length - 1]!.trend : 0;
+});
+const collectionVariation = computed(() => computeVariation(collectionHistoryData.value ?? []));
+
 const { listTrades } = useTradeService();
 const activeTradesParams = {
   page: 0,
@@ -301,25 +316,82 @@ const handleDecklistSearch = () => {
 
     <!-- ── SECONDARY DISCOVERY ── -->
     <div class="mt-7 flex flex-wrap gap-4">
-      <!-- Collection panel -->
+      <!-- Collection panel — immersive tile, derived from the collection page's value bar -->
       <div
-        class="min-w-[260px] flex-1 rounded-2xl border border-slate-200 bg-white/60 p-5 shadow-lg backdrop-blur-md dark:border-white/10 dark:bg-zinc-900/60"
+        class="relative min-h-[206px] min-w-[260px] flex-1 overflow-hidden rounded-2xl border border-slate-200 bg-white/60 shadow-lg backdrop-blur-md dark:border-white/10 dark:bg-zinc-900/60"
       >
-        <div class="flex items-center justify-between gap-4">
-          <div class="flex flex-col gap-0.5">
-            <span
-              class="text-2xs font-mono font-medium tracking-widest whitespace-nowrap text-slate-400 uppercase dark:text-slate-500"
-              >Ta collection</span
-            >
-            <span class="font-mono text-2xl font-bold tracking-tight whitespace-nowrap"
-              >€ 4 218,60</span
-            >
-            <span class="font-mono text-sm text-cyan-600 dark:text-cyan-400">▴ €86,20 (30 j)</span>
+        <!-- graph background -->
+        <div class="absolute inset-0">
+          <EnvelopeGraph v-if="hasEnoughCollectionHistory" :data="collectionEnvelopeData" />
+          <div
+            v-else
+            class="text-2xs flex h-full items-center justify-center font-mono tracking-wide text-slate-400 uppercase dark:text-slate-500"
+          >
+            {{ collectionHistoryPending ? 'Chargement…' : "Pas encore assez d'historique" }}
           </div>
-          <Sparkline />
         </div>
+
+        <!-- scrim -->
+        <div
+          class="pointer-events-none absolute inset-0 z-[1] bg-gradient-to-b from-white/95 via-white/55 to-transparent dark:from-zinc-900/95 dark:via-zinc-900/55"
+        />
+        <!-- bottom scrim — darkens the graph behind the meta line and CTA button -->
+        <div
+          class="pointer-events-none absolute inset-x-0 bottom-0 z-[2] h-24 bg-gradient-to-t from-white/95 to-transparent dark:from-zinc-900/95"
+        />
+
+        <!-- top: KPIs -->
+        <div class="absolute inset-x-0 top-0 z-[3] flex flex-col gap-1.5 px-[18px] py-[18px]">
+          <span
+            class="text-2xs font-mono font-medium tracking-widest whitespace-nowrap text-slate-400 uppercase dark:text-slate-500"
+            >Ma collection · CardMarket</span
+          >
+          <span class="font-display text-[30px] leading-none font-semibold tracking-tight">{{
+            formatPrice(collectionTotalValueCents)
+          }}</span>
+          <span
+            :class="[
+              'font-mono text-[12.5px]',
+              collectionVariation.positive
+                ? 'text-cyan-600 dark:text-cyan-400'
+                : 'text-red-500 dark:text-red-400',
+            ]"
+            >{{ collectionVariation.positive ? '▴' : '▾' }}
+            {{ formatPrice(Math.abs(collectionVariation.deltaCents)) }} ·
+            {{ collectionVariation.positive ? '+' : '−'
+            }}{{
+              Math.abs(collectionVariation.pct).toLocaleString('fr-FR', {
+                minimumFractionDigits: 1,
+                maximumFractionDigits: 1,
+              })
+            }}
+            % (30 j)</span
+          >
+        </div>
+
+        <!-- meta: card counts -->
+        <div
+          v-if="collectionStatsData"
+          class="absolute bottom-[62px] left-[18px] z-[3] flex items-center gap-2.5 font-mono text-[11.5px] whitespace-nowrap text-slate-500 [text-shadow:0_1px_4px_rgba(0,0,0,0.35)] dark:text-slate-300 dark:[text-shadow:0_1px_4px_rgba(0,0,0,0.6)]"
+        >
+          <span
+            ><b class="font-semibold text-slate-700 dark:text-slate-100">{{
+              collectionStatsData.total_cards.toLocaleString('fr-FR')
+            }}</b>
+            cartes</span
+          >
+          <i class="h-[3px] w-[3px] rounded-full bg-slate-400 dark:bg-slate-500" />
+          <span
+            ><b class="font-semibold text-slate-700 dark:text-slate-100">{{
+              collectionStatsData.unique_cards
+            }}</b>
+            uniques</span
+          >
+        </div>
+
+        <!-- CTA -->
         <button
-          class="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-xl border border-slate-200 bg-transparent px-4 py-2.5 text-sm leading-none font-semibold whitespace-nowrap text-slate-600 transition-all duration-150 hover:-translate-y-px hover:border-slate-300 hover:bg-slate-100 hover:text-slate-800 active:translate-y-0 dark:border-white/10 dark:text-slate-300 dark:hover:border-white/15 dark:hover:bg-white/5 dark:hover:text-slate-100"
+          class="absolute right-[18px] bottom-4 left-[18px] z-[3] inline-flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-transparent px-4 py-2.5 text-sm leading-none font-semibold whitespace-nowrap text-slate-600 transition-all duration-150 hover:-translate-y-px hover:border-slate-300 hover:bg-slate-100 hover:text-slate-800 active:translate-y-0 dark:border-white/10 dark:text-slate-300 dark:hover:border-white/15 dark:hover:bg-white/5 dark:hover:text-slate-100"
           @click="navigateTo('/collection')"
         >
           Ouvrir ma collection
