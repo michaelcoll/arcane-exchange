@@ -1,0 +1,11 @@
+meta {
+  name: get profile not found
+  type: http
+  seq: 7
+}
+
+get {
+  url: {{baseUrl}}/user/username-inexistant
+  body: none
+  auth: inherit
+}

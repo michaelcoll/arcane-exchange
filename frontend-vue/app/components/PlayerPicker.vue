@@ -29,10 +29,6 @@ const listRef = ref<HTMLElement | null>(null);
 
 let debounceTimer: ReturnType<typeof setTimeout> | undefined;
 
-function initialsOf(username: string): string {
-  return username.slice(0, 2).toUpperCase();
-}
-
 function ratingLabel(note: number): string {
   return note.toFixed(1).replace('.', ',');
 }
@@ -158,7 +154,7 @@ watch([highlighted, open, navActive], () => {
       v-if="props.modelValue"
       class="flex min-h-[62px] items-center gap-2.5 rounded-2xl border border-violet-500/40 bg-violet-500/10 py-2 pr-2 pl-3 dark:border-violet-400/40 dark:bg-violet-400/10"
     >
-      <PlayerAvatar :initials="initialsOf(props.modelValue.username)" />
+      <PlayerAvatar :username="props.modelValue.username" />
       <span class="flex min-w-0 flex-1 flex-col">
         <span class="truncate text-sm font-semibold text-slate-800 dark:text-slate-100"
           ><span class="text-slate-400 dark:text-slate-500">@</span
@@ -229,7 +225,7 @@ watch([highlighted, open, navActive], () => {
             @mousedown.prevent
             @click="select(p, false)"
           >
-            <PlayerAvatar :initials="initialsOf(p.username)" />
+            <PlayerAvatar :username="p.username" />
             <span class="flex min-w-0 flex-1 flex-col">
               <span class="truncate text-sm font-semibold text-slate-800 dark:text-slate-100"
                 ><span class="text-slate-400 dark:text-slate-500">@</span>{{ p.username }}</span
@@ -280,7 +276,7 @@ watch([highlighted, open, navActive], () => {
               @mousedown.prevent
               @click="select(p, false)"
             >
-              <PlayerAvatar :initials="initialsOf(p.username)" />
+              <PlayerAvatar :username="p.username" />
               <span class="flex min-w-0 flex-1 flex-col">
                 <span class="truncate text-sm font-semibold text-slate-800 dark:text-slate-100"
                   ><span class="text-slate-400 dark:text-slate-500">@</span>{{ p.username }}</span
@@ -315,7 +311,7 @@ watch([highlighted, open, navActive], () => {
               @mousedown.prevent
               @click="select(p, false)"
             >
-              <PlayerAvatar :initials="initialsOf(p.username)" />
+              <PlayerAvatar :username="p.username" />
               <span class="flex min-w-0 flex-1 flex-col">
                 <span class="truncate text-sm font-semibold text-slate-800 dark:text-slate-100"
                   ><span class="text-slate-400 dark:text-slate-500">@</span>{{ p.username }}</span

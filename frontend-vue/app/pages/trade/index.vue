@@ -80,7 +80,7 @@ const formatUpdatedAt = (iso: string) =>
           :to="`/trade/${t.id}`"
           class="flex items-center gap-3 rounded-xl border border-slate-200 bg-white/60 px-3.5 py-3 shadow-lg backdrop-blur-md transition-all duration-150 hover:border-slate-300 hover:bg-white dark:border-white/10 dark:bg-zinc-900/60 dark:hover:border-white/15 dark:hover:bg-zinc-900"
         >
-          <PlayerAvatar :initials="t.partner_username.slice(0, 2).toUpperCase()" />
+          <PlayerAvatar :username="t.partner_username" />
           <div class="flex min-w-0 flex-1 flex-col gap-0.5">
             <span
               class="overflow-hidden text-sm font-semibold text-ellipsis whitespace-nowrap text-slate-800 dark:text-slate-100"

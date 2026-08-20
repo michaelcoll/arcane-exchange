@@ -33,6 +33,7 @@ mod tests {
             "user_clerk123".to_string(),
             None,
             Some("testuser".to_string()),
+            None,
         )
     }
 

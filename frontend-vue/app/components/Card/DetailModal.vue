@@ -77,8 +77,6 @@ watch(
   { immediate: true },
 );
 
-const initialsOf = (username: string) => username.replace(/^@/, '').slice(0, 2).toUpperCase();
-
 const cardEnvelopeData = computed(() => toEnvelopeData(cardHistoryData.value));
 const cardHasEnoughHistory = computed(() => cardEnvelopeData.value.length >= 2);
 const cardVariation = computed(() => computeVariation(cardHistoryData.value));
@@ -251,7 +249,7 @@ const cardVariation = computed(() => computeVariation(cardHistoryData.value));
                   Meilleure offre
                 </span>
                 <div class="flex items-center gap-2.5">
-                  <PlayerAvatar :initials="initialsOf(offer.owner_username)" />
+                  <PlayerAvatar :username="offer.owner_username" />
                   <div class="min-w-0 flex-1">
                     <div
                       class="overflow-hidden text-sm font-semibold text-ellipsis whitespace-nowrap text-slate-800 dark:text-slate-100"

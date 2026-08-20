@@ -738,7 +738,7 @@ paths:
           description: Trade must be completed before it can be rated, or already rated by the caller
       security:
       - bearer_auth: []
-  /user/register:
+  /user:
     post:
       tags:
       - auth
@@ -845,6 +845,31 @@ paths:
           description: Missing or invalid authentication token
         '404':
           description: Authenticated user has never registered
+      security:
+      - bearer_auth: []
+  /user/{username}:
+    get:
+      tags:
+      - auth
+      operationId: get_user_profile
+      parameters:
+      - name: username
+        in: path
+        description: Player username
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          description: Public user profile
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserProfileResponse'
+        '401':
+          description: Missing or invalid authentication token
+        '404':
+          description: Username not found
       security:
       - bearer_auth: []
 components:
@@ -1453,6 +1478,21 @@ components:
         updated_at:
           type: string
           description: RFC 3339 timestamp
+    UserProfileResponse:
+      type: object
+      required:
+      - id
+      properties:
+        avatar_url:
+          type:
+          - string
+          - 'null'
+        id:
+          type: string
+        username:
+          type:
+          - string
+          - 'null'
     UserSuggestionResponse:
       type: object
       description: |-

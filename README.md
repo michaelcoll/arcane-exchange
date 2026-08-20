@@ -1,4 +1,4 @@
-# Arcane Exchange
+![](doc/images/04-split-diagonal.svg "Logo")
 
 [![codecov](https://codecov.io/gh/michaelcoll/arcane-exchange/graph/badge.svg?token=b2Wlmg2WX3)](https://codecov.io/gh/michaelcoll/arcane-exchange)
 [![license](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)

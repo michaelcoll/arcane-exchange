@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="675" viewBox="0 0 1200 675" font-family="Space Grotesk, system-ui, Segoe UI, Helvetica, sans-serif">
+
+<defs>
+<linearGradient id="split" x1="0" y1="0.42" x2="1" y2="0.58"><stop offset="0" stop-color="#134a54"></stop><stop offset=".44" stop-color="#131313"></stop><stop offset=".56" stop-color="#131313"></stop><stop offset="1" stop-color="#312c46"></stop></linearGradient>
+<linearGradient id="seam" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff" stop-opacity="0"></stop><stop offset=".5" stop-color="#fff" stop-opacity=".16"></stop><stop offset="1" stop-color="#fff" stop-opacity="0"></stop></linearGradient>
+<filter id="glow4" x="-60%" y="-60%" width="220%" height="220%"><feDropShadow dx="0" dy="0" stdDeviation="16" flood-color="#00daf3" flood-opacity=".35"></feDropShadow></filter>
+<filter id="grain"><feTurbulence type="fractalNoise" baseFrequency=".9" numOctaves="3"></feTurbulence><feColorMatrix type="saturate" values="0"></feColorMatrix></filter>
+<g id="mark4" fill="none" stroke-width="1.7" stroke-linejoin="round"><rect x="5" y="8.5" width="11" height="11" rx="3" transform="rotate(45 10.5 14)" stroke="#00daf3"></rect><rect x="12" y="8.5" width="11" height="11" rx="3" transform="rotate(45 17.5 14)" stroke="#cdbdff"></rect></g>
+</defs>
+<rect width="1200" height="675" fill="url(#split)"></rect>
+<rect x="599" y="-68" width="1.5" height="810" fill="url(#seam)" transform="rotate(28 600 337)"></rect>
+<g filter="url(#glow4)"><use href="#mark4" transform="translate(534 144) scale(4.714)"></use></g>
+<text x="605" y="352" text-anchor="middle" font-size="64" font-weight="700" letter-spacing="10.2" fill="#f5f6f7">ARCANE <tspan font-weight="400" fill="#cdbdff">EXCHANGE</tspan></text>
+<rect x="442" y="424" width="316" height="50" rx="25" fill="#000000" fill-opacity=".3" stroke="#ffffff" stroke-opacity=".16"></rect>
+<text x="602" y="455" text-anchor="middle" class="m" font-family="JetBrains Mono, ui-monospace, Menlo, Consolas, monospace" font-size="14" letter-spacing="4.2" fill="#b6b8ba">LE MARCHÉ DES JOUEURS</text>
+<rect width="1200" height="675" filter="url(#grain)" opacity=".05" style="mix-blend-mode:overlay"></rect>
+</svg>

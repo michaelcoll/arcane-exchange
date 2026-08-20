@@ -24,13 +24,15 @@ impl UserRepository for UserRepositoryAdapter {
         })?;
 
         sqlx::query!(
-            r#"INSERT INTO users (id, username)
-                VALUES ($1, $2)
+            r#"INSERT INTO users (id, username, image_url)
+                VALUES ($1, $2, $3)
                 ON CONFLICT (id)
                     DO UPDATE
-                    SET username = $2"#,
+                    SET username = $2,
+                        image_url = COALESCE($3, users.image_url)"#,
             user.id.as_str(),
             username,
+            user.avatar_url,
         )
         .execute(&self.pool)
         .await?;
@@ -41,7 +43,7 @@ impl UserRepository for UserRepositoryAdapter {
     async fn find_by_id(&self, id: &UserId) -> Result<Option<User>, AppError> {
         let row = sqlx::query_as!(
             UserEntity,
-            "SELECT id, username FROM users WHERE id = $1",
+            "SELECT id, username, image_url FROM users WHERE id = $1",
             id.as_str()
         )
         .fetch_optional(&self.pool)
@@ -53,7 +55,7 @@ impl UserRepository for UserRepositoryAdapter {
     async fn find_by_username(&self, username: &str) -> Result<Option<User>, AppError> {
         let row = sqlx::query_as!(
             UserEntity,
-            "SELECT id, username FROM users WHERE LOWER(username) = LOWER($1)",
+            "SELECT id, username, image_url FROM users WHERE LOWER(username) = LOWER($1)",
             username
         )
         .fetch_optional(&self.pool)
@@ -125,7 +127,7 @@ mod tests {
     use sqlx::PgPool;
 
     fn make_user(id: &str, username: &str) -> User {
-        User::new(id.to_string(), None, Some(username.to_string()))
+        User::new(id.to_string(), None, Some(username.to_string()), None)
     }
 
     #[sqlx::test]
@@ -163,9 +165,62 @@ mod tests {
     }
 
     #[sqlx::test]
+    async fn upsert_persists_avatar_and_keeps_existing_value_when_claim_missing(pool: PgPool) {
+        let adapter = UserRepositoryAdapter::new(pool.clone());
+
+        let with_avatar = User::new(
+            "user_4".to_string(),
+            None,
+            Some("carol".to_string()),
+            Some("https://img.example.com/avatar.png".to_string()),
+        );
+        adapter.upsert(&with_avatar).await.unwrap();
+
+        let user = adapter
+            .find_by_id(&UserId::new("user_4"))
+            .await
+            .unwrap()
+            .unwrap();
+        assert_eq!(
+            user.avatar_url,
+            Some("https://img.example.com/avatar.png".to_string())
+        );
+
+        // Login sans claim image_url : la valeur existante est conservée.
+        adapter.upsert(&make_user("user_4", "carol")).await.unwrap();
+        let user = adapter
+            .find_by_id(&UserId::new("user_4"))
+            .await
+            .unwrap()
+            .unwrap();
+        assert_eq!(
+            user.avatar_url,
+            Some("https://img.example.com/avatar.png".to_string())
+        );
+
+        // Un nouveau claim remplace la valeur.
+        let new_avatar = User::new(
+            "user_4".to_string(),
+            None,
+            Some("carol".to_string()),
+            Some("https://img.example.com/new-avatar.png".to_string()),
+        );
+        adapter.upsert(&new_avatar).await.unwrap();
+        let user = adapter
+            .find_by_id(&UserId::new("user_4"))
+            .await
+            .unwrap()
+            .unwrap();
+        assert_eq!(
+            user.avatar_url,
+            Some("https://img.example.com/new-avatar.png".to_string())
+        );
+    }
+
+    #[sqlx::test]
     async fn should_return_wrong_format_error_when_username_missing(pool: PgPool) {
         let adapter = UserRepositoryAdapter::new(pool);
-        let user = User::new("user_3".to_string(), None, None);
+        let user = User::new("user_3".to_string(), None, None, None);
 
         let result = adapter.upsert(&user).await;
 

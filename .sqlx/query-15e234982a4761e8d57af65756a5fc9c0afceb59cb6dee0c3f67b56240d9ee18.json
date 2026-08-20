@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT id, username FROM users WHERE LOWER(username) = LOWER($1)",
+  "query": "SELECT id, username, image_url FROM users WHERE LOWER(username) = LOWER($1)",
   "describe": {
     "columns": [
       {
@@ -24,6 +24,17 @@
             "name": "username"
           }
         }
+      },
+      {
+        "ordinal": 2,
+        "name": "image_url",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "users",
+            "name": "image_url"
+          }
+        }
       }
     ],
     "parameters": {
@@ -33,8 +44,9 @@
     },
     "nullable": [
       false,
-      false
+      false,
+      true
     ]
   },
-  "hash": "a0789a2ea28c6acead660d39e5e7ff10087fb419049e8d432f9453d460d7996f"
+  "hash": "15e234982a4761e8d57af65756a5fc9c0afceb59cb6dee0c3f67b56240d9ee18"
 }
