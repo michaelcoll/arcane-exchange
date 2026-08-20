@@ -1,11 +1,15 @@
 import type { CollectionVisibility } from '~/bindings/CollectionVisibility';
 import type { TradeBindersResponse } from '~/bindings/TradeBindersResponse';
+import type { UserProfileResponse } from '~/bindings/UserProfileResponse';
 import type { VisibilityResponse } from '~/bindings/VisibilityResponse';
 
 export const useUserService = () => {
   const { apiCall } = useApi();
 
-  const register = () => apiCall(`/user/register`, { method: 'POST' });
+  const register = () => apiCall(`/user`, { method: 'POST' });
+
+  const getUserProfile = (username: string) =>
+    apiCall<UserProfileResponse>(`/user/${encodeURIComponent(username)}`);
 
   const getVisibility = () => apiCall<VisibilityResponse>('/user/visibility');
 
@@ -22,6 +26,7 @@ export const useUserService = () => {
 
   return {
     register,
+    getUserProfile,
     getVisibility,
     setVisibility,
     getTradeBinders,

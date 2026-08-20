@@ -28,6 +28,12 @@ pub trait RegisterUserUseCase: Send + Sync {
 
 #[async_trait]
 #[cfg_attr(test, automock)]
+pub trait GetUserProfileUseCase: Send + Sync {
+    async fn get_user_profile(&self, username: &str) -> Result<User, AppError>;
+}
+
+#[async_trait]
+#[cfg_attr(test, automock)]
 pub trait GetCollectionVisibilityUseCase: Send + Sync {
     async fn get_visibility(&self, user_id: UserId) -> Result<CollectionVisibility, AppError>;
 }

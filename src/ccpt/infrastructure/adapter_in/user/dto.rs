@@ -1,4 +1,4 @@
-use crate::domain::user::CollectionVisibility;
+use crate::domain::user::{CollectionVisibility, User};
 use serde::{Deserialize, Serialize};
 use ts_rs::TS;
 use utoipa::ToSchema;
@@ -37,6 +37,25 @@ impl From<CollectionVisibility> for CollectionVisibilityParam {
 #[ts(export, export_to = "VisibilityResponse.ts")]
 pub struct VisibilityResponse {
     pub visibility: CollectionVisibilityParam,
+}
+
+#[derive(Debug, Serialize, TS, ToSchema)]
+#[serde(rename = "UserProfileResponse")]
+#[ts(export, export_to = "UserProfileResponse.ts")]
+pub struct UserProfileResponse {
+    pub id: String,
+    pub username: Option<String>,
+    pub avatar_url: Option<String>,
+}
+
+impl From<User> for UserProfileResponse {
+    fn from(user: User) -> Self {
+        Self {
+            id: user.id.to_string(),
+            username: user.username,
+            avatar_url: user.avatar_url,
+        }
+    }
 }
 
 #[derive(Debug, Deserialize, TS, ToSchema)]

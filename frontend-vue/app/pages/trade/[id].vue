@@ -131,7 +131,7 @@ const label =
             <Icon name="lucide:chevron-left" size="16" />
           </button>
           <div class="flex items-center gap-2.5">
-            <PlayerAvatar :initials="partner.slice(0, 2).toUpperCase()" />
+            <PlayerAvatar :username="partner" />
             <h2 class="font-display text-base font-semibold tracking-tight">
               Échange avec
               <span class="text-cyan-600 dark:text-cyan-400">{{ partner }}</span>

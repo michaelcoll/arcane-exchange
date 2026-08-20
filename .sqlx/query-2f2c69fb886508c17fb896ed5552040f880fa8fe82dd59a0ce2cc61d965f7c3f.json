@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT id, username FROM users WHERE id = $1",
+  "query": "SELECT id, username, image_url FROM users WHERE id = $1",
   "describe": {
     "columns": [
       {
@@ -24,6 +24,17 @@
             "name": "username"
           }
         }
+      },
+      {
+        "ordinal": 2,
+        "name": "image_url",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "users",
+            "name": "image_url"
+          }
+        }
       }
     ],
     "parameters": {
@@ -33,8 +44,9 @@
     },
     "nullable": [
       false,
-      false
+      false,
+      true
     ]
   },
-  "hash": "358f243683ea759a066982024b15935c547aac60d82a4e5e2961dce893783853"
+  "hash": "2f2c69fb886508c17fb896ed5552040f880fa8fe82dd59a0ce2cc61d965f7c3f"
 }

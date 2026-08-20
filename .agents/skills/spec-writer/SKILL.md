@@ -62,16 +62,15 @@ critère doit être testable (manuellement ou automatiquement) — pas de formul
 5. Reste concis : la spec doit être actionnable, pas un roman. Pas de sections vides, pas de blabla marketing.
 6. **Une fois la spec validée par l'utilisateur, fais-la relire par un sous-agent** avant de considérer le travail
    terminé :
-   - Lance un sous-agent via l'outil `Agent` (`subagent_type: "claude"` ou `"general-purpose"`, avec
-     `model: "opus"` pour bénéficier d'un modèle plus conséquent que celui utilisé pour la rédaction).
+   - Lance un sous-agent via l'outil `Agent` (`subagent_type: "claude"` ou `"general-purpose"`).
    - Donne-lui un prompt autonome (il démarre sans contexte) : la spec à relire, le rapport d'exploration du code
-     existant s'il est disponible. Demande-lui de vérifier la cohérence avec l'architecture/les conventions
-     existantes, la complétude des sections (Contexte/Objectif/Solution/Cas d'erreurs/Critères d'acceptance), la
-     testabilité de chaque critère d'acceptance, et l'absence de solution technique complète dans la section
-     Solution — pas une relecture de style superficielle.
+     existant s'il est disponible. Demande-lui de vérifier la cohérence avec l'architecture/les conventions existantes,
+     la complétude des sections (Contexte/Objectif/Solution/Cas d'erreurs/Critères d'acceptance), la testabilité de
+     chaque critère d'acceptance, et l'absence de solution technique complète dans la section Solution — pas une
+     relecture de style superficielle.
    - Une fois le rapport reçu, c'est toi (agent principal) qui traites chaque remarque : corrige la spec avec
-     `Edit` pour ce qui est fondé. Pour ce qui n'est pas fondé ou hors périmètre, explique pourquoi à
-     l'utilisateur plutôt que de l'ignorer silencieusement — ne délègue jamais la décision finale au sous-agent.
+     `Edit` pour ce qui est fondé. Pour ce qui n'est pas fondé ou hors périmètre, explique pourquoi à l'utilisateur
+     plutôt que de l'ignorer silencieusement — ne délègue jamais la décision finale au sous-agent.
 
 ## Ce que tu ne fais pas
 

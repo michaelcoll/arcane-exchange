@@ -3,8 +3,8 @@ use super::dto::{AddTradeBinderRequest, CollectionVisibilityParam, SetVisibility
 use crate::application::error::{AppError, InfraError};
 use crate::application::use_case::{
     MockAddTradeBinderUseCase, MockGetCollectionVisibilityUseCase, MockGetTradeBindersUseCase,
-    MockRegisterUserUseCase, MockRemoveTradeBinderUseCase, MockSetCollectionVisibilityUseCase,
-    MockStatsUseCase,
+    MockGetUserProfileUseCase, MockRegisterUserUseCase, MockRemoveTradeBinderUseCase,
+    MockSetCollectionVisibilityUseCase, MockStatsUseCase,
 };
 use crate::domain::error::FunctionalError;
 use crate::domain::user::{CollectionVisibility, User};
@@ -12,6 +12,7 @@ use crate::infrastructure::AppState;
 use crate::infrastructure::adapter_in::auth_extractor::AuthenticatedUser;
 use axum::extract::{Path, State};
 use axum::http::StatusCode;
+use mockall::predicate::eq;
 use std::sync::Arc;
 
 fn make_app_state(register_user_use_case: MockRegisterUserUseCase) -> AppState {
@@ -56,6 +57,13 @@ fn make_app_state_remove_trade_binder(uc: MockRemoveTradeBinderUseCase) -> AppSt
     }
 }
 
+fn make_app_state_get_profile(uc: MockGetUserProfileUseCase) -> AppState {
+    AppState {
+        get_user_profile_use_case: Arc::new(uc),
+        ..AppState::for_testing(Arc::new(MockStatsUseCase::new()))
+    }
+}
+
 #[tokio::test]
 async fn register_returns_no_content_when_username_present() {
     let mut mock_register = MockRegisterUserUseCase::new();
@@ -69,6 +77,7 @@ async fn register_returns_no_content_when_username_present() {
         "user_clerk123".to_string(),
         None,
         Some("testuser".to_string()),
+        None,
     );
 
     let result = register(State(state), AuthenticatedUser(user)).await;
@@ -81,7 +90,7 @@ async fn register_returns_no_content_when_username_present() {
 async fn register_returns_bad_request_when_username_missing() {
     let mock_register = MockRegisterUserUseCase::new();
     let state = make_app_state(mock_register);
-    let user = User::new("user_clerk123".to_string(), None, None);
+    let user = User::new("user_clerk123".to_string(), None, None, None);
 
     let result = register(State(state), AuthenticatedUser(user)).await;
 
@@ -113,6 +122,7 @@ async fn register_propagates_use_case_error() {
         "user_clerk123".to_string(),
         None,
         Some("testuser".to_string()),
+        None,
     );
 
     let result = register(State(state), AuthenticatedUser(user)).await;
@@ -137,6 +147,7 @@ async fn get_visibility_returns_value_on_success() {
         "user_clerk123".to_string(),
         None,
         Some("testuser".to_string()),
+        None,
     );
 
     let result = get_visibility(State(state), AuthenticatedUser(user)).await;
@@ -158,6 +169,7 @@ async fn get_visibility_propagates_user_not_found() {
         "user_clerk123".to_string(),
         None,
         Some("testuser".to_string()),
+        None,
     );
 
     let result = get_visibility(State(state), AuthenticatedUser(user)).await;
@@ -182,6 +194,7 @@ async fn set_visibility_returns_no_content_on_success() {
         "user_clerk123".to_string(),
         None,
         Some("testuser".to_string()),
+        None,
     );
 
     let result = set_visibility(
@@ -209,6 +222,7 @@ async fn set_visibility_propagates_user_not_found() {
         "user_clerk123".to_string(),
         None,
         Some("testuser".to_string()),
+        None,
     );
 
     let result = set_visibility(
@@ -239,6 +253,7 @@ async fn get_trade_binders_returns_binders_on_success() {
         "user_clerk123".to_string(),
         None,
         Some("testuser".to_string()),
+        None,
     );
 
     let result = get_trade_binders(State(state), AuthenticatedUser(user)).await;
@@ -266,6 +281,7 @@ async fn get_trade_binders_propagates_use_case_error() {
         "user_clerk123".to_string(),
         None,
         Some("testuser".to_string()),
+        None,
     );
 
     let result = get_trade_binders(State(state), AuthenticatedUser(user)).await;
@@ -290,6 +306,7 @@ async fn add_trade_binder_returns_no_content_on_success() {
         "user_clerk123".to_string(),
         None,
         Some("testuser".to_string()),
+        None,
     );
 
     let result = add_trade_binder(
@@ -317,6 +334,7 @@ async fn add_trade_binder_propagates_binder_not_found() {
         "user_clerk123".to_string(),
         None,
         Some("testuser".to_string()),
+        None,
     );
 
     let result = add_trade_binder(
@@ -352,6 +370,7 @@ async fn add_trade_binder_propagates_wrong_format() {
         "user_clerk123".to_string(),
         None,
         Some("testuser".to_string()),
+        None,
     );
 
     let result = add_trade_binder(
@@ -383,6 +402,7 @@ async fn remove_trade_binder_returns_no_content_on_success() {
         "user_clerk123".to_string(),
         None,
         Some("testuser".to_string()),
+        None,
     );
 
     let result = remove_trade_binder(
@@ -414,6 +434,7 @@ async fn remove_trade_binder_propagates_use_case_error() {
         "user_clerk123".to_string(),
         None,
         Some("testuser".to_string()),
+        None,
     );
 
     let result = remove_trade_binder(
@@ -428,4 +449,115 @@ async fn remove_trade_binder_propagates_use_case_error() {
         AppError::Infra(InfraError::RepositoryError(msg)) => assert_eq!(msg, "DB error"),
         _ => panic!("Expected RepositoryError"),
     }
+}
+
+#[tokio::test]
+async fn get_user_profile_returns_profile_with_avatar() {
+    let mut mock_uc = MockGetUserProfileUseCase::new();
+    mock_uc
+        .expect_get_user_profile()
+        .times(1)
+        .with(eq("alice"))
+        .returning(|_| {
+            Box::pin(async {
+                Ok(User::new(
+                    "user_clerk123".to_string(),
+                    None,
+                    Some("alice".to_string()),
+                    Some("https://img.example.com/avatar.png".to_string()),
+                ))
+            })
+        });
+
+    let state = make_app_state_get_profile(mock_uc);
+    let user = User::new(
+        "user_clerk123".to_string(),
+        None,
+        Some("testuser".to_string()),
+        None,
+    );
+
+    let result = get_user_profile(
+        State(state),
+        AuthenticatedUser(user),
+        Path("alice".to_string()),
+    )
+    .await;
+
+    let response = result.unwrap();
+    assert_eq!(response.0.id, "user_clerk123");
+    assert_eq!(response.0.username, Some("alice".to_string()));
+    assert_eq!(
+        response.0.avatar_url,
+        Some("https://img.example.com/avatar.png".to_string())
+    );
+}
+
+#[tokio::test]
+async fn get_user_profile_returns_null_avatar_when_none_stored() {
+    let mut mock_uc = MockGetUserProfileUseCase::new();
+    mock_uc
+        .expect_get_user_profile()
+        .times(1)
+        .with(eq("bob"))
+        .returning(|_| {
+            Box::pin(async {
+                Ok(User::new(
+                    "user_bob".to_string(),
+                    None,
+                    Some("bob".to_string()),
+                    None,
+                ))
+            })
+        });
+
+    let state = make_app_state_get_profile(mock_uc);
+    let user = User::new(
+        "user_clerk123".to_string(),
+        None,
+        Some("testuser".to_string()),
+        None,
+    );
+
+    let result = get_user_profile(
+        State(state),
+        AuthenticatedUser(user),
+        Path("bob".to_string()),
+    )
+    .await;
+
+    let response = result.unwrap();
+    assert_eq!(response.0.avatar_url, None);
+}
+
+#[tokio::test]
+async fn get_user_profile_propagates_user_not_found() {
+    let mut mock_uc = MockGetUserProfileUseCase::new();
+    mock_uc
+        .expect_get_user_profile()
+        .times(1)
+        .with(eq("nobody"))
+        .returning(|_| {
+            Box::pin(async { Err(AppError::Functional(FunctionalError::UserNotFound)) })
+        });
+
+    let state = make_app_state_get_profile(mock_uc);
+    let user = User::new(
+        "user_clerk123".to_string(),
+        None,
+        Some("testuser".to_string()),
+        None,
+    );
+
+    let result = get_user_profile(
+        State(state),
+        AuthenticatedUser(user),
+        Path("nobody".to_string()),
+    )
+    .await;
+
+    assert!(matches!(
+        result.unwrap_err(),
+        AppError::Functional(FunctionalError::UserNotFound)
+    ));
 }

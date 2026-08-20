@@ -338,10 +338,10 @@ const sizeOptions = [
 
 /* ---------- MODE: PAR DECKLIST ---------- */
 const coverers = [
-  { u: '@mizzix_42', init: 'M4', pct: 81, n: 80, val: 240 },
-  { u: '@kaalia_dt', init: 'KA', pct: 63, n: 62, val: 188 },
-  { u: '@urza_main', init: 'UR', pct: 47, n: 46, val: 142 },
-  { u: '@simic_ramp', init: 'SI', pct: 31, n: 31, val: 96 },
+  { u: 'mizzix_42', pct: 81, n: 80, val: 240 },
+  { u: 'kaalia_dt', pct: 63, n: 62, val: 188 },
+  { u: 'urza_main', pct: 47, n: 46, val: 142 },
+  { u: 'simic_ramp', pct: 31, n: 31, val: 96 },
 ];
 
 const decklist = ref(
@@ -366,7 +366,7 @@ const decklist = ref(
         v-if="mode === 'player' && player"
         class="mb-5 flex flex-wrap items-center gap-4 rounded-2xl border border-violet-200 bg-white/60 p-4 shadow-lg backdrop-blur-md dark:border-violet-400/20 dark:bg-violet-600/5"
       >
-        <PlayerAvatar :initials="player.username.slice(0, 2).toUpperCase()" size="lg" />
+        <PlayerAvatar :username="player.username" size="lg" />
         <div class="flex min-w-0 flex-1 flex-col gap-1">
           <span class="text-lg font-semibold text-slate-800 dark:text-slate-100"
             ><span class="text-slate-400 dark:text-slate-500">@</span>{{ player.username }}</span
@@ -686,10 +686,10 @@ const decklist = ref(
         >
           <div class="mb-2.5 flex items-center justify-between">
             <div class="flex items-center gap-2.5">
-              <PlayerAvatar :initials="c.init" />
+              <PlayerAvatar :username="c.u" />
               <span
                 class="overflow-hidden text-sm font-semibold text-ellipsis whitespace-nowrap text-slate-800 dark:text-slate-100"
-                >{{ c.u }}</span
+                ><span class="text-slate-400 dark:text-slate-500">@</span>{{ c.u }}</span
               >
             </div>
             <span

@@ -37,14 +37,21 @@ pub struct User {
     pub id: UserId,
     pub name: Option<String>,
     pub username: Option<String>,
+    pub avatar_url: Option<String>,
 }
 
 impl User {
-    pub fn new(id: impl Into<UserId>, name: Option<String>, username: Option<String>) -> Self {
+    pub fn new(
+        id: impl Into<UserId>,
+        name: Option<String>,
+        username: Option<String>,
+        avatar_url: Option<String>,
+    ) -> Self {
         Self {
             id: id.into(),
             name,
             username,
+            avatar_url,
         }
     }
 
@@ -54,6 +61,7 @@ impl User {
             id: UserId::new("test-user-id"),
             name: Some("Test User".to_string()),
             username: Some("testuser".to_string()),
+            avatar_url: None,
         }
     }
 }
@@ -100,20 +108,26 @@ mod tests {
             "123456".to_string(),
             Some("Test User".to_string()),
             Some("testuser".to_string()),
+            Some("https://img.example.com/avatar.png".to_string()),
         );
 
         assert_eq!(user.id, UserId::new("123456"));
         assert_eq!(user.name, Some("Test User".to_string()));
         assert_eq!(user.username, Some("testuser".to_string()));
+        assert_eq!(
+            user.avatar_url,
+            Some("https://img.example.com/avatar.png".to_string())
+        );
     }
 
     #[test]
     fn user_creation_without_name() {
-        let user = User::new("789".to_string(), None, None);
+        let user = User::new("789".to_string(), None, None, None);
 
         assert_eq!(user.id, UserId::new("789"));
         assert_eq!(user.name, None);
         assert_eq!(user.username, None);
+        assert_eq!(user.avatar_url, None);
     }
 
     #[test]
@@ -122,6 +136,7 @@ mod tests {
             "456".to_string(),
             Some("Cloned User".to_string()),
             Some("cloneduser".to_string()),
+            Some("https://img.example.com/avatar.png".to_string()),
         );
 
         let user2 = user1.clone();

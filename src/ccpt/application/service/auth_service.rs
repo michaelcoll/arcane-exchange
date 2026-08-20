@@ -10,6 +10,7 @@ use tracing::info;
 struct ClerkClaims {
     sub: String,
     username: Option<String>,
+    image_url: Option<String>,
     exp: usize,
     azp: Option<String>,
 }
@@ -98,6 +99,7 @@ impl AuthService for ClerkAuthService {
             token_data.claims.sub,
             None, // Clerk JWT does not include name
             token_data.claims.username,
+            token_data.claims.image_url,
         ))
     }
 }
@@ -140,6 +142,34 @@ mod tests {
 
         let claims: ClerkClaims = serde_json::from_str(json).unwrap();
         assert_eq!(claims.username, None);
+    }
+
+    #[test]
+    fn clerk_claims_deserialization_with_image_url() {
+        let json = r#"{
+            "sub": "user_clerk123",
+            "username": "clerkuser",
+            "image_url": "https://img.clerk.com/avatar.png",
+            "exp": 1234567890
+        }"#;
+
+        let claims: ClerkClaims = serde_json::from_str(json).unwrap();
+        assert_eq!(
+            claims.image_url,
+            Some("https://img.clerk.com/avatar.png".to_string())
+        );
+    }
+
+    #[test]
+    fn clerk_claims_deserialization_without_image_url_stays_valid() {
+        let json = r#"{
+            "sub": "user_clerk123",
+            "username": "clerkuser",
+            "exp": 1234567890
+        }"#;
+
+        let claims: ClerkClaims = serde_json::from_str(json).unwrap();
+        assert_eq!(claims.image_url, None);
     }
 
     #[test]

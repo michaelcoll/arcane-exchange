@@ -101,6 +101,7 @@ erDiagram
         character_varying(50) id PK
         character_varying(100) username UK "not null"
         character_varying(10) visibility "not null, default: 'private'::character varying"
+        text image_url
     }
     v_tradable_entry {
         character_varying(50) user_id

@@ -12,6 +12,7 @@ use crate::application::service::collection_visibility_service::{
     GetCollectionVisibilityService, SetCollectionVisibilityService,
 };
 use crate::application::service::gatherer_id_enqueue_service::GathererIdEnqueueService;
+use crate::application::service::get_user_profile_service::GetUserProfileService;
 use crate::application::service::import_card_service::ImportCardService;
 use crate::application::service::import_price_service::ImportPriceService;
 use crate::application::service::rarity_trade_filter_service::{
@@ -36,10 +37,10 @@ use crate::application::use_case::{
     EnqueueCardMarketIdUpdateUseCase, EnqueueGathererIdUpdateUseCase, GetCardOffersUseCase,
     GetCardPriceHistoryUseCase, GetCollectionPriceHistoryUseCase, GetCollectionStatsUseCase,
     GetCollectionUseCase, GetCollectionVisibilityUseCase, GetRarityTradeFiltersUseCase,
-    GetTradeBindersUseCase, GetTradeUseCase, ImportCardUseCase, ImportPriceUseCase,
-    ListTradesUseCase, RateTradeUseCase, RegisterUserUseCase, RemoveTradeBinderUseCase,
-    RemoveTradeCardUseCase, SearchCardsUseCase, SetCollectionVisibilityUseCase,
-    SetRarityTradeFilterUseCase, StatsUseCase,
+    GetTradeBindersUseCase, GetTradeUseCase, GetUserProfileUseCase, ImportCardUseCase,
+    ImportPriceUseCase, ListTradesUseCase, RateTradeUseCase, RegisterUserUseCase,
+    RemoveTradeBinderUseCase, RemoveTradeCardUseCase, SearchCardsUseCase,
+    SetCollectionVisibilityUseCase, SetRarityTradeFilterUseCase, StatsUseCase,
 };
 use crate::config::Config;
 use crate::domain::card::CardId;
@@ -95,6 +96,7 @@ pub struct AppState {
     pub get_card_price_history_use_case: Arc<dyn GetCardPriceHistoryUseCase>,
     pub get_collection_stats_use_case: Arc<dyn GetCollectionStatsUseCase>,
     pub register_user_use_case: Arc<dyn RegisterUserUseCase>,
+    pub get_user_profile_use_case: Arc<dyn GetUserProfileUseCase>,
     pub create_trade_use_case: Arc<dyn CreateTradeUseCase>,
     pub accept_trade_use_case: Arc<dyn AcceptTradeUseCase>,
     pub abandon_trade_use_case: Arc<dyn AbandonTradeUseCase>,
@@ -284,6 +286,8 @@ fn create_app_state(
         Arc::new(CollectionStatsService::new(repos.collection_stats));
     let register_user_service: Arc<dyn RegisterUserUseCase> =
         Arc::new(RegisterUserService::new(repos.user.clone()));
+    let get_user_profile_service: Arc<dyn GetUserProfileUseCase> =
+        Arc::new(GetUserProfileService::new(repos.user.clone()));
     let get_collection_visibility_service: Arc<dyn GetCollectionVisibilityUseCase> =
         Arc::new(GetCollectionVisibilityService::new(repos.user.clone()));
     let set_collection_visibility_service: Arc<dyn SetCollectionVisibilityUseCase> =
@@ -343,6 +347,7 @@ fn create_app_state(
         get_card_price_history_use_case: card_price_history_service,
         get_collection_stats_use_case: collection_stats_service,
         register_user_use_case: register_user_service,
+        get_user_profile_use_case: get_user_profile_service,
         create_trade_use_case: create_trade_service,
         accept_trade_use_case: accept_trade_service,
         abandon_trade_use_case: abandon_trade_service,
@@ -451,10 +456,11 @@ impl AppState {
             MockGetCardPriceHistoryUseCase, MockGetCollectionPriceHistoryUseCase,
             MockGetCollectionStatsUseCase, MockGetCollectionUseCase,
             MockGetCollectionVisibilityUseCase, MockGetRarityTradeFiltersUseCase,
-            MockGetTradeBindersUseCase, MockGetTradeUseCase, MockImportCardUseCase,
-            MockListTradesUseCase, MockRateTradeUseCase, MockRegisterUserUseCase,
-            MockRemoveTradeBinderUseCase, MockRemoveTradeCardUseCase, MockSearchCardsUseCase,
-            MockSetCollectionVisibilityUseCase, MockSetRarityTradeFilterUseCase,
+            MockGetTradeBindersUseCase, MockGetTradeUseCase, MockGetUserProfileUseCase,
+            MockImportCardUseCase, MockListTradesUseCase, MockRateTradeUseCase,
+            MockRegisterUserUseCase, MockRemoveTradeBinderUseCase, MockRemoveTradeCardUseCase,
+            MockSearchCardsUseCase, MockSetCollectionVisibilityUseCase,
+            MockSetRarityTradeFilterUseCase,
         };
         use crate::domain::card::CardInfo;
         use crate::domain::user::User;
@@ -477,7 +483,7 @@ impl AppState {
         let mut mock_auth = MockAuthService::new();
         mock_auth
             .expect_validate_token()
-            .returning(|_| Ok(User::new("test-user-id".to_string(), None, None)));
+            .returning(|_| Ok(User::new("test-user-id".to_string(), None, None, None)));
 
         Self {
             import_card_use_case: Arc::new(mock_import_card),
@@ -495,6 +501,7 @@ impl AppState {
             get_card_price_history_use_case: Arc::new(MockGetCardPriceHistoryUseCase::new()),
             get_collection_stats_use_case: Arc::new(MockGetCollectionStatsUseCase::new()),
             register_user_use_case: Arc::new(MockRegisterUserUseCase::new()),
+            get_user_profile_use_case: Arc::new(MockGetUserProfileUseCase::new()),
             create_trade_use_case: Arc::new(MockCreateTradeUseCase::new()),
             accept_trade_use_case: Arc::new(MockAcceptTradeUseCase::new()),
             abandon_trade_use_case: Arc::new(MockAbandonTradeUseCase::new()),

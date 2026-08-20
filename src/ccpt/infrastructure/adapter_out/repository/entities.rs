@@ -77,11 +77,12 @@ impl From<CardIdEntity> for CardId {
 pub struct UserEntity {
     pub id: String,
     pub username: String,
+    pub image_url: Option<String>,
 }
 
 impl From<UserEntity> for User {
     fn from(entity: UserEntity) -> User {
-        User::new(entity.id, None, Some(entity.username))
+        User::new(entity.id, None, Some(entity.username), entity.image_url)
     }
 }
 
@@ -338,6 +339,7 @@ impl User {
             id,
             name: None,
             username: None,
+            avatar_url: None,
         }
     }
 }
@@ -663,12 +665,17 @@ mod tests {
         let entity = UserEntity {
             id: "user-123".to_string(),
             username: "alice".to_string(),
+            image_url: Some("https://img.example.com/avatar.png".to_string()),
         };
 
         let user: User = entity.into();
 
         assert_eq!(user.id, UserId::new("user-123"));
         assert_eq!(user.username, Some("alice".to_string()));
+        assert_eq!(
+            user.avatar_url,
+            Some("https://img.example.com/avatar.png".to_string())
+        );
     }
 
     // --- TradeEntity ---

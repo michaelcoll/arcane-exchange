@@ -581,6 +581,7 @@ mod tests {
             make_respondent_id().to_string(),
             None,
             Some("respondent".to_string()),
+            None,
         )
     }
 
@@ -589,6 +590,7 @@ mod tests {
             make_initiator_id().to_string(),
             None,
             Some("initiator".to_string()),
+            None,
         )
     }
 
@@ -741,6 +743,7 @@ mod tests {
                     initiator_id_for_mock.to_string(),
                     None,
                     Some("initiator".to_string()),
+                    None,
                 );
                 Box::pin(async move { Ok(Some(user)) })
             });
@@ -1030,6 +1033,7 @@ mod tests {
                         make_stranger_id().to_string(),
                         None,
                         Some("stranger".to_string()),
+                        None,
                     )))
                 })
             });
@@ -1639,6 +1643,7 @@ mod tests {
                         make_stranger_id().to_string(),
                         None,
                         Some("stranger".to_string()),
+                        None,
                     )))
                 })
             });
@@ -2302,6 +2307,7 @@ mod tests {
                         make_respondent_id(),
                         None,
                         Some("bob".to_string()),
+                        None,
                     )))
                 })
             });
@@ -2397,6 +2403,7 @@ mod tests {
                         make_respondent_id(),
                         None,
                         Some("bob".to_string()),
+                        None,
                     )))
                 })
             });
@@ -2434,6 +2441,7 @@ mod tests {
                         make_initiator_id(),
                         None,
                         Some("alice".to_string()),
+                        None,
                     )))
                 })
             });

@@ -11,24 +11,24 @@ mise run setup         # Full dev setup: clean + install frontend deps
 
 ## Command Summary
 
-| Action                     | Command                     | Alias         |
-| -------------------------- | --------------------------- | ------------- |
-| **All checks**             | `mise run checks`           | —             |
-| **Backend server**         | `mise run back`             | —             |
-| **Frontend dev server**    | `mise run front`            | —             |
-| **Backend tests**          | `mise run test-backend`     | —             |
-| **Backend coverage**       | `mise run coverage-backend` | —             |
-| **Frontend tests**         | `mise run test-frontend`    | —             |
-| **Backend lint**           | `mise run lint-backend`     | —             |
-| **Frontend lint**          | `mise run lint-frontend`    | —             |
-| **Format code front/back** | `mise run format`           | `mise run f`  |
-| **OpenAPI gen**            | `mise run openapi`          | `mise run o`  |
-| **DB migrations**          | `mise run migrate`          | —             |
-| **SQLx metadata**          | `mise run sqlx-prepare`     | —             |
-| **Clean artifacts**        | `mise run clean`            | —             |
-| **Upgrade deps**           | `mise run upgrade`          | —             |
-| **Build backend**          | `mise run build-backend`    | `mise run bb` |
-| **Build frontend**         | `mise run build-frontend`   | `mise run bf` |
+| Action                      | Command                     | Alias         |
+| --------------------------- | --------------------------- | ------------- |
+| **All checks**              | `mise run checks`           | —             |
+| **Backend server**          | `mise run back`             | —             |
+| **Frontend dev server**     | `mise run front`            | —             |
+| **Backend tests**           | `mise run test-backend`     | —             |
+| **Backend coverage**        | `mise run coverage-backend` | —             |
+| **Frontend tests**          | `mise run test-frontend`    | —             |
+| **Backend lint**            | `mise run lint-backend`     | —             |
+| **Frontend lint**           | `mise run lint-frontend`    | —             |
+| **Format code front/back**  | `mise run format`           | `mise run f`  |
+| **Docs gen (OpenAPI + DB)** | `mise run rebuild-docs`     | —             |
+| **DB migrations**           | `mise run migrate`          | —             |
+| **SQLx metadata**           | `mise run sqlx-prepare`     | —             |
+| **Clean artifacts**         | `mise run clean`            | —             |
+| **Upgrade deps**            | `mise run upgrade`          | —             |
+| **Build backend**           | `mise run build-backend`    | `mise run bb` |
+| **Build frontend**          | `mise run build-frontend`   | `mise run bf` |
 
 Note: there is no combined `mise run lint`. Backend and frontend lint are separate tasks (`lint-backend`,
 `lint-frontend`); only `format` runs both front and back together.
@@ -76,11 +76,15 @@ Note: there is no combined `mise run lint`. Backend and frontend lint are separa
 - **Frontend**: `format-frontend` → `pnpm format:fix` in `frontend-vue`
 - **Both**: `mise run format` (= `mise run f`) — always use this, never call `cargo fmt` / `pnpm format:fix` directly
 
-### OpenAPI
+### Docs (OpenAPI + DB schema)
 
 ```
-mise run openapi        # Generates doc/openapi.yml, then runs format-frontend
+mise run rebuild-docs   # rebuild-openapi-doc (cargo run --bin generate-openapi) + rebuild-db-doc (erdify → doc/db.md)
 ```
+
+Both sub-tasks are hidden (not directly listed by `mise run`); run individually via `mise run rebuild-openapi-doc`
+or `mise run rebuild-db-doc` if you only need one. Neither runs formatting — `mise run rebuild-docs` is itself one
+of the dependencies of `mise run checks`, alongside `sqlx-prepare`, tests and lints.
 
 ### Database
 

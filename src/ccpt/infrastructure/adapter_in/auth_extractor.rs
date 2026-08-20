@@ -70,10 +70,11 @@ mod tests {
             MockGetCardPriceHistoryUseCase, MockGetCollectionPriceHistoryUseCase,
             MockGetCollectionStatsUseCase, MockGetCollectionUseCase,
             MockGetCollectionVisibilityUseCase, MockGetRarityTradeFiltersUseCase,
-            MockGetTradeBindersUseCase, MockGetTradeUseCase, MockImportPriceUseCase,
-            MockListTradesUseCase, MockRateTradeUseCase, MockRegisterUserUseCase,
-            MockRemoveTradeBinderUseCase, MockRemoveTradeCardUseCase, MockSearchCardsUseCase,
-            MockSetCollectionVisibilityUseCase, MockSetRarityTradeFilterUseCase,
+            MockGetTradeBindersUseCase, MockGetTradeUseCase, MockGetUserProfileUseCase,
+            MockImportPriceUseCase, MockListTradesUseCase, MockRateTradeUseCase,
+            MockRegisterUserUseCase, MockRemoveTradeBinderUseCase, MockRemoveTradeCardUseCase,
+            MockSearchCardsUseCase, MockSetCollectionVisibilityUseCase,
+            MockSetRarityTradeFilterUseCase,
         };
         AppState {
             import_card_use_case: Arc::new(MockImportCardUseCase::new()),
@@ -91,6 +92,7 @@ mod tests {
             get_card_price_history_use_case: Arc::new(MockGetCardPriceHistoryUseCase::new()),
             get_collection_stats_use_case: Arc::new(MockGetCollectionStatsUseCase::new()),
             register_user_use_case: Arc::new(MockRegisterUserUseCase::new()),
+            get_user_profile_use_case: Arc::new(MockGetUserProfileUseCase::new()),
             create_trade_use_case: Arc::new(MockCreateTradeUseCase::new()),
             accept_trade_use_case: Arc::new(MockAcceptTradeUseCase::new()),
             abandon_trade_use_case: Arc::new(MockAbandonTradeUseCase::new()),
@@ -149,7 +151,7 @@ mod tests {
 
     #[tokio::test]
     async fn valid_bearer_token_returns_user() {
-        let expected_user = User::new("user_clerk123".to_string(), None, None);
+        let expected_user = User::new("user_clerk123".to_string(), None, None, None);
 
         let mut mock_auth = MockAuthService::new();
         mock_auth

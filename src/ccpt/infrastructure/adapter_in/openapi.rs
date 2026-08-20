@@ -16,7 +16,7 @@ use super::trade::dto::{
 };
 use super::user::dto::{
     AddTradeBinderRequest, CollectionVisibilityParam, SetVisibilityRequest, TradeBindersResponse,
-    VisibilityResponse,
+    UserProfileResponse, VisibilityResponse,
 };
 use utoipa::OpenApi;
 
@@ -42,6 +42,7 @@ use utoipa::OpenApi;
         super::user::controller::get_trade_binders,
         super::user::controller::add_trade_binder,
         super::user::controller::remove_trade_binder,
+        super::user::controller::get_user_profile,
         super::trade::controller::create_trade,
         super::trade::controller::add_trade_card,
         super::trade::controller::remove_trade_card,
@@ -90,6 +91,7 @@ use utoipa::OpenApi;
         CollectionVisibilityParam,
         TradeBindersResponse,
         AddTradeBinderRequest,
+        UserProfileResponse,
     )),
     modifiers(&SecurityAddon),
     info(
