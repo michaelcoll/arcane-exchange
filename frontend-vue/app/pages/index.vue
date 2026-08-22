@@ -54,8 +54,10 @@ const { getCollectionStats, getPriceHistory } = useCollectionService();
 const { data: collectionStatsData } = await getCollectionStats();
 
 const collectionHistoryParams = ref(lastNDaysRange(30));
-const { data: collectionHistoryData, pending: collectionHistoryPending } =
-  await getPriceHistory(collectionHistoryParams);
+const { data: collectionHistoryData, pending: collectionHistoryPending } = await getPriceHistory(
+  collectionHistoryParams,
+  'home-collection-price-history',
+);
 
 const collectionEnvelopeData = computed(() => toEnvelopeData(collectionHistoryData.value ?? []));
 const hasEnoughCollectionHistory = computed(() => collectionEnvelopeData.value.length >= 2);
