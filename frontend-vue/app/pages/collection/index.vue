@@ -150,7 +150,7 @@ const {
   data: priceHistoryData,
   pending: priceHistoryPending,
   refresh: refreshPriceHistory,
-} = await getPriceHistory(historyParams);
+} = await getPriceHistory(historyParams, 'collection-price-history');
 
 watch(graphRange, (range) => {
   historyParams.value = dateRangeFor(range);

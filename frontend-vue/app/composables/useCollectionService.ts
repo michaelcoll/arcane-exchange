@@ -28,9 +28,9 @@ export const useCollectionService = () => {
       lazy: true,
     });
 
-  const getPriceHistory = (params: MaybeRefOrGetter<PriceHistoryParams>) =>
+  const getPriceHistory = (params: MaybeRefOrGetter<PriceHistoryParams>, key: string) =>
     useAsyncData(
-      'collection-price-history',
+      key,
       () => apiCall<PriceHistoryEntry[]>('/collection/price-history', { query: toValue(params) }),
       { lazy: true },
     );
