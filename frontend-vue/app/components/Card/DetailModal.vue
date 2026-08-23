@@ -7,7 +7,7 @@ const props = defineProps<{
   card: CollectionCard;
 }>();
 
-defineEmits<{
+const emit = defineEmits<{
   close: [];
 }>();
 
@@ -80,12 +80,19 @@ watch(
 const cardEnvelopeData = computed(() => toEnvelopeData(cardHistoryData.value));
 const cardHasEnoughHistory = computed(() => cardEnvelopeData.value.length >= 2);
 const cardVariation = computed(() => computeVariation(cardHistoryData.value));
+
+const onKeydown = (e: KeyboardEvent) => {
+  if (e.key === 'Escape') emit('close');
+};
+
+onMounted(() => window.addEventListener('keydown', onKeydown));
+onUnmounted(() => window.removeEventListener('keydown', onKeydown));
 </script>
 
 <template>
   <div
     class="fixed inset-0 z-[80] grid animate-[fade_0.2s_ease] place-items-center bg-black/60 px-5 pt-[calc(1.25rem+env(safe-area-inset-top))] pb-5 backdrop-blur-sm"
-    @click="$emit('close')"
+    @click="emit('close')"
   >
     <div
       class="relative max-h-[calc(100dvh-40px-env(safe-area-inset-top))] w-full max-w-[840px] animate-[pop_0.26s_cubic-bezier(0.3,1.2,0.4,1)] overflow-hidden rounded-3xl border border-slate-300 p-0 shadow-2xl max-[720px]:max-w-[440px] dark:border-white/15"
@@ -94,7 +101,7 @@ const cardVariation = computed(() => computeVariation(cardHistoryData.value));
       <!-- close -->
       <button
         class="absolute top-3.5 right-3.5 z-[5] grid h-9 w-9 place-items-center rounded-lg border border-slate-200 bg-slate-100 text-slate-600 transition-all duration-150 hover:border-slate-300 hover:bg-slate-50 hover:text-slate-800 dark:border-white/10 dark:bg-white/5 dark:text-slate-300 dark:hover:border-white/15 dark:hover:bg-zinc-800 dark:hover:text-slate-100"
-        @click="$emit('close')"
+        @click="emit('close')"
       >
         <Icon name="lucide:x" :size="16" />
       </button>
