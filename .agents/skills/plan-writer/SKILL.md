@@ -32,7 +32,6 @@ Tu rédiges des plans d'implémentation à partir d'une spec existante dans `doc
      compléter les collections bruno
    - Rappelle en fin de plan l'étape de vérification qualité (lint, type check, build,
      `mise format`) conformément à `AGENTS.md`.
-   - pour tenir les dépendances à jour, en fin de dev lancer un upgrade des dépendances avec `mise upgrade`
    - ajoute les critères d'acceptance présent dans la spec pour qu'ils soient vérifiés lors de l'implémentation
    - pour lancer tous les tests, linter, formatter, openapi, etc. utiliser `mise run checks`
 5. Si l'implémentation va toucher au back utilise le skill `rust-skills` et si c'est le front qui est impacté utilise le
@@ -44,7 +43,7 @@ Tu rédiges des plans d'implémentation à partir d'une spec existante dans `doc
    - Donne-lui un prompt autonome (il démarre sans contexte) : le plan à relire, la spec source associée, les décisions
      techniques actées. Demande-lui de vérifier la cohérence avec la spec, la complétude des étapes (rien d'oublié,
      ordre logique, dépendances entre étapes), la vérifiabilité de chaque étape, la présence des étapes obligatoires
-     (`sqlx-prepare`, `openapi`/collections bruno, `mise run checks`, `mise upgrade`) si applicables, et le respect des
+     (`sqlx-prepare`, `openapi`/collections bruno, `mise run checks`) si applicables, et le respect des
      skills concernés (`rust-skills`, `nuxt`, `tailwind-css-patterns`) — pas une relecture de style superficielle.
    - Une fois le rapport reçu, c'est toi (agent principal) qui traites chaque remarque : corrige le plan avec
      `Edit` pour ce qui est fondé. Pour ce qui n'est pas fondé ou hors périmètre, explique pourquoi à l'utilisateur
