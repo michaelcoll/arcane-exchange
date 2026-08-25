@@ -136,7 +136,8 @@ accents `.c-w/-u/-b/-r/-g/-m`, variants `.mini`, `.has-img` (real scan), `.foil`
 `.clickable`. Grid cell `.card-cell` + deal indicators (`.deal-tag.good/.bad/.par`) — already implemented in
 `app/components/MtgCard.vue` and `app/components/CardCell.vue` respectively.
 
-**Official symbols**: mana (`.msym`, `@font-face` ManaSym, WUBRG badges) and set symbols (`.kr`, Keyrune), self-hosted.
+**Official symbols**: mana (`.msym`, `@font-face` ManaSym, WUBRG badges) and set symbols (Keyrune, classes `ss`/
+`ss-{code}`, loaded from the jsdelivr CDN in `nuxt.config.ts` — not self-hosted, unlike ManaSym).
 
 **List rows** `.lrow` (+ `.locked`), `.pavatar` (player avatar, `.online` state — see
 `app/components/PlayerAvatar.vue`), `.bar` (progress bar).
