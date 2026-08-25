@@ -617,7 +617,7 @@ const onDragLeave = () => {
     </div>
 
     <!-- ── CARD DETAIL MODAL ── -->
-    <CardDetailModal v-if="detail" :card="detail" @close="detail = null" />
+    <CardDetailModal v-if="detail" :card="detail" :set-list="setList" @close="detail = null" />
 
     <!-- ── IMPORT MODAL ── -->
     <div

@@ -40,6 +40,12 @@
   --good: oklch(0.8 0.15 158);
   --good-fill: color-mix(in oklch, var(--good) 16%, transparent);
 
+  --rarity-common: oklch(0.72 0 0);
+  --rarity-uncommon: oklch(0.78 0.015 240);
+  --rarity-rare: oklch(0.78 0.14 85);
+  --rarity-mythic: oklch(0.68 0.19 40);
+  --rarity-special: oklch(0.72 0.19 340);
+
   --line: color-mix(in oklch, white 9%, transparent);
   --line-2: color-mix(in oklch, white 14%, transparent);
   --line-3: color-mix(in oklch, white 5%, transparent);
@@ -102,6 +108,12 @@
   --down: oklch(0.56 0.18 28);
   --good: oklch(0.5 0.15 158);
   --good-fill: color-mix(in oklch, var(--good) 14%, transparent);
+
+  --rarity-common: oklch(0.32 0 0);
+  --rarity-uncommon: oklch(0.55 0.015 240);
+  --rarity-rare: oklch(0.55 0.14 85);
+  --rarity-mythic: oklch(0.52 0.19 40);
+  --rarity-special: oklch(0.55 0.19 340);
 
   --line: color-mix(in oklch, black 11%, transparent);
   --line-2: color-mix(in oklch, black 17%, transparent);

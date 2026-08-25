@@ -2,10 +2,25 @@
 import type { CardOffer } from '~/bindings/CardOffer';
 import type { CollectionCard } from '~/bindings/CollectionCard';
 import type { PriceHistoryEntry } from '~/bindings/PriceHistoryEntry';
+import type { RarityCode } from '~/bindings/RarityCode';
+import type { SetInfo } from '~/bindings/SetInfo';
+import { RARITY_ICON_COLOR_CLASS } from '~/utils/rarity';
+import { resolveSetName } from '~/utils/set';
+
+const NEUTRAL_ICON_COLOR_CLASS = 'text-[var(--ink-2)]';
 
 const props = defineProps<{
   card: CollectionCard;
+  setList: SetInfo[];
 }>();
+
+const setName = computed(() => resolveSetName(props.setList, props.card.set_code));
+const isSetKnown = computed(() => props.setList.some((s) => s.code === props.card.set_code));
+const setIconColorClass = computed(() =>
+  isSetKnown.value
+    ? (RARITY_ICON_COLOR_CLASS[props.card.rarity_code as RarityCode] ?? NEUTRAL_ICON_COLOR_CLASS)
+    : NEUTRAL_ICON_COLOR_CLASS,
+);
 
 const emit = defineEmits<{
   close: [];
@@ -123,7 +138,7 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
         </div>
 
         <!-- info -->
-        <div class="flex min-w-0 flex-col gap-4 bg-white px-6 py-7 dark:bg-zinc-900">
+        <div class="flex min-w-0 flex-col gap-4 bg-white px-6 py-7 dark:bg-zinc-800">
           <!-- header -->
           <div>
             <h3 class="font-display mb-1.5 text-xl font-semibold tracking-tight">
@@ -132,7 +147,12 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
             <span
               class="inline-flex flex-wrap items-center gap-2 text-sm text-slate-400 dark:text-slate-500"
             >
-              {{ card.set_code.toUpperCase() }} · {{ card.rarity_code }}
+              <i
+                class="ss"
+                :class="[`ss-${card.set_code.toLowerCase()}`, setIconColorClass]"
+                aria-hidden="true"
+              />
+              {{ setName }}
               <span
                 v-if="card.foil"
                 class="text-2xs ml-2 inline-flex [animation:foilSlide_4s_linear_infinite] items-center rounded-full [background-size:200%_100%] px-1.5 py-px font-bold tracking-wide text-zinc-900 [background:linear-gradient(110deg,#ffd84d,#4dffd0,#4db4ff,#b85dff,#ff5db8)]"
@@ -142,52 +162,9 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
             </span>
           </div>
 
-          <!-- stats -->
-          <div class="grid grid-cols-3 gap-2.5">
-            <div
-              class="flex flex-col gap-1 rounded-xl border border-slate-200 bg-white px-3 py-3 dark:border-white/10 dark:bg-zinc-900"
-            >
-              <span
-                class="text-2xs font-mono tracking-widest text-slate-400 uppercase dark:text-slate-500"
-                >Quantité</span
-              >
-              <span class="font-mono text-lg font-bold tracking-tight"
-                >×{{ card.collection_entry?.quantity ?? 0 }}</span
-              >
-            </div>
-            <div
-              class="flex flex-col gap-1 rounded-xl border border-slate-200 bg-white px-3 py-3 dark:border-white/10 dark:bg-zinc-900"
-            >
-              <span
-                class="text-2xs font-mono tracking-widest text-slate-400 uppercase dark:text-slate-500"
-                >Prix unit.</span
-              >
-              <span class="font-mono text-lg font-bold tracking-tight">{{
-                formatPrice(card.collection_entry?.purchase_price ?? 0)
-              }}</span>
-            </div>
-            <div
-              class="flex flex-col gap-1 rounded-xl border border-slate-200 bg-white px-3 py-3 dark:border-white/10 dark:bg-zinc-900"
-            >
-              <span
-                class="text-2xs font-mono tracking-widest text-slate-400 uppercase dark:text-slate-500"
-                >Total</span
-              >
-              <span
-                class="font-mono text-lg font-bold tracking-tight text-cyan-600 dark:text-cyan-400"
-                >{{
-                  formatPrice(
-                    (card.collection_entry?.quantity ?? 0) *
-                      (card.collection_entry?.purchase_price ?? 0),
-                  )
-                }}</span
-              >
-            </div>
-          </div>
-
           <!-- market -->
           <div
-            class="rounded-xl border border-slate-200 bg-black/20 px-3.5 py-3 dark:border-white/10"
+            class="rounded-xl border border-slate-300 bg-black/5 px-3.5 py-3 dark:border-white/10 dark:bg-zinc-900/60"
           >
             <div class="flex items-center justify-between">
               <span

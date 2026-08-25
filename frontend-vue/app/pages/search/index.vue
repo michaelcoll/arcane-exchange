@@ -609,7 +609,7 @@ const decklist = ref(
       </div>
 
       <!-- CARD DETAIL MODAL -->
-      <CardDetailModal v-if="detail" :card="detail" @close="detail = null" />
+      <CardDetailModal v-if="detail" :card="detail" :set-list="setList" @close="detail = null" />
     </div>
 
     <!-- MODE: PAR JOUEUR (pas encore de joueur choisi) -->

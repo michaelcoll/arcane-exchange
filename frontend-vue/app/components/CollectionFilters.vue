@@ -2,6 +2,7 @@
 import type { RarityCode } from '~/bindings/RarityCode';
 import type { SetInfo } from '~/bindings/SetInfo';
 import { RARITY_LABELS, RARITY_ORDER } from '~/utils/rarity';
+import { resolveSetName } from '~/utils/set';
 
 const props = withDefaults(
   defineProps<{
@@ -77,9 +78,6 @@ const filteredSets = computed(() => {
     (s) => s.name.toLowerCase().includes(qLower) || s.code.toLowerCase().includes(qLower),
   );
 });
-
-const setNameByCode = (code: string) =>
-  props.setList.find((s) => s.code === code)?.name ?? code.toUpperCase();
 
 const toggleCbx = () => {
   cbxOpen.value = !cbxOpen.value;
@@ -213,12 +211,12 @@ const clearSets = () => {
             >
               <i :class="['ss', 'text-sm', `ss-${code.toLowerCase()}`]" />
               <span class="max-w-[120px] overflow-hidden text-ellipsis whitespace-nowrap">{{
-                setNameByCode(code)
+                resolveSetName(props.setList, code)
               }}</span>
               <i
                 class="grid h-4 w-4 flex-none cursor-pointer place-items-center rounded text-cyan-700 opacity-70 hover:bg-cyan-500/20 hover:opacity-100 dark:text-cyan-300"
                 role="button"
-                :aria-label="`Retirer ${setNameByCode(code)}`"
+                :aria-label="`Retirer ${resolveSetName(props.setList, code)}`"
                 @click.stop="emit('toggle', 'sets', code)"
               >
                 <Icon name="lucide:x" :size="11" />
