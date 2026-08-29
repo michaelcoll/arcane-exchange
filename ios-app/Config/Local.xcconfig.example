@@ -1,0 +1,10 @@
+// Copy to Local.xcconfig (git-ignored) and fill in. Read via `#include?` from
+// Shared.xcconfig, so it overrides the defaults declared there.
+
+// Apple Developer team used to sign local builds — Xcode ▸ Settings ▸ Accounts.
+DEVELOPMENT_TEAM =
+
+// Clerk instance the app authenticates against: Clerk Dashboard ▸ API keys ▸ Publishable key.
+// Public by design — it ships inside the app binary — but kept out of git so each developer
+// points at their own instance, and so the repository names no environment.
+CLERK_PUBLISHABLE_KEY =

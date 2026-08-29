@@ -41,7 +41,7 @@ svc_lookup() {
       SVC_ENDPOINT="http://127.0.0.1:8080"
       SVC_DIR="."
       SVC_TASK="back"
-      SVC_PATTERN="ccpt"
+      SVC_PATTERN="target/debug/ae"
       ;;
     front)
       SVC_NAME="Frontend"

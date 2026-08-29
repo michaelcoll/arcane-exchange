@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>StringsTable</key>
+	<string>Root</string>
+	<key>PreferenceSpecifiers</key>
+	<array>
+		<dict>
+			<key>Type</key>
+			<string>PSGroupSpecifier</string>
+			<key>Title</key>
+			<string>Serveur</string>
+			<key>FooterText</key>
+			<string>Adresse du backend Arcane Exchange, préfixe /api/v1 compris. Laissez le champ vide pour revenir à la valeur livrée avec l’app. La modification s’applique à la requête suivante.</string>
+		</dict>
+		<dict>
+			<key>Type</key>
+			<string>PSTextFieldSpecifier</string>
+			<key>Title</key>
+			<string>URL de l’API</string>
+			<key>Key</key>
+			<string>api_base_url</string>
+			<key>KeyboardType</key>
+			<string>URL</string>
+			<key>AutocapitalizationType</key>
+			<string>None</string>
+			<key>AutocorrectionType</key>
+			<string>No</string>
+			<key>IsSecure</key>
+			<false/>
+		</dict>
+	</array>
+</dict>
+</plist>

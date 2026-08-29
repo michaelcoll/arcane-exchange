@@ -6,7 +6,7 @@ express.
 
 ## Table roles & ownership
 
-Each table is owned by one adapter in `src/ccpt/infrastructure/adapter_out/repository/`.
+Each table is owned by one adapter in `src/ae/infrastructure/adapter_out/repository/`.
 
 | Table                      | Role                                                    | Adapter                                       |
 | -------------------------- | ------------------------------------------------------- | --------------------------------------------- |

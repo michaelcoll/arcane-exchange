@@ -1,0 +1,16 @@
+# XcodeGen-generated project (regenerate with `mise run generate-ios` / `xcodegen generate`)
+*.xcodeproj/
+
+# Build artifacts
+DerivedData/
+.build/
+.swiftpm/
+
+.spm-cache/
+
+# Xcode user state
+xcuserdata/
+*.xcuserstate
+
+# Local signing identity and Clerk instance (see Config/Local.xcconfig.example)
+Config/Local.xcconfig

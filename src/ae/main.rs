@@ -1,5 +1,5 @@
-use ccpt::config::Config;
-use ccpt::infrastructure;
+use ae::config::Config;
+use ae::infrastructure;
 use dotenv::dotenv;
 use sqlx::postgres::PgPoolOptions;
 use std::net::SocketAddr;
@@ -24,7 +24,6 @@ fn main() -> Result<(), sqlx::Error> {
         sentry::ClientOptions::new()
             .maybe_release(sentry::release_name!())
             .traces_sample_rate(1.0)
-            .enable_logs(true)
             // Capture user IPs and potentially sensitive headers when using HTTP server integrations
             // see https://docs.sentry.io/platforms/rust/data-management/data-collected for more info
             .send_default_pii(true),

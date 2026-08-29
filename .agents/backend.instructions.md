@@ -2,7 +2,7 @@
 
 ## Architecture & Patterns
 
-- **Architecture**: Clean Architecture (Domain, Application, Infrastructure) under `src/ccpt/`. Unidirectional
+- **Architecture**: Clean Architecture (Domain, Application, Infrastructure) under `src/ae/`. Unidirectional
   dependencies.
 - **Injection**: Use the `Arc<dyn Trait>` pattern for services, wired up in `infrastructure.rs`.
 - **Errors**: `AppError` (`application/error.rs`) is a thin umbrella over three category enums, each carrying its

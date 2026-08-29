@@ -114,7 +114,7 @@ La maquette affiche, dans la grille de collection, un badge « Réservée » (ic
 un trade verrouillé — cohérent avec la règle de réservation dérivée définie plus haut. Pour reproduire cet
 affichage côté `frontend-vue`, `GET /collection` doit exposer cette information :
 
-- Ajout d'un champ `reserved: bool` sur `CollectionCardResponse` (`src/ccpt/infrastructure/adapter_in/collection/dto.rs`).
+- Ajout d'un champ `reserved: bool` sur `CollectionCardResponse` (`src/ae/infrastructure/adapter_in/collection/dto.rs`).
 - Renseigné uniquement en mode « ma collection » (quand `collection_entry` est présent, c'est-à-dire pour
   l'utilisateur authentifié consultant ses propres cartes) : `true` si au moins une ligne `trade_card` référence
   cette carte avec `owner_user_id` égal à l'utilisateur courant, dans un trade `ONE_ACCEPTED` ou `FULLY_ACCEPTED` ;

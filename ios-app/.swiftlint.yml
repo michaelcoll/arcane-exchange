@@ -1,0 +1,4 @@
+excluded:
+  - APIClient/Sources/APIClient/GeneratedSources
+  - .build
+  - DerivedData

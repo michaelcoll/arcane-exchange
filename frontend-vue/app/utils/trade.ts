@@ -1,7 +1,7 @@
 import type { TradeCard } from '~/bindings/TradeCard';
 
 /* Statuts de la machine à états d'un échange — miroir de `TradeStatus` côté backend
- * (src/ccpt/domain/trade.rs). Voir .agents/trade-workflow.instructions.md. */
+ * (src/ae/domain/trade.rs). Voir .agents/trade-workflow.instructions.md. */
 export type TradeStatus =
   'PENDING' | 'ONE_ACCEPTED' | 'FULLY_ACCEPTED' | 'COMPLETED' | 'CLOSED' | 'ABANDONED';
 

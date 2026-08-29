@@ -1,0 +1,9 @@
+#include "Shared.xcconfig"
+
+// NOTE: "//" starts a comment in xcconfig, so the slashes must be split with "$()" between them.
+// Points at production so a Debug build shows real data out of the box; the base URL is
+// overridable at runtime from Settings ▸ Arcane Exchange ▸ URL de l'API (see AppConfig).
+// For a local backend, set that field to http:/$()/localhost:8080/api/v1 — the
+// CLERK_PUBLISHABLE_KEY of your Local.xcconfig must then match the instance that backend
+// validates against.
+API_BASE_URL = http:/$()/localhost:8080/api/v1

@@ -11,7 +11,7 @@ Monitor and manage the health of all local development services for the **Arcane
 
 | Service                  | Port   | Type        | Endpoint                |
 | ------------------------ | ------ | ----------- | ----------------------- |
-| Backend (ccpt, Rust)     | `8080` | HTTP API    | `http://127.0.0.1:8080` |
+| Backend (ae, Rust)       | `8080` | HTTP API    | `http://127.0.0.1:8080` |
 | Frontend (Nuxt/Vue)      | `3000` | HTTP SPA    | `http://127.0.0.1:3000` |
 | Maquette (static mockup) | `4000` | HTTP static | `http://127.0.0.1:4000` |
 | PostgreSQL (Docker)      | `5432` | TCP         | `127.0.0.1:5432`        |

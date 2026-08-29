@@ -25,10 +25,14 @@ pnpm = "11"
 "npm:@playwright/cli" = "latest"
 "go:github.com/evilmartians/lefthook/v2" = "latest"
 "cargo:erdify-rs" = "1.2.0"
+"aqua:yonaskolb/XcodeGen" = "latest"
+"aqua:realm/SwiftLint" = "latest"
+"github:nicklockwood/SwiftFormat" = "latest"
+swift = "latest"
 
 [tasks.checks]
 description = "Runs all the checks for the project"
-depends = ["rebuild-docs", "sqlx-prepare", "test-backend", "test-frontend", "lint-backend", "lint-frontend"]
+depends = ["rebuild-docs", "sqlx-prepare", "test-backend", "test-frontend", "lint-backend", "lint-frontend", "lint-ios", "test-ios"]
 
 [tasks.clean-backend]
 run = "cargo clean"
@@ -110,7 +114,7 @@ quiet = true
 
 [tasks.format]
 description = "Formats the codebase"
-depends = ["format-backend", "format-frontend"]
+depends = ["format-backend", "format-frontend", "format-ios"]
 alias = ["f"]
 
 [tasks.migrate]
@@ -132,7 +136,7 @@ depends = ["upgrade-backend", "upgrade-frontend"]
 
 [tasks.back]
 description = "Runs the backend server"
-run = "cargo run --bin ccpt"
+run = "cargo run --bin ae"
 
 [tasks.front]
 description = "Runs the frontend development server"
@@ -158,4 +162,37 @@ alias = ["bf"]
 
 [tasks.coverage-backend]
 description = "Runs the backend tests with coverage"
-run = "cargo llvm-cov nextest --status-level slow --locked --workspace --all-features --bin ccpt --tests --ignore-filename-regex \"main.rs|infrastructure.rs|generate_openapi.rs\" --lcov --output-path lcov.info"
+run = "cargo llvm-cov nextest --status-level slow --locked --workspace --all-features --bin ae --tests --ignore-filename-regex \"main.rs|infrastructure.rs|generate_openapi.rs\" --lcov --output-path lcov.info"
+
+[tasks.generate-ios]
+dir = "ios-app"
+run = "xcodegen generate"
+hide = true
+
+[tasks.build-ios]
+description = "Builds the iOS app"
+dir = "ios-app"
+depends = ["generate-ios"]
+run = "xcodebuild -scheme ArcaneExchange -configuration Debug -destination 'generic/platform=iOS Simulator' -skipPackagePluginValidation build"
+alias = ["bi"]
+
+[tasks.test-ios]
+description = "Tests the iOS app"
+dir = "ios-app"
+depends = ["generate-ios"]
+run = "xcodebuild -scheme ArcaneExchange -destination 'platform=iOS Simulator,name=iPhone 17' -skipPackagePluginValidation test"
+
+[tasks.lint-ios]
+description = "Lints the iOS app"
+dir = "ios-app"
+run = "swiftlint lint --strict ArcaneExchange APIClient/Sources"
+
+[tasks.format-ios]
+dir = "ios-app"
+run = "swiftformat ArcaneExchange APIClient/Sources"
+hide = true
+
+[tasks.clean-ios]
+dir = "ios-app"
+run = "rm -fr ArcaneExchange.xcodeproj .build APIClient/.build DerivedData"
+hide = true
