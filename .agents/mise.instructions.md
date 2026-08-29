@@ -33,6 +33,34 @@ mise run setup         # Full dev setup: clean + install frontend deps
 Note: there is no combined `mise run lint`. Backend and frontend lint are separate tasks (`lint-backend`,
 `lint-frontend`); only `format` runs both front and back together.
 
+### iOS
+
+`build-ios`, `test-ios`, `lint-ios` are standalone tasks (`dir = "ios-app"`) — **deliberately not** wired into
+`checks`/`format`/`setup`/`clean`, since `lefthook.yml` has no per-folder scoping and would otherwise run Xcode
+tooling on every commit/push regardless of what changed:
+
+| Action    | Command              | Alias         |
+| --------- | -------------------- | ------------- |
+| **Build** | `mise run build-ios` | `mise run bi` |
+| **Test**  | `mise run test-ios`  | —             |
+| **Lint**  | `mise run lint-ios`  | —             |
+
+All depend on the hidden `generate-ios` task (`xcodegen generate`). `xcodegen`, `swiftlint`, `swiftformat` are
+pinned in `[tools]`; Xcode itself is not mise-managed (system install required).
+
+#### Local configuration
+
+`ios-app/Config/Local.xcconfig` is git-ignored and holds the two per-developer values — `DEVELOPMENT_TEAM` and
+`CLERK_PUBLISHABLE_KEY`. First checkout:
+
+```sh
+cp ios-app/Config/Local.xcconfig.example ios-app/Config/Local.xcconfig
+```
+
+`Shared.xcconfig` pulls it in with `#include?` (optional include) and declares an empty `CLERK_PUBLISHABLE_KEY`
+default, so `build-ios` / `test-ios` — and CI, which never writes that file — still pass without it. Only sign-in
+needs the real key. `xcodegen` maps it into `Info.plist`, where `AppConfig.clerkPublishableKey` reads it.
+
 ## Detailed Commands
 
 ### Build
@@ -54,7 +82,7 @@ Note: there is no combined `mise run lint`. Backend and frontend lint are separa
 ### Coverage
 
 - **Backend**: `mise run coverage-backend`, i.e.
-  `cargo llvm-cov nextest --status-level slow --locked --workspace --all-features --bin ccpt --tests --ignore-filename-regex "main.rs|infrastructure.rs|generate_openapi.rs" --lcov --output-path lcov.info`.
+  `cargo llvm-cov nextest --status-level slow --locked --workspace --all-features --bin ae --tests --ignore-filename-regex "main.rs|infrastructure.rs|generate_openapi.rs" --lcov --output-path lcov.info`.
   Runs the full backend suite under `nextest` (needed so coverage instrumentation doesn't OOM — plain
   `cargo llvm-cov`/`cargo test` runs every test as a thread in one process, which is too heavy combined with the many
   `#[sqlx::test]` integration tests; `nextest` isolates each test in its own process instead). Prints a per-file summary

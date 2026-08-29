@@ -1,0 +1,6 @@
+--swiftversion 6.0
+--exclude APIClient/Sources/APIClient/GeneratedSources,.build,DerivedData
+--indent 4
+# SwiftLint's trailing_comma rule rejects the trailing comma SwiftFormat adds by default,
+# so `mise run format-ios` would leave `mise run lint-ios` failing.
+--commas inline

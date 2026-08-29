@@ -274,6 +274,7 @@ pub struct CollectionCardResponse {
     pub scryfall_id: String,
     pub the_gatherer_id: Option<String>,
     /// Present only when the card is owned by the authenticated user.
+    #[schema(value_type = CollectionEntryResponse, required = false)]
     pub collection_entry: Option<CollectionEntryResponse>,
     /// Number of distinct users actually offering this card to trade (search mode only) —
     /// after applying each owner's visibility, trade binder selection and rarity filters. A
@@ -284,6 +285,7 @@ pub struct CollectionCardResponse {
     /// owner in search mode). Always `false` in the unscoped multi-owner search, where no
     /// single owner can be attributed.
     pub reserved: bool,
+    #[schema(value_type = PriceGuideResponse, required = false)]
     pub price_guide: Option<PriceGuideResponse>,
 }
 

@@ -61,7 +61,7 @@ Pour chaque ligne renvoyée :
 - Joindre la table `users` sur `collection_entry.user_id` (ou équivalent dans `mv_card_prices`) pour récupérer le
   `username` du possesseur de chaque ligne. La colonne est `NOT NULL` en base : `owner_username` est donc toujours
   renseigné pour une ligne appartenant à un autre utilisateur (jamais `null` dans ce cas). Le type `Option<String>`
-  du champ `username` sur `domain::User` (`src/ccpt/domain/user.rs:8`) ne reflète pas cette contrainte — à corriger
+  du champ `username` sur `domain::User` (`src/ae/domain/user.rs:8`) ne reflète pas cette contrainte — à corriger
   en `String` non optionnel dans le cadre de cette évolution (ou au moins pour l'usage fait ici).
 
 ### Frontend

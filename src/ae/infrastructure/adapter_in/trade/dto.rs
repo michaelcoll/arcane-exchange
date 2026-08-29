@@ -59,6 +59,7 @@ pub struct TradeCardResponse {
     pub foil: bool,
     pub name: String,
     pub quantity: u32,
+    #[schema(value_type = PriceGuideResponse, required = false)]
     pub price_guide: Option<PriceGuideResponse>,
     pub scryfall_id: String,
     pub the_gatherer_id: Option<String>,

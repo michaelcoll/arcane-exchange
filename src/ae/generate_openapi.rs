@@ -1,4 +1,4 @@
-use ccpt::infrastructure::adapter_in::openapi::ApiDoc;
+use ae::infrastructure::adapter_in::openapi::ApiDoc;
 use utoipa::OpenApi;
 
 fn main() {

@@ -1,5 +1,5 @@
 // Mirrors the per-endpoint offset limits enforced by the backend (`*_MAX_OFFSET` constants
-// next to each `application::service`, see `src/ccpt/application/service/*.rs`). The API
+// next to each `application::service`, see `src/ae/application/service/*.rs`). The API
 // rejects `page * page_size` beyond these limits with an HTTP 400 — these values let the UI
 // stop paginating before hitting that error instead of firing a request bound to fail.
 //

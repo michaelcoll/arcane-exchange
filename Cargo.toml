@@ -4,16 +4,16 @@ version = "0.1.0"
 edition = "2024"
 
 [lib]
-name = "ccpt"
-path = "src/ccpt/lib.rs"
+name = "ae"
+path = "src/ae/lib.rs"
 
 [[bin]]
-name = "ccpt"
-path = "src/ccpt/main.rs"
+name = "ae"
+path = "src/ae/main.rs"
 
 [[bin]]
 name = "generate-openapi"
-path = "src/ccpt/generate_openapi.rs"
+path = "src/ae/generate_openapi.rs"
 
 [dependencies]
 async-trait = "0.1"

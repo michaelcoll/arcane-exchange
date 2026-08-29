@@ -1,0 +1,4 @@
+#include "Shared.xcconfig"
+
+// NOTE: "//" starts a comment in xcconfig, so the slashes must be split with "$()" between them.
+API_BASE_URL = https:/$()/ae.piconsoft.fr/api/v1

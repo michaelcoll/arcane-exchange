@@ -962,10 +962,8 @@ components:
       - reserved
       properties:
         collection_entry:
-          oneOf:
-          - type: 'null'
-          - $ref: '#/components/schemas/CollectionEntryResponse'
-            description: Present only when the card is owned by the authenticated user.
+          $ref: '#/components/schemas/CollectionEntryResponse'
+          description: Present only when the card is owned by the authenticated user.
         collector_number:
           type: string
         foil:
@@ -985,9 +983,7 @@ components:
             card no one offers anymore never appears in search results at all.
           minimum: 0
         price_guide:
-          oneOf:
-          - type: 'null'
-          - $ref: '#/components/schemas/PriceGuideResponse'
+          $ref: '#/components/schemas/PriceGuideResponse'
         rarity_code:
           type: string
         reserved:
@@ -1376,9 +1372,7 @@ components:
         name:
           type: string
         price_guide:
-          oneOf:
-          - type: 'null'
-          - $ref: '#/components/schemas/PriceGuideResponse'
+          $ref: '#/components/schemas/PriceGuideResponse'
         quantity:
           type: integer
           format: int32

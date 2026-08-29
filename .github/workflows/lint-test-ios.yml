@@ -1,0 +1,57 @@
+name: lint-test-ios
+
+on: push
+
+jobs:
+  lint:
+    name: Format & Lint
+    runs-on: macos-26
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Install XcodeGen, SwiftFormat & SwiftLint
+        run: brew install xcodegen swiftformat swiftlint
+
+      - name: Generate project
+        working-directory: ios-app
+        run: xcodegen generate
+
+      - name: SwiftFormat Check
+        working-directory: ios-app
+        run: swiftformat ArcaneExchange APIClient/Sources --lint
+
+      - name: SwiftLint
+        working-directory: ios-app
+        run: swiftlint lint --strict ArcaneExchange APIClient/Sources
+
+  test:
+    name: Build & Test
+    runs-on: macos-26
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Pre-boot the simulator
+        run: nohup xcrun simctl boot "iPhone 17" >/dev/null 2>&1 &
+
+      - name: Install XcodeGen & xcbeautify
+        run: brew install xcodegen xcbeautify
+
+      - name: Generate project
+        working-directory: ios-app
+        run: xcodegen generate
+
+      - name: Cache Swift packages
+        uses: actions/cache@v6
+        with:
+          path: ios-app/.spm-cache
+          key: spm-${{ hashFiles('ios-app/project.yml', 'ios-app/APIClient/Package.swift') }}
+
+      - name: Test
+        working-directory: ios-app
+        run: |
+          set -o pipefail
+          xcodebuild -scheme ArcaneExchange -destination 'platform=iOS Simulator,name=iPhone 17' \
+            -clonedSourcePackagesDirPath .spm-cache -skipPackagePluginValidation test \
+            | xcbeautify --renderer github-actions

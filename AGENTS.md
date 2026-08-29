@@ -39,5 +39,6 @@
 - **Design System**: [design-system.instructions.md](.agents/design-system.instructions.md)
 - **API Endpoints**: [endpoints.instructions.md](.agents/endpoints.instructions.md)
 - **Frontend**: [frontend.instructions.md](.agents/frontend.instructions.md)
+- **iOS App**: [ios.instructions.md](.agents/ios.instructions.md)
 - **Mise & Workflow**: [mise.instructions.md](.agents/mise.instructions.md)
 - **Trade Workflow**: [trade-workflow.instructions.md](.agents/trade-workflow.instructions.md)

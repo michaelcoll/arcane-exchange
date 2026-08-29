@@ -1,0 +1,14 @@
+PRODUCT_BUNDLE_IDENTIFIER = fr.piconsoft.arcane-exchange
+IPHONEOS_DEPLOYMENT_TARGET = 18.0
+SWIFT_VERSION = 6.0
+CODE_SIGN_STYLE = Automatic
+
+// Per-developer values, never committed: the signing identity and the Clerk instance the
+// build talks to. Copy Local.xcconfig.example to Local.xcconfig and fill both in.
+//
+// The empty default below keeps `$(CLERK_PUBLISHABLE_KEY)` resolvable without that file, so
+// a fresh clone — and CI — still builds and tests. Only sign-in needs the real key, and
+// neither exercises it.
+CLERK_PUBLISHABLE_KEY =
+
+#include? "Local.xcconfig"

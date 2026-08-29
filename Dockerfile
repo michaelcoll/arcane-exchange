@@ -7,8 +7,8 @@ RUN SQLX_OFFLINE=true cargo build --release
 
 FROM gcr.io/distroless/cc-debian13:nonroot
 
-COPY --from=build --chown=nonroot:nonroot /app/target/release/ccpt /usr/local/bin/ccpt
+COPY --from=build --chown=nonroot:nonroot /app/target/release/ae /usr/local/bin/ae
 
 EXPOSE 8080
 
-CMD ["/usr/local/bin/ccpt"]
+CMD ["/usr/local/bin/ae"]
