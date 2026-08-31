@@ -3,6 +3,9 @@ import SwiftUI
 
 @main
 struct ArcaneExchangeApp: App {
+    /// One CoreMotion source for the whole app, read by every `FoilOverlay`.
+    @State private var tilt = TiltProvider()
+
     init() {
         AppConfig.seedSettingsDefaults()
         ArtworkPipeline.install()
@@ -13,6 +16,7 @@ struct ArcaneExchangeApp: App {
         WindowGroup {
             ContentView()
                 .environment(Clerk.shared)
+                .environment(tilt)
         }
     }
 }

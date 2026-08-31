@@ -32,7 +32,6 @@ struct CardDetailView: View {
             .padding(.vertical, 20)
             .frame(maxWidth: .infinity)
         }
-        .navigationTitle(card.name)
         .navigationBarTitleDisplayMode(.inline)
         .task { await model.loadHistory() }
     }
@@ -61,7 +60,7 @@ struct CardDetailView: View {
             }
         }
         .aspectRatio(5.0 / 7.0, contentMode: .fit)
-        .frame(maxWidth: 230)
+        .frame(maxWidth: 320)
         .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
         .shadow(color: .black.opacity(0.35), radius: 18, y: 12)
     }
@@ -93,10 +92,12 @@ struct CardDetailView: View {
             VStack(alignment: .leading, spacing: 2) {
                 Text("Carte réservée")
                     .fontWeight(.semibold)
-                Text("""
-                Engagée dans un échange accepté. Elle ne peut pas être proposée ailleurs tant que \
-                l'échange n'est pas clos ou abandonné.
-                """)
+                Text(
+                    """
+                    Engagée dans un échange accepté. Elle ne peut pas être proposée ailleurs tant que \
+                    l'échange n'est pas clos ou abandonné.
+                    """
+                )
                 .font(.footnote)
                 .foregroundStyle(.secondary)
             }
@@ -240,7 +241,7 @@ struct CardDetailView: View {
             card: CollectionCard(
                 collection_entry: .init(added_at: "2026-01-05T10:00:00Z", purchase_price: 980, quantity: 1),
                 collector_number: "243",
-                foil: false,
+                foil: true,
                 language_code: "fr",
                 name: "The Soul Stone",
                 price_guide: .init(avg: 870, low: 830, trend: 900),

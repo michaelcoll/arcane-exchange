@@ -38,6 +38,14 @@ jobs:
       - name: Install XcodeGen & xcbeautify
         run: brew install xcodegen xcbeautify
 
+      - name: Install the Metal toolchain
+        # Xcode 26 ships the `metal` compiler as a downloadable component, and
+        # `ArcaneExchange/Features/CardDetail/Foil.metal` will not build without it. Skipped
+        # when the runner image already carries it.
+        run: |
+          xcodebuild -showComponent MetalToolchain | grep -q 'Status: installed' \
+            || xcodebuild -downloadComponent MetalToolchain
+
       - name: Generate project
         working-directory: ios-app
         run: xcodegen generate

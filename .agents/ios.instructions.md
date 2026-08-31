@@ -57,6 +57,10 @@ generated from the very same `doc/openapi.yml`.
   pagination). Do not use `AsyncImage` — it has no decoded-image cache and re-downloads on scroll-back.
 - **Prices**: `Price.euros(cents:)`, pinned to `fr_FR` regardless of device locale; deal thresholds in `CardDeal`
   mirror the web client's `Card/Cell.vue` (±3 % is noise).
+- **Metal**: `Features/CardDetail/Foil.metal` holds the `cardFoil` layer-effect shader (holographic foil), reached
+  from Swift as `ShaderLibrary.cardFoil`. Xcode 26 ships the `metal` compiler as a **downloadable component**, so a
+  fresh machine builds only after `xcodebuild -downloadComponent MetalToolchain` (a few GB) — otherwise the build
+  fails with `cannot execute tool 'metal'`. `lint-test-ios.yml` installs it when the runner image lacks it.
 - **Language**: UI strings in French (the product is French), code and comments in English, like the rest of the
   repo.
 
