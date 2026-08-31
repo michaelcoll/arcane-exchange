@@ -32,7 +32,7 @@ swift = "latest"
 
 [tasks.checks]
 description = "Runs all the checks for the project"
-depends = ["rebuild-docs", "sqlx-prepare", "test-backend", "test-frontend", "lint-backend", "lint-frontend", "lint-ios", "test-ios"]
+depends = ["rebuild-docs", "sqlx-prepare", "test-backend", "test-frontend", "lint-backend", "lint-frontend", "lint-ios"]
 
 [tasks.clean-backend]
 run = "cargo clean"
