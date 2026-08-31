@@ -12,8 +12,11 @@ struct CollectionView: View {
             content
                 .navigationTitle("Ma collection")
                 .refreshable { await model.reload() }
-                .task(id: model.filters) { await model.reload() }
+                .task { await model.loadInitiallyIfNeeded() }
                 .task { await model.loadSetsIfNeeded() }
+                .onChange(of: model.filters) {
+                    Task { await model.reload() }
+                }
                 .navigationDestination(for: CardDetailRoute.self) { route in
                     CardDetailView(card: route.card)
                         .navigationTransition(.zoom(sourceID: route.card.scryfall_id, in: cardTransition))
