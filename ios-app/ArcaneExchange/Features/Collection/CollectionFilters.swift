@@ -61,4 +61,9 @@ enum CollectionCopy {
     static func cardCount(_ count: Int) -> String {
         count > 1 ? "\(count) cartes" : "\(count) carte"
     }
+
+    /// "3 joueurs la proposent" / "1 joueur la propose" — the owners-list section header.
+    static func offerCount(_ count: Int) -> String {
+        count > 1 ? "\(count) joueurs la proposent" : "\(count) joueur la propose"
+    }
 }

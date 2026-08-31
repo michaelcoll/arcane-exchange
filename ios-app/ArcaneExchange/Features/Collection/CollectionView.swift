@@ -3,6 +3,7 @@ import SwiftUI
 struct CollectionView: View {
     @State private var model = CollectionViewModel()
     @State private var isShowingFilters = false
+    @Namespace private var cardTransition
 
     private let columns = [GridItem(.adaptive(minimum: 140), spacing: 14)]
 
@@ -13,6 +14,13 @@ struct CollectionView: View {
                 .refreshable { await model.reload() }
                 .task(id: model.filters) { await model.reload() }
                 .task { await model.loadSetsIfNeeded() }
+                .navigationDestination(for: CardDetailRoute.self) { route in
+                    CardDetailView(card: route.card)
+                        .navigationTransition(.zoom(sourceID: route.card.scryfall_id, in: cardTransition))
+                }
+                .navigationDestination(for: CardOffersRoute.self) { route in
+                    CardOffersView(card: route.card)
+                }
                 .sheet(isPresented: $isShowingFilters) {
                     CollectionFiltersSheet(
                         filters: $model.filters,
@@ -49,8 +57,12 @@ struct CollectionView: View {
 
                 LazyVGrid(columns: columns, spacing: 18) {
                     ForEach(model.cards, id: \.self) { card in
-                        CollectionCardCell(card: card)
-                            .task { await model.loadMoreIfNeeded(displaying: card) }
+                        NavigationLink(value: CardDetailRoute(card: card)) {
+                            CollectionCardCell(card: card)
+                        }
+                        .buttonStyle(.plain)
+                        .matchedTransitionSource(id: card.scryfall_id, in: cardTransition)
+                        .task { await model.loadMoreIfNeeded(displaying: card) }
                     }
                 }
 
