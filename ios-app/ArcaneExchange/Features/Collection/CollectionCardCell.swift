@@ -43,7 +43,6 @@ struct CollectionCardCell: View {
         Color.clear
             .aspectRatio(5.0 / 7.0, contentMode: .fit)
             .overlay { image }
-            .overlay { foilSheen }
             .clipShape(RoundedRectangle(cornerRadius: Self.cornerRadius, style: .continuous))
             .overlay { border }
             .overlay(alignment: .topTrailing) { quantityBadge }
@@ -58,7 +57,7 @@ struct CollectionCardCell: View {
         let url = CardArtwork.url(gathererID: card.the_gatherer_id, scryfallID: card.scryfall_id)
         return LazyImage(url: url) { state in
             if let image = state.image {
-                image.resizable().scaledToFill()
+                image.resizable().scaledToFill().foil(card.foil)
             } else if state.error != nil {
                 placeholder
             } else {
@@ -85,20 +84,6 @@ struct CollectionCardCell: View {
                 card.reserved ? AnyShapeStyle(Color.purple) : AnyShapeStyle(.black.opacity(0.4)),
                 lineWidth: card.reserved ? 2 : 1
             )
-    }
-
-    /// Stand-in for the mockup's animated foil: a static sheen reads as "foil" without a
-    /// scroll-driven animation on every visible tile.
-    @ViewBuilder private var foilSheen: some View {
-        if card.foil {
-            LinearGradient(
-                colors: [.cyan.opacity(0.2), .clear, .purple.opacity(0.16), .clear],
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
-            )
-            .blendMode(.plusLighter)
-            .allowsHitTesting(false)
-        }
     }
 
     @ViewBuilder private var quantityBadge: some View {
