@@ -92,7 +92,7 @@ private struct OfferRow: View {
 
     var body: some View {
         HStack(spacing: 12) {
-            avatar
+            PlayerAvatar(username: offer.owner_username)
             VStack(alignment: .leading, spacing: 2) {
                 Text("@\(offer.owner_username)")
                     .fontWeight(.medium)
@@ -113,25 +113,6 @@ private struct OfferRow: View {
             }
         }
         .padding(.vertical, 4)
-    }
-
-    private var avatar: some View {
-        Circle()
-            .fill(Color.accentColor.opacity(0.15))
-            .frame(width: 36, height: 36)
-            .overlay {
-                Text(initials)
-                    .font(.caption.weight(.bold))
-                    .foregroundStyle(Color.accentColor)
-            }
-    }
-
-    private var initials: String {
-        let words = offer.owner_username.split { !$0.isLetter && !$0.isNumber }
-        let letters = words.prefix(2).compactMap(\.first)
-        return letters.isEmpty
-            ? String(offer.owner_username.prefix(2)).uppercased()
-            : String(letters).uppercased()
     }
 }
 

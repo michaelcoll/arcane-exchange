@@ -48,7 +48,15 @@ final class CollectionViewModel {
         cards.count < total
     }
 
-    /// Reloads from page 0. Called on appear and whenever `filters` changes.
+    /// First load only. The view's `.task` re-runs every time the screen re-appears (e.g. after
+    /// popping a card detail); without this guard that would reload page 0 and throw away both
+    /// the already-loaded pages and the user's scroll position.
+    func loadInitiallyIfNeeded() async {
+        guard cards.isEmpty, !isLoading, loadError == nil else { return }
+        await reload()
+    }
+
+    /// Reloads from page 0. Called for the first load and whenever `filters` changes.
     func reload() async {
         isLoading = true
         loadError = nil
