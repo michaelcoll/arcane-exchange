@@ -2,11 +2,13 @@ import NukeUI
 import SwiftUI
 
 /// "Possesseurs" (`ScrOffers` in the mockup): the other players offering this card to trade,
-/// cheapest first. Read-only for now — rows do not start a trade.
+/// cheapest first. Tapping a row opens the trade with that player, this card already on the
+/// table.
 struct CardOffersView: View {
     let card: CollectionCard
 
     @State private var model: CardOffersViewModel
+    @Environment(\.tradeNavigator) private var openTrade
 
     init(card: CollectionCard) {
         self.card = card
@@ -18,6 +20,16 @@ struct CardOffersView: View {
             .navigationTitle("Possesseurs")
             .navigationBarTitleDisplayMode(.inline)
             .task { await model.load() }
+            .alert(
+                "Échange impossible",
+                isPresented: Binding(get: { model.startError != nil }, set: {
+                    if !$0 {
+                        model.startError = nil
+                    }
+                }),
+                actions: { Button("OK", role: .cancel) { model.startError = nil } },
+                message: { Text(model.startError ?? "") }
+            )
     }
 
     @ViewBuilder private var content: some View {
@@ -46,13 +58,21 @@ struct CardOffersView: View {
                 Section { cardRow }
 
                 Section {
-                    ForEach(offers, id: \.owner_username) { OfferRow(offer: $0) }
+                    ForEach(offers, id: \.owner_username) { offer in
+                        OfferRow(
+                            offer: offer,
+                            isStarting: model.startingWith == offer.owner_username,
+                            // A reserved copy is locked into someone else's accepted trade.
+                            action: offer.reserved ? nil : { start(offer) }
+                        )
+                    }
                 } header: {
                     Text(CollectionCopy.offerCount(offers.count))
                 } footer: {
                     Text("""
                     Une copie réservée est engagée dans un échange déjà accepté : elle reste \
-                    visible mais ne peut pas être demandée.
+                    visible mais ne peut pas être demandée. Ouvrir un échange avec un joueur \
+                    avec qui tu en as déjà un ajoute simplement la carte à celui-ci.
                     """)
                 }
             }
@@ -84,13 +104,33 @@ struct CardOffersView: View {
             }
         }
     }
+
+    private func start(_ offer: CardOffer) {
+        Task {
+            if let route = await model.startTrade(with: offer) {
+                openTrade(route)
+            }
+        }
+    }
 }
 
 /// One player's offer: avatar, handle, quantity, and either a price or a reserved lock.
+/// `action` is `nil` for a reserved copy, which cannot be asked for.
 private struct OfferRow: View {
     let offer: CardOffer
+    let isStarting: Bool
+    let action: (() -> Void)?
 
     var body: some View {
+        if let action {
+            Button(action: action) { content }
+                .buttonStyle(.plain)
+        } else {
+            content
+        }
+    }
+
+    private var content: some View {
         HStack(spacing: 12) {
             PlayerAvatar(username: offer.owner_username)
             VStack(alignment: .leading, spacing: 2) {
@@ -101,7 +141,9 @@ private struct OfferRow: View {
                     .foregroundStyle(.secondary)
             }
             Spacer(minLength: 8)
-            if offer.reserved {
+            if isStarting {
+                ProgressView()
+            } else if offer.reserved {
                 Label("Réservée", systemImage: "lock.fill")
                     .font(.caption.weight(.semibold))
                     .foregroundStyle(.purple)
@@ -110,6 +152,11 @@ private struct OfferRow: View {
                     .font(.callout.weight(.semibold))
                     .monospacedDigit()
                     .foregroundStyle(Color.accentColor)
+            }
+            if action != nil {
+                Image(systemName: "arrow.left.arrow.right")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
             }
         }
         .padding(.vertical, 4)
