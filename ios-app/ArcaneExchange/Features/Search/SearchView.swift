@@ -30,9 +30,8 @@ struct SearchView: View {
             // Form/List below is on `systemGroupedBackground` — one seamless colour instead.
             .background(Color(.systemGroupedBackground))
             .navigationTitle("Rechercher")
-            .navigationDestination(for: SearchResultsRoute.self) { SearchResultsView(route: $0) }
-            .navigationDestination(for: CardDetailRoute.self) { CardDetailView(card: $0.card) }
-            .navigationDestination(for: CardOffersRoute.self) { CardOffersView(card: $0.card) }
+            .cardBrowsingDestinations()
+            .tradeDestinations(path: $path)
         }
         .searchable(text: $searchText, prompt: mode.prompt)
         .onSubmit(of: .search) { submit() }
@@ -229,7 +228,7 @@ struct SearchView: View {
     private func playerRow(_ user: UserSuggestion) -> some View {
         Button {
             model.rememberPlayer(user)
-            path.append(SearchResultsRoute(target: .player(user)))
+            path.append(SearchResultsRoute(target: .player(username: user.username)))
         } label: {
             HStack(spacing: 12) {
                 PlayerAvatar(username: user.username)
@@ -262,7 +261,7 @@ struct SearchView: View {
             // Enter with no picked suggestion: jump straight into the top match if there is one.
             if let first = model.playerSuggestions.first {
                 model.rememberPlayer(first)
-                path.append(SearchResultsRoute(target: .player(first)))
+                path.append(SearchResultsRoute(target: .player(username: first.username)))
             }
         }
     }

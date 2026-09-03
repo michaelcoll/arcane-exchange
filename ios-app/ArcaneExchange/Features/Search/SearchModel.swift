@@ -45,7 +45,10 @@ struct SearchResultsRoute: Hashable {
         /// Free-text search on card name or set (`GET /search/card?q=`).
         case card(query: String)
         /// One player's tradable collection (`GET /search/card?player_username=`).
-        case player(UserSuggestion)
+        ///
+        /// Just the handle: it is all `/search/card` is given, and it lets the trade screen
+        /// open a partner's collection without inventing a `UserSuggestion` it never had.
+        case player(username: String)
         /// Not wired: the API has no batch endpoint, it is one `/search/card` call per line.
         case decklist
     }
@@ -55,7 +58,7 @@ struct SearchResultsRoute: Hashable {
     var title: String {
         switch target {
         case let .card(query): query
-        case let .player(user): "@\(user.username)"
+        case let .player(username): "@\(username)"
         case .decklist: "Decklist"
         }
     }

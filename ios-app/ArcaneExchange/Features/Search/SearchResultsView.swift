@@ -73,8 +73,8 @@ private struct SearchResultsGrid: View {
     private var grid: some View {
         ScrollView {
             LazyVStack(alignment: .leading, spacing: 14) {
-                if case let .player(user) = target {
-                    playerHeader(user)
+                if case let .player(username) = target {
+                    playerHeader(username)
                 }
 
                 Text(CollectionCopy.cardCount(model.total))
@@ -103,16 +103,13 @@ private struct SearchResultsGrid: View {
         }
     }
 
-    private func playerHeader(_ user: UserSuggestion) -> some View {
+    /// No card count here: the route only carries the handle now, and the line right below
+    /// already states how many tradable cards came back.
+    private func playerHeader(_ username: String) -> some View {
         HStack(spacing: 12) {
-            PlayerAvatar(username: user.username)
-            VStack(alignment: .leading, spacing: 2) {
-                Text("@\(user.username)")
-                    .fontWeight(.semibold)
-                Text(user.tradableCountLabel)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            }
+            PlayerAvatar(username: username)
+            Text("@\(username)")
+                .fontWeight(.semibold)
             Spacer(minLength: 0)
         }
         .padding(.vertical, 4)

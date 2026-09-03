@@ -3,12 +3,13 @@ import SwiftUI
 struct CollectionView: View {
     @State private var model = CollectionViewModel()
     @State private var isShowingFilters = false
+    @State private var path = NavigationPath()
     @Namespace private var cardTransition
 
     private let columns = [GridItem(.adaptive(minimum: 140), spacing: 14)]
 
     var body: some View {
-        NavigationStack {
+        NavigationStack(path: $path) {
             content
                 .navigationTitle("Ma collection")
                 .refreshable { await model.reload() }
@@ -24,6 +25,7 @@ struct CollectionView: View {
                 .navigationDestination(for: CardOffersRoute.self) { route in
                     CardOffersView(card: route.card)
                 }
+                .tradeDestinations(path: $path)
                 .sheet(isPresented: $isShowingFilters) {
                     CollectionFiltersSheet(
                         filters: $model.filters,

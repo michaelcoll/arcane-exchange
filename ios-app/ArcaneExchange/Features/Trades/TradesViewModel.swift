@@ -2,11 +2,15 @@ import APIClient
 import Foundation
 import OpenAPIRuntime
 
-/// One page-by-page `GET /search/card` feed, scoped either to a free-text query or to a
-/// single player's tradable collection. Modelled on `CollectionViewModel`.
+/// Backs the Échanges tab: one page-by-page `GET /trades` feed, split into the "En cours" and
+/// "Historique" segments the mockup shows.
+///
+/// The split is done client-side rather than with the endpoint's `status` filter: the two
+/// segments together are the whole list, so one feed serves both and switching tabs costs
+/// nothing.
 @MainActor
 @Observable
-final class SearchResultsViewModel {
+final class TradesViewModel {
     enum LoadError: Equatable {
         case unauthorized
         case network
@@ -16,7 +20,7 @@ final class SearchResultsViewModel {
         var message: String {
             switch self {
             case .unauthorized:
-                "Session expirée. Reconnecte-toi pour lancer une recherche."
+                "Session expirée. Reconnecte-toi pour voir tes échanges."
             case .network:
                 "Serveur injoignable. Vérifie ta connexion, et l'URL de l'API dans Réglages ▸ Arcane Exchange."
             case let .http(status):
@@ -27,11 +31,27 @@ final class SearchResultsViewModel {
         }
     }
 
+    enum Segment: String, CaseIterable, Identifiable {
+        case ongoing
+        case past
+
+        var id: Self {
+            self
+        }
+
+        var label: String {
+            switch self {
+            case .ongoing: "En cours"
+            case .past: "Historique"
+            }
+        }
+    }
+
     private static let pageSize: Int32 = 20
 
-    let target: SearchResultsRoute.Target
+    var segment: Segment = .ongoing
 
-    private(set) var cards: [CollectionCard] = []
+    private(set) var trades: [TradeSummary] = []
     private(set) var total = 0
     private(set) var isLoading = false
     private(set) var isLoadingMore = false
@@ -41,35 +61,43 @@ final class SearchResultsViewModel {
     private var nextPage: Int32 = 0
 
     var hasMore: Bool {
-        cards.count < total
+        trades.count < total
     }
 
-    init(target: SearchResultsRoute.Target) {
-        self.target = target
+    var ongoing: [TradeSummary] {
+        trades.filter { TradeStatus(apiValue: $0.status).isOngoing }
     }
 
-    func load() async {
+    var past: [TradeSummary] {
+        trades.filter { !TradeStatus(apiValue: $0.status).isOngoing }
+    }
+
+    var visibleTrades: [TradeSummary] {
+        segment == .ongoing ? ongoing : past
+    }
+
+    /// Reloads from page 0 — the first load, pull-to-refresh, and the return from a trade
+    /// whose status may just have changed.
+    func reload() async {
         isLoading = true
         loadError = nil
         nextPage = 0
-        ArtworkPipeline.cancelPrefetching()
         do {
             let response = try await fetchPage(0)
-            cards = response.items
+            trades = response.items
             total = Int(response.total)
             nextPage = 1
-            ArtworkPipeline.prefetch(CardArtwork.urls(for: response.items))
         } catch {
-            cards = []
+            trades = []
             total = 0
             loadError = Self.loadError(from: error)
         }
         isLoading = false
     }
 
-    func loadMoreIfNeeded(displaying card: CollectionCard) async {
+    func loadMoreIfNeeded(displaying trade: TradeSummary) async {
         guard !isLoading, !isLoadingMore, hasMore, loadError == nil else { return }
-        guard cards.suffix(4).contains(card) else { return }
+        guard trades.suffix(4).contains(trade) else { return }
 
         let page = nextPage
         isLoadingMore = true
@@ -77,42 +105,17 @@ final class SearchResultsViewModel {
         do {
             let response = try await fetchPage(page)
             guard nextPage == page else { return }
-            cards.append(contentsOf: response.items)
+            trades.append(contentsOf: response.items)
             total = Int(response.total)
             nextPage = page + 1
-            ArtworkPipeline.prefetch(CardArtwork.urls(for: response.items))
         } catch {
             loadError = Self.loadError(from: error)
         }
     }
 
-    private func fetchPage(_ page: Int32) async throws -> Components.Schemas.PaginatedCollectionResponse {
-        let query: Operations.search_cards.Input.Query
-        switch target {
-        case let .card(text):
-            query = .init(
-                page: page,
-                page_size: Self.pageSize,
-                sort_by: .trend,
-                sort_dir: .desc,
-                q: text
-            )
-        case let .player(username):
-            // `sort_by=added_at` is only accepted alongside `player_username` (see the 400 rule
-            // on `/search/card`) — which is exactly this branch.
-            query = .init(
-                page: page,
-                page_size: Self.pageSize,
-                sort_by: .added_at,
-                sort_dir: .desc,
-                player_username: username
-            )
-        case .decklist:
-            // The view never instantiates this model for a decklist target.
-            return .init(items: [], page: 0, page_size: Self.pageSize, total: 0)
-        }
-
-        switch try await APIClientProvider.shared.search_cards(query: query) {
+    private func fetchPage(_ page: Int32) async throws -> Components.Schemas.PaginatedTradesResponse {
+        let query = Operations.list_trades.Input.Query(page: page, page_size: Self.pageSize)
+        switch try await APIClientProvider.shared.list_trades(query: query) {
         case let .ok(response):
             return try response.body.json
         case .unauthorized:
