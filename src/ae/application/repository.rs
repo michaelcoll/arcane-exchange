@@ -101,6 +101,9 @@ pub trait CardMarketPriceRepository: Send + Sync {
 #[async_trait]
 #[cfg_attr(test, automock)]
 pub trait CardPricesViewRepository: Send + Sync {
+    /// Refreshes `mv_last_cardmarket_prices` before `mv_card_prices`, which reads it — this
+    /// order is load-bearing, see the adapter implementation. Both refreshes are attempted even
+    /// if the first one fails.
     async fn refresh(&self) -> Result<(), AppError>;
     /// The authenticated user's private collection. Always filtered by `user_id`.
     async fn get_paginated(
@@ -114,7 +117,8 @@ pub trait CardPricesViewRepository: Send + Sync {
     /// `query.player_username` is set, results are restricted to that player's cards
     /// (exact match, case-insensitive) and `owner_count` is always `1`.
     async fn search_paginated(&self, query: SearchQuery) -> Result<Paginated<Card>, AppError>;
-    /// Whether any user owns a card matching `card_id`, regardless of who.
+    /// Whether `card_id` exists in the catalog (table `card`), regardless of who owns it, or
+    /// whether anyone owns it at all.
     async fn exists(&self, card_id: &CardId) -> Result<bool, AppError>;
     /// Other users' offers for `card_id` (the caller's own entry, if any, is excluded).
     async fn get_offers(
@@ -255,7 +259,7 @@ pub trait TradeRepository: Send + Sync {
 
     /// Fetches every card offered in a trade, enriched with name/price/image ids for display.
     /// Unlike `find_trade_cards`, this survives the owner later removing the card from their
-    /// collection (it joins `card`/`cardmarket_price` directly, not the collection-gated
+    /// collection (it joins `card`/`mv_last_cardmarket_prices`, not the collection-gated
     /// `mv_card_prices` view).
     async fn find_trade_cards_with_details(
         &self,

@@ -167,23 +167,16 @@ impl TradeRepository for TradeRepositoryAdapter {
     ) -> Result<Vec<TradeCardDetail>, AppError> {
         let rows = sqlx::query_as!(
             TradeCardDetailEntity,
-            r#"WITH last_price AS (
-                    SELECT id_produit, MAX(date) AS last_date
-                    FROM cardmarket_price
-                    GROUP BY id_produit
-                )
-                SELECT tc.set_code AS "set_code!", tc.collector_number AS "collector_number!",
+            r#"SELECT tc.set_code AS "set_code!", tc.collector_number AS "collector_number!",
                        tc.language_code AS "language_code!", tc.foil AS "foil!",
                        tc.owner_user_id AS "owner_user_id!", tc.quantity AS "quantity!",
                        c.name AS "name!", c.scryfall_id AS "scryfall_id!", c.the_gatherer_id,
-                       CASE WHEN c.foil THEN cmp.low_foil ELSE cmp.low END AS low,
-                       CASE WHEN c.foil THEN cmp.trend_foil ELSE cmp.trend END AS trend,
-                       CASE WHEN c.foil THEN cmp.avg_foil ELSE cmp.avg END AS avg
+                       lcp.low, lcp.trend, lcp.avg
                 FROM trade_card tc
                 JOIN card c ON c.set_code = tc.set_code AND c.collector_number = tc.collector_number
                     AND c.language_code = tc.language_code AND c.foil = tc.foil
-                LEFT JOIN last_price lp ON c.cardmarket_id = lp.id_produit
-                LEFT JOIN cardmarket_price cmp ON c.cardmarket_id = cmp.id_produit AND cmp.date = lp.last_date
+                LEFT JOIN mv_last_cardmarket_prices lcp ON lcp.set_code = c.set_code
+                    AND lcp.collector_number = c.collector_number AND lcp.foil = c.foil
                 WHERE tc.trade_id = $1"#,
             trade_id.0
         )
@@ -501,7 +494,7 @@ mod tests {
         insert_collection_entry_with_binder, insert_price, insert_rarity_filter, insert_trade,
         insert_trade_card, insert_trading_binder, insert_user, insert_user_with_visibility,
         mark_trade_accepted_by_both, mark_trade_party_accepted, mark_trade_party_confirmed,
-        mark_trade_party_rated,
+        mark_trade_party_rated, refresh_view,
     };
     use crate::infrastructure::adapter_out::repository::entities::{
         CardMarketPriceEntity, PriceGuideEntity,
@@ -1939,6 +1932,7 @@ mod tests {
         insert_user(&pool, "user_b", "bob").await;
         insert_card(&pool, "FDN", "87", "FR", false, "Goblin Boarders", 1).await;
         insert_price(&pool, make_price(1, 200)).await;
+        refresh_view(&pool).await;
         let trade_id = uuid::Uuid::new_v4();
         insert_trade(&pool, trade_id, "user_a", "user_b", "PENDING").await;
         insert_trade_card(&pool, trade_id, "FDN", "87", "FR", false, "user_b", 3).await;
@@ -1998,11 +1992,13 @@ mod tests {
     async fn find_trade_cards_with_details_survives_owner_removing_collection_entry(pool: PgPool) {
         // The card was added to the trade, but the owner's `collection_entry` row is absent
         // (e.g. they removed it from their collection afterwards). `mv_card_prices` would drop
-        // the card entirely in that case; this query must not, since it joins `card` directly.
+        // the card entirely in that case; this query must not, since it joins `card` and
+        // `mv_last_cardmarket_prices` directly, neither of which is gated by ownership.
         insert_user(&pool, "user_a", "alice").await;
         insert_user(&pool, "user_b", "bob").await;
         insert_card(&pool, "FDN", "87", "FR", false, "Goblin Boarders", 1).await;
         insert_price(&pool, make_price(1, 200)).await;
+        refresh_view(&pool).await;
         let trade_id = uuid::Uuid::new_v4();
         insert_trade(&pool, trade_id, "user_a", "user_b", "PENDING").await;
         insert_trade_card(&pool, trade_id, "FDN", "87", "FR", false, "user_b", 1).await;

@@ -64,6 +64,14 @@ erDiagram
         integer trend
         integer avg
     }
+    mv_last_cardmarket_prices {
+        character_varying(5) set_code
+        character_varying(10) collector_number
+        boolean foil
+        integer low
+        integer trend
+        integer avg
+    }
     set_name {
         character_varying(5) set_code PK
         character_varying(255) name "not null"
@@ -126,6 +134,7 @@ erDiagram
 ## Views
 
 - `mv_card_prices` (materialized view)
+- `mv_last_cardmarket_prices` (materialized view)
 - `v_tradable_entry` (view)
 
 ## Indexes and constraints
@@ -142,7 +151,12 @@ erDiagram
 
 ### mv_card_prices
 
+- index `idx_mv_card_prices_name_trgm` (`name`)
 - unique index `mv_card_prices_unique` (`set_code`, `collector_number`, `language_code`, `foil`, `user_id`)
+
+### mv_last_cardmarket_prices
+
+- unique index `mv_last_cardmarket_prices_unique` (`set_code`, `collector_number`, `foil`)
 
 ### trade
 

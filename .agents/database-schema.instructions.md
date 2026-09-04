@@ -8,16 +8,17 @@ express.
 
 Each table is owned by one adapter in `src/ae/infrastructure/adapter_out/repository/`.
 
-| Table                      | Role                                                    | Adapter                                       |
-| -------------------------- | ------------------------------------------------------- | --------------------------------------------- |
-| `set_name`                 | Static reference: card sets                             | `set_names_repository_adapter`                |
-| `card`                     | Card template (game data, no ownership)                 | `card_repository_adapter`                     |
-| `collection_entry`         | A user's ownership of a card (quantity, purchase price) | `card_repository_adapter`                     |
-| `cardmarket_price`         | Append-only ledger of daily CardMarket prices           | `cardmarket_price_repository_adapter`         |
-| `collection_price_history` | Daily valuation of a user's collection                  | `collection_price_history_repository_adapter` |
-| `users`                    | Local mirror of Clerk users (id, username)              | `user_repository_adapter`                     |
-| `trade`, `trade_card`      | Trades and the cards engaged in them                    | `trade_repository_adapter`                    |
-| `mv_card_prices`           | Materialized view: collection joined with latest prices | `card_prices_view_repository_adapter`         |
+| Table                       | Role                                                                      | Adapter                                       |
+| --------------------------- | ------------------------------------------------------------------------- | --------------------------------------------- |
+| `set_name`                  | Static reference: card sets                                               | `set_names_repository_adapter`                |
+| `card`                      | Card template (game data, no ownership)                                   | `card_repository_adapter`                     |
+| `collection_entry`          | A user's ownership of a card (quantity, purchase price)                   | `card_repository_adapter`                     |
+| `cardmarket_price`          | Append-only ledger of daily CardMarket prices                             | `cardmarket_price_repository_adapter`         |
+| `collection_price_history`  | Daily valuation of a user's collection                                    | `collection_price_history_repository_adapter` |
+| `users`                     | Local mirror of Clerk users (id, username)                                | `user_repository_adapter`                     |
+| `trade`, `trade_card`       | Trades and the cards engaged in them                                      | `trade_repository_adapter`                    |
+| `mv_last_cardmarket_prices` | Materialized view: last Cardmarket price per card, no ownership condition | `card_prices_view_repository_adapter`         |
+| `mv_card_prices`            | Materialized view: collection joined with latest prices                   | `card_prices_view_repository_adapter`         |
 
 `v_tradable_entry` (plain, non-materialized view) is an exception to "one table, one adapter": it derives the
 quantity of each card a user actually offers to trade (from `users.visibility`, `trading_binders` and
@@ -38,6 +39,15 @@ is never written to.
   after every price import and card/collection import (`import_price_service`, `import_card_service`, and the
   CardMarket/Gatherer update workers). Read-only — never write to it.
   `CONCURRENTLY` requires the unique index `mv_card_prices_unique`; keep it if the view changes.
+- **`mv_card_prices` reads `mv_last_cardmarket_prices`** (keyed by `(set_code, collector_number, foil)`, no
+  `language_code` — the Cardmarket price doesn't depend on it) instead of recomputing its own `MAX(date)`
+  aggregate. **Refresh order is load-bearing**: `mv_last_cardmarket_prices` must be refreshed _before_
+  `mv_card_prices` on every one of the four call sites above, or `mv_card_prices` silently serves a price one
+  cycle stale — no error is raised either way. `CardPricesViewRepositoryAdapter::refresh()` is the single place
+  that does both, in that order, and is the only call site any of the four flows should use.
+  `find_trade_cards_with_details` (`trade_repository_adapter`) also reads `mv_last_cardmarket_prices` directly,
+  joined on `card` rather than the collection-gated `mv_card_prices`, so a trade still shows a card's price after
+  its owner removes it from their collection.
 - **Trade card reservation** is derived, not stored: a card is reserved when it appears in `trade_card` of a
   non-terminal trade (see [trade-workflow.instructions.md](trade-workflow.instructions.md)).
 - **`v_tradable_entry` deducts `kept_copies` per `collection_entry` row (per binder), not once per aggregated

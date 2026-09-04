@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "WITH last_price AS (\n                    SELECT id_produit, MAX(date) AS last_date\n                    FROM cardmarket_price\n                    GROUP BY id_produit\n                )\n                SELECT tc.set_code AS \"set_code!\", tc.collector_number AS \"collector_number!\",\n                       tc.language_code AS \"language_code!\", tc.foil AS \"foil!\",\n                       tc.owner_user_id AS \"owner_user_id!\", tc.quantity AS \"quantity!\",\n                       c.name AS \"name!\", c.scryfall_id AS \"scryfall_id!\", c.the_gatherer_id,\n                       CASE WHEN c.foil THEN cmp.low_foil ELSE cmp.low END AS low,\n                       CASE WHEN c.foil THEN cmp.trend_foil ELSE cmp.trend END AS trend,\n                       CASE WHEN c.foil THEN cmp.avg_foil ELSE cmp.avg END AS avg\n                FROM trade_card tc\n                JOIN card c ON c.set_code = tc.set_code AND c.collector_number = tc.collector_number\n                    AND c.language_code = tc.language_code AND c.foil = tc.foil\n                LEFT JOIN last_price lp ON c.cardmarket_id = lp.id_produit\n                LEFT JOIN cardmarket_price cmp ON c.cardmarket_id = cmp.id_produit AND cmp.date = lp.last_date\n                WHERE tc.trade_id = $1",
+  "query": "SELECT tc.set_code AS \"set_code!\", tc.collector_number AS \"collector_number!\",\n                       tc.language_code AS \"language_code!\", tc.foil AS \"foil!\",\n                       tc.owner_user_id AS \"owner_user_id!\", tc.quantity AS \"quantity!\",\n                       c.name AS \"name!\", c.scryfall_id AS \"scryfall_id!\", c.the_gatherer_id,\n                       lcp.low, lcp.trend, lcp.avg\n                FROM trade_card tc\n                JOIN card c ON c.set_code = tc.set_code AND c.collector_number = tc.collector_number\n                    AND c.language_code = tc.language_code AND c.foil = tc.foil\n                LEFT JOIN mv_last_cardmarket_prices lcp ON lcp.set_code = c.set_code\n                    AND lcp.collector_number = c.collector_number AND lcp.foil = c.foil\n                WHERE tc.trade_id = $1",
   "describe": {
     "columns": [
       {
@@ -106,19 +106,34 @@
         "ordinal": 9,
         "name": "low",
         "type_info": "Int4",
-        "origin": "Expression"
+        "origin": {
+          "Table": {
+            "table": "mv_last_cardmarket_prices",
+            "name": "low"
+          }
+        }
       },
       {
         "ordinal": 10,
         "name": "trend",
         "type_info": "Int4",
-        "origin": "Expression"
+        "origin": {
+          "Table": {
+            "table": "mv_last_cardmarket_prices",
+            "name": "trend"
+          }
+        }
       },
       {
         "ordinal": 11,
         "name": "avg",
         "type_info": "Int4",
-        "origin": "Expression"
+        "origin": {
+          "Table": {
+            "table": "mv_last_cardmarket_prices",
+            "name": "avg"
+          }
+        }
       }
     ],
     "parameters": {
@@ -127,19 +142,19 @@
       ]
     },
     "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
       true,
       true,
       true,
-      true,
-      true,
-      true,
-      true,
-      true,
-      true,
-      null,
-      null,
-      null
+      true
     ]
   },
-  "hash": "17a9514b73533e0cba8ebd7f8fc8090732ecdbf7ade57b6acb9a86c325187a9c"
+  "hash": "d80cb05f64902d846a093e36a40cc2990d07ea66f3d2641cf1fd8e047644d9d7"
 }

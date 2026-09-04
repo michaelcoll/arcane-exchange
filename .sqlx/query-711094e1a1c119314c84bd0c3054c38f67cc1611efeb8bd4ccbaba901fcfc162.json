@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT EXISTS(SELECT 1 FROM mv_card_prices\n                 WHERE set_code = $1 AND collector_number = $2 AND language_code = $3 AND foil = $4)",
+  "query": "SELECT EXISTS(SELECT 1 FROM card\n                 WHERE set_code = $1 AND collector_number = $2 AND language_code = $3 AND foil = $4)",
   "describe": {
     "columns": [
       {
@@ -22,5 +22,5 @@
       null
     ]
   },
-  "hash": "1c4cac76a7ae6b8d3ba356845f227bb31535454f3a066382d5c67c71e665a409"
+  "hash": "711094e1a1c119314c84bd0c3054c38f67cc1611efeb8bd4ccbaba901fcfc162"
 }
