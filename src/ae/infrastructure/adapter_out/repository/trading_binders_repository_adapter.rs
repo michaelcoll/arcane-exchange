@@ -16,6 +16,7 @@ impl TradingBindersRepositoryAdapter {
 
 #[async_trait]
 impl TradingBinderRepository for TradingBindersRepositoryAdapter {
+    #[tracing::instrument(name = "trading_binders_repo.list", skip_all, fields(sentry.op = "db"))]
     async fn list(&self, user_id: &UserId) -> Result<Vec<String>, AppError> {
         let rows = sqlx::query!(
             r#"
@@ -32,6 +33,7 @@ impl TradingBinderRepository for TradingBindersRepositoryAdapter {
         Ok(rows.into_iter().map(|r| r.binder_name).collect())
     }
 
+    #[tracing::instrument(name = "trading_binders_repo.add", skip_all, fields(sentry.op = "db"))]
     async fn add(&self, user_id: &UserId, binder_name: &str) -> Result<(), AppError> {
         sqlx::query!(
             r#"
@@ -48,6 +50,7 @@ impl TradingBinderRepository for TradingBindersRepositoryAdapter {
         Ok(())
     }
 
+    #[tracing::instrument(name = "trading_binders_repo.remove", skip_all, fields(sentry.op = "db"))]
     async fn remove(&self, user_id: &UserId, binder_name: &str) -> Result<(), AppError> {
         sqlx::query!(
             r#"
@@ -63,6 +66,7 @@ impl TradingBinderRepository for TradingBindersRepositoryAdapter {
         Ok(())
     }
 
+    #[tracing::instrument(name = "trading_binders_repo.binder_exists", skip_all, fields(sentry.op = "db"))]
     async fn binder_exists(&self, user_id: &UserId, binder_name: &str) -> Result<bool, AppError> {
         let row = sqlx::query!(
             r#"
@@ -81,6 +85,7 @@ impl TradingBinderRepository for TradingBindersRepositoryAdapter {
         Ok(row.exists)
     }
 
+    #[tracing::instrument(name = "trading_binders_repo.purge_missing", skip_all, fields(sentry.op = "db"))]
     async fn purge_missing(&self, user_id: &UserId) -> Result<(), AppError> {
         sqlx::query!(
             r#"

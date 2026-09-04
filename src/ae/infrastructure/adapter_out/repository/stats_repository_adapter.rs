@@ -16,6 +16,7 @@ impl StatsRepositoryAdapter {
 
 #[async_trait]
 impl StatsRepository for StatsRepositoryAdapter {
+    #[tracing::instrument(name = "stats_repo.get_card_number", skip_all, fields(sentry.op = "db"))]
     async fn get_card_number(&self) -> Result<u32, AppError> {
         Ok(
             sqlx::query_as!(CountEntity, "SELECT count(*) AS count FROM card")
@@ -26,6 +27,7 @@ impl StatsRepository for StatsRepositoryAdapter {
         )
     }
 
+    #[tracing::instrument(name = "stats_repo.get_card_price_number", skip_all, fields(sentry.op = "db"))]
     async fn get_card_price_number(&self) -> Result<u32, AppError> {
         Ok(sqlx::query_as!(
             CountEntity,
@@ -37,6 +39,7 @@ impl StatsRepository for StatsRepositoryAdapter {
         .unwrap() as u32)
     }
 
+    #[tracing::instrument(name = "stats_repo.get_db_size", skip_all, fields(sentry.op = "db"))]
     async fn get_db_size(&self) -> Result<u16, AppError> {
         Ok(sqlx::query_as!(
             SizeEntity,

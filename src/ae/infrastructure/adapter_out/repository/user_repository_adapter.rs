@@ -18,6 +18,7 @@ impl UserRepositoryAdapter {
 
 #[async_trait]
 impl UserRepository for UserRepositoryAdapter {
+    #[tracing::instrument(name = "user_repo.upsert", skip_all, fields(sentry.op = "db"))]
     async fn upsert(&self, user: &User) -> Result<(), AppError> {
         let username = user.username.clone().ok_or_else(|| {
             FunctionalError::WrongFormat("Missing username claim in token".to_string())
@@ -40,6 +41,7 @@ impl UserRepository for UserRepositoryAdapter {
         Ok(())
     }
 
+    #[tracing::instrument(name = "user_repo.find_by_id", skip_all, fields(sentry.op = "db"))]
     async fn find_by_id(&self, id: &UserId) -> Result<Option<User>, AppError> {
         let row = sqlx::query_as!(
             UserEntity,
@@ -52,6 +54,7 @@ impl UserRepository for UserRepositoryAdapter {
         Ok(row.map(User::from))
     }
 
+    #[tracing::instrument(name = "user_repo.find_by_username", skip_all, fields(sentry.op = "db"))]
     async fn find_by_username(&self, username: &str) -> Result<Option<User>, AppError> {
         let row = sqlx::query_as!(
             UserEntity,
@@ -64,6 +67,7 @@ impl UserRepository for UserRepositoryAdapter {
         Ok(row.map(User::from))
     }
 
+    #[tracing::instrument(name = "user_repo.autocomplete", skip_all, fields(sentry.op = "db"))]
     async fn autocomplete(&self, query: &str, limit: i64) -> Result<Vec<UserSuggestion>, AppError> {
         // Inner join on `v_tradable_entry`: a user who offers nothing to trade (private,
         // no binder selected, every rarity closed) is never suggested — see
@@ -90,6 +94,7 @@ impl UserRepository for UserRepositoryAdapter {
         Ok(rows.into_iter().map(UserSuggestion::from).collect())
     }
 
+    #[tracing::instrument(name = "user_repo.get_visibility", skip_all, fields(sentry.op = "db"))]
     async fn get_visibility(&self, id: &UserId) -> Result<Option<CollectionVisibility>, AppError> {
         let row = sqlx::query!("SELECT visibility FROM users WHERE id = $1", id.as_str())
             .fetch_optional(&self.pool)
@@ -98,6 +103,7 @@ impl UserRepository for UserRepositoryAdapter {
         Ok(row.map(|r| CollectionVisibility::from_db_str(&r.visibility)))
     }
 
+    #[tracing::instrument(name = "user_repo.set_visibility", skip_all, fields(sentry.op = "db"))]
     async fn set_visibility(
         &self,
         id: &UserId,

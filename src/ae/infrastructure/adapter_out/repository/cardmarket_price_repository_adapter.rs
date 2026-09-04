@@ -20,6 +20,7 @@ impl CardMarketPriceRepositoryAdapter {
 
 #[async_trait]
 impl CardMarketPriceRepository for CardMarketPriceRepositoryAdapter {
+    #[tracing::instrument(name = "cardmarket_price_repo.save", skip_all, fields(sentry.op = "db"))]
     async fn save(
         &self,
         date: NaiveDate,
@@ -69,6 +70,7 @@ impl CardMarketPriceRepository for CardMarketPriceRepositoryAdapter {
         Ok(())
     }
 
+    #[tracing::instrument(name = "cardmarket_price_repo.find_by_id_and_date", skip_all, fields(sentry.op = "db"))]
     async fn find_by_id_and_date(
         &self,
         id_product: u32,
@@ -91,6 +93,7 @@ impl CardMarketPriceRepository for CardMarketPriceRepositoryAdapter {
             .map(FullPriceGuide::from))
     }
 
+    #[tracing::instrument(name = "cardmarket_price_repo.find_by_id_and_date_range", skip_all, fields(sentry.op = "db"))]
     async fn find_by_id_and_date_range(
         &self,
         id_product: u32,

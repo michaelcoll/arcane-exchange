@@ -60,6 +60,7 @@ fn extract_image_id(image_url: &str) -> Option<String> {
 
 #[async_trait]
 impl GathererCaller for GathererCallerAdapter {
+    #[tracing::instrument(name = "gatherer.get_gatherer_id", skip_all, fields(sentry.op = "http.client"))]
     async fn get_gatherer_id(
         &self,
         set_code: SetCode,

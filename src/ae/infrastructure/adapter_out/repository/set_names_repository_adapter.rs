@@ -17,6 +17,7 @@ impl SetNameRepositoryAdapter {
 
 #[async_trait]
 impl SetNameRepository for SetNameRepositoryAdapter {
+    #[tracing::instrument(name = "set_names_repo.exists_by_code", skip_all, fields(sentry.op = "db"))]
     async fn exists_by_code(&self, code: SetCode) -> Result<bool, AppError> {
         Ok(sqlx::query_as!(
             SetNameEntity,
@@ -28,6 +29,7 @@ impl SetNameRepository for SetNameRepositoryAdapter {
         .is_some())
     }
 
+    #[tracing::instrument(name = "set_names_repo.save", skip_all, fields(sentry.op = "db"))]
     async fn save(&self, set: SetName) -> Result<(), AppError> {
         sqlx::query!(
             "INSERT INTO set_name (set_code, name)
