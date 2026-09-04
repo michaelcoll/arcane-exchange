@@ -30,6 +30,7 @@ impl ScryfallCallerAdapter {
 
 #[async_trait]
 impl ScryfallCaller for ScryfallCallerAdapter {
+    #[tracing::instrument(name = "scryfall.get_card_market_id", skip_all, fields(sentry.op = "http.client"))]
     async fn get_card_market_id(&self, id: Uuid) -> Result<Option<u32>, AppError> {
         let url = format!("{}/cards/{}?format=json", self.scryfall_base_url, id);
 

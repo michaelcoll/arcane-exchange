@@ -19,6 +19,7 @@ impl CardRepositoryAdapter {
 
 #[async_trait]
 impl CardRepository for CardRepositoryAdapter {
+    #[tracing::instrument(name = "card_repo.get_all_without_cardmarket_id", skip_all, fields(sentry.op = "db"))]
     async fn get_all_without_cardmarket_id(&self) -> Result<Vec<(CardId, uuid::Uuid)>, AppError> {
         Ok(sqlx::query_as!(
             CardIdEntity,
@@ -40,6 +41,7 @@ impl CardRepository for CardRepositoryAdapter {
         .collect::<Vec<(CardId, uuid::Uuid)>>())
     }
 
+    #[tracing::instrument(name = "card_repo.get_all_without_gatherer_id", skip_all, fields(sentry.op = "db"))]
     async fn get_all_without_gatherer_id(&self) -> Result<Vec<(CardId, String)>, AppError> {
         Ok(sqlx::query_as!(
             CardNameEntity,
@@ -59,6 +61,7 @@ impl CardRepository for CardRepositoryAdapter {
         .collect::<Vec<(CardId, String)>>())
     }
 
+    #[tracing::instrument(name = "card_repo.find_by_scryfall_id", skip_all, fields(sentry.op = "db"))]
     async fn find_by_scryfall_id(
         &self,
         scryfall_id: uuid::Uuid,
@@ -73,6 +76,7 @@ impl CardRepository for CardRepositoryAdapter {
         Ok(record.map(|r| (r.cardmarket_id.map(|id| id as u32), r.foil)))
     }
 
+    #[tracing::instrument(name = "card_repo.save", skip_all, fields(sentry.op = "db"))]
     async fn save(&self, user: User, card: ImportedCard) -> Result<(), AppError> {
         let ImportedCard { card, binder_name } = card;
 
@@ -129,6 +133,7 @@ impl CardRepository for CardRepositoryAdapter {
         Ok(())
     }
 
+    #[tracing::instrument(name = "card_repo.update_cardmarket_id", skip_all, fields(sentry.op = "db"))]
     async fn update_cardmarket_id(
         &self,
         id: CardId,
@@ -149,6 +154,7 @@ impl CardRepository for CardRepositoryAdapter {
         Ok(())
     }
 
+    #[tracing::instrument(name = "card_repo.update_gatherer_id", skip_all, fields(sentry.op = "db"))]
     async fn update_gatherer_id(
         &self,
         id: CardId,
@@ -169,6 +175,7 @@ impl CardRepository for CardRepositoryAdapter {
         Ok(())
     }
 
+    #[tracing::instrument(name = "card_repo.delete_all", skip_all, fields(sentry.op = "db"))]
     async fn delete_all(&self, user: User) -> Result<(), AppError> {
         sqlx::query!(
             "DELETE FROM collection_entry WHERE user_id = $1",

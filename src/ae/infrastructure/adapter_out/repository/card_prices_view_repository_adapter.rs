@@ -78,6 +78,7 @@ impl CardPricesViewRepositoryAdapter {
     /// real `purchase_price`/`added_at`, no `owner_count`) and `None` for the public
     /// search across every user's cards (no user filter, masked `purchase_price`/`added_at`,
     /// rows grouped by card with `owner_count` = number of distinct owners).
+    #[tracing::instrument(name = "card_prices_view_repo.fetch_paginated", skip_all, fields(sentry.op = "db"))]
     async fn fetch_paginated(
         &self,
         user_id: Option<&UserId>,
@@ -289,6 +290,7 @@ impl CardPricesViewRepositoryAdapter {
 
 #[async_trait]
 impl CardPricesViewRepository for CardPricesViewRepositoryAdapter {
+    #[tracing::instrument(name = "card_prices_view_repo.refresh", skip_all, fields(sentry.op = "db"))]
     async fn refresh(&self) -> Result<(), AppError> {
         sqlx::query("REFRESH MATERIALIZED VIEW CONCURRENTLY mv_card_prices")
             .execute(&self.pool)
@@ -297,6 +299,7 @@ impl CardPricesViewRepository for CardPricesViewRepositoryAdapter {
         Ok(())
     }
 
+    #[tracing::instrument(name = "card_prices_view_repo.get_paginated", skip_all, fields(sentry.op = "db"))]
     async fn get_paginated(
         &self,
         user_id: &UserId,
@@ -305,6 +308,7 @@ impl CardPricesViewRepository for CardPricesViewRepositoryAdapter {
         self.fetch_paginated(Some(user_id), query, None).await
     }
 
+    #[tracing::instrument(name = "card_prices_view_repo.search_paginated", skip_all, fields(sentry.op = "db"))]
     async fn search_paginated(&self, query: SearchQuery) -> Result<Paginated<Card>, AppError> {
         self.fetch_paginated(
             None,
@@ -314,6 +318,7 @@ impl CardPricesViewRepository for CardPricesViewRepositoryAdapter {
         .await
     }
 
+    #[tracing::instrument(name = "card_prices_view_repo.exists", skip_all, fields(sentry.op = "db"))]
     async fn exists(&self, card_id: &CardId) -> Result<bool, AppError> {
         let exists = sqlx::query_scalar!(
             r#"SELECT EXISTS(SELECT 1 FROM mv_card_prices
@@ -330,6 +335,7 @@ impl CardPricesViewRepository for CardPricesViewRepositoryAdapter {
         Ok(exists.unwrap_or(false))
     }
 
+    #[tracing::instrument(name = "card_prices_view_repo.get_offers", skip_all, fields(sentry.op = "db"))]
     async fn get_offers(
         &self,
         user_id: &UserId,

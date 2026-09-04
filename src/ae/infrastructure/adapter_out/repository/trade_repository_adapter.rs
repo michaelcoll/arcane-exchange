@@ -24,6 +24,7 @@ impl TradeRepositoryAdapter {
 
 #[async_trait]
 impl TradeRepository for TradeRepositoryAdapter {
+    #[tracing::instrument(name = "trade_repo.find_collection_entry_quantity", skip_all, fields(sentry.op = "db"))]
     async fn find_collection_entry_quantity(
         &self,
         user_id: &UserId,
@@ -49,6 +50,7 @@ impl TradeRepository for TradeRepositoryAdapter {
         Ok(row.quantity.map(|q| q as i32))
     }
 
+    #[tracing::instrument(name = "trade_repo.find_proposed_quantity", skip_all, fields(sentry.op = "db"))]
     async fn find_proposed_quantity(
         &self,
         owner_id: &UserId,
@@ -73,6 +75,7 @@ impl TradeRepository for TradeRepositoryAdapter {
         Ok(quantity.map_or(0, |q| u8::try_from(q).unwrap_or(u8::MAX)))
     }
 
+    #[tracing::instrument(name = "trade_repo.is_card_reserved_elsewhere", skip_all, fields(sentry.op = "db"))]
     async fn is_card_reserved_elsewhere(
         &self,
         trade_id: TradeId,
@@ -102,6 +105,7 @@ impl TradeRepository for TradeRepositoryAdapter {
         Ok(reserved)
     }
 
+    #[tracing::instrument(name = "trade_repo.find_active_trade", skip_all, fields(sentry.op = "db"))]
     async fn find_active_trade(
         &self,
         user_a: &UserId,
@@ -123,6 +127,7 @@ impl TradeRepository for TradeRepositoryAdapter {
         Ok(row.map(|r| (TradeId(r.id), TradeStatus::from_db_str(&r.status))))
     }
 
+    #[tracing::instrument(name = "trade_repo.find_by_id", skip_all, fields(sentry.op = "db"))]
     async fn find_by_id(&self, id: TradeId) -> Result<Option<Trade>, AppError> {
         let row = sqlx::query_as!(
             TradeEntity,
@@ -141,6 +146,7 @@ impl TradeRepository for TradeRepositoryAdapter {
         Ok(row.map(Trade::from))
     }
 
+    #[tracing::instrument(name = "trade_repo.find_trade_cards", skip_all, fields(sentry.op = "db"))]
     async fn find_trade_cards(&self, trade_id: TradeId) -> Result<Vec<TradeCard>, AppError> {
         let rows = sqlx::query_as!(
             TradeCardEntity,
@@ -154,6 +160,7 @@ impl TradeRepository for TradeRepositoryAdapter {
         Ok(rows.into_iter().map(TradeCard::from).collect())
     }
 
+    #[tracing::instrument(name = "trade_repo.find_trade_cards_with_details", skip_all, fields(sentry.op = "db"))]
     async fn find_trade_cards_with_details(
         &self,
         trade_id: TradeId,
@@ -186,6 +193,7 @@ impl TradeRepository for TradeRepositoryAdapter {
         Ok(rows.into_iter().map(TradeCardDetail::from).collect())
     }
 
+    #[tracing::instrument(name = "trade_repo.list_trades", skip_all, fields(sentry.op = "db"))]
     async fn list_trades(
         &self,
         caller_id: &UserId,
@@ -245,6 +253,7 @@ impl TradeRepository for TradeRepositoryAdapter {
         })
     }
 
+    #[tracing::instrument(name = "trade_repo.create", skip_all, fields(sentry.op = "db"))]
     async fn create(
         &self,
         id: TradeId,
@@ -264,6 +273,7 @@ impl TradeRepository for TradeRepositoryAdapter {
         Ok(())
     }
 
+    #[tracing::instrument(name = "trade_repo.merge_card_into_trade", skip_all, fields(sentry.op = "db"))]
     async fn merge_card_into_trade(
         &self,
         trade_id: TradeId,
@@ -308,6 +318,7 @@ impl TradeRepository for TradeRepositoryAdapter {
         Ok(())
     }
 
+    #[tracing::instrument(name = "trade_repo.remove_card_from_trade", skip_all, fields(sentry.op = "db"))]
     async fn remove_card_from_trade(
         &self,
         trade_id: TradeId,
@@ -352,6 +363,7 @@ impl TradeRepository for TradeRepositoryAdapter {
         Ok(removed)
     }
 
+    #[tracing::instrument(name = "trade_repo.accept", skip_all, fields(sentry.op = "db"))]
     async fn accept(
         &self,
         trade_id: TradeId,
@@ -406,6 +418,7 @@ impl TradeRepository for TradeRepositoryAdapter {
         Ok(new_status)
     }
 
+    #[tracing::instrument(name = "trade_repo.abandon", skip_all, fields(sentry.op = "db"))]
     async fn abandon(&self, trade_id: TradeId) -> Result<bool, AppError> {
         let result = sqlx::query!(
             r#"UPDATE trade SET status = 'ABANDONED', updated_at = NOW()
@@ -418,6 +431,7 @@ impl TradeRepository for TradeRepositoryAdapter {
         Ok(result.rows_affected() > 0)
     }
 
+    #[tracing::instrument(name = "trade_repo.confirm", skip_all, fields(sentry.op = "db"))]
     async fn confirm(
         &self,
         trade_id: TradeId,
@@ -445,6 +459,7 @@ impl TradeRepository for TradeRepositoryAdapter {
         Ok(row.map(|r| TradeStatus::from_db_str(&r.status)))
     }
 
+    #[tracing::instrument(name = "trade_repo.rate", skip_all, fields(sentry.op = "db"))]
     async fn rate(
         &self,
         trade_id: TradeId,

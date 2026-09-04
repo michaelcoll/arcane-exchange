@@ -19,6 +19,7 @@ impl CollectionStatsRepositoryAdapter {
 
 #[async_trait]
 impl CollectionStatsRepository for CollectionStatsRepositoryAdapter {
+    #[tracing::instrument(name = "collection_stats_repo.get_collection_stats", skip_all, fields(sentry.op = "db"))]
     async fn get_collection_stats(&self, user_id: &UserId) -> Result<CollectionStats, AppError> {
         let totals = sqlx::query!(
             r#"

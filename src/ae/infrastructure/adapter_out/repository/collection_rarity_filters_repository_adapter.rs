@@ -18,6 +18,7 @@ impl CollectionRarityFiltersRepositoryAdapter {
 
 #[async_trait]
 impl RarityTradeFilterRepository for CollectionRarityFiltersRepositoryAdapter {
+    #[tracing::instrument(name = "collection_rarity_filters_repo.list_with_counts", skip_all, fields(sentry.op = "db"))]
     async fn list_with_counts(&self, user_id: &UserId) -> Result<Vec<RarityTradeFilter>, AppError> {
         let rows = sqlx::query!(
             r#"
@@ -73,6 +74,7 @@ impl RarityTradeFilterRepository for CollectionRarityFiltersRepositoryAdapter {
             .collect()
     }
 
+    #[tracing::instrument(name = "collection_rarity_filters_repo.upsert", skip_all, fields(sentry.op = "db"))]
     async fn upsert(&self, user_id: &UserId, rule: &RarityTradeFilterRule) -> Result<(), AppError> {
         sqlx::query!(
             r#"

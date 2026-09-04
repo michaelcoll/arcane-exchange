@@ -30,6 +30,7 @@ impl EdhRecCallerAdapter {
         }
     }
 
+    #[tracing::instrument(name = "edhrec.get_build_id", skip_all, fields(sentry.op = "http.client"))]
     async fn get_build_id(&self) -> Result<String, AppError> {
         let url = self.edh_rec_base_url.clone() + "/faq";
         println!("Fetching build ID from {}", url);
@@ -70,6 +71,7 @@ impl EdhRecCallerAdapter {
         Ok(build_id)
     }
 
+    #[tracing::instrument(name = "edhrec.update_build_id", skip_all, fields(sentry.op = "http.client"))]
     async fn update_build_id(&self) -> Result<(), AppError> {
         let now = Utc::now().naive_utc();
 
@@ -103,6 +105,7 @@ impl EdhRecCallerAdapter {
 
 #[async_trait]
 impl EdhRecCaller for EdhRecCallerAdapter {
+    #[tracing::instrument(name = "edhrec.get_card_info", skip_all, fields(sentry.op = "http.client"))]
     async fn get_card_info(&self, card_name: String) -> Result<CardInfo, AppError> {
         self.update_build_id().await?;
 

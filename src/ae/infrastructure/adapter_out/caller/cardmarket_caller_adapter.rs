@@ -21,6 +21,7 @@ impl CardMarketCallerAdapter {
 
 #[async_trait]
 impl CardMarketCaller for CardMarketCallerAdapter {
+    #[tracing::instrument(name = "cardmarket.get_price_guides", skip_all, fields(sentry.op = "http.client"))]
     async fn get_price_guides(&self) -> Result<(NaiveDate, Vec<FullPriceGuide>), AppError> {
         let price_guides: CardmarketPriceGuides = self
             .client

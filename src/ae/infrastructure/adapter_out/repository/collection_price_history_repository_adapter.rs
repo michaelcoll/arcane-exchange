@@ -19,6 +19,7 @@ impl CollectionPriceHistoryRepositoryAdapter {
 
 #[async_trait]
 impl CollectionPriceHistoryRepository for CollectionPriceHistoryRepositoryAdapter {
+    #[tracing::instrument(name = "collection_price_history_repo.get_date_and_user_to_update", skip_all, fields(sentry.op = "db"))]
     async fn get_date_and_user_to_update(&self) -> Result<Vec<(NaiveDate, User)>, AppError> {
         let rows = sqlx::query!(
             r#"SELECT dates.date, users.user_id
@@ -36,6 +37,7 @@ impl CollectionPriceHistoryRepository for CollectionPriceHistoryRepositoryAdapte
         Ok(result)
     }
 
+    #[tracing::instrument(name = "collection_price_history_repo.update_for_date_and_user", skip_all, fields(sentry.op = "db"))]
     async fn update_for_date_and_user(&self, date: NaiveDate, user: User) -> Result<(), AppError> {
         sqlx::query!(
             r#"INSERT INTO collection_price_history (date, user_id, low, trend, avg)
@@ -73,6 +75,7 @@ impl CollectionPriceHistoryRepository for CollectionPriceHistoryRepositoryAdapte
         Ok(())
     }
 
+    #[tracing::instrument(name = "collection_price_history_repo.get_price_history", skip_all, fields(sentry.op = "db"))]
     async fn get_price_history(
         &self,
         user_id: &UserId,
