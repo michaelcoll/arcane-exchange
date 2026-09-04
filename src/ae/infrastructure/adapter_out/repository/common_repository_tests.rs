@@ -452,6 +452,12 @@ pub async fn insert_trade_card(
 }
 
 pub async fn refresh_view(pool: &PgPool) {
+    // Same order as production (`CardPricesViewRepositoryAdapter::refresh`): `mv_card_prices`
+    // reads `mv_last_cardmarket_prices`, so it must be refreshed second.
+    sqlx::query("REFRESH MATERIALIZED VIEW mv_last_cardmarket_prices")
+        .execute(pool)
+        .await
+        .unwrap();
     sqlx::query("REFRESH MATERIALIZED VIEW mv_card_prices")
         .execute(pool)
         .await

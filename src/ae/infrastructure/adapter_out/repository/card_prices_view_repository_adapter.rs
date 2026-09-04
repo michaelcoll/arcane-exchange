@@ -290,11 +290,34 @@ impl CardPricesViewRepositoryAdapter {
 
 #[async_trait]
 impl CardPricesViewRepository for CardPricesViewRepositoryAdapter {
+    /// Refreshes `mv_last_cardmarket_prices` before `mv_card_prices`, which reads it: the
+    /// reverse order would populate `mv_card_prices` from a cycle-old price with no visible
+    /// error. Both refreshes are attempted even if the first fails — a chained `?` would let a
+    /// `mv_last_cardmarket_prices` failure (e.g. a diverging `cardmarket_id` between two
+    /// languages of the same card) freeze `mv_card_prices`, and with it the collection, search
+    /// and stats, which refresh fine today.
     #[tracing::instrument(name = "card_prices_view_repo.refresh", skip_all, fields(sentry.op = "db"))]
     async fn refresh(&self) -> Result<(), AppError> {
-        sqlx::query("REFRESH MATERIALIZED VIEW CONCURRENTLY mv_card_prices")
-            .execute(&self.pool)
-            .await?;
+        let last_prices_result =
+            sqlx::query("REFRESH MATERIALIZED VIEW CONCURRENTLY mv_last_cardmarket_prices")
+                .execute(&self.pool)
+                .await
+                .map_err(AppError::from);
+        if let Err(e) = &last_prices_result {
+            tracing::error!("failed to refresh mv_last_cardmarket_prices: {e}");
+        }
+
+        let card_prices_result =
+            sqlx::query("REFRESH MATERIALIZED VIEW CONCURRENTLY mv_card_prices")
+                .execute(&self.pool)
+                .await
+                .map_err(AppError::from);
+        if let Err(e) = &card_prices_result {
+            tracing::error!("failed to refresh mv_card_prices: {e}");
+        }
+
+        last_prices_result?;
+        card_prices_result?;
 
         Ok(())
     }
@@ -321,7 +344,7 @@ impl CardPricesViewRepository for CardPricesViewRepositoryAdapter {
     #[tracing::instrument(name = "card_prices_view_repo.exists", skip_all, fields(sentry.op = "db"))]
     async fn exists(&self, card_id: &CardId) -> Result<bool, AppError> {
         let exists = sqlx::query_scalar!(
-            r#"SELECT EXISTS(SELECT 1 FROM mv_card_prices
+            r#"SELECT EXISTS(SELECT 1 FROM card
                  WHERE set_code = $1 AND collector_number = $2 AND language_code = $3 AND foil = $4)"#,
             card_id.set_code.to_string(),
             card_id.collector_number,
@@ -413,9 +436,10 @@ mod tests {
     use crate::domain::collection::{CollectionSortField, SortDirection};
     use crate::domain::rarity_code::RarityCode;
     use crate::infrastructure::adapter_out::repository::common_repository_tests::{
-        insert_card, insert_card_with_rarity, insert_collection_entry,
-        insert_collection_entry_with_binder, insert_price, insert_rarity_filter, insert_set,
-        insert_trading_binder, insert_user, insert_user_with_visibility, refresh_view,
+        insert_card, insert_card_with_rarity, insert_card_without_cardmarket_id,
+        insert_collection_entry, insert_collection_entry_with_binder, insert_price,
+        insert_rarity_filter, insert_set, insert_trading_binder, insert_user,
+        insert_user_with_visibility, refresh_view,
     };
     use crate::infrastructure::adapter_out::repository::entities::{
         CardMarketPriceEntity, PriceGuideEntity,
@@ -470,6 +494,251 @@ mod tests {
         let result = adapter.refresh().await;
 
         assert!(result.is_ok());
+    }
+
+    #[derive(sqlx::FromRow, Debug)]
+    struct LastCardmarketPriceRow {
+        low: Option<i32>,
+        trend: Option<i32>,
+        avg: Option<i32>,
+    }
+
+    async fn fetch_last_cardmarket_price(
+        pool: &PgPool,
+        set_code: &str,
+        collector_number: &str,
+        foil: bool,
+    ) -> Option<LastCardmarketPriceRow> {
+        sqlx::query_as::<_, LastCardmarketPriceRow>(
+            r#"SELECT low, trend, avg FROM mv_last_cardmarket_prices
+                 WHERE set_code = $1 AND collector_number = $2 AND foil = $3"#,
+        )
+        .bind(set_code)
+        .bind(collector_number)
+        .bind(foil)
+        .fetch_optional(pool)
+        .await
+        .unwrap()
+    }
+
+    async fn count_last_cardmarket_prices(
+        pool: &PgPool,
+        set_code: &str,
+        collector_number: &str,
+        foil: bool,
+    ) -> i64 {
+        sqlx::query_scalar::<_, i64>(
+            r#"SELECT COUNT(*) FROM mv_last_cardmarket_prices
+                 WHERE set_code = $1 AND collector_number = $2 AND foil = $3"#,
+        )
+        .bind(set_code)
+        .bind(collector_number)
+        .bind(foil)
+        .fetch_one(pool)
+        .await
+        .unwrap()
+    }
+
+    #[sqlx::test]
+    async fn last_cardmarket_prices_uses_the_most_recent_dated_record(pool: PgPool) {
+        insert_set(&pool, "TST").await;
+        insert_card(&pool, "TST", "1", "EN", false, "Test Card", 1).await;
+        insert_price(
+            &pool,
+            CardMarketPriceEntity::simple_at(1, NaiveDate::from_ymd_opt(2024, 1, 1).unwrap(), 100),
+        )
+        .await;
+        insert_price(
+            &pool,
+            CardMarketPriceEntity::simple_at(1, NaiveDate::from_ymd_opt(2024, 6, 1).unwrap(), 300),
+        )
+        .await;
+        refresh_view(&pool).await;
+
+        let row = fetch_last_cardmarket_price(&pool, "TST", "1", false)
+            .await
+            .unwrap();
+
+        assert_eq!(row.avg, Some(300), "the most recent price must win");
+    }
+
+    #[sqlx::test]
+    async fn last_cardmarket_prices_exposes_foil_columns_for_a_foil_card(pool: PgPool) {
+        insert_set(&pool, "TST").await;
+        insert_card(&pool, "TST", "1", "EN", true, "Test Card", 1).await;
+        insert_price(&pool, CardMarketPriceEntity::with_foil(1, 100, 400)).await;
+        refresh_view(&pool).await;
+
+        let row = fetch_last_cardmarket_price(&pool, "TST", "1", true)
+            .await
+            .unwrap();
+
+        assert_eq!(row.avg, Some(400), "a foil card must expose foil prices");
+    }
+
+    #[sqlx::test]
+    async fn last_cardmarket_prices_uses_non_foil_columns_for_a_non_foil_card(pool: PgPool) {
+        insert_set(&pool, "TST").await;
+        insert_card(&pool, "TST", "1", "EN", false, "Test Card", 1).await;
+        insert_price(&pool, CardMarketPriceEntity::with_foil(1, 100, 400)).await;
+        refresh_view(&pool).await;
+
+        let row = fetch_last_cardmarket_price(&pool, "TST", "1", false)
+            .await
+            .unwrap();
+
+        assert_eq!(
+            row.avg,
+            Some(100),
+            "a non-foil card must not pick up foil prices"
+        );
+    }
+
+    #[sqlx::test]
+    async fn last_cardmarket_prices_is_absent_without_a_cardmarket_id(pool: PgPool) {
+        insert_set(&pool, "TST").await;
+        insert_card_without_cardmarket_id(&pool, "TST", "1", "EN", false, "Test Card").await;
+        refresh_view(&pool).await;
+
+        let row = fetch_last_cardmarket_price(&pool, "TST", "1", false)
+            .await
+            .unwrap();
+
+        assert_eq!(row.low, None);
+        assert_eq!(row.trend, None);
+        assert_eq!(row.avg, None, "price must be absent, never zero");
+    }
+
+    #[sqlx::test]
+    async fn last_cardmarket_prices_deduplicates_cards_differing_only_by_language(pool: PgPool) {
+        insert_set(&pool, "TST").await;
+        insert_card(&pool, "TST", "1", "EN", false, "Test Card", 1).await;
+        insert_card(&pool, "TST", "1", "FR", false, "Carte de test", 1).await;
+        insert_price(&pool, CardMarketPriceEntity::simple(1, 100)).await;
+        refresh_view(&pool).await;
+
+        let count = count_last_cardmarket_prices(&pool, "TST", "1", false).await;
+
+        assert_eq!(
+            count, 1,
+            "two cards differing only by language must produce a single row"
+        );
+    }
+
+    #[sqlx::test]
+    async fn refresh_reflects_a_card_inserted_after_the_first_population(pool: PgPool) {
+        // The migration populates the view once at zero rows; a card inserted afterwards must
+        // become visible after an explicit refresh, without re-running migrations.
+        refresh_view(&pool).await;
+
+        insert_set(&pool, "TST").await;
+        insert_card(&pool, "TST", "1", "EN", false, "Test Card", 1).await;
+
+        let adapter = CardPricesViewRepositoryAdapter::new(pool.clone());
+        adapter.refresh().await.unwrap();
+
+        let count = count_last_cardmarket_prices(&pool, "TST", "1", false).await;
+        assert_eq!(count, 1);
+    }
+
+    #[sqlx::test]
+    async fn refresh_reflects_a_cardmarket_id_resolved_after_the_first_population(pool: PgPool) {
+        insert_set(&pool, "TST").await;
+        insert_card_without_cardmarket_id(&pool, "TST", "1", "EN", false, "Test Card").await;
+        insert_price(&pool, CardMarketPriceEntity::simple(1, 100)).await;
+        refresh_view(&pool).await;
+
+        let row_before = fetch_last_cardmarket_price(&pool, "TST", "1", false)
+            .await
+            .unwrap();
+        assert_eq!(row_before.avg, None);
+
+        sqlx::query(
+            "UPDATE card SET cardmarket_id = $1 WHERE set_code = 'TST' AND collector_number = '1'",
+        )
+        .bind(1)
+        .execute(&pool)
+        .await
+        .unwrap();
+
+        let adapter = CardPricesViewRepositoryAdapter::new(pool.clone());
+        adapter.refresh().await.unwrap();
+
+        let row_after = fetch_last_cardmarket_price(&pool, "TST", "1", false)
+            .await
+            .unwrap();
+        assert_eq!(row_after.avg, Some(100));
+    }
+
+    #[sqlx::test]
+    async fn refresh_populates_mv_card_prices_from_a_newly_inserted_price_in_a_single_call(
+        pool: PgPool,
+    ) {
+        // Regression test for the refresh order: `mv_card_prices` reads
+        // `mv_last_cardmarket_prices`, so a single `refresh()` call must reflect a newly
+        // inserted price in `mv_card_prices` right away — the opposite order would silently
+        // serve a cycle-old price. `mv_card_prices` only exposes cards someone owns, so a
+        // `collection_entry` is required or the test would pass vacuously.
+        insert_set(&pool, "TST").await;
+        insert_card(&pool, "TST", "1", "EN", false, "Test Card", 1).await;
+        insert_user(&pool, "user1", "User1").await;
+        insert_collection_entry(&pool, "TST", "1", "EN", false, "user1", 1, 100, Utc::now()).await;
+        refresh_view(&pool).await;
+
+        insert_price(&pool, CardMarketPriceEntity::simple(1, 250)).await;
+
+        let adapter = CardPricesViewRepositoryAdapter::new(pool.clone());
+        adapter.refresh().await.unwrap();
+
+        let result = adapter
+            .get_paginated(&UserId::new("user1"), CollectionQuery::default())
+            .await
+            .unwrap();
+
+        assert_eq!(result.items.len(), 1);
+        assert_eq!(
+            result.items[0]
+                .price_guide
+                .as_ref()
+                .and_then(|p| p.avg.value),
+            Some(250),
+            "a single refresh() call must reflect the new price in mv_card_prices"
+        );
+    }
+
+    #[sqlx::test]
+    async fn exists_returns_true_for_a_card_nobody_owns(pool: PgPool) {
+        insert_set(&pool, "TST").await;
+        insert_card(&pool, "TST", "1", "EN", false, "Test Card", 1).await;
+
+        let adapter = CardPricesViewRepositoryAdapter::new(pool);
+        let result = adapter
+            .exists(&card_id("TST", "1", "EN", false))
+            .await
+            .unwrap();
+
+        assert!(
+            result,
+            "a card present in the catalog must exist regardless of ownership"
+        );
+    }
+
+    #[sqlx::test]
+    async fn exists_returns_false_when_only_language_code_differs(pool: PgPool) {
+        insert_set(&pool, "TST").await;
+        insert_card(&pool, "TST", "1", "EN", false, "Test Card", 1).await;
+
+        let adapter = CardPricesViewRepositoryAdapter::new(pool);
+        let result = adapter
+            .exists(&card_id("TST", "1", "FR", false))
+            .await
+            .unwrap();
+
+        assert!(
+            !result,
+            "exists() must stay discriminant on language_code even though \
+             mv_last_cardmarket_prices does not carry it"
+        );
     }
 
     #[sqlx::test]
@@ -1982,7 +2251,7 @@ mod tests {
     }
 
     #[sqlx::test]
-    async fn exists_returns_true_when_card_is_owned_by_someone(pool: PgPool) {
+    async fn exists_returns_true_when_card_is_in_the_catalog(pool: PgPool) {
         insert_set(&pool, "TST").await;
         insert_card(&pool, "TST", "1", "EN", false, "Test Card", 1).await;
         insert_user(&pool, "user1", "User1").await;
@@ -2000,25 +2269,7 @@ mod tests {
     }
 
     #[sqlx::test]
-    async fn exists_returns_true_even_when_only_the_requesting_user_owns_it(pool: PgPool) {
-        insert_set(&pool, "TST").await;
-        insert_card(&pool, "TST", "1", "EN", false, "Test Card", 1).await;
-        insert_user(&pool, "user1", "User1").await;
-        insert_collection_entry(&pool, "TST", "1", "EN", false, "user1", 1, 100, Utc::now()).await;
-        insert_price(&pool, CardMarketPriceEntity::simple(1, 100)).await;
-        refresh_view(&pool).await;
-
-        let adapter = CardPricesViewRepositoryAdapter::new(pool);
-        let result = adapter
-            .exists(&card_id("TST", "1", "EN", false))
-            .await
-            .unwrap();
-
-        assert!(result);
-    }
-
-    #[sqlx::test]
-    async fn exists_returns_false_when_no_one_owns_the_card(pool: PgPool) {
+    async fn exists_returns_false_when_card_is_not_in_the_catalog(pool: PgPool) {
         let adapter = CardPricesViewRepositoryAdapter::new(pool);
         let result = adapter
             .exists(&card_id("TST", "1", "EN", false))
