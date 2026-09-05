@@ -4,6 +4,7 @@ use crate::domain::collection_stats::{BinderInfo, CollectionStats};
 use crate::domain::price::PriceGuide;
 use crate::domain::rarity_code::RarityCode;
 use crate::domain::rarity_trade_filter::RarityTradeFilter;
+use crate::domain::set_name::SetName;
 use serde::{Deserialize, Serialize};
 use ts_rs::TS;
 use utoipa::ToSchema;
@@ -22,6 +23,15 @@ pub struct MessageResponse {
 pub struct SetInfoResponse {
     pub code: String,
     pub name: String,
+}
+
+impl From<SetName> for SetInfoResponse {
+    fn from(s: SetName) -> Self {
+        Self {
+            code: s.code.to_string(),
+            name: s.name,
+        }
+    }
 }
 
 #[derive(Serialize, Debug, TS, ToSchema)]
@@ -60,14 +70,7 @@ impl From<CollectionStats> for CollectionStatsResponse {
             unique_cards: s.unique_cards,
             price_trend_min: s.price_trend_min.value,
             price_trend_max: s.price_trend_max.value,
-            sets: s
-                .sets
-                .into_iter()
-                .map(|sn| SetInfoResponse {
-                    code: sn.code.to_string(),
-                    name: sn.name,
-                })
-                .collect(),
+            sets: s.sets.into_iter().map(SetInfoResponse::from).collect(),
             binders: s
                 .binders
                 .into_iter()

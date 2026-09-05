@@ -21,6 +21,7 @@ pub enum FunctionalError {
     AddedAtSortRequiresPlayerUsername,
     PriceNotFound,
     CardNotFound,
+    SetNotFound,
     SelfTrade,
     TradeNotModifiable,
     TradeNotFound,
@@ -66,6 +67,7 @@ impl From<FunctionalError> for String {
             }
             FunctionalError::PriceNotFound => "Price not found".to_string(),
             FunctionalError::CardNotFound => "Card not found".to_string(),
+            FunctionalError::SetNotFound => "Set not found".to_string(),
             FunctionalError::SelfTrade => "Cannot request your own card".to_string(),
             FunctionalError::TradeNotModifiable => {
                 "This trade has already been fully accepted and can no longer be modified"

@@ -53,6 +53,8 @@ use utoipa::OpenApi;
         super::trade::controller::get_trade,
         super::trade::controller::list_trades,
         super::autocomplete::controller::autocomplete_user,
+        super::sets::controller::list_sets,
+        super::sets::controller::get_set,
     ),
     components(schemas(
         PriceGuideResponse,
@@ -108,6 +110,7 @@ use utoipa::OpenApi;
         (name = "auth", description = "Authentication and user registration (authentication required)"),
         (name = "trades", description = "Trade requests between two collectors (authentication required)"),
         (name = "autocomplete", description = "Public username autocomplete (no authentication)"),
+        (name = "sets", description = "Set catalog lookup (no authentication)"),
     )
 )]
 pub struct ApiDoc;

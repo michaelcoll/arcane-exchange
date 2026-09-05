@@ -12,6 +12,7 @@ pub mod collection;
 pub mod maintenance;
 pub mod openapi;
 pub mod search;
+pub mod sets;
 pub mod trade;
 pub mod user;
 
@@ -31,6 +32,7 @@ impl IntoResponse for AppError {
                 | FunctionalError::SelfTrade => StatusCode::BAD_REQUEST,
                 FunctionalError::PriceNotFound
                 | FunctionalError::CardNotFound
+                | FunctionalError::SetNotFound
                 | FunctionalError::TradeNotFound
                 | FunctionalError::UserNotFound
                 | FunctionalError::TradeCardNotFound
