@@ -59,6 +59,9 @@ pub trait CardRepository: Send + Sync {
 pub trait SetNameRepository: Send + Sync {
     async fn exists_by_code(&self, code: SetCode) -> Result<bool, AppError>;
     async fn save(&self, set: SetName) -> Result<(), AppError>;
+    /// All known sets, ordered by name.
+    async fn find_all(&self) -> Result<Vec<SetName>, AppError>;
+    async fn find_by_code(&self, code: SetCode) -> Result<Option<SetName>, AppError>;
 }
 
 #[async_trait]

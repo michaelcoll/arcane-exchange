@@ -462,6 +462,43 @@ paths:
           description: Missing or invalid token
       security:
       - bearer_auth: []
+  /sets:
+    get:
+      tags:
+      - sets
+      operationId: list_sets
+      responses:
+        '200':
+          description: All known sets, ordered by name
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/SetInfoResponse'
+  /sets/{set_code}:
+    get:
+      tags:
+      - sets
+      operationId: get_set
+      parameters:
+      - name: set_code
+        in: path
+        description: Set code, 3 to 5 characters
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          description: The set matching set_code
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SetInfoResponse'
+        '400':
+          description: Invalid set code
+        '404':
+          description: No set found for this set_code
   /trades:
     get:
       tags:
@@ -1539,3 +1576,5 @@ tags:
   description: Trade requests between two collectors (authentication required)
 - name: autocomplete
   description: Public username autocomplete (no authentication)
+- name: sets
+  description: Set catalog lookup (no authentication)

@@ -70,11 +70,11 @@ mod tests {
             MockGetCardPriceHistoryUseCase, MockGetCollectionPriceHistoryUseCase,
             MockGetCollectionStatsUseCase, MockGetCollectionUseCase,
             MockGetCollectionVisibilityUseCase, MockGetRarityTradeFiltersUseCase,
-            MockGetTradeBindersUseCase, MockGetTradeUseCase, MockGetUserProfileUseCase,
-            MockImportPriceUseCase, MockListTradesUseCase, MockRateTradeUseCase,
-            MockRegisterUserUseCase, MockRemoveTradeBinderUseCase, MockRemoveTradeCardUseCase,
-            MockSearchCardsUseCase, MockSetCollectionVisibilityUseCase,
-            MockSetRarityTradeFilterUseCase,
+            MockGetSetUseCase, MockGetTradeBindersUseCase, MockGetTradeUseCase,
+            MockGetUserProfileUseCase, MockImportPriceUseCase, MockListSetsUseCase,
+            MockListTradesUseCase, MockRateTradeUseCase, MockRegisterUserUseCase,
+            MockRemoveTradeBinderUseCase, MockRemoveTradeCardUseCase, MockSearchCardsUseCase,
+            MockSetCollectionVisibilityUseCase, MockSetRarityTradeFilterUseCase,
         };
         AppState {
             import_card_use_case: Arc::new(MockImportCardUseCase::new()),
@@ -111,6 +111,8 @@ mod tests {
             remove_trade_binder_use_case: Arc::new(MockRemoveTradeBinderUseCase::new()),
             get_rarity_trade_filters_use_case: Arc::new(MockGetRarityTradeFiltersUseCase::new()),
             set_rarity_trade_filter_use_case: Arc::new(MockSetRarityTradeFilterUseCase::new()),
+            list_sets_use_case: Arc::new(MockListSetsUseCase::new()),
+            get_set_use_case: Arc::new(MockGetSetUseCase::new()),
         }
     }
 

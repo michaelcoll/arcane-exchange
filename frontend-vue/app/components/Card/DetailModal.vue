@@ -3,19 +3,18 @@ import type { CardOffer } from '~/bindings/CardOffer';
 import type { CollectionCard } from '~/bindings/CollectionCard';
 import type { PriceHistoryEntry } from '~/bindings/PriceHistoryEntry';
 import type { RarityCode } from '~/bindings/RarityCode';
-import type { SetInfo } from '~/bindings/SetInfo';
 import { RARITY_ICON_COLOR_CLASS } from '~/utils/rarity';
-import { resolveSetName } from '~/utils/set';
 
 const NEUTRAL_ICON_COLOR_CLASS = 'text-[var(--ink-2)]';
 
 const props = defineProps<{
   card: CollectionCard;
-  setList: SetInfo[];
 }>();
 
-const setName = computed(() => resolveSetName(props.setList, props.card.set_code));
-const isSetKnown = computed(() => props.setList.some((s) => s.code === props.card.set_code));
+const { getSet } = useSetsService();
+
+const setName = ref(props.card.set_code.toUpperCase());
+const isSetKnown = ref(false);
 const setIconColorClass = computed(() =>
   isSetKnown.value
     ? (RARITY_ICON_COLOR_CLASS[props.card.rarity_code as RarityCode] ?? NEUTRAL_ICON_COLOR_CLASS)
@@ -68,8 +67,10 @@ watch(
     cardOffersTotal.value = 0;
     cardHistoryPending.value = true;
     cardOffersPending.value = true;
+    setName.value = card.set_code.toUpperCase();
+    isSetKnown.value = false;
     try {
-      const [history, offers] = await Promise.all([
+      const [history, offers, set] = await Promise.all([
         getCardPriceHistory(card.scryfall_id),
         getCardOffers({
           set_code: card.set_code,
@@ -80,10 +81,15 @@ watch(
           page: 0,
           page_size: 6,
         }),
+        getSet(card.set_code).catch(() => null),
       ]);
       cardHistoryData.value = history;
       cardOffers.value = offers.items;
       cardOffersTotal.value = offers.total;
+      if (set) {
+        setName.value = set.name;
+        isSetKnown.value = true;
+      }
     } finally {
       cardHistoryPending.value = false;
       cardOffersPending.value = false;

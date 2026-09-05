@@ -8,6 +8,7 @@ use crate::domain::collection_stats::CollectionStats;
 use crate::domain::pagination::{Paginated, Pagination};
 use crate::domain::price::PriceHistoryEntry;
 use crate::domain::rarity_trade_filter::{RarityTradeFilter, RarityTradeFilterRule};
+use crate::domain::set_name::{SetCode, SetName};
 use crate::domain::stats::Stats;
 use crate::domain::trade::{TradeDetail, TradeId, TradeListQuery, TradeSummary};
 use crate::domain::user::{CollectionVisibility, User, UserId, UserSuggestion};
@@ -258,4 +259,16 @@ pub trait ListTradesUseCase: Send + Sync {
         caller_id: UserId,
         query: TradeListQuery,
     ) -> Result<Paginated<TradeSummary>, AppError>;
+}
+
+#[async_trait]
+#[cfg_attr(test, automock)]
+pub trait ListSetsUseCase: Send + Sync {
+    async fn list_sets(&self) -> Result<Vec<SetName>, AppError>;
+}
+
+#[async_trait]
+#[cfg_attr(test, automock)]
+pub trait GetSetUseCase: Send + Sync {
+    async fn get_set(&self, code: SetCode) -> Result<SetName, AppError>;
 }

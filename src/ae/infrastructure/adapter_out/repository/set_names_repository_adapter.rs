@@ -45,6 +45,36 @@ impl SetNameRepository for SetNameRepositoryAdapter {
 
         Ok(())
     }
+
+    #[tracing::instrument(name = "set_names_repo.find_all", skip_all, fields(sentry.op = "db"))]
+    async fn find_all(&self) -> Result<Vec<SetName>, AppError> {
+        Ok(
+            sqlx::query_as!(SetNameEntity, "SELECT * FROM set_name ORDER BY name")
+                .fetch_all(&self.pool)
+                .await?
+                .into_iter()
+                .map(|e| SetName {
+                    code: SetCode::new(e.set_code),
+                    name: e.name,
+                })
+                .collect(),
+        )
+    }
+
+    #[tracing::instrument(name = "set_names_repo.find_by_code", skip_all, fields(sentry.op = "db"))]
+    async fn find_by_code(&self, code: SetCode) -> Result<Option<SetName>, AppError> {
+        Ok(sqlx::query_as!(
+            SetNameEntity,
+            "SELECT * FROM set_name WHERE set_code = $1",
+            code.to_string()
+        )
+        .fetch_optional(&self.pool)
+        .await?
+        .map(|e| SetName {
+            code: SetCode::new(e.set_code),
+            name: e.name,
+        }))
+    }
 }
 
 #[cfg(test)]

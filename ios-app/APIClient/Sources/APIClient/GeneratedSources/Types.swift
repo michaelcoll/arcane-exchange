@@ -53,6 +53,12 @@ public protocol APIProtocol: Sendable {
     /// - Remark: HTTP `GET /search/card`.
     /// - Remark: Generated from `#/paths//search/card/get(search_cards)`.
     func search_cards(_ input: Operations.search_cards.Input) async throws -> Operations.search_cards.Output
+    /// - Remark: HTTP `GET /sets`.
+    /// - Remark: Generated from `#/paths//sets/get(list_sets)`.
+    func list_sets(_ input: Operations.list_sets.Input) async throws -> Operations.list_sets.Output
+    /// - Remark: HTTP `GET /sets/{set_code}`.
+    /// - Remark: Generated from `#/paths//sets/{set_code}/get(get_set)`.
+    func get_set(_ input: Operations.get_set.Input) async throws -> Operations.get_set.Output
     /// - Remark: HTTP `GET /trades`.
     /// - Remark: Generated from `#/paths//trades/get(list_trades)`.
     func list_trades(_ input: Operations.list_trades.Input) async throws -> Operations.list_trades.Output
@@ -216,6 +222,22 @@ extension APIProtocol {
     ) async throws -> Operations.search_cards.Output {
         try await search_cards(Operations.search_cards.Input(
             query: query,
+            headers: headers
+        ))
+    }
+    /// - Remark: HTTP `GET /sets`.
+    /// - Remark: Generated from `#/paths//sets/get(list_sets)`.
+    public func list_sets(headers: Operations.list_sets.Input.Headers = .init()) async throws -> Operations.list_sets.Output {
+        try await list_sets(Operations.list_sets.Input(headers: headers))
+    }
+    /// - Remark: HTTP `GET /sets/{set_code}`.
+    /// - Remark: Generated from `#/paths//sets/{set_code}/get(get_set)`.
+    public func get_set(
+        path: Operations.get_set.Input.Path,
+        headers: Operations.get_set.Input.Headers = .init()
+    ) async throws -> Operations.get_set.Output {
+        try await get_set(Operations.get_set.Input(
+            path: path,
             headers: headers
         ))
     }
