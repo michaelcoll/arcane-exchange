@@ -28,7 +28,7 @@ struct CardOfferRow: View {
         HStack(spacing: 12) {
             PlayerAvatar(username: offer.owner_username, size: 34)
             VStack(alignment: .leading, spacing: 3) {
-                Text("@\(offer.owner_username)")
+                UsernameLabel(username: offer.owner_username)
                     .font(.subheadline.weight(.medium))
                     .lineLimit(1)
                 subtitle
@@ -52,7 +52,7 @@ struct CardOfferRow: View {
             if offer.reserved {
                 separator
                 Text("réservée")
-                    .foregroundStyle(.purple)
+                    .foregroundStyle(.violet)
             }
         }
         .font(.caption.monospacedDigit())
@@ -78,7 +78,7 @@ struct CardOfferRow: View {
         } else if offer.reserved {
             Image(systemName: "lock.fill")
                 .font(.footnote)
-                .foregroundStyle(.purple)
+                .foregroundStyle(.violet)
         }
     }
 }

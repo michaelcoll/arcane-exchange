@@ -134,7 +134,8 @@ private struct TradeCardTile: View {
             // The mockup dims a locked card rather than covering it: it is still the card you
             // are trading, just no longer yours to move.
             .opacity(isReserved && onRemove == nil ? 0.82 : 1)
-            .shadow(color: .black.opacity(0.55), radius: 9, y: 6)
+            // `TradeCardResponse` carries no rarity, so the halo falls back to a neutral light.
+            .cardArtworkLift(tint: nil, shadowOpacity: 0.55, shadowRadius: 4, shadowY: 4, haloRadius: 6)
             .overlay(alignment: .topLeading) { cornerBadge }
             .frame(width: width)
     }
@@ -164,7 +165,7 @@ private struct TradeCardTile: View {
             .buttonStyle(.plain)
             .accessibilityLabel("Retirer \(card.name)")
         } else if isReserved {
-            badgeShape(fill: Color.purple.opacity(0.22), foreground: .purple) {
+            badgeShape(fill: Color.violet.opacity(0.36), foreground: .violetInk) {
                 Image(systemName: "lock.fill")
             }
             .accessibilityLabel("Carte réservée")
@@ -268,12 +269,12 @@ struct TradeRailPivot: View {
             .font(.system(size: 11.5, weight: .semibold, design: .monospaced))
             .lineLimit(1)
             .fixedSize()
-            .foregroundStyle(isReserved ? Color.purple : .secondary)
+            .foregroundStyle(isReserved ? Color.violetInk : .secondary)
             .padding(.horizontal, 13)
             .padding(.vertical, 6)
             .background(capsuleFill, in: .capsule)
             .overlay {
-                Capsule().strokeBorder(isReserved ? Color.purple.opacity(0.4) : Color.secondary.opacity(0.25))
+                Capsule().strokeBorder(isReserved ? Color.violet.opacity(0.4) : Color.secondary.opacity(0.25))
             }
             line
         }
@@ -281,7 +282,7 @@ struct TradeRailPivot: View {
     }
 
     private var capsuleFill: AnyShapeStyle {
-        isReserved ? AnyShapeStyle(Color.purple.opacity(0.14)) : AnyShapeStyle(.quaternary)
+        isReserved ? AnyShapeStyle(Color.violet.opacity(0.14)) : AnyShapeStyle(.quaternary)
     }
 
     private var line: some View {

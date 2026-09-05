@@ -1,100 +1,76 @@
 import SwiftUI
 
-/// The mockup's "Filtrer" sheet: rarities, then the sets actually present in the collection.
+/// The mockup's "Filtrer" drawer, as a summary: one row per facet, each opening its own
+/// sub-drawer — the same shape as the Réglages screen.
 ///
-/// Edits go straight to the bound filters, so the grid — and the count on the bottom button —
-/// update while the sheet is still open.
+/// Edits go straight to the bound filters, so the grid behind the drawer reloads while it is
+/// still open.
 struct CollectionFiltersSheet: View {
+    /// The sub-drawers, one per facet.
+    private enum Drawer: String, Identifiable {
+        case sets
+        case rarities
+
+        var id: String {
+            rawValue
+        }
+    }
+
     @Binding var filters: CollectionFilters
     let sets: [SetInfo]
-    let resultCount: Int
 
     @Environment(\.dismiss) private var dismiss
+    @State private var drawer: Drawer?
 
     var body: some View {
         NavigationStack {
             List {
-                Section("Rareté") {
-                    ForEach(RarityCode.allCases, id: \.self) { rarity in
-                        row(title: rarity.label, code: nil, isSelected: filters.rarities.contains(rarity)) {
-                            toggle(rarity)
-                        }
+                Section {
+                    DrawerRow(
+                        title: "Sets",
+                        systemImage: "square.stack.3d.up",
+                        value: CollectionCopy.facetSelection(
+                            selected: filters.sets.count,
+                            total: sets.count,
+                            noneSelected: "Tous"
+                        )
+                    ) {
+                        drawer = .sets
                     }
-                }
+                    .disabled(sets.isEmpty)
 
-                if !sets.isEmpty {
-                    Section("Set") {
-                        ForEach(sets, id: \.code) { set in
-                            row(title: set.name, code: set.code, isSelected: filters.sets.contains(set.code)) {
-                                toggle(set.code)
-                            }
-                        }
+                    DrawerRow(
+                        title: "Raretés",
+                        systemImage: "line.3.horizontal.decrease",
+                        value: CollectionCopy.facetSelection(
+                            selected: filters.rarities.count,
+                            total: RarityCode.allCases.count,
+                            noneSelected: "Toutes"
+                        )
+                    ) {
+                        drawer = .rarities
                     }
                 }
             }
             .navigationTitle("Filtrer")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button("Réinitialiser") { filters.clearAll() }
+                ToolbarItem(placement: .topBarLeading) {
+                    ResetButton { filters.clearAll() }
                         .disabled(filters.activeCount == 0)
                 }
-            }
-            .safeAreaInset(edge: .bottom) {
-                Button(action: { dismiss() }, label: {
-                    Text("Afficher \(CollectionCopy.cardCount(resultCount))")
-                        .fontWeight(.semibold)
-                        .frame(maxWidth: .infinity)
-                })
-                .buttonStyle(.borderedProminent)
-                .controlSize(.large)
-                .padding(.horizontal)
-                .padding(.vertical, 10)
-                .background(.bar)
-            }
-        }
-    }
-
-    private func row(title: String, code: String?, isSelected: Bool, toggle: @escaping () -> Void) -> some View {
-        Button(action: toggle) {
-            HStack(spacing: 12) {
-                if let code {
-                    Text(code)
-                        .font(.caption)
-                        .fontWeight(.semibold)
-                        .monospaced()
-                        .foregroundStyle(.tint)
-                        .frame(minWidth: 42, alignment: .leading)
+                ToolbarItem(placement: .topBarTrailing) {
+                    CloseButton { dismiss() }
                 }
-                Text(title)
-                    .foregroundStyle(.primary)
-                Spacer(minLength: 8)
-                if isSelected {
-                    Image(systemName: "checkmark")
-                        .fontWeight(.semibold)
-                        .foregroundStyle(.tint)
+            }
+            .sheet(item: $drawer) { drawer in
+                switch drawer {
+                case .sets: CollectionSetsSheet(selection: $filters.sets, sets: sets)
+                case .rarities: CollectionRaritiesSheet(selection: $filters.rarities)
                 }
             }
         }
-        // Without this the row reads as one big tinted link instead of a list row.
-        .buttonStyle(.plain)
-        .contentShape(.rect)
-    }
-
-    private func toggle(_ rarity: RarityCode) {
-        if filters.rarities.contains(rarity) {
-            filters.rarities.remove(rarity)
-        } else {
-            filters.rarities.insert(rarity)
-        }
-    }
-
-    private func toggle(_ setCode: String) {
-        if filters.sets.contains(setCode) {
-            filters.sets.remove(setCode)
-        } else {
-            filters.sets.insert(setCode)
-        }
+        .presentationDetents([.medium, .large])
     }
 }
 
@@ -104,7 +80,6 @@ struct CollectionFiltersSheet: View {
         sets: [
             SetInfo(code: "MH3", name: "Modern Horizons 3"),
             SetInfo(code: "LTR", name: "The Lord of the Rings")
-        ],
-        resultCount: 8
+        ]
     )
 }

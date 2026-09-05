@@ -12,6 +12,8 @@ struct CollectionView: View {
         NavigationStack(path: $path) {
             content
                 .navigationTitle("Ma collection")
+                .navigationBarTitleDisplayMode(.inline)
+                .accountToolbar()
                 .refreshable { await model.reload() }
                 .task { await model.loadInitiallyIfNeeded() }
                 .task { await model.loadSetsIfNeeded() }
@@ -27,11 +29,7 @@ struct CollectionView: View {
                 }
                 .tradeDestinations()
                 .sheet(isPresented: $isShowingFilters) {
-                    CollectionFiltersSheet(
-                        filters: $model.filters,
-                        sets: model.sets,
-                        resultCount: model.total
-                    )
+                    CollectionFiltersSheet(filters: $model.filters, sets: model.sets)
                 }
         }
         .tradeNavigation(path: $path)
@@ -90,14 +88,9 @@ struct CollectionView: View {
             HStack(spacing: 8) {
                 sortMenu
                 chipButton(
-                    title: setsChipTitle,
-                    systemImage: "square.stack.3d.up",
-                    isActive: !model.filters.sets.isEmpty
-                )
-                chipButton(
-                    title: raritiesChipTitle,
+                    title: CollectionCopy.filterChip(activeCount: model.filters.activeCount),
                     systemImage: "line.3.horizontal.decrease",
-                    isActive: !model.filters.rarities.isEmpty
+                    isActive: model.filters.activeCount > 0
                 )
             }
             .padding(.vertical, 2)
@@ -106,6 +99,7 @@ struct CollectionView: View {
         .scrollClipDisabled()
     }
 
+    /// The arrow, not the wording, carries the direction — so the chip's icon flips with it.
     private var sortMenu: some View {
         Menu(content: {
             Picker("Trier par", selection: $model.filters.sortBy) {
@@ -114,11 +108,12 @@ struct CollectionView: View {
                 }
             }
             Picker("Ordre", selection: $model.filters.sortDir) {
-                Text("Décroissant").tag(SortDirection.desc)
-                Text("Croissant").tag(SortDirection.asc)
+                ForEach([SortDirection.desc, .asc], id: \.self) { direction in
+                    Label(direction.label, systemImage: direction.icon).tag(direction)
+                }
             }
         }, label: {
-            chipLabel(model.filters.sortBy.label, systemImage: "arrow.up.arrow.down")
+            chipLabel(model.filters.sortBy.label, systemImage: model.filters.sortDir.icon)
         })
         .buttonStyle(.bordered)
         .buttonBorderShape(.capsule)
@@ -172,16 +167,6 @@ struct CollectionView: View {
 
     private var summary: String {
         "\(CollectionCopy.cardCount(model.total)) · triées par \(model.filters.sortBy.label.lowercased())"
-    }
-
-    private var setsChipTitle: String {
-        let count = model.filters.sets.count
-        return count == 0 ? "Sets" : "Sets · \(count)"
-    }
-
-    private var raritiesChipTitle: String {
-        let count = model.filters.rarities.count
-        return count == 0 ? "Raretés" : "Raretés · \(count)"
     }
 }
 

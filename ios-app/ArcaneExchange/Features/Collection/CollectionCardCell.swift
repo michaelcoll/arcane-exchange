@@ -45,9 +45,15 @@ struct CollectionCardCell: View {
             .overlay { image }
             .clipShape(RoundedRectangle(cornerRadius: Self.cornerRadius, style: .continuous))
             .overlay { border }
-            .overlay(alignment: .topTrailing) { quantityBadge }
+            .overlay(alignment: .bottomLeading) { quantityBadge }
             .overlay(alignment: .top) { reservedFlag }
-            .shadow(color: .black.opacity(0.3), radius: 5, y: 3)
+            .cardArtworkLift(
+                tint: nil,
+                shadowOpacity: 0.3,
+                shadowRadius: 4,
+                shadowY: 3,
+                haloRadius: 3
+            )
     }
 
     /// `LazyImage` rather than `AsyncImage`: the grid re-creates cells as it scrolls, and
@@ -81,7 +87,7 @@ struct CollectionCardCell: View {
     private var border: some View {
         RoundedRectangle(cornerRadius: Self.cornerRadius, style: .continuous)
             .strokeBorder(
-                card.reserved ? AnyShapeStyle(Color.purple) : AnyShapeStyle(.black.opacity(0.4)),
+                card.reserved ? AnyShapeStyle(Color.violet) : AnyShapeStyle(.black.opacity(0.4)),
                 lineWidth: card.reserved ? 2 : 1
             )
     }
@@ -104,10 +110,9 @@ struct CollectionCardCell: View {
             Label("Réservée", systemImage: "lock.fill")
                 .font(.caption2)
                 .fontWeight(.semibold)
-                .foregroundStyle(.purple)
                 .padding(.horizontal, 7)
                 .padding(.vertical, 3)
-                .background(.ultraThinMaterial, in: Capsule())
+                .reservedBadgeChip(in: Capsule())
                 .padding(6)
         }
     }

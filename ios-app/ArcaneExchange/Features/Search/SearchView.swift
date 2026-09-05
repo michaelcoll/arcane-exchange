@@ -30,6 +30,8 @@ struct SearchView: View {
             // Form/List below is on `systemGroupedBackground` — one seamless colour instead.
             .background(Color(.systemGroupedBackground))
             .navigationTitle("Rechercher")
+            .navigationBarTitleDisplayMode(.inline)
+            .accountToolbar()
             .cardBrowsingDestinations()
             .tradeDestinations()
         }
@@ -234,7 +236,7 @@ struct SearchView: View {
             HStack(spacing: 12) {
                 PlayerAvatar(username: user.username)
                 VStack(alignment: .leading, spacing: 2) {
-                    Text("@\(user.username)")
+                    UsernameLabel(username: user.username)
                         .fontWeight(.medium)
                     Text(user.tradableCountLabel)
                         .font(.caption)

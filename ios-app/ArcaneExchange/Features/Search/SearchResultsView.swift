@@ -108,7 +108,7 @@ private struct SearchResultsGrid: View {
     private func playerHeader(_ username: String) -> some View {
         HStack(spacing: 12) {
             PlayerAvatar(username: username)
-            Text("@\(username)")
+            UsernameLabel(username: username)
                 .fontWeight(.semibold)
             Spacer(minLength: 0)
         }

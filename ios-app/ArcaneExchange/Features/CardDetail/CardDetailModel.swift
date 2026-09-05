@@ -5,6 +5,7 @@ import Foundation
 typealias PriceHistoryEntry = Components.Schemas.PriceHistoryEntryResponse
 typealias CardOffer = Components.Schemas.CardOfferResponse
 typealias CollectionEntry = Components.Schemas.CollectionEntryResponse
+typealias PriceGuide = Components.Schemas.PriceGuideResponse
 
 /// One day of the Cardmarket price guide, in euros — the shape `PriceHistoryChart` plots.
 struct PricePoint: Identifiable, Equatable {
