@@ -25,7 +25,7 @@ struct CollectionView: View {
                 .navigationDestination(for: CardOffersRoute.self) { route in
                     CardOffersView(card: route.card)
                 }
-                .tradeDestinations(path: $path)
+                .tradeDestinations()
                 .sheet(isPresented: $isShowingFilters) {
                     CollectionFiltersSheet(
                         filters: $model.filters,
@@ -34,6 +34,7 @@ struct CollectionView: View {
                     )
                 }
         }
+        .tradeNavigation(path: $path)
     }
 
     @ViewBuilder private var content: some View {

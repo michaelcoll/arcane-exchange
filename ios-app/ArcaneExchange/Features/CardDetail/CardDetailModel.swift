@@ -6,21 +6,6 @@ typealias PriceHistoryEntry = Components.Schemas.PriceHistoryEntryResponse
 typealias CardOffer = Components.Schemas.CardOfferResponse
 typealias CollectionEntry = Components.Schemas.CollectionEntryResponse
 
-/// Singular French rarity names, the way the card-detail header spells them
-/// (`RarityCode.label` carries the plural forms the filter sheet lists).
-enum RarityName {
-    static func singular(_ code: String) -> String {
-        switch code.uppercased() {
-        case "C": "commune"
-        case "U": "peu commune"
-        case "R": "rare"
-        case "M": "mythique"
-        case "S": "spéciale"
-        default: code.lowercased()
-        }
-    }
-}
-
 /// One day of the Cardmarket price guide, in euros — the shape `PriceHistoryChart` plots.
 struct PricePoint: Identifiable, Equatable {
     let date: Date

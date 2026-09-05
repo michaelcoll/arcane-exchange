@@ -8,6 +8,7 @@ struct CardDetailView: View {
     let card: CollectionCard
 
     @State private var model: CardDetailViewModel
+    @Environment(\.tradeNavigator) private var openTrade
 
     init(card: CollectionCard) {
         self.card = card
@@ -23,10 +24,10 @@ struct CardDetailView: View {
                     reservedBanner
                 }
                 priceGuide
+                ownersSection
                 if let entry = card.collection_entry {
                     ownedSection(entry)
                 }
-                ownersLink
             }
             .padding(.horizontal, 16)
             .padding(.vertical, 20)
@@ -34,6 +35,18 @@ struct CardDetailView: View {
         }
         .navigationBarTitleDisplayMode(.inline)
         .task { await model.loadHistory() }
+        .task { await model.loadSetName() }
+        .task { await model.loadOffers() }
+        .alert(
+            "Échange impossible",
+            isPresented: Binding(get: { model.startError != nil }, set: {
+                if !$0 {
+                    model.startError = nil
+                }
+            }),
+            actions: { Button("OK", role: .cancel) { model.startError = nil } },
+            message: { Text(model.startError ?? "") }
+        )
     }
 
     // MARK: Artwork & header
@@ -70,19 +83,8 @@ struct CardDetailView: View {
             Text(card.name)
                 .font(.title2.weight(.semibold))
                 .multilineTextAlignment(.center)
-            Text(subtitle)
-                .font(.caption.monospaced())
-                .foregroundStyle(.secondary)
+            CardSetLine(card: card, setName: model.setName, isSetKnown: model.isSetKnown)
         }
-    }
-
-    private var subtitle: String {
-        var parts = [card.set_code.uppercased(), card.collector_number, card.language_code.uppercased()]
-        if card.foil {
-            parts.append("foil")
-        }
-        parts.append(RarityName.singular(card.rarity_code))
-        return parts.joined(separator: " · ")
     }
 
     private var reservedBanner: some View {
@@ -109,12 +111,24 @@ struct CardDetailView: View {
 
     // MARK: Price guide
 
+    /// Trend headlined on the left, low and average as a small aside on the right — the
+    /// mockup's `pxhead`, which gives the number people actually read the most room.
     private var priceGuide: some View {
         VStack(alignment: .leading, spacing: 12) {
-            HStack(spacing: 12) {
-                metric("bas", cents: card.price_guide?.low.map(Int.init))
-                metric("tendance", cents: card.price_guide?.trend.map(Int.init), accent: true)
-                metric("moyenne", cents: card.price_guide?.avg.map(Int.init))
+            HStack(alignment: .center, spacing: 12) {
+                VStack(alignment: .leading, spacing: 3) {
+                    Text("tendance")
+                        .font(.caption2.monospaced())
+                        .textCase(.uppercase)
+                        .foregroundStyle(.secondary)
+                    Text(price(card.price_guide?.trend))
+                        .font(.system(size: 30, weight: .semibold).monospacedDigit())
+                }
+                Spacer(minLength: 0)
+                VStack(alignment: .trailing, spacing: 3) {
+                    aside("bas", cents: card.price_guide?.low)
+                    aside("moyenne", cents: card.price_guide?.avg)
+                }
             }
             chartArea
                 .frame(height: 150)
@@ -128,18 +142,18 @@ struct CardDetailView: View {
         .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
     }
 
-    private func metric(_ label: String, cents: Int?, accent: Bool = false) -> some View {
-        VStack(alignment: .leading, spacing: 2) {
+    private func aside(_ label: String, cents: Int32?) -> some View {
+        HStack(spacing: 5) {
             Text(label)
-                .font(.caption2)
-                .textCase(.uppercase)
                 .foregroundStyle(.secondary)
-            Text(cents.map { Price.euros(cents: $0) } ?? "—")
-                .font(.callout.weight(.semibold))
-                .monospacedDigit()
-                .foregroundStyle(accent ? Color.accentColor : Color.primary)
+            Text(price(cents))
+                .fontWeight(.semibold)
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
+        .font(.caption.monospaced())
+    }
+
+    private func price(_ cents: Int32?) -> String {
+        cents.map { Price.euros(cents: Int($0)) } ?? "—"
     }
 
     @ViewBuilder private var chartArea: some View {
@@ -170,27 +184,17 @@ struct CardDetailView: View {
         let trendCents = card.price_guide?.trend.map(Int.init)
         let deal = CardDeal(purchaseCents: purchase, trendCents: trendCents)
 
-        return VStack(alignment: .leading, spacing: 8) {
-            Text("Dans ma collection")
-                .font(.caption)
-                .textCase(.uppercase)
-                .foregroundStyle(.secondary)
-                .padding(.leading, 4)
-
-            VStack(spacing: 0) {
-                detailRow("Exemplaires") { Text("×\(entry.quantity)") }
+        return group("Dans ma collection") {
+            detailRow("Exemplaires") { Text("×\(entry.quantity)") }
+            Divider()
+            detailRow("Prix d'achat") { Text(Price.euros(cents: purchase)) }
+            if let deal, let trendCents {
                 Divider()
-                detailRow("Prix d'achat") { Text(Price.euros(cents: purchase)) }
-                if let deal, let trendCents {
-                    Divider()
-                    detailRow("Écart depuis l'achat") {
-                        Text(spread(from: purchase, to: trendCents, deal: deal))
-                            .foregroundStyle(deal.kind == .bad ? Color.red : Color.accentColor)
-                    }
+                detailRow("Écart depuis l'achat") {
+                    Text(spread(from: purchase, to: trendCents, deal: deal))
+                        .foregroundStyle(deal.kind == .bad ? Color.red : Color.accentColor)
                 }
             }
-            .padding(.horizontal, 14)
-            .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
         }
     }
 
@@ -214,23 +218,78 @@ struct CardDetailView: View {
 
     // MARK: Owners
 
-    private var ownersLink: some View {
-        NavigationLink(value: CardOffersRoute(card: card)) {
-            Label(ownersTitle, systemImage: "person.2")
-                .font(.subheadline.weight(.medium))
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 12)
+    /// The mockup lists the cheapest few offers right here, each with its own "Échanger"
+    /// button, and only then links to the full list.
+    ///
+    /// The link stays put while the offers load or when they fail: it is the only way to the
+    /// "Possesseurs" screen — which has its own error and retry — so a blip on this request
+    /// must not strand the player. Only "nobody else has this card" hides the section, where
+    /// an empty group would be noise between the chart and the collection figures.
+    @ViewBuilder private var ownersSection: some View {
+        switch model.offers {
+        case let .loaded(preview, total) where total > 0:
+            group(CollectionCopy.offerCount(total)) {
+                ForEach(Array(preview.enumerated()), id: \.element.owner_username) { index, offer in
+                    if index > 0 {
+                        Divider()
+                    }
+                    CardOfferRow(
+                        offer: offer,
+                        isStarting: model.startingWith == offer.owner_username,
+                        // A reserved copy is locked into someone else's accepted trade.
+                        action: offer.reserved ? nil : { start(offer) }
+                    )
+                }
+                if !preview.isEmpty {
+                    Divider()
+                }
+                ownersLink
+            }
+        case .loading, .failed:
+            group("Possesseurs") { ownersLink }
+        case .loaded:
+            EmptyView()
         }
-        .buttonStyle(.bordered)
-        .buttonBorderShape(.roundedRectangle(radius: 14))
-        .tint(.secondary)
     }
 
-    private var ownersTitle: String {
-        if let count = card.owner_count, count > 0 {
-            "Qui d'autre la possède (\(count))"
-        } else {
-            "Qui d'autre la possède"
+    private var ownersLink: some View {
+        NavigationLink(value: CardOffersRoute(card: card)) {
+            HStack {
+                Text("Voir tous les possesseurs")
+                    .font(.subheadline)
+                Spacer(minLength: 12)
+                Image(systemName: "chevron.right")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.tertiary)
+            }
+            .contentShape(Rectangle())
+            .padding(.vertical, 13)
+        }
+        .buttonStyle(.plain)
+    }
+
+    private func start(_ offer: CardOffer) {
+        Task {
+            if let route = await model.startTrade(with: offer) {
+                openTrade(route)
+            }
+        }
+    }
+
+    // MARK: Grouped list
+
+    /// The mockup's `IGroup`: an uppercase caption over a rounded card of rows.
+    private func group(_ header: String, @ViewBuilder content: () -> some View) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text(header)
+                .font(.caption)
+                .textCase(.uppercase)
+                .foregroundStyle(.secondary)
+                .padding(.leading, 4)
+
+            VStack(spacing: 0) { content() }
+                .padding(.horizontal, 14)
+                .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
         }
     }
 }
@@ -248,7 +307,7 @@ struct CardDetailView: View {
                 rarity_code: "R",
                 reserved: false,
                 scryfall_id: "7a79190f-de60-4eb6-b925-594eb76ca8c3",
-                set_code: "FIN"
+                set_code: "SOA"
             )
         )
     }

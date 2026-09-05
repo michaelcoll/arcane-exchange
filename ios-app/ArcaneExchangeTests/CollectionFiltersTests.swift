@@ -31,4 +31,12 @@ struct CollectionFiltersTests {
         #expect(CollectionCopy.cardCount(1) == "1 carte")
         #expect(CollectionCopy.cardCount(8) == "8 cartes")
     }
+
+    @Test func pluralizesTheOwnersHeaders() {
+        #expect(CollectionCopy.offerCount(1) == "1 joueur la propose")
+        #expect(CollectionCopy.offerCount(3) == "3 joueurs la proposent")
+        #expect(CollectionCopy.offerAvailability(available: 1, reserved: 0) == "1 disponible")
+        #expect(CollectionCopy.offerAvailability(available: 2, reserved: 1) == "2 disponibles · 1 réservée")
+        #expect(CollectionCopy.offerAvailability(available: 0, reserved: 2) == "0 disponible · 2 réservées")
+    }
 }

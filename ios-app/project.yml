@@ -76,6 +76,9 @@ targets:
         API_BASE_URL: $(API_BASE_URL)
         CLERK_PUBLISHABLE_KEY: $(CLERK_PUBLISHABLE_KEY)
         UILaunchScreen: {}
+        # Keyrune (set symbols), bundled under Support/Fonts — see KeyruneGlyph.swift.
+        UIAppFonts:
+          - Keyrune.ttf
         # Clerk's ASWebAuthenticationSession hands the SSO flow back on
         # `<bundle id>://callback` (ClerkKit's default `RedirectConfig`). The scheme has to be
         # registered here, and the full URL allowlisted on the Clerk instance

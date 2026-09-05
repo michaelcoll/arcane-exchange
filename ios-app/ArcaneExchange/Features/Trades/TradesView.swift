@@ -12,7 +12,7 @@ struct TradesView: View {
                 .navigationTitle("Échanges")
                 .refreshable { await model.reload() }
                 .task { await model.reload() }
-                .tradeDestinations(path: $path)
+                .tradeDestinations()
                 .cardBrowsingDestinations()
                 // The stack keeps the list alive while a trade is pushed, so `.task` never
                 // re-runs on the way back: an acceptance or an abandon would leave a stale row.
@@ -22,6 +22,7 @@ struct TradesView: View {
                     }
                 }
         }
+        .tradeNavigation(path: $path)
     }
 
     @ViewBuilder private var content: some View {

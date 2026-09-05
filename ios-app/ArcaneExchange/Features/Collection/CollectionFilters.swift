@@ -66,4 +66,12 @@ enum CollectionCopy {
     static func offerCount(_ count: Int) -> String {
         count > 1 ? "\(count) joueurs la proposent" : "\(count) joueur la propose"
     }
+
+    /// "2 disponibles · 1 réservée" — the "Possesseurs" section header, which splits the
+    /// copies that can be asked for from those already locked into an accepted trade.
+    static func offerAvailability(available: Int, reserved: Int) -> String {
+        let head = available > 1 ? "\(available) disponibles" : "\(available) disponible"
+        guard reserved > 0 else { return head }
+        return reserved > 1 ? "\(head) · \(reserved) réservées" : "\(head) · \(reserved) réservée"
+    }
 }
