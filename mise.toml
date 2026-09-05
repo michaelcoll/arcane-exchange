@@ -169,18 +169,25 @@ dir = "ios-app"
 run = "xcodegen generate"
 hide = true
 
+[tasks.generate-api-client]
+description = "Regenerates the iOS APIClient sources from doc/openapi.yml"
+dir = "ios-app/APIClient"
+sources = ["../../doc/openapi.yml"]
+outputs = ["Sources/APIClient/GeneratedSources/Client.swift"]
+run = "swift run swift-openapi-generator generate --mode types --mode client --access-modifier public --output-directory Sources/APIClient/GeneratedSources ../../doc/openapi.yml"
+
 [tasks.build-ios]
 description = "Builds the iOS app"
 dir = "ios-app"
 depends = ["generate-ios"]
-run = "xcodebuild -scheme ArcaneExchange -configuration Debug -destination 'generic/platform=iOS Simulator' -skipPackagePluginValidation build"
+run = "xcodebuild -scheme ArcaneExchange -configuration Debug -destination 'generic/platform=iOS Simulator' build"
 alias = ["bi"]
 
 [tasks.test-ios]
 description = "Tests the iOS app"
 dir = "ios-app"
 depends = ["generate-ios"]
-run = "xcodebuild -scheme ArcaneExchange -destination 'platform=iOS Simulator,name=iPhone 17' -skipPackagePluginValidation test"
+run = "xcodebuild -scheme ArcaneExchange -destination 'platform=iOS Simulator,name=iPhone 17' test"
 
 [tasks.lint-ios]
 description = "Lints the iOS app"

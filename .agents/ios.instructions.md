@@ -30,10 +30,12 @@ generated from the very same `doc/openapi.yml`.
 
 ## API Client
 
-- `APIClient/` is a local SwiftPM package whose sources are **generated at build time** by
-  `swift-openapi-generator` from `APIClient/Sources/APIClient/openapi.yaml`, a symlink to `doc/openapi.yml`.
-  Nothing generated is committed; `APIClient.swift` is intentionally empty.
-- **An API change starts in the backend + `doc/openapi.yml`**, never by hand-writing Swift models.
+- `APIClient/` is a local SwiftPM package whose sources are generated from `doc/openapi.yml` by
+  `mise run generate-api-client` (direct `swift-openapi-generator` CLI invocation, no build plugin — a symlink
+  into `Sources/` broke Portainer's git checkout, which refuses repos containing symlinks) into
+  `Sources/APIClient/GeneratedSources/`, **committed to the repo**. `APIClient.swift` is intentionally empty.
+- **An API change starts in the backend + `doc/openapi.yml`**, then run `mise run generate-api-client` and commit
+  the regenerated files, never by hand-writing Swift models.
 - A backend DTO field typed `Option<Struct>` must carry `#[schema(value_type = TheStruct, required = false)]`,
   otherwise utoipa emits a schema the generator drops — the field silently disappears from the Swift client.
 - Use `APIClientProvider.shared` (rebuilt on each access on purpose: the base URL is editable at runtime).
@@ -75,12 +77,13 @@ generated from the very same `doc/openapi.yml`.
 
 ## Commands & CI
 
-| Action     | Command               | Alias         |
-| ---------- | --------------------- | ------------- |
-| **Build**  | `mise run build-ios`  | `mise run bi` |
-| **Test**   | `mise run test-ios`   | —             |
-| **Lint**   | `mise run lint-ios`   | —             |
-| **Format** | `mise run format-ios` | —             |
+| Action               | Command                        | Alias         |
+| -------------------- | ------------------------------ | ------------- |
+| **Build**            | `mise run build-ios`           | `mise run bi` |
+| **Test**             | `mise run test-ios`            | —             |
+| **Lint**             | `mise run lint-ios`            | —             |
+| **Format**           | `mise run format-ios`          | —             |
+| **Regen API client** | `mise run generate-api-client` | —             |
 
 These are standalone tasks, deliberately outside `checks`/`format`/`setup` (see
 [mise.instructions.md](mise.instructions.md)). `.github/workflows/lint-test-ios.yml` runs `swiftformat --lint`,
