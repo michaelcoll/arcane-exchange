@@ -171,7 +171,7 @@ struct TradeDetailView: View {
                     systemImage: rating == 0 ? "minus.circle" : "star.fill"
                 )
                 .font(.footnote.weight(.medium))
-                .foregroundStyle(.purple)
+                .foregroundStyle(.violet)
             } else {
                 TradeRatingStars { rating in Task { await model.rate(rating) } }
                 Button("Passer la notation") { Task { await model.rate(0) } }

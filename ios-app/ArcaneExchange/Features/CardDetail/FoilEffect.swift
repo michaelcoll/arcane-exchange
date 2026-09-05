@@ -53,7 +53,7 @@ struct FoilEffect: ViewModifier {
 
     private var staticSheen: some View {
         LinearGradient(
-            colors: [.cyan.opacity(0.2), .clear, .purple.opacity(0.16), .clear],
+            colors: [.cyan.opacity(0.2), .clear, .violet.opacity(0.16), .clear],
             startPoint: .topLeading,
             endPoint: .bottomTrailing
         )

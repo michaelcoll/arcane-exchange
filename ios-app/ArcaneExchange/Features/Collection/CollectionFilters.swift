@@ -1,4 +1,5 @@
 import APIClient
+import Foundation
 
 /// Short names for the generated schema types this screen works with — the fully qualified
 /// `Components.Schemas.…` spelling is unreadable inside SwiftUI bodies.
@@ -41,10 +42,27 @@ extension RarityCode {
     }
 }
 
+extension SortDirection {
+    /// The chip's arrow, which is the only thing telling the two directions apart at a glance.
+    var icon: String {
+        switch self {
+        case .desc: "arrow.down"
+        case .asc: "arrow.up"
+        }
+    }
+
+    var label: String {
+        switch self {
+        case .desc: "Décroissant"
+        case .asc: "Croissant"
+        }
+    }
+}
+
 extension SortField {
-    /// Only the fields worth exposing on this screen; `language_code` sorts a collection that
-    /// is almost entirely one language, so it stays out of the menu.
-    static let collectionOptions: [SortField] = [.trend, .avg, .set_code, .added_at]
+    /// The two sorts that mean something on a collection grid: what a card is worth, and when
+    /// it was added. `avg` duplicates `trend`, `set_code`/`language_code` are filter facets.
+    static let collectionOptions: [SortField] = [.trend, .added_at]
 
     var label: String {
         switch self {
@@ -73,5 +91,36 @@ enum CollectionCopy {
         let head = available > 1 ? "\(available) disponibles" : "\(available) disponible"
         guard reserved > 0 else { return head }
         return reserved > 1 ? "\(head) · \(reserved) réservées" : "\(head) · \(reserved) réservée"
+    }
+
+    /// The value on a filter row of the "Filtrer" drawer: nothing picked means no restriction,
+    /// so it reads as the whole set rather than "0".
+    ///
+    /// A zero `total` means the list behind the facet has not loaded yet — the count alone is
+    /// still true, "2 sur 0" would not be.
+    static func facetSelection(selected: Int, total: Int, noneSelected: String) -> String {
+        guard selected > 0 else { return noneSelected }
+        return total > 0 ? "\(selected) sur \(total)" : "\(selected)"
+    }
+
+    /// "Filtres · 3" on the grid's chip, plain "Filtres" while nothing narrows the list.
+    static func filterChip(activeCount: Int) -> String {
+        activeCount == 0 ? "Filtres" : "Filtres · \(activeCount)"
+    }
+}
+
+/// The sets drawer's search field. Purely on-device: `GET /collection/stats` already returned
+/// every set the collection holds, so narrowing that list needs no request.
+enum SetSearch {
+    /// Keeps the sets whose name or code matches, ignoring case and accents. A blank query
+    /// keeps them all.
+    static func filter(_ sets: [SetInfo], matching query: String) -> [SetInfo] {
+        let needle = query.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !needle.isEmpty else { return sets }
+        return sets.filter { matches($0.name, needle) || matches($0.code, needle) }
+    }
+
+    private static func matches(_ value: String, _ needle: String) -> Bool {
+        value.range(of: needle, options: [.caseInsensitive, .diacriticInsensitive]) != nil
     }
 }

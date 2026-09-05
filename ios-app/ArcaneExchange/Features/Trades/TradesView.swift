@@ -10,6 +10,8 @@ struct TradesView: View {
         NavigationStack(path: $path) {
             content
                 .navigationTitle("Échanges")
+                .navigationBarTitleDisplayMode(.inline)
+                .accountToolbar()
                 .refreshable { await model.reload() }
                 .task { await model.reload() }
                 .tradeDestinations()
@@ -113,7 +115,7 @@ private struct TradeSummaryRow: View {
             PlayerAvatar(username: trade.partner_username)
 
             VStack(alignment: .leading, spacing: 3) {
-                Text("@\(trade.partner_username)")
+                UsernameLabel(username: trade.partner_username)
                     .fontWeight(.semibold)
                     .lineLimit(1)
                 Text("\(trade.my_card_count) ⇄ \(trade.partner_card_count) · \(relativeDate)")

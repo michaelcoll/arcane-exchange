@@ -38,7 +38,7 @@ enum TradeStatus: String, CaseIterable, Hashable {
     var tint: Color {
         switch self {
         case .pending, .oneAccepted: .accentColor
-        case .fullyAccepted: .purple
+        case .fullyAccepted: .violet
         case .completed, .closed: .green
         case .abandoned: .red
         }
