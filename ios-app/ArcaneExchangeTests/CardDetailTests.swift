@@ -3,18 +3,6 @@ import Testing
 
 @testable import ArcaneExchange
 
-struct RarityNameTests {
-    @Test func mapsKnownCodesToSingularFrench() {
-        #expect(RarityName.singular("M") == "mythique")
-        #expect(RarityName.singular("r") == "rare")
-        #expect(RarityName.singular("S") == "spéciale")
-    }
-
-    @Test func fallsBackToTheLowercasedCode() {
-        #expect(RarityName.singular("XYZ") == "xyz")
-    }
-}
-
 struct PriceHistorySeriesTests {
     private func entry(_ date: String, low: Int64, avg: Int64, trend: Int64) -> PriceHistoryEntry {
         PriceHistoryEntry(avg: avg, date: date, low: low, trend: trend)

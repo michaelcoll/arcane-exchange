@@ -2,8 +2,8 @@ import NukeUI
 import SwiftUI
 
 /// "Possesseurs" (`ScrOffers` in the mockup): the other players offering this card to trade,
-/// cheapest first. Tapping a row opens the trade with that player, this card already on the
-/// table.
+/// cheapest first, reserved copies last. Tapping a row — the whole row, see `CardOfferRow` —
+/// opens the trade with that player, this card already on the table. A reserved row is inert.
 struct CardOffersView: View {
     let card: CollectionCard
 
@@ -20,6 +20,7 @@ struct CardOffersView: View {
             .navigationTitle("Possesseurs")
             .navigationBarTitleDisplayMode(.inline)
             .task { await model.load() }
+            .task { await model.loadSetName() }
             .alert(
                 "Échange impossible",
                 isPresented: Binding(get: { model.startError != nil }, set: {
@@ -54,12 +55,15 @@ struct CardOffersView: View {
             )
 
         case let .loaded(offers):
+            // Reserved copies sink to the bottom: they are context, not something to act on.
+            let available = offers.filter { !$0.reserved }
+            let reserved = offers.filter(\.reserved)
             List {
                 Section { cardRow }
 
                 Section {
-                    ForEach(offers, id: \.owner_username) { offer in
-                        OfferRow(
+                    ForEach(available + reserved, id: \.owner_username) { offer in
+                        CardOfferRow(
                             offer: offer,
                             isStarting: model.startingWith == offer.owner_username,
                             // A reserved copy is locked into someone else's accepted trade.
@@ -67,7 +71,7 @@ struct CardOffersView: View {
                         )
                     }
                 } header: {
-                    Text(CollectionCopy.offerCount(offers.count))
+                    Text(CollectionCopy.offerAvailability(available: available.count, reserved: reserved.count))
                 } footer: {
                     Text("""
                     Une copie réservée est engagée dans un échange déjà accepté : elle reste \
@@ -92,15 +96,11 @@ struct CardOffersView: View {
             .frame(width: 40, height: 56)
             .clipShape(RoundedRectangle(cornerRadius: 4, style: .continuous))
 
-            VStack(alignment: .leading, spacing: 2) {
+            VStack(alignment: .leading, spacing: 3) {
                 Text(card.name)
                     .fontWeight(.semibold)
                     .lineLimit(1)
-                if let trend = card.price_guide?.trend {
-                    Text("tendance \(Price.euros(cents: Int(trend)))")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
+                CardSetLine(card: card, setName: model.setName, isSetKnown: model.isSetKnown, size: 11.5)
             }
         }
     }
@@ -111,55 +111,6 @@ struct CardOffersView: View {
                 openTrade(route)
             }
         }
-    }
-}
-
-/// One player's offer: avatar, handle, quantity, and either a price or a reserved lock.
-/// `action` is `nil` for a reserved copy, which cannot be asked for.
-private struct OfferRow: View {
-    let offer: CardOffer
-    let isStarting: Bool
-    let action: (() -> Void)?
-
-    var body: some View {
-        if let action {
-            Button(action: action) { content }
-                .buttonStyle(.plain)
-        } else {
-            content
-        }
-    }
-
-    private var content: some View {
-        HStack(spacing: 12) {
-            PlayerAvatar(username: offer.owner_username)
-            VStack(alignment: .leading, spacing: 2) {
-                Text("@\(offer.owner_username)")
-                    .fontWeight(.medium)
-                Text("×\(offer.quantity) dispo")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            }
-            Spacer(minLength: 8)
-            if isStarting {
-                ProgressView()
-            } else if offer.reserved {
-                Label("Réservée", systemImage: "lock.fill")
-                    .font(.caption.weight(.semibold))
-                    .foregroundStyle(.purple)
-            } else if let price = offer.selling_price {
-                Text(Price.euros(cents: Int(price)))
-                    .font(.callout.weight(.semibold))
-                    .monospacedDigit()
-                    .foregroundStyle(Color.accentColor)
-            }
-            if action != nil {
-                Image(systemName: "arrow.left.arrow.right")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            }
-        }
-        .padding(.vertical, 4)
     }
 }
 

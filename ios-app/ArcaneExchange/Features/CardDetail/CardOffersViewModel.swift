@@ -18,9 +18,24 @@ final class CardOffersViewModel {
     private(set) var startingWith: String?
     /// Set when starting a trade is refused; the view shows it in an alert and clears it.
     var startError: String?
+    /// Trades this screen has already opened, keyed by owner — see `startTrade(with:)`.
+    private var openedTrades: [String: TradeDetailRoute] = [:]
+
+    /// The set name once `/sets/{set_code}` resolves; falls back to the raw code.
+    private(set) var setName: String
+    private(set) var isSetKnown = false
 
     init(card: CollectionCard) {
         self.card = card
+        setName = card.set_code.uppercased()
+    }
+
+    /// Resolves the human-readable set name for the card row. A failure keeps the code.
+    func loadSetName() async {
+        if let name = await SetName.resolve(card.set_code) {
+            setName = name
+            isSetKnown = true
+        }
     }
 
     func load() async {
@@ -51,72 +66,27 @@ final class CardOffersViewModel {
         }
     }
 
-    /// Opens (or reuses) the trade with this card's owner and puts the card on their side.
+    /// Opens (or reuses) the trade with this offer's owner, this card already on their side.
     ///
-    /// Two calls, exactly like the web client's `startTrade`: `POST /trades` is idempotent per
-    /// partner — it hands back the existing active trade — so this doubles as "add this card
-    /// to the trade I already have with them".
+    /// A second tap on a row this screen already acted on just reopens that trade. The offers
+    /// are fetched once — the stack keeps this screen alive, so coming back from the trade
+    /// leaves the row still reading "Échanger" — and `POST /trades/{id}/cards` *adds* to the
+    /// quantity already on the table, so calling it again would either slip in a second copy
+    /// or fail with "ce joueur ne propose plus assez de copies".
     func startTrade(with offer: CardOffer) async -> TradeDetailRoute? {
+        if let opened = openedTrades[offer.owner_username] {
+            return opened
+        }
         guard startingWith == nil else { return nil }
         startingWith = offer.owner_username
         defer { startingWith = nil }
-        do {
-            guard let tradeID = try await createTrade(with: offer.owner_username) else { return nil }
-            guard try await addCard(to: tradeID, ownedBy: offer.owner_username) else { return nil }
-            return TradeDetailRoute(id: tradeID, partnerUsername: offer.owner_username)
-        } catch {
-            startError = "Serveur injoignable. Réessaie une fois la connexion revenue."
+        switch await CardOfferTrade.start(card: card, with: offer) {
+        case let .success(route):
+            openedTrades[offer.owner_username] = route
+            return route
+        case let .failure(refusal):
+            startError = refusal.message
             return nil
         }
-    }
-
-    private func createTrade(with owner: String) async throws -> String? {
-        let output = try await APIClientProvider.shared.create_trade(
-            body: .json(.init(respondent_username: owner))
-        )
-        switch output {
-        case let .created(response):
-            return try response.body.json.id
-        case .badRequest:
-            startError = "Tu ne peux pas ouvrir un échange avec toi-même."
-        case .unauthorized:
-            startError = "Session expirée. Reconnecte-toi."
-        case .notFound:
-            startError = "Ce joueur n'existe plus."
-        case let .undocumented(statusCode, _):
-            startError = "Le serveur a répondu \(statusCode)."
-        }
-        return nil
-    }
-
-    private func addCard(to tradeID: String, ownedBy owner: String) async throws -> Bool {
-        let output = try await APIClientProvider.shared.add_trade_card(
-            path: .init(trade_id: tradeID),
-            body: .json(.init(
-                collector_number: card.collector_number,
-                foil: card.foil,
-                language_code: card.language_code,
-                owner_username: owner,
-                quantity: 1,
-                set_code: card.set_code
-            ))
-        )
-        switch output {
-        case .noContent:
-            return true
-        case .badRequest:
-            startError = "Requête invalide."
-        case .unauthorized:
-            startError = "Session expirée. Reconnecte-toi."
-        case .forbidden:
-            startError = "Tu n'es pas partie à cet échange."
-        case .notFound:
-            startError = "Ce joueur ne propose plus assez de copies de cette carte."
-        case .conflict:
-            startError = "Cette copie est déjà réservée par un autre échange."
-        case let .undocumented(statusCode, _):
-            startError = "Le serveur a répondu \(statusCode)."
-        }
-        return false
     }
 }

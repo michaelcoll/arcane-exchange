@@ -31,8 +31,9 @@ struct SearchView: View {
             .background(Color(.systemGroupedBackground))
             .navigationTitle("Rechercher")
             .cardBrowsingDestinations()
-            .tradeDestinations(path: $path)
+            .tradeDestinations()
         }
+        .tradeNavigation(path: $path)
         .searchable(text: $searchText, prompt: mode.prompt)
         .onSubmit(of: .search) { submit() }
         .onChange(of: mode) { searchText = "" }

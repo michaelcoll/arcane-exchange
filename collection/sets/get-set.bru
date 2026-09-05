@@ -1,0 +1,15 @@
+meta {
+  name: get-set
+  type: http
+  seq: 2
+}
+
+get {
+  url: {{baseUrl}}/sets/:set_code
+  body: none
+  auth: none
+}
+
+params:path {
+  set_code: FIN
+}
