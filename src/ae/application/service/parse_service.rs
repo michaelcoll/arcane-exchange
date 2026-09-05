@@ -60,6 +60,10 @@ pub fn parse_cards(csv: &str) -> Result<Vec<ImportedCard>, AppError> {
             name: field_refs[4].to_string(),
         };
 
+        if set_name.name.contains("Tokens") {
+            continue;
+        }
+
         let collector_number = field_refs[5];
 
         let rarity_code =
@@ -92,16 +96,20 @@ pub fn parse_cards(csv: &str) -> Result<Vec<ImportedCard>, AppError> {
                 value: field_refs[10].to_string(),
             })?;
 
-        let purchase_price_float: f32 =
-            field_refs[11]
-                .parse()
-                .map_err(|_e| FunctionalError::ParseError {
-                    line: line_number,
-                    field: "purchase_price",
-                    value: field_refs[11].to_string(),
-                })?;
+        let purchase_price = if field_refs[11].is_empty() {
+            0
+        } else {
+            let purchase_price_float: f32 =
+                field_refs[11]
+                    .parse()
+                    .map_err(|_e| FunctionalError::ParseError {
+                        line: line_number,
+                        field: "purchase_price",
+                        value: field_refs[11].to_string(),
+                    })?;
 
-        let purchase_price = (purchase_price_float * 100.0).round() as u32;
+            (purchase_price_float * 100.0).round() as u32
+        };
 
         let added_at: DateTime<Utc> = {
             let raw = field_refs[17];
@@ -512,6 +520,32 @@ mod tests {
                 value: _,
             }))
         ));
+    }
+
+    #[test]
+    fn import_cards_ignores_cards_from_token_sets() {
+        let csv = "Binder Name,Binder Type,Name,Set code,Set name,Collector number,Foil,Rarity,Quantity,ManaBox ID,Scryfall ID,Purchase price,Misprint,Altered,Condition,Language,Purchase price currency,Added\n\
+                   bulk,binder,Goblin Boarders,FDN,Foundations,87,normal,common,3,101506,4409a063-bf2a-4a49-803e-3ce6bd474353,0.08,false,false,near_mint,fr,EUR,2026-02-05T20:44:45.815Z\n\
+                   bulk,binder,Goblin Token,TFDN,Foundations Tokens,1,normal,common,1,101507,4409a063-bf2a-4a49-803e-3ce6bd474354,0.01,false,false,near_mint,fr,EUR,2026-02-05T20:44:45.815Z";
+
+        let cards = parse_cards(csv).unwrap();
+
+        assert_eq!(cards.len(), 1);
+        assert_eq!(cards[0].card.name, "Goblin Boarders");
+    }
+
+    #[test]
+    fn import_cards_treats_empty_purchase_price_as_zero() {
+        let csv = "Binder Name,Binder Type,Name,Set code,Set name,Collector number,Foil,Rarity,Quantity,ManaBox ID,Scryfall ID,Purchase price,Misprint,Altered,Condition,Language,Purchase price currency,Added\n\
+                   bulk,binder,Goblin Boarders,FDN,Foundations,87,normal,common,3,101506,4409a063-bf2a-4a49-803e-3ce6bd474353,,false,false,near_mint,fr,EUR,2026-02-05T20:44:45.815Z";
+
+        let cards = parse_cards(csv).unwrap();
+
+        assert_eq!(cards.len(), 1);
+        let CollectionEntry::Mine { purchase_price, .. } = cards[0].card.collection_entry else {
+            panic!("expected CollectionEntry::Mine");
+        };
+        assert_eq!(purchase_price, 0);
     }
 
     #[test]
