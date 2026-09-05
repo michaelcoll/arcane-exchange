@@ -1,6 +1,10 @@
 name: lint-test-ios
 
-on: push
+on:
+  push:
+    paths:
+      - "ios-app/**"
+      - ".github/workflows/lint-test-ios.yml"
 
 jobs:
   lint:
