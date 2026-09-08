@@ -54,6 +54,12 @@ targets:
         # iPhone only ("1"). XcodeGen defaults to "1,2" (iPhone + iPad), which forces the app
         # to either declare the four interface orientations or opt out of iPad multitasking.
         TARGETED_DEVICE_FAMILY: "1"
+        # Feeds CFBundleDevelopmentRegion, the bundle's only supported localization — the app
+        # ships no .lproj, every string is French in the source. XcodeGen's default (`en`)
+        # makes iOS resolve the app's language to English, so everything the system formats
+        # comes out English on a French device: "30 minutes ago" under the trades, "Cancel" in
+        # system sheets. Covered by `TradeCopyTests.formatsTheRelativeDateInFrench`.
+        DEVELOPMENT_LANGUAGE: fr
     dependencies:
       - package: APIClient
       - package: ClerkKit
@@ -76,6 +82,11 @@ targets:
         API_BASE_URL: $(API_BASE_URL)
         CLERK_PUBLISHABLE_KEY: $(CLERK_PUBLISHABLE_KEY)
         UILaunchScreen: {}
+        # Without this the bundle claims no localization at all, iOS resolves the app's
+        # language to English, and everything the system formats or labels comes out English
+        # on a French device: "30 minutes ago" under the trades, "Cancel" in system sheets.
+        # There is no .lproj to ship — every string is French in the source — so declaring the
+        # localization here is enough to make Locale.current French.
         # Keyrune (set symbols), bundled under Support/Fonts — see KeyruneGlyph.swift.
         UIAppFonts:
           - Keyrune.ttf
