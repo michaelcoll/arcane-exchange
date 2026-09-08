@@ -27,7 +27,7 @@ jobs:
     name: Tests
     runs-on: ubuntu-latest
 
-    container: rust:1-bullseye
+    container: rust:1-bookworm
 
     services:
       postgres:
@@ -47,11 +47,12 @@ jobs:
       - uses: actions-rust-lang/setup-rust-toolchain@v1
         with:
           components: llvm-tools
+          cache-key: rust-1-bookworm
 
       - uses: taiki-e/install-action@cargo-llvm-cov
       - uses: taiki-e/install-action@nextest
 
-      - run: cargo install sqlx-cli --no-default-features --features native-tls,postgres
+      - run: cargo install sqlx-cli --no-default-features --features rustls,postgres
       - run: sqlx migrate run
 
       - run: cargo llvm-cov nextest --status-level slow --locked --workspace --all-features --bin ae --tests --ignore-filename-regex "main.rs|infrastructure.rs|generate_openapi.rs" --lcov --output-path lcov.info

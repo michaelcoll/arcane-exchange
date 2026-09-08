@@ -1,3 +1,4 @@
+import Foundation
 import Testing
 
 @testable import ArcaneExchange
@@ -90,6 +91,13 @@ struct TradeCopyTests {
         #expect(TradeTimestamp.date(from: "2026-09-03T10:15:30Z") != nil)
         #expect(TradeTimestamp.date(from: "pas une date") == nil)
         #expect(TradesCopy.relativeDate(from: "pas une date") == "")
+    }
+
+    /// Guards the bundle's `CFBundleLocalizations`: with no localization declared, iOS resolves
+    /// the app's language to English and this reads "30 minutes ago" on a French device.
+    @Test func formatsTheRelativeDateInFrench() {
+        let thirtyMinutesAgo = ISO8601DateFormatter().string(from: Date(timeIntervalSinceNow: -1800))
+        #expect(TradesCopy.relativeDate(from: thirtyMinutesAgo).hasPrefix("il y a"))
     }
 
     @Test func pluralisesTheCardCount() {
