@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            DELETE FROM card_import\n            WHERE id IN (\n                SELECT id FROM card_import\n                WHERE user_id = $1 AND status IN ('completed', 'failed')\n                ORDER BY created_at DESC\n                OFFSET $2\n            )\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Int8"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "2e83ebcb093fc6575a92c9ddd1ed3519061a8cd15f6ad6dff2e0776f9e246145"
+}

@@ -13,6 +13,19 @@ erDiagram
         integer cardmarket_id
         character_varying(64) the_gatherer_id
     }
+    card_import {
+        uuid id PK
+        character_varying(50) user_id FK, UK "not null"
+        text status "not null"
+        integer source_lines "not null, default: 0"
+        integer total_lines "not null, default: 0"
+        integer processed_lines "not null, default: 0"
+        jsonb line_errors "not null, default: '[]'::jsonb"
+        integer line_error_count "not null, default: 0"
+        text error_message
+        timestamp_with_time_zone created_at "not null, default: now()"
+        timestamp_with_time_zone finished_at
+    }
     cardmarket_price {
         integer id_produit PK
         date date PK
@@ -120,6 +133,7 @@ erDiagram
         integer proposed_quantity
     }
     set_name ||--o{ card : "set_code"
+    users ||--o| card_import : "user_id"
     card ||--o{ collection_entry : "set_code, collector_number, language_code, foil"
     users ||--o{ collection_entry : "user_id"
     users ||--o{ collection_rarity_filters : "user_id"
@@ -138,6 +152,12 @@ erDiagram
 - `v_tradable_entry` (view)
 
 ## Indexes and constraints
+
+### card_import
+
+- unique index `card_import_one_active_per_user` (`user_id`)
+- index `card_import_user_created_at` (`user_id`, `created_at`)
+- check constraint `card_import_status_check`: `CHECK ((status = ANY (ARRAY['pending'::text, 'running'::text, 'completed'::text, 'failed'::text])))`
 
 ### collection_entry
 

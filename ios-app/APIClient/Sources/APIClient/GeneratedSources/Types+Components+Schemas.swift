@@ -97,6 +97,133 @@ extension Components {
                 case name
             }
         }
+        /// - Remark: Generated from `#/components/schemas/CardImportLineErrorResponse`.
+        public struct CardImportLineErrorResponse: Codable, Hashable, Sendable {
+            /// - Remark: Generated from `#/components/schemas/CardImportLineErrorResponse/field`.
+            public var field: Swift.String
+            /// - Remark: Generated from `#/components/schemas/CardImportLineErrorResponse/line`.
+            public var line: Swift.Int
+            /// - Remark: Generated from `#/components/schemas/CardImportLineErrorResponse/value`.
+            public var value: Swift.String
+            /// Creates a new `CardImportLineErrorResponse`.
+            ///
+            /// - Parameters:
+            ///   - field:
+            ///   - line:
+            ///   - value:
+            public init(
+                field: Swift.String,
+                line: Swift.Int,
+                value: Swift.String
+            ) {
+                self.field = field
+                self.line = line
+                self.value = value
+            }
+            public enum CodingKeys: String, CodingKey {
+                case field
+                case line
+                case value
+            }
+        }
+        /// - Remark: Generated from `#/components/schemas/CardImportResponse`.
+        public struct CardImportResponse: Codable, Hashable, Sendable {
+            /// RFC 3339 timestamp
+            ///
+            /// - Remark: Generated from `#/components/schemas/CardImportResponse/created_at`.
+            public var created_at: Swift.String
+            /// - Remark: Generated from `#/components/schemas/CardImportResponse/error_count`.
+            public var error_count: Swift.Int32
+            /// - Remark: Generated from `#/components/schemas/CardImportResponse/error_message`.
+            public var error_message: Swift.String?
+            /// Truncated to at most 100 entries; `error_count` carries the true total.
+            ///
+            /// - Remark: Generated from `#/components/schemas/CardImportResponse/errors`.
+            public var errors: [Components.Schemas.CardImportLineErrorResponse]
+            /// RFC 3339 timestamp
+            ///
+            /// - Remark: Generated from `#/components/schemas/CardImportResponse/finished_at`.
+            public var finished_at: Swift.String?
+            /// - Remark: Generated from `#/components/schemas/CardImportResponse/id`.
+            public var id: Swift.String
+            /// - Remark: Generated from `#/components/schemas/CardImportResponse/processed_lines`.
+            public var processed_lines: Swift.Int32
+            /// Data lines read from the CSV, before the "Tokens" set filter and deduplication.
+            ///
+            /// - Remark: Generated from `#/components/schemas/CardImportResponse/source_lines`.
+            public var source_lines: Swift.Int32
+            /// `pending`, `running`, `completed` or `failed`.
+            ///
+            /// - Remark: Generated from `#/components/schemas/CardImportResponse/status`.
+            public var status: Swift.String
+            /// Cards to write, after deduplication — the denominator for `processed_lines`.
+            ///
+            /// - Remark: Generated from `#/components/schemas/CardImportResponse/total_lines`.
+            public var total_lines: Swift.Int32
+            /// Creates a new `CardImportResponse`.
+            ///
+            /// - Parameters:
+            ///   - created_at: RFC 3339 timestamp
+            ///   - error_count:
+            ///   - error_message:
+            ///   - errors: Truncated to at most 100 entries; `error_count` carries the true total.
+            ///   - finished_at: RFC 3339 timestamp
+            ///   - id:
+            ///   - processed_lines:
+            ///   - source_lines: Data lines read from the CSV, before the "Tokens" set filter and deduplication.
+            ///   - status: `pending`, `running`, `completed` or `failed`.
+            ///   - total_lines: Cards to write, after deduplication — the denominator for `processed_lines`.
+            public init(
+                created_at: Swift.String,
+                error_count: Swift.Int32,
+                error_message: Swift.String? = nil,
+                errors: [Components.Schemas.CardImportLineErrorResponse],
+                finished_at: Swift.String? = nil,
+                id: Swift.String,
+                processed_lines: Swift.Int32,
+                source_lines: Swift.Int32,
+                status: Swift.String,
+                total_lines: Swift.Int32
+            ) {
+                self.created_at = created_at
+                self.error_count = error_count
+                self.error_message = error_message
+                self.errors = errors
+                self.finished_at = finished_at
+                self.id = id
+                self.processed_lines = processed_lines
+                self.source_lines = source_lines
+                self.status = status
+                self.total_lines = total_lines
+            }
+            public enum CodingKeys: String, CodingKey {
+                case created_at
+                case error_count
+                case error_message
+                case errors
+                case finished_at
+                case id
+                case processed_lines
+                case source_lines
+                case status
+                case total_lines
+            }
+        }
+        /// - Remark: Generated from `#/components/schemas/CardImportStartedResponse`.
+        public struct CardImportStartedResponse: Codable, Hashable, Sendable {
+            /// - Remark: Generated from `#/components/schemas/CardImportStartedResponse/id`.
+            public var id: Swift.String
+            /// Creates a new `CardImportStartedResponse`.
+            ///
+            /// - Parameters:
+            ///   - id:
+            public init(id: Swift.String) {
+                self.id = id
+            }
+            public enum CodingKeys: String, CodingKey {
+                case id
+            }
+        }
         /// - Remark: Generated from `#/components/schemas/CardOfferResponse`.
         public struct CardOfferResponse: Codable, Hashable, Sendable {
             /// - Remark: Generated from `#/components/schemas/CardOfferResponse/owner_username`.

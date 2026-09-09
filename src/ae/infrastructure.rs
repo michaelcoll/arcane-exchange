@@ -1,7 +1,11 @@
 use crate::application::caller::EdhRecCaller;
+use crate::application::card_import_job::CardImportJob;
+use crate::application::repository::CardImportRepository;
 use crate::application::service::auth_service::AuthService;
 use crate::application::service::autocomplete_user_service::AutocompleteUserService;
 use crate::application::service::card_collection_service::CardCollectionService;
+use crate::application::service::card_import_query_service::CardImportQueryService;
+use crate::application::service::card_import_worker::CardImportWorker;
 use crate::application::service::card_offer_service::CardOfferService;
 use crate::application::service::card_price_history_service::CardPriceHistoryService;
 use crate::application::service::cardmarket_id_enqueue_service::CardMarketIdEnqueueService;
@@ -13,7 +17,7 @@ use crate::application::service::collection_visibility_service::{
 };
 use crate::application::service::gatherer_id_enqueue_service::GathererIdEnqueueService;
 use crate::application::service::get_user_profile_service::GetUserProfileService;
-use crate::application::service::import_card_service::ImportCardService;
+use crate::application::service::import_card_service::{ImportCardService, RunCardImportService};
 use crate::application::service::import_price_service::ImportPriceService;
 use crate::application::service::rarity_trade_filter_service::{
     GetRarityTradeFiltersService, SetRarityTradeFilterService,
@@ -35,12 +39,13 @@ use crate::application::service::update_gatherer_service::GathererIdWorker;
 use crate::application::use_case::{
     AbandonTradeUseCase, AcceptTradeUseCase, AddTradeBinderUseCase, AddTradeCardUseCase,
     AutocompleteUsersUseCase, ConfirmTradeUseCase, CreateTradeUseCase,
-    EnqueueCardMarketIdUpdateUseCase, EnqueueGathererIdUpdateUseCase, GetCardOffersUseCase,
-    GetCardPriceHistoryUseCase, GetCollectionPriceHistoryUseCase, GetCollectionStatsUseCase,
-    GetCollectionUseCase, GetCollectionVisibilityUseCase, GetRarityTradeFiltersUseCase,
-    GetSetUseCase, GetTradeBindersUseCase, GetTradeUseCase, GetUserProfileUseCase,
-    ImportCardUseCase, ImportPriceUseCase, ListSetsUseCase, ListTradesUseCase, RateTradeUseCase,
-    RegisterUserUseCase, RemoveTradeBinderUseCase, RemoveTradeCardUseCase, SearchCardsUseCase,
+    EnqueueCardMarketIdUpdateUseCase, EnqueueGathererIdUpdateUseCase, GetCardImportUseCase,
+    GetCardOffersUseCase, GetCardPriceHistoryUseCase, GetCollectionPriceHistoryUseCase,
+    GetCollectionStatsUseCase, GetCollectionUseCase, GetCollectionVisibilityUseCase,
+    GetRarityTradeFiltersUseCase, GetSetUseCase, GetTradeBindersUseCase, GetTradeUseCase,
+    GetUserProfileUseCase, ImportCardUseCase, ImportPriceUseCase, ListSetsUseCase,
+    ListTradesUseCase, RateTradeUseCase, RegisterUserUseCase, RemoveTradeBinderUseCase,
+    RemoveTradeCardUseCase, RunCardImportUseCase, SearchCardsUseCase,
     SetCollectionVisibilityUseCase, SetRarityTradeFilterUseCase, StatsUseCase,
 };
 use crate::config::Config;
@@ -65,6 +70,7 @@ use crate::infrastructure::adapter_out::repository::trading_binders_repository_a
 use adapter_in::maintenance::controller::create_maintenance_router;
 use adapter_out::caller::gatherer_caller_adapter::GathererCallerAdapter;
 use adapter_out::caller::scryfall_caller_adapter::ScryfallCallerAdapter;
+use adapter_out::repository::card_import_repository_adapter::CardImportRepositoryAdapter;
 use adapter_out::repository::card_repository_adapter::CardRepositoryAdapter;
 use adapter_out::repository::set_names_repository_adapter::SetNameRepositoryAdapter;
 use adapter_out::repository::user_repository_adapter::UserRepositoryAdapter;
@@ -119,6 +125,7 @@ pub struct AppState {
     pub set_rarity_trade_filter_use_case: Arc<dyn SetRarityTradeFilterUseCase>,
     pub list_sets_use_case: Arc<dyn ListSetsUseCase>,
     pub get_set_use_case: Arc<dyn GetSetUseCase>,
+    pub card_import_query_use_case: Arc<dyn GetCardImportUseCase>,
 }
 
 // ---- Repositories ----
@@ -134,6 +141,7 @@ struct Repositories {
     collection_stats: Arc<CollectionStatsRepositoryAdapter>,
     trading_binders: Arc<TradingBindersRepositoryAdapter>,
     collection_rarity_filters: Arc<CollectionRarityFiltersRepositoryAdapter>,
+    card_import: Arc<CardImportRepositoryAdapter>,
 }
 
 fn create_repositories(pool: &Pool<Postgres>) -> Repositories {
@@ -153,6 +161,7 @@ fn create_repositories(pool: &Pool<Postgres>) -> Repositories {
         collection_rarity_filters: Arc::new(CollectionRarityFiltersRepositoryAdapter::new(
             pool.clone(),
         )),
+        card_import: Arc::new(CardImportRepositoryAdapter::new(pool.clone())),
     }
 }
 
@@ -250,6 +259,33 @@ fn spawn_gatherer_id_worker(
     enqueue_service
 }
 
+// Canal non borné consommé en série par un unique worker : au plus un import actif par
+// utilisateur (contrainte portée par la base), donc pas de besoin de parallélisme ici.
+fn spawn_card_import_worker(
+    repos: &Repositories,
+    enqueue_cardmarket_id_use_case: Arc<CardMarketIdEnqueueService>,
+    enqueue_gatherer_id_use_case: Arc<GathererIdEnqueueService>,
+) -> tokio::sync::mpsc::UnboundedSender<CardImportJob> {
+    let (sender, receiver) = tokio::sync::mpsc::unbounded_channel::<CardImportJob>();
+
+    let run_use_case: Arc<dyn RunCardImportUseCase> = Arc::new(RunCardImportService::new(
+        repos.card.clone(),
+        repos.set_name.clone(),
+        repos.card_import.clone(),
+        enqueue_cardmarket_id_use_case,
+        enqueue_gatherer_id_use_case,
+        repos.card_prices_view.clone(),
+        repos.trading_binders.clone(),
+    ));
+
+    let worker = CardImportWorker::new(run_use_case);
+    tokio::spawn(async move {
+        worker.run(receiver).await;
+    });
+
+    sender
+}
+
 // ---- App state assembly ----
 #[allow(clippy::too_many_arguments)]
 fn create_app_state(
@@ -259,15 +295,14 @@ fn create_app_state(
     card_collection_service: Arc<CardCollectionService>,
     enqueue_cardmarket_id_use_case: Arc<CardMarketIdEnqueueService>,
     enqueue_gatherer_id_use_case: Arc<GathererIdEnqueueService>,
+    card_import_sender: tokio::sync::mpsc::UnboundedSender<CardImportJob>,
 ) -> AppState {
     let import_card_service = Arc::new(ImportCardService::new(
-        repos.card.clone(),
-        repos.set_name.clone(),
-        enqueue_cardmarket_id_use_case.clone(),
-        enqueue_gatherer_id_use_case.clone(),
-        repos.card_prices_view.clone(),
-        repos.trading_binders.clone(),
+        repos.card_import.clone(),
+        card_import_sender,
     ));
+    let card_import_query_service: Arc<dyn GetCardImportUseCase> =
+        Arc::new(CardImportQueryService::new(repos.card_import.clone()));
 
     let import_price_use_case: Arc<dyn ImportPriceUseCase> = Arc::new(ImportPriceService::new(
         callers.card_market,
@@ -373,6 +408,7 @@ fn create_app_state(
         set_rarity_trade_filter_use_case: set_rarity_trade_filter_service,
         list_sets_use_case: set_service.clone(),
         get_set_use_case: set_service,
+        card_import_query_use_case: card_import_query_service,
     }
 }
 
@@ -418,12 +454,31 @@ pub async fn create_infra(pool: Pool<Postgres>, config: &Config) -> Router {
         repos.collection_price_history.clone(),
     ));
 
+    // Any import left `pending`/`running` did not survive the previous process — fail it before
+    // the worker (or the router) starts, so a fresh import for the same user is accepted.
+    match repos
+        .card_import
+        .fail_all_active("server restarted during import")
+        .await
+    {
+        Ok(count) if count > 0 => {
+            tracing::warn!(count, "failed stale card imports on startup");
+        }
+        Ok(_) => {}
+        Err(e) => tracing::error!(error = %e, "failed to reset stale card imports on startup"),
+    }
+
     let enqueue_cardmarket_id_use_case = spawn_cardmarket_id_worker(
         &repos,
         callers.scryfall.clone(),
         card_collection_service.clone(),
     );
     let enqueue_gatherer_id_use_case = spawn_gatherer_id_worker(&repos, callers.gatherer.clone());
+    let card_import_sender = spawn_card_import_worker(
+        &repos,
+        enqueue_cardmarket_id_use_case.clone(),
+        enqueue_gatherer_id_use_case.clone(),
+    );
 
     let app_state = create_app_state(
         repos,
@@ -432,6 +487,7 @@ pub async fn create_infra(pool: Pool<Postgres>, config: &Config) -> Router {
         card_collection_service,
         enqueue_cardmarket_id_use_case,
         enqueue_gatherer_id_use_case,
+        card_import_sender,
     );
 
     schedule_price_import_job(app_state.import_price_use_case.clone()).await;
@@ -460,7 +516,7 @@ impl AppState {
             MockAbandonTradeUseCase, MockAcceptTradeUseCase, MockAddTradeBinderUseCase,
             MockAddTradeCardUseCase, MockAutocompleteUsersUseCase, MockConfirmTradeUseCase,
             MockCreateTradeUseCase, MockEnqueueCardMarketIdUpdateUseCase,
-            MockEnqueueGathererIdUpdateUseCase, MockGetCardOffersUseCase,
+            MockEnqueueGathererIdUpdateUseCase, MockGetCardImportUseCase, MockGetCardOffersUseCase,
             MockGetCardPriceHistoryUseCase, MockGetCollectionPriceHistoryUseCase,
             MockGetCollectionStatsUseCase, MockGetCollectionUseCase,
             MockGetCollectionVisibilityUseCase, MockGetRarityTradeFiltersUseCase,
@@ -471,12 +527,13 @@ impl AppState {
             MockSetCollectionVisibilityUseCase, MockSetRarityTradeFilterUseCase,
         };
         use crate::domain::card::CardInfo;
+        use crate::domain::card_import::CardImportId;
         use crate::domain::user::User;
 
         let mut mock_import_card = MockImportCardUseCase::new();
         mock_import_card
-            .expect_import_cards()
-            .returning(|_, _| Box::pin(async { Ok(()) }));
+            .expect_start_import()
+            .returning(|_, _| Box::pin(async { Ok(CardImportId::new()) }));
 
         let mut mock_edh_rec = MockEdhRecCaller::new();
         mock_edh_rec.expect_get_card_info().returning(|_| {
@@ -530,6 +587,7 @@ impl AppState {
             set_rarity_trade_filter_use_case: Arc::new(MockSetRarityTradeFilterUseCase::new()),
             list_sets_use_case: Arc::new(MockListSetsUseCase::new()),
             get_set_use_case: Arc::new(MockGetSetUseCase::new()),
+            card_import_query_use_case: Arc::new(MockGetCardImportUseCase::new()),
         }
     }
 

@@ -1,6 +1,7 @@
+import type { CardImport } from '~/bindings/CardImport';
+import type { CardImportStarted } from '~/bindings/CardImportStarted';
 import type { CollectionParams } from '~/bindings/CollectionParams';
 import type { CollectionStats } from '~/bindings/CollectionStats';
-import type { Message } from '~/bindings/Message';
 import type { PaginatedCollection } from '~/bindings/PaginatedCollection';
 import type { PriceHistoryEntry } from '~/bindings/PriceHistoryEntry';
 import type { PriceHistoryParams } from '~/bindings/PriceHistoryParams';
@@ -17,11 +18,15 @@ export const useCollectionService = () => {
     );
 
   const importCards = (csv: string) =>
-    apiCall<Message>('/collection/import', {
+    apiCall<CardImportStarted>('/collection/import', {
       method: 'POST',
       body: csv,
       headers: { 'Content-Type': 'text/plain' },
     });
+
+  const getCardImport = (id: string) => apiCall<CardImport>(`/collection/import/${id}`);
+
+  const listCardImports = () => apiCall<CardImport[]>('/collection/import');
 
   const getCollectionStats = () =>
     useAsyncData('collection-stats', () => apiCall<CollectionStats>('/collection/stats'), {
@@ -51,6 +56,8 @@ export const useCollectionService = () => {
   return {
     getCollection,
     importCards,
+    getCardImport,
+    listCardImports,
     getCollectionStats,
     getPriceHistory,
     getRarityFilters,

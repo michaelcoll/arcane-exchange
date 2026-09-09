@@ -1,4 +1,5 @@
 pub mod card;
+pub mod card_import;
 pub mod card_offer;
 pub mod collection;
 pub mod collection_stats;

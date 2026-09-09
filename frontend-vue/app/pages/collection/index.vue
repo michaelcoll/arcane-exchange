@@ -6,7 +6,14 @@ import type { SortDir } from '~/bindings/SortDir';
 
 definePageMeta({ middleware: 'auth' });
 
-const { getCollection, getCollectionStats, importCards, getPriceHistory } = useCollectionService();
+const {
+  getCollection,
+  getCollectionStats,
+  importCards,
+  getCardImport,
+  listCardImports,
+  getPriceHistory,
+} = useCollectionService();
 
 const q = ref('');
 const qDebounced = refDebounced(q, 200);
@@ -169,11 +176,28 @@ const variation = computed(() => computeVariation(priceHistoryData.value ?? []))
 
 const sheet = ref(false);
 const importOpen = ref(false);
-const importStep = ref<'drop'>('drop');
 const importLoading = ref(false);
-const importError = ref<string | null>(null);
 const isDragging = ref(false);
 const fileInputRef = ref<HTMLInputElement | null>(null);
+const {
+  step: importStep,
+  status: importStatus,
+  error: importError,
+  wasAlreadyRunning: importWasAlreadyRunning,
+  progressPercent: importProgressPercent,
+  start: startImportFlow,
+  stopPolling: stopImportPolling,
+  reset: resetImportFlow,
+} = useCardImportFlow(
+  { importCards, getCardImport, listCardImports },
+  {
+    onCompleted: () => {
+      allCards.value = [];
+      params.value.page = 0;
+      refresh();
+    },
+  },
+);
 const active = ref({ rar: [] as RarityCode[], sets: [] as string[] });
 const detail = ref<CollectionCard | null>(null);
 
@@ -245,10 +269,16 @@ const sizeOptions = [
   { value: 'lg', label: '', icon: 'lucide:square', title: 'Grandes cartes', tone: 'cyan' },
 ];
 
+onBeforeUnmount(stopImportPolling);
+
 const openImport = () => {
-  importStep.value = 'drop';
-  importError.value = null;
+  resetImportFlow();
   importOpen.value = true;
+};
+
+const closeImport = () => {
+  stopImportPolling();
+  importOpen.value = false;
 };
 
 const handleFile = async (file: File) => {
@@ -256,18 +286,10 @@ const handleFile = async (file: File) => {
     importError.value = 'Le fichier doit être au format .csv';
     return;
   }
-  importError.value = null;
   importLoading.value = true;
   try {
     const csv = await file.text();
-    await importCards(csv);
-    importOpen.value = false;
-    allCards.value = [];
-    params.value.page = 0;
-    refresh();
-  } catch (e: unknown) {
-    const err = e as { data?: { error?: string } };
-    importError.value = err?.data?.error ?? "Erreur lors de l'import";
+    await startImportFlow(csv);
   } finally {
     importLoading.value = false;
     if (fileInputRef.value) fileInputRef.value.value = '';
@@ -623,7 +645,7 @@ const onDragLeave = () => {
     <div
       v-if="importOpen"
       class="fixed inset-0 z-[80] grid animate-[fade_0.2s_ease] place-items-center bg-black/60 p-5 backdrop-blur-sm"
-      @click="importOpen = false"
+      @click="closeImport"
     >
       <div
         class="w-full max-w-[480px] animate-[pop_0.26s_cubic-bezier(0.3,1.2,0.4,1)] rounded-3xl border border-slate-300 bg-white p-6 shadow-2xl dark:border-white/15 dark:bg-zinc-900"
@@ -633,19 +655,19 @@ const onDragLeave = () => {
           <h3 class="font-display text-xl font-semibold tracking-tight">Importer depuis Manabox</h3>
           <button
             class="grid h-9 w-9 place-items-center rounded-lg border border-slate-200 bg-slate-100 text-slate-600 transition-all duration-150 hover:border-slate-300 hover:bg-slate-50 hover:text-slate-800 hover:ring-4 hover:ring-cyan-500/10 dark:border-white/10 dark:bg-white/5 dark:text-slate-300 dark:hover:border-white/15 dark:hover:bg-zinc-800 dark:hover:text-slate-100"
-            @click="importOpen = false"
+            @click="closeImport"
           >
             <Icon name="lucide:x" :size="16" />
           </button>
         </div>
-        <p class="mt-0 text-sm text-slate-600 dark:text-slate-300">
-          Exporte ta collection en
-          <span class="font-mono tracking-tight">.csv</span>
-          depuis Manabox, puis dépose-la ici.
-        </p>
 
         <!-- Step: drop zone -->
-        <template v-if="importStep === 'drop'">
+        <template v-if="importStep === 'idle'">
+          <p class="mt-0 text-sm text-slate-600 dark:text-slate-300">
+            Exporte ta collection en
+            <span class="font-mono tracking-tight">.csv</span>
+            depuis Manabox, puis dépose-la ici.
+          </p>
           <input
             ref="fileInputRef"
             type="file"
@@ -673,7 +695,7 @@ const onDragLeave = () => {
             />
             <div class="flex flex-col items-center gap-1">
               <span class="font-semibold">{{
-                importLoading ? 'Import en cours…' : 'Glisse ton fichier .csv ici'
+                importLoading ? 'Envoi en cours…' : 'Glisse ton fichier .csv ici'
               }}</span>
               <span v-if="!importLoading" class="text-xs text-slate-400 dark:text-slate-500"
                 >ou clique pour parcourir</span
@@ -683,6 +705,72 @@ const onDragLeave = () => {
           <p v-if="importError" class="mt-2.5 mb-0 text-sm text-red-400">
             {{ importError }}
           </p>
+        </template>
+
+        <!-- Step: progress -->
+        <template v-else-if="importStep === 'progress'">
+          <p v-if="importWasAlreadyRunning" class="mt-0 text-sm text-amber-500">
+            Un import est déjà en cours pour ton compte — voici sa progression :
+          </p>
+          <p v-else class="mt-0 text-sm text-slate-600 dark:text-slate-300">Import en cours…</p>
+          <div
+            class="mt-4 flex items-center justify-between text-sm text-slate-600 dark:text-slate-300"
+          >
+            <span
+              >{{ importStatus?.processed_lines ?? 0 }} /
+              {{ importStatus?.total_lines ?? 0 }} cartes</span
+            >
+            <span class="font-mono">{{ importProgressPercent }}%</span>
+          </div>
+          <div
+            class="mt-2 h-2.5 w-full overflow-hidden rounded-full bg-slate-200 dark:bg-white/10"
+            role="progressbar"
+            :aria-valuenow="importProgressPercent"
+            aria-valuemin="0"
+            aria-valuemax="100"
+          >
+            <div
+              class="h-full rounded-full bg-cyan-500 transition-[width] duration-300 dark:bg-cyan-400"
+              :style="{ width: importProgressPercent + '%' }"
+            />
+          </div>
+        </template>
+
+        <!-- Step: done -->
+        <template v-else-if="importStep === 'done' && importStatus?.status === 'completed'">
+          <p class="mt-0 text-sm text-slate-600 dark:text-slate-300">
+            <strong>{{ importStatus.total_lines }}</strong> carte(s) importée(s)
+            <template v-if="importStatus.error_count > 0">
+              — <strong>{{ importStatus.error_count }}</strong> ligne(s) ignorée(s)
+            </template>
+          </p>
+          <ul
+            v-if="importStatus.errors.length"
+            class="mt-2 max-h-32 list-disc space-y-1 overflow-y-auto pl-5 text-xs text-amber-600 dark:text-amber-400"
+          >
+            <li v-for="e in importStatus.errors" :key="e.line">
+              Ligne {{ e.line }} : champ « {{ e.field }} » invalide ({{ e.value }})
+            </li>
+          </ul>
+          <button
+            class="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-xl border border-transparent bg-cyan-500 px-4 py-2.5 text-sm leading-none font-bold whitespace-nowrap text-zinc-950 shadow-lg transition-all duration-150 hover:-translate-y-px hover:bg-cyan-400 active:translate-y-0 dark:bg-cyan-400 dark:hover:bg-cyan-300"
+            @click="closeImport"
+          >
+            Fermer
+          </button>
+        </template>
+
+        <!-- Step: done (failed) -->
+        <template v-else-if="importStep === 'done'">
+          <p class="mt-0 text-sm text-red-400">
+            {{ importStatus?.error_message ?? "L'import a échoué." }}
+          </p>
+          <button
+            class="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-xl border border-transparent bg-cyan-500 px-4 py-2.5 text-sm leading-none font-bold whitespace-nowrap text-zinc-950 shadow-lg transition-all duration-150 hover:-translate-y-px hover:bg-cyan-400 active:translate-y-0 dark:bg-cyan-400 dark:hover:bg-cyan-300"
+            @click="openImport"
+          >
+            Réessayer
+          </button>
         </template>
       </div>
     </div>

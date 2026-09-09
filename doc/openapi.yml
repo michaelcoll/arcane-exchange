@@ -233,6 +233,23 @@ paths:
       security:
       - bearer_auth: []
   /collection/import:
+    get:
+      tags:
+      - collection
+      operationId: list_card_imports
+      responses:
+        '200':
+          description: The caller's imports, most recent first
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/CardImportResponse'
+        '401':
+          description: Missing or invalid token
+      security:
+      - bearer_auth: []
     post:
       tags:
       - collection
@@ -245,16 +262,43 @@ paths:
               type: string
         required: true
       responses:
-        '200':
-          description: Import successful
+        '202':
+          description: Import accepted, processing in the background
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/MessageResponse'
+                $ref: '#/components/schemas/CardImportStartedResponse'
         '400':
-          description: Invalid body (non UTF-8, ...)
+          description: Invalid body (non UTF-8, malformed CSV, ...)
         '401':
           description: Missing or invalid token
+        '409':
+          description: An import is already in progress for this user
+      security:
+      - bearer_auth: []
+  /collection/import/{id}:
+    get:
+      tags:
+      - collection
+      operationId: get_card_import
+      parameters:
+      - name: id
+        in: path
+        description: Import id
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          description: Import status
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CardImportResponse'
+        '401':
+          description: Missing or invalid token
+        '404':
+          description: Import not found, or not owned by the caller
       security:
       - bearer_auth: []
   /collection/price-history:
@@ -953,6 +997,79 @@ components:
           format: int64
           minimum: 0
         name:
+          type: string
+    CardImportLineErrorResponse:
+      type: object
+      required:
+      - line
+      - field
+      - value
+      properties:
+        field:
+          type: string
+        line:
+          type: integer
+          minimum: 0
+        value:
+          type: string
+    CardImportResponse:
+      type: object
+      required:
+      - id
+      - status
+      - source_lines
+      - total_lines
+      - processed_lines
+      - errors
+      - error_count
+      - created_at
+      properties:
+        created_at:
+          type: string
+          description: RFC 3339 timestamp
+        error_count:
+          type: integer
+          format: int32
+          minimum: 0
+        error_message:
+          type:
+          - string
+          - 'null'
+        errors:
+          type: array
+          items:
+            $ref: '#/components/schemas/CardImportLineErrorResponse'
+          description: Truncated to at most 100 entries; `error_count` carries the true total.
+        finished_at:
+          type:
+          - string
+          - 'null'
+          description: RFC 3339 timestamp
+        id:
+          type: string
+        processed_lines:
+          type: integer
+          format: int32
+          minimum: 0
+        source_lines:
+          type: integer
+          format: int32
+          description: Data lines read from the CSV, before the "Tokens" set filter and deduplication.
+          minimum: 0
+        status:
+          type: string
+          description: '`pending`, `running`, `completed` or `failed`.'
+        total_lines:
+          type: integer
+          format: int32
+          description: Cards to write, after deduplication — the denominator for `processed_lines`.
+          minimum: 0
+    CardImportStartedResponse:
+      type: object
+      required:
+      - id
+      properties:
+        id:
           type: string
     CardOfferResponse:
       type: object

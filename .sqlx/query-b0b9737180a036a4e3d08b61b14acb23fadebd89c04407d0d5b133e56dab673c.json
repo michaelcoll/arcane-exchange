@@ -1,0 +1,24 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            INSERT INTO card_import\n                (id, user_id, status, source_lines, total_lines, processed_lines,\n                 line_errors, line_error_count, error_message, created_at, finished_at)\n            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Varchar",
+        "Text",
+        "Int4",
+        "Int4",
+        "Int4",
+        "Jsonb",
+        "Int4",
+        "Text",
+        "Timestamptz",
+        "Timestamptz"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "b0b9737180a036a4e3d08b61b14acb23fadebd89c04407d0d5b133e56dab673c"
+}

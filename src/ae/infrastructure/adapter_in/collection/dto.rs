@@ -1,4 +1,5 @@
 use crate::domain::card::{Card, CollectionEntry};
+use crate::domain::card_import::{CardImport, CardImportLineError};
 use crate::domain::collection::{CollectionSortField, SortDirection};
 use crate::domain::collection_stats::{BinderInfo, CollectionStats};
 use crate::domain::price::PriceGuide;
@@ -14,6 +15,76 @@ use utoipa::ToSchema;
 #[ts(export, export_to = "Message.ts")]
 pub struct MessageResponse {
     pub message: String,
+}
+
+// --- Card import ---
+#[derive(Serialize, Debug, TS, ToSchema)]
+#[serde(rename = "CardImportStarted")]
+#[ts(export, export_to = "CardImportStarted.ts")]
+pub struct CardImportStartedResponse {
+    pub id: String,
+}
+
+#[derive(Serialize, Debug, TS, ToSchema)]
+#[serde(rename = "CardImportLineError")]
+#[ts(export, export_to = "CardImportLineError.ts")]
+pub struct CardImportLineErrorResponse {
+    pub line: usize,
+    pub field: String,
+    pub value: String,
+}
+
+impl From<CardImportLineError> for CardImportLineErrorResponse {
+    fn from(e: CardImportLineError) -> Self {
+        Self {
+            line: e.line,
+            field: e.field,
+            value: e.value,
+        }
+    }
+}
+
+#[derive(Serialize, Debug, TS, ToSchema)]
+#[serde(rename = "CardImport")]
+#[ts(export, export_to = "CardImport.ts")]
+pub struct CardImportResponse {
+    pub id: String,
+    /// `pending`, `running`, `completed` or `failed`.
+    pub status: String,
+    /// Data lines read from the CSV, before the "Tokens" set filter and deduplication.
+    pub source_lines: u32,
+    /// Cards to write, after deduplication — the denominator for `processed_lines`.
+    pub total_lines: u32,
+    pub processed_lines: u32,
+    /// Truncated to at most 100 entries; `error_count` carries the true total.
+    pub errors: Vec<CardImportLineErrorResponse>,
+    pub error_count: u32,
+    pub error_message: Option<String>,
+    /// RFC 3339 timestamp
+    pub created_at: String,
+    /// RFC 3339 timestamp
+    pub finished_at: Option<String>,
+}
+
+impl From<CardImport> for CardImportResponse {
+    fn from(import: CardImport) -> Self {
+        Self {
+            id: import.id.to_string(),
+            status: import.status.to_string(),
+            source_lines: import.source_lines,
+            total_lines: import.total_lines,
+            processed_lines: import.processed_lines,
+            errors: import
+                .line_errors
+                .into_iter()
+                .map(CardImportLineErrorResponse::from)
+                .collect(),
+            error_count: import.line_error_count,
+            error_message: import.error_message,
+            created_at: import.created_at.to_rfc3339(),
+            finished_at: import.finished_at.map(|d| d.to_rfc3339()),
+        }
+    }
 }
 
 // --- Collection stats ---

@@ -5,7 +5,8 @@ use crate::domain::card::{CardId, CollectionEntry};
 use crate::domain::user::User;
 use crate::infrastructure::adapter_out::repository::entities::{CardIdEntity, CardNameEntity};
 use async_trait::async_trait;
-use sqlx::{Pool, Postgres};
+use sqlx::{Pool, Postgres, QueryBuilder};
+use std::collections::HashSet;
 
 pub struct CardRepositoryAdapter {
     pool: Pool<Postgres>,
@@ -76,60 +77,75 @@ impl CardRepository for CardRepositoryAdapter {
         Ok(record.map(|r| (r.cardmarket_id.map(|id| id as u32), r.foil)))
     }
 
-    #[tracing::instrument(name = "card_repo.save", skip_all, fields(sentry.op = "db"))]
-    async fn save(&self, user: User, card: ImportedCard) -> Result<(), AppError> {
-        let ImportedCard { card, binder_name } = card;
+    #[tracing::instrument(name = "card_repo.save_all", skip_all, fields(sentry.op = "db"))]
+    async fn save_all(&self, user: &User, cards: &[ImportedCard]) -> Result<(), AppError> {
+        if cards.is_empty() {
+            return Ok(());
+        }
 
-        let CollectionEntry::Mine {
-            quantity,
-            purchase_price,
-            added_at,
-            ..
-        } = &card.collection_entry
-        else {
-            panic!("save() is only called for cards owned by the importing user");
-        };
+        let mut tx = self.pool.begin().await?;
 
-        sqlx::query!(
-        r#"INSERT INTO card (set_code, collector_number, language_code, foil, name, rarity, scryfall_id)
-            VALUES ($1, $2, $3, $4, $5, $6, $7)
-            ON CONFLICT(set_code, collector_number, language_code, foil)
-                DO UPDATE
-                SET name          = $5,
-                    rarity        = $6,
-                    scryfall_id   = $7"#,
-            card.id.set_code.to_string(),
-            card.id.collector_number,
-            card.id.language_code.to_string(),
-            card.id.foil,
-            card.name,
-            card.rarity_code.to_string(),
-            card.scryfall_id,
-        )
-        .execute(&self.pool)
-        .await?;
+        // A card can appear once per binder (see `ImportedCard` dedup key in `parse_service`),
+        // so the same `CardId` may show up several times here. `INSERT ... ON CONFLICT DO
+        // UPDATE` cannot affect the same row twice in one statement, so the `card` table only
+        // gets the first occurrence of each id — the following are identical game data anyway.
+        let mut seen_card_ids = HashSet::with_capacity(cards.len());
+        let distinct_cards: Vec<&ImportedCard> = cards
+            .iter()
+            .filter(|imported| seen_card_ids.insert(imported.card.id.clone()))
+            .collect();
 
-        sqlx::query!(
-        r#"INSERT INTO collection_entry (set_code, collector_number, language_code, foil, user_id, quantity, purchase_price, added_at, binder_name)
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-            ON CONFLICT(set_code, collector_number, language_code, foil, user_id, binder_name)
-                DO UPDATE
-                SET quantity       = $6,
-                    purchase_price = $7,
-                    added_at       = $8"#,
-            card.id.set_code.to_string(),
-            card.id.collector_number,
-            card.id.language_code.to_string(),
-            card.id.foil,
-            user.id.as_str(),
-            *quantity as i32,
-            *purchase_price as i32,
-            added_at,
-            binder_name,
-        )
-            .execute(&self.pool)
-            .await?;
+        let mut qb: QueryBuilder<Postgres> = QueryBuilder::new(
+            "INSERT INTO card (set_code, collector_number, language_code, foil, name, rarity, scryfall_id)",
+        );
+        qb.push_values(&distinct_cards, |mut b, imported| {
+            let card = &imported.card;
+            b.push_bind(card.id.set_code.to_string())
+                .push_bind(card.id.collector_number.clone())
+                .push_bind(card.id.language_code.to_string())
+                .push_bind(card.id.foil)
+                .push_bind(card.name.clone())
+                .push_bind(card.rarity_code.to_string())
+                .push_bind(card.scryfall_id);
+        });
+        qb.push(
+            "ON CONFLICT (set_code, collector_number, language_code, foil)
+             DO UPDATE SET name = EXCLUDED.name, rarity = EXCLUDED.rarity, scryfall_id = EXCLUDED.scryfall_id",
+        );
+        qb.build().execute(&mut *tx).await?;
 
+        let mut qb: QueryBuilder<Postgres> = QueryBuilder::new(
+            "INSERT INTO collection_entry
+                (set_code, collector_number, language_code, foil, user_id, quantity, purchase_price, added_at, binder_name)",
+        );
+        qb.push_values(cards, |mut b, imported| {
+            let card = &imported.card;
+            let CollectionEntry::Mine {
+                quantity,
+                purchase_price,
+                added_at,
+                ..
+            } = &card.collection_entry
+            else {
+                panic!("save_all() is only called for cards owned by the importing user");
+            };
+            b.push_bind(card.id.set_code.to_string())
+                .push_bind(card.id.collector_number.clone())
+                .push_bind(card.id.language_code.to_string())
+                .push_bind(card.id.foil)
+                .push_bind(user.id.as_str())
+                .push_bind(*quantity as i32)
+                .push_bind(*purchase_price as i32)
+                .push_bind(*added_at)
+                .push_bind(imported.binder_name.clone());
+        });
+        qb.push(
+            "ON CONFLICT (set_code, collector_number, language_code, foil, user_id, binder_name)
+             DO UPDATE SET quantity = EXCLUDED.quantity, purchase_price = EXCLUDED.purchase_price, added_at = EXCLUDED.added_at",
+        );
+        qb.build().execute(&mut *tx).await?;
+
+        tx.commit().await?;
         Ok(())
     }
 
@@ -203,7 +219,7 @@ mod tests {
     use uuid::Uuid;
 
     #[sqlx::test]
-    async fn save_card_updates_existing_card(pool: PgPool) {
+    async fn save_all_updates_existing_card(pool: PgPool) {
         insert_user(&pool, "test-user-id", "testuser").await;
         let repository = CardRepositoryAdapter::new(pool.clone());
 
@@ -219,12 +235,12 @@ mod tests {
             500,
         );
         repository
-            .save(
-                User::for_testing(),
-                ImportedCard {
+            .save_all(
+                &User::for_testing(),
+                &[ImportedCard {
                     card,
                     binder_name: None,
-                },
+                }],
             )
             .await
             .unwrap();
@@ -241,12 +257,12 @@ mod tests {
             1500,
         );
         repository
-            .save(
-                User::for_testing(),
-                ImportedCard {
+            .save_all(
+                &User::for_testing(),
+                &[ImportedCard {
                     card: updated_card,
                     binder_name: None,
-                },
+                }],
             )
             .await
             .unwrap();
@@ -258,7 +274,7 @@ mod tests {
     }
 
     #[sqlx::test]
-    async fn save_creates_distinct_rows_for_different_binder_names(pool: PgPool) {
+    async fn save_all_creates_distinct_rows_for_different_binder_names(pool: PgPool) {
         insert_user(&pool, "test-user-id", "testuser").await;
         let repository = CardRepositoryAdapter::new(pool.clone());
 
@@ -274,22 +290,22 @@ mod tests {
             100,
         );
         repository
-            .save(
-                User::for_testing(),
-                ImportedCard {
+            .save_all(
+                &User::for_testing(),
+                &[ImportedCard {
                     card: card.clone(),
                     binder_name: Some("Binder A".to_string()),
-                },
+                }],
             )
             .await
             .unwrap();
         repository
-            .save(
-                User::for_testing(),
-                ImportedCard {
+            .save_all(
+                &User::for_testing(),
+                &[ImportedCard {
                     card,
                     binder_name: Some("Binder B".to_string()),
-                },
+                }],
             )
             .await
             .unwrap();
@@ -303,7 +319,7 @@ mod tests {
     }
 
     #[sqlx::test]
-    async fn save_creates_distinct_rows_for_named_and_null_binder(pool: PgPool) {
+    async fn save_all_creates_distinct_rows_for_named_and_null_binder(pool: PgPool) {
         insert_user(&pool, "test-user-id", "testuser").await;
         let repository = CardRepositoryAdapter::new(pool.clone());
 
@@ -319,22 +335,22 @@ mod tests {
             100,
         );
         repository
-            .save(
-                User::for_testing(),
-                ImportedCard {
+            .save_all(
+                &User::for_testing(),
+                &[ImportedCard {
                     card: card.clone(),
                     binder_name: Some("Binder A".to_string()),
-                },
+                }],
             )
             .await
             .unwrap();
         repository
-            .save(
-                User::for_testing(),
-                ImportedCard {
+            .save_all(
+                &User::for_testing(),
+                &[ImportedCard {
                     card,
                     binder_name: None,
-                },
+                }],
             )
             .await
             .unwrap();
@@ -344,7 +360,7 @@ mod tests {
     }
 
     #[sqlx::test]
-    async fn save_upserts_same_row_when_binder_name_is_null(pool: PgPool) {
+    async fn save_all_upserts_same_row_when_binder_name_is_null(pool: PgPool) {
         insert_user(&pool, "test-user-id", "testuser").await;
         let repository = CardRepositoryAdapter::new(pool.clone());
 
@@ -360,22 +376,22 @@ mod tests {
             100,
         );
         repository
-            .save(
-                User::for_testing(),
-                ImportedCard {
+            .save_all(
+                &User::for_testing(),
+                &[ImportedCard {
                     card: card.clone(),
                     binder_name: None,
-                },
+                }],
             )
             .await
             .unwrap();
         repository
-            .save(
-                User::for_testing(),
-                ImportedCard {
+            .save_all(
+                &User::for_testing(),
+                &[ImportedCard {
                     card,
                     binder_name: None,
-                },
+                }],
             )
             .await
             .unwrap();
@@ -560,5 +576,81 @@ mod tests {
             .unwrap();
 
         assert_eq!(result, None);
+    }
+
+    fn imported_card(
+        collector_number: &str,
+        quantity: u8,
+        purchase_price: u32,
+        binder_name: Option<&str>,
+    ) -> ImportedCard {
+        ImportedCard {
+            card: Card::new(
+                "FDN",
+                "Foundations",
+                collector_number,
+                LanguageCode::FR,
+                false,
+                "Goblin Boarders",
+                RarityCode::C,
+                quantity,
+                purchase_price,
+            ),
+            binder_name: binder_name.map(str::to_string),
+        }
+    }
+
+    #[sqlx::test]
+    async fn save_all_does_not_error_when_the_same_card_appears_in_two_binders(pool: PgPool) {
+        insert_user(&pool, "test-user-id", "testuser").await;
+        let repository = CardRepositoryAdapter::new(pool.clone());
+
+        let cards = vec![
+            imported_card("87", 3, 800, Some("bulk")),
+            imported_card("87", 1, 800, Some("deck")),
+        ];
+
+        repository
+            .save_all(&User::for_testing(), &cards)
+            .await
+            .unwrap();
+
+        let card_rows = sqlx::query!("SELECT collector_number FROM card WHERE set_code = 'FDN'")
+            .fetch_all(&pool)
+            .await
+            .unwrap();
+        assert_eq!(card_rows.len(), 1, "one card row for the shared CardId");
+
+        let entries = fetch_collection_entries(&pool, "test-user-id").await;
+        assert_eq!(entries.len(), 2, "one collection_entry row per binder");
+    }
+
+    #[sqlx::test]
+    async fn save_all_upserts_quantity_and_price_like_save(pool: PgPool) {
+        insert_user(&pool, "test-user-id", "testuser").await;
+        let repository = CardRepositoryAdapter::new(pool.clone());
+
+        repository
+            .save_all(&User::for_testing(), &[imported_card("87", 3, 500, None)])
+            .await
+            .unwrap();
+        repository
+            .save_all(&User::for_testing(), &[imported_card("87", 5, 1500, None)])
+            .await
+            .unwrap();
+
+        let entries = fetch_collection_entries(&pool, "test-user-id").await;
+        assert_eq!(entries.len(), 1);
+        assert_eq!(entries[0].quantity, 5);
+        assert_eq!(entries[0].purchase_price, 1500);
+    }
+
+    #[sqlx::test]
+    async fn save_all_does_nothing_for_an_empty_slice(pool: PgPool) {
+        let repository = CardRepositoryAdapter::new(pool);
+        repository
+            .save_all(&User::for_testing(), &[])
+            .await
+            .unwrap();
     }
 }

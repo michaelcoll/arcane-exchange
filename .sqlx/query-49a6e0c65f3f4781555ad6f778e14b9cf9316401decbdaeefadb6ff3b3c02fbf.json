@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            UPDATE card_import\n            SET status = 'failed', error_message = $1, finished_at = now()\n            WHERE status IN ('pending', 'running')\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "49a6e0c65f3f4781555ad6f778e14b9cf9316401decbdaeefadb6ff3b3c02fbf"
+}

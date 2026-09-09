@@ -17,6 +17,7 @@ Each table is owned by one adapter in `src/ae/infrastructure/adapter_out/reposit
 | `collection_price_history`  | Daily valuation of a user's collection                                    | `collection_price_history_repository_adapter` |
 | `users`                     | Local mirror of Clerk users (id, username)                                | `user_repository_adapter`                     |
 | `trade`, `trade_card`       | Trades and the cards engaged in them                                      | `trade_repository_adapter`                    |
+| `card_import`               | Async collection import jobs: status, progress, line errors               | `card_import_repository_adapter`              |
 | `mv_last_cardmarket_prices` | Materialized view: last Cardmarket price per card, no ownership condition | `card_prices_view_repository_adapter`         |
 | `mv_card_prices`            | Materialized view: collection joined with latest prices                   | `card_prices_view_repository_adapter`         |
 

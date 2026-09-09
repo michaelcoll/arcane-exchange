@@ -26,6 +26,7 @@ impl IntoResponse for AppError {
                 | FunctionalError::InvalidRarityCode(_)
                 | FunctionalError::InvalidCollectorNumber(_)
                 | FunctionalError::WrongFormat(_)
+                | FunctionalError::InvalidCardImportStatus(_)
                 | FunctionalError::InvalidPageSize { .. }
                 | FunctionalError::PaginationTooDeep { .. }
                 | FunctionalError::AddedAtSortRequiresPlayerUsername
@@ -36,7 +37,8 @@ impl IntoResponse for AppError {
                 | FunctionalError::TradeNotFound
                 | FunctionalError::UserNotFound
                 | FunctionalError::TradeCardNotFound
-                | FunctionalError::BinderNotFound => StatusCode::NOT_FOUND,
+                | FunctionalError::BinderNotFound
+                | FunctionalError::ImportNotFound => StatusCode::NOT_FOUND,
                 FunctionalError::TradeAccessDenied => StatusCode::FORBIDDEN,
                 FunctionalError::TradeNotModifiable
                 | FunctionalError::TradeNotAcceptable
@@ -47,7 +49,8 @@ impl IntoResponse for AppError {
                 | FunctionalError::TradeNotCompleted
                 | FunctionalError::TradeAlreadyRated
                 | FunctionalError::TradeEmpty
-                | FunctionalError::CardAlreadyReserved => StatusCode::CONFLICT,
+                | FunctionalError::CardAlreadyReserved
+                | FunctionalError::ImportAlreadyRunning => StatusCode::CONFLICT,
             },
             AppError::Authentication(_) => StatusCode::UNAUTHORIZED,
             AppError::Infra(e) => match e {

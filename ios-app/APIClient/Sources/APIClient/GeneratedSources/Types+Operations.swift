@@ -1017,6 +1017,149 @@ public enum Operations {
             }
         }
     }
+    /// - Remark: HTTP `GET /collection/import`.
+    /// - Remark: Generated from `#/paths//collection/import/get(list_card_imports)`.
+    public enum list_card_imports {
+        public static let id: Swift.String = "list_card_imports"
+        public struct Input: Sendable, Hashable {
+            /// - Remark: Generated from `#/paths/collection/import/GET/header`.
+            public struct Headers: Sendable, Hashable {
+                public var accept: [OpenAPIRuntime.AcceptHeaderContentType<Operations.list_card_imports.AcceptableContentType>]
+                /// Creates a new `Headers`.
+                ///
+                /// - Parameters:
+                ///   - accept:
+                public init(accept: [OpenAPIRuntime.AcceptHeaderContentType<Operations.list_card_imports.AcceptableContentType>] = .defaultValues()) {
+                    self.accept = accept
+                }
+            }
+            public var headers: Operations.list_card_imports.Input.Headers
+            /// Creates a new `Input`.
+            ///
+            /// - Parameters:
+            ///   - headers:
+            public init(headers: Operations.list_card_imports.Input.Headers = .init()) {
+                self.headers = headers
+            }
+        }
+        @frozen public enum Output: Sendable, Hashable {
+            public struct Ok: Sendable, Hashable {
+                /// - Remark: Generated from `#/paths/collection/import/GET/responses/200/content`.
+                @frozen public enum Body: Sendable, Hashable {
+                    /// - Remark: Generated from `#/paths/collection/import/GET/responses/200/content/application\/json`.
+                    case json([Components.Schemas.CardImportResponse])
+                    /// The associated value of the enum case if `self` is `.json`.
+                    ///
+                    /// - Throws: An error if `self` is not `.json`.
+                    /// - SeeAlso: `.json`.
+                    public var json: [Components.Schemas.CardImportResponse] {
+                        get throws {
+                            switch self {
+                            case let .json(body):
+                                return body
+                            }
+                        }
+                    }
+                }
+                /// Received HTTP response body
+                public var body: Operations.list_card_imports.Output.Ok.Body
+                /// Creates a new `Ok`.
+                ///
+                /// - Parameters:
+                ///   - body: Received HTTP response body
+                public init(body: Operations.list_card_imports.Output.Ok.Body) {
+                    self.body = body
+                }
+            }
+            /// The caller's imports, most recent first
+            ///
+            /// - Remark: Generated from `#/paths//collection/import/get(list_card_imports)/responses/200`.
+            ///
+            /// HTTP response code: `200 ok`.
+            case ok(Operations.list_card_imports.Output.Ok)
+            /// The associated value of the enum case if `self` is `.ok`.
+            ///
+            /// - Throws: An error if `self` is not `.ok`.
+            /// - SeeAlso: `.ok`.
+            public var ok: Operations.list_card_imports.Output.Ok {
+                get throws {
+                    switch self {
+                    case let .ok(response):
+                        return response
+                    default:
+                        try throwUnexpectedResponseStatus(
+                            expectedStatus: "ok",
+                            response: self
+                        )
+                    }
+                }
+            }
+            public struct Unauthorized: Sendable, Hashable {
+                /// Creates a new `Unauthorized`.
+                public init() {}
+            }
+            /// Missing or invalid token
+            ///
+            /// - Remark: Generated from `#/paths//collection/import/get(list_card_imports)/responses/401`.
+            ///
+            /// HTTP response code: `401 unauthorized`.
+            case unauthorized(Operations.list_card_imports.Output.Unauthorized)
+            /// Missing or invalid token
+            ///
+            /// - Remark: Generated from `#/paths//collection/import/get(list_card_imports)/responses/401`.
+            ///
+            /// HTTP response code: `401 unauthorized`.
+            public static var unauthorized: Self {
+                .unauthorized(.init())
+            }
+            /// The associated value of the enum case if `self` is `.unauthorized`.
+            ///
+            /// - Throws: An error if `self` is not `.unauthorized`.
+            /// - SeeAlso: `.unauthorized`.
+            public var unauthorized: Operations.list_card_imports.Output.Unauthorized {
+                get throws {
+                    switch self {
+                    case let .unauthorized(response):
+                        return response
+                    default:
+                        try throwUnexpectedResponseStatus(
+                            expectedStatus: "unauthorized",
+                            response: self
+                        )
+                    }
+                }
+            }
+            /// Undocumented response.
+            ///
+            /// A response with a code that is not documented in the OpenAPI document.
+            case undocumented(statusCode: Swift.Int, OpenAPIRuntime.UndocumentedPayload)
+        }
+        @frozen public enum AcceptableContentType: AcceptableProtocol {
+            case json
+            case other(Swift.String)
+            public init?(rawValue: Swift.String) {
+                switch rawValue.lowercased() {
+                case "application/json":
+                    self = .json
+                default:
+                    self = .other(rawValue)
+                }
+            }
+            public var rawValue: Swift.String {
+                switch self {
+                case let .other(string):
+                    return string
+                case .json:
+                    return "application/json"
+                }
+            }
+            public static var allCases: [Self] {
+                [
+                    .json
+                ]
+            }
+        }
+    }
     /// - Remark: HTTP `POST /collection/import`.
     /// - Remark: Generated from `#/paths//collection/import/post(import_cards)`.
     public enum import_cards {
@@ -1054,16 +1197,16 @@ public enum Operations {
             }
         }
         @frozen public enum Output: Sendable, Hashable {
-            public struct Ok: Sendable, Hashable {
-                /// - Remark: Generated from `#/paths/collection/import/POST/responses/200/content`.
+            public struct Accepted: Sendable, Hashable {
+                /// - Remark: Generated from `#/paths/collection/import/POST/responses/202/content`.
                 @frozen public enum Body: Sendable, Hashable {
-                    /// - Remark: Generated from `#/paths/collection/import/POST/responses/200/content/application\/json`.
-                    case json(Components.Schemas.MessageResponse)
+                    /// - Remark: Generated from `#/paths/collection/import/POST/responses/202/content/application\/json`.
+                    case json(Components.Schemas.CardImportStartedResponse)
                     /// The associated value of the enum case if `self` is `.json`.
                     ///
                     /// - Throws: An error if `self` is not `.json`.
                     /// - SeeAlso: `.json`.
-                    public var json: Components.Schemas.MessageResponse {
+                    public var json: Components.Schemas.CardImportStartedResponse {
                         get throws {
                             switch self {
                             case let .json(body):
@@ -1073,33 +1216,33 @@ public enum Operations {
                     }
                 }
                 /// Received HTTP response body
-                public var body: Operations.import_cards.Output.Ok.Body
-                /// Creates a new `Ok`.
+                public var body: Operations.import_cards.Output.Accepted.Body
+                /// Creates a new `Accepted`.
                 ///
                 /// - Parameters:
                 ///   - body: Received HTTP response body
-                public init(body: Operations.import_cards.Output.Ok.Body) {
+                public init(body: Operations.import_cards.Output.Accepted.Body) {
                     self.body = body
                 }
             }
-            /// Import successful
+            /// Import accepted, processing in the background
             ///
-            /// - Remark: Generated from `#/paths//collection/import/post(import_cards)/responses/200`.
+            /// - Remark: Generated from `#/paths//collection/import/post(import_cards)/responses/202`.
             ///
-            /// HTTP response code: `200 ok`.
-            case ok(Operations.import_cards.Output.Ok)
-            /// The associated value of the enum case if `self` is `.ok`.
+            /// HTTP response code: `202 accepted`.
+            case accepted(Operations.import_cards.Output.Accepted)
+            /// The associated value of the enum case if `self` is `.accepted`.
             ///
-            /// - Throws: An error if `self` is not `.ok`.
-            /// - SeeAlso: `.ok`.
-            public var ok: Operations.import_cards.Output.Ok {
+            /// - Throws: An error if `self` is not `.accepted`.
+            /// - SeeAlso: `.accepted`.
+            public var accepted: Operations.import_cards.Output.Accepted {
                 get throws {
                     switch self {
-                    case let .ok(response):
+                    case let .accepted(response):
                         return response
                     default:
                         try throwUnexpectedResponseStatus(
-                            expectedStatus: "ok",
+                            expectedStatus: "accepted",
                             response: self
                         )
                     }
@@ -1109,13 +1252,13 @@ public enum Operations {
                 /// Creates a new `BadRequest`.
                 public init() {}
             }
-            /// Invalid body (non UTF-8, ...)
+            /// Invalid body (non UTF-8, malformed CSV, ...)
             ///
             /// - Remark: Generated from `#/paths//collection/import/post(import_cards)/responses/400`.
             ///
             /// HTTP response code: `400 badRequest`.
             case badRequest(Operations.import_cards.Output.BadRequest)
-            /// Invalid body (non UTF-8, ...)
+            /// Invalid body (non UTF-8, malformed CSV, ...)
             ///
             /// - Remark: Generated from `#/paths//collection/import/post(import_cards)/responses/400`.
             ///
@@ -1170,6 +1313,239 @@ public enum Operations {
                     default:
                         try throwUnexpectedResponseStatus(
                             expectedStatus: "unauthorized",
+                            response: self
+                        )
+                    }
+                }
+            }
+            public struct Conflict: Sendable, Hashable {
+                /// Creates a new `Conflict`.
+                public init() {}
+            }
+            /// An import is already in progress for this user
+            ///
+            /// - Remark: Generated from `#/paths//collection/import/post(import_cards)/responses/409`.
+            ///
+            /// HTTP response code: `409 conflict`.
+            case conflict(Operations.import_cards.Output.Conflict)
+            /// An import is already in progress for this user
+            ///
+            /// - Remark: Generated from `#/paths//collection/import/post(import_cards)/responses/409`.
+            ///
+            /// HTTP response code: `409 conflict`.
+            public static var conflict: Self {
+                .conflict(.init())
+            }
+            /// The associated value of the enum case if `self` is `.conflict`.
+            ///
+            /// - Throws: An error if `self` is not `.conflict`.
+            /// - SeeAlso: `.conflict`.
+            public var conflict: Operations.import_cards.Output.Conflict {
+                get throws {
+                    switch self {
+                    case let .conflict(response):
+                        return response
+                    default:
+                        try throwUnexpectedResponseStatus(
+                            expectedStatus: "conflict",
+                            response: self
+                        )
+                    }
+                }
+            }
+            /// Undocumented response.
+            ///
+            /// A response with a code that is not documented in the OpenAPI document.
+            case undocumented(statusCode: Swift.Int, OpenAPIRuntime.UndocumentedPayload)
+        }
+        @frozen public enum AcceptableContentType: AcceptableProtocol {
+            case json
+            case other(Swift.String)
+            public init?(rawValue: Swift.String) {
+                switch rawValue.lowercased() {
+                case "application/json":
+                    self = .json
+                default:
+                    self = .other(rawValue)
+                }
+            }
+            public var rawValue: Swift.String {
+                switch self {
+                case let .other(string):
+                    return string
+                case .json:
+                    return "application/json"
+                }
+            }
+            public static var allCases: [Self] {
+                [
+                    .json
+                ]
+            }
+        }
+    }
+    /// - Remark: HTTP `GET /collection/import/{id}`.
+    /// - Remark: Generated from `#/paths//collection/import/{id}/get(get_card_import)`.
+    public enum get_card_import {
+        public static let id: Swift.String = "get_card_import"
+        public struct Input: Sendable, Hashable {
+            /// - Remark: Generated from `#/paths/collection/import/{id}/GET/path`.
+            public struct Path: Sendable, Hashable {
+                /// Import id
+                ///
+                /// - Remark: Generated from `#/paths/collection/import/{id}/GET/path/id`.
+                public var id: Swift.String
+                /// Creates a new `Path`.
+                ///
+                /// - Parameters:
+                ///   - id: Import id
+                public init(id: Swift.String) {
+                    self.id = id
+                }
+            }
+            public var path: Operations.get_card_import.Input.Path
+            /// - Remark: Generated from `#/paths/collection/import/{id}/GET/header`.
+            public struct Headers: Sendable, Hashable {
+                public var accept: [OpenAPIRuntime.AcceptHeaderContentType<Operations.get_card_import.AcceptableContentType>]
+                /// Creates a new `Headers`.
+                ///
+                /// - Parameters:
+                ///   - accept:
+                public init(accept: [OpenAPIRuntime.AcceptHeaderContentType<Operations.get_card_import.AcceptableContentType>] = .defaultValues()) {
+                    self.accept = accept
+                }
+            }
+            public var headers: Operations.get_card_import.Input.Headers
+            /// Creates a new `Input`.
+            ///
+            /// - Parameters:
+            ///   - path:
+            ///   - headers:
+            public init(
+                path: Operations.get_card_import.Input.Path,
+                headers: Operations.get_card_import.Input.Headers = .init()
+            ) {
+                self.path = path
+                self.headers = headers
+            }
+        }
+        @frozen public enum Output: Sendable, Hashable {
+            public struct Ok: Sendable, Hashable {
+                /// - Remark: Generated from `#/paths/collection/import/{id}/GET/responses/200/content`.
+                @frozen public enum Body: Sendable, Hashable {
+                    /// - Remark: Generated from `#/paths/collection/import/{id}/GET/responses/200/content/application\/json`.
+                    case json(Components.Schemas.CardImportResponse)
+                    /// The associated value of the enum case if `self` is `.json`.
+                    ///
+                    /// - Throws: An error if `self` is not `.json`.
+                    /// - SeeAlso: `.json`.
+                    public var json: Components.Schemas.CardImportResponse {
+                        get throws {
+                            switch self {
+                            case let .json(body):
+                                return body
+                            }
+                        }
+                    }
+                }
+                /// Received HTTP response body
+                public var body: Operations.get_card_import.Output.Ok.Body
+                /// Creates a new `Ok`.
+                ///
+                /// - Parameters:
+                ///   - body: Received HTTP response body
+                public init(body: Operations.get_card_import.Output.Ok.Body) {
+                    self.body = body
+                }
+            }
+            /// Import status
+            ///
+            /// - Remark: Generated from `#/paths//collection/import/{id}/get(get_card_import)/responses/200`.
+            ///
+            /// HTTP response code: `200 ok`.
+            case ok(Operations.get_card_import.Output.Ok)
+            /// The associated value of the enum case if `self` is `.ok`.
+            ///
+            /// - Throws: An error if `self` is not `.ok`.
+            /// - SeeAlso: `.ok`.
+            public var ok: Operations.get_card_import.Output.Ok {
+                get throws {
+                    switch self {
+                    case let .ok(response):
+                        return response
+                    default:
+                        try throwUnexpectedResponseStatus(
+                            expectedStatus: "ok",
+                            response: self
+                        )
+                    }
+                }
+            }
+            public struct Unauthorized: Sendable, Hashable {
+                /// Creates a new `Unauthorized`.
+                public init() {}
+            }
+            /// Missing or invalid token
+            ///
+            /// - Remark: Generated from `#/paths//collection/import/{id}/get(get_card_import)/responses/401`.
+            ///
+            /// HTTP response code: `401 unauthorized`.
+            case unauthorized(Operations.get_card_import.Output.Unauthorized)
+            /// Missing or invalid token
+            ///
+            /// - Remark: Generated from `#/paths//collection/import/{id}/get(get_card_import)/responses/401`.
+            ///
+            /// HTTP response code: `401 unauthorized`.
+            public static var unauthorized: Self {
+                .unauthorized(.init())
+            }
+            /// The associated value of the enum case if `self` is `.unauthorized`.
+            ///
+            /// - Throws: An error if `self` is not `.unauthorized`.
+            /// - SeeAlso: `.unauthorized`.
+            public var unauthorized: Operations.get_card_import.Output.Unauthorized {
+                get throws {
+                    switch self {
+                    case let .unauthorized(response):
+                        return response
+                    default:
+                        try throwUnexpectedResponseStatus(
+                            expectedStatus: "unauthorized",
+                            response: self
+                        )
+                    }
+                }
+            }
+            public struct NotFound: Sendable, Hashable {
+                /// Creates a new `NotFound`.
+                public init() {}
+            }
+            /// Import not found, or not owned by the caller
+            ///
+            /// - Remark: Generated from `#/paths//collection/import/{id}/get(get_card_import)/responses/404`.
+            ///
+            /// HTTP response code: `404 notFound`.
+            case notFound(Operations.get_card_import.Output.NotFound)
+            /// Import not found, or not owned by the caller
+            ///
+            /// - Remark: Generated from `#/paths//collection/import/{id}/get(get_card_import)/responses/404`.
+            ///
+            /// HTTP response code: `404 notFound`.
+            public static var notFound: Self {
+                .notFound(.init())
+            }
+            /// The associated value of the enum case if `self` is `.notFound`.
+            ///
+            /// - Throws: An error if `self` is not `.notFound`.
+            /// - SeeAlso: `.notFound`.
+            public var notFound: Operations.get_card_import.Output.NotFound {
+                get throws {
+                    switch self {
+                    case let .notFound(response):
+                        return response
+                    default:
+                        try throwUnexpectedResponseStatus(
+                            expectedStatus: "notFound",
                             response: self
                         )
                     }

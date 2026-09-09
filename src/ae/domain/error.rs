@@ -38,6 +38,9 @@ pub enum FunctionalError {
     TradeCardNotFound,
     CardAlreadyReserved,
     BinderNotFound,
+    InvalidCardImportStatus(String),
+    ImportAlreadyRunning,
+    ImportNotFound,
 }
 
 impl From<FunctionalError> for String {
@@ -103,6 +106,13 @@ impl From<FunctionalError> for String {
                 "This card is already reserved by another trade".to_string()
             }
             FunctionalError::BinderNotFound => "Binder not found in your collection".to_string(),
+            FunctionalError::InvalidCardImportStatus(msg) => {
+                format!("Invalid card import status '{}'", msg)
+            }
+            FunctionalError::ImportAlreadyRunning => {
+                "An import is already in progress for this user".to_string()
+            }
+            FunctionalError::ImportNotFound => "Import not found".to_string(),
         }
     }
 }

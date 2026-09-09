@@ -457,6 +457,66 @@ public struct Client: APIProtocol {
             }
         )
     }
+    /// - Remark: HTTP `GET /collection/import`.
+    /// - Remark: Generated from `#/paths//collection/import/get(list_card_imports)`.
+    public func list_card_imports(_ input: Operations.list_card_imports.Input) async throws -> Operations.list_card_imports.Output {
+        try await client.send(
+            input: input,
+            forOperation: Operations.list_card_imports.id,
+            serializer: { input in
+                let path = try converter.renderedPath(
+                    template: "/collection/import",
+                    parameters: []
+                )
+                var request: HTTPTypes.HTTPRequest = .init(
+                    soar_path: path,
+                    method: .get
+                )
+                suppressMutabilityWarning(&request)
+                converter.setAcceptHeader(
+                    in: &request.headerFields,
+                    contentTypes: input.headers.accept
+                )
+                return (request, nil)
+            },
+            deserializer: { response, responseBody in
+                switch response.status.code {
+                case 200:
+                    let contentType = converter.extractContentTypeIfPresent(in: response.headerFields)
+                    let body: Operations.list_card_imports.Output.Ok.Body
+                    let chosenContentType = try converter.bestContentType(
+                        received: contentType,
+                        options: [
+                            "application/json"
+                        ]
+                    )
+                    switch chosenContentType {
+                    case "application/json":
+                        body = try await converter.getResponseBodyAsJSON(
+                            [Components.Schemas.CardImportResponse].self,
+                            from: responseBody,
+                            transforming: { value in
+                                .json(value)
+                            }
+                        )
+                    default:
+                        preconditionFailure("bestContentType chose an invalid content type.")
+                    }
+                    return .ok(.init(body: body))
+                case 401:
+                    return .unauthorized(.init())
+                default:
+                    return .undocumented(
+                        statusCode: response.status.code,
+                        .init(
+                            headerFields: response.headerFields,
+                            body: responseBody
+                        )
+                    )
+                }
+            }
+        )
+    }
     /// - Remark: HTTP `POST /collection/import`.
     /// - Remark: Generated from `#/paths//collection/import/post(import_cards)`.
     public func import_cards(_ input: Operations.import_cards.Input) async throws -> Operations.import_cards.Output {
@@ -490,9 +550,9 @@ public struct Client: APIProtocol {
             },
             deserializer: { response, responseBody in
                 switch response.status.code {
-                case 200:
+                case 202:
                     let contentType = converter.extractContentTypeIfPresent(in: response.headerFields)
-                    let body: Operations.import_cards.Output.Ok.Body
+                    let body: Operations.import_cards.Output.Accepted.Body
                     let chosenContentType = try converter.bestContentType(
                         received: contentType,
                         options: [
@@ -502,7 +562,73 @@ public struct Client: APIProtocol {
                     switch chosenContentType {
                     case "application/json":
                         body = try await converter.getResponseBodyAsJSON(
-                            Components.Schemas.MessageResponse.self,
+                            Components.Schemas.CardImportStartedResponse.self,
+                            from: responseBody,
+                            transforming: { value in
+                                .json(value)
+                            }
+                        )
+                    default:
+                        preconditionFailure("bestContentType chose an invalid content type.")
+                    }
+                    return .accepted(.init(body: body))
+                case 400:
+                    return .badRequest(.init())
+                case 401:
+                    return .unauthorized(.init())
+                case 409:
+                    return .conflict(.init())
+                default:
+                    return .undocumented(
+                        statusCode: response.status.code,
+                        .init(
+                            headerFields: response.headerFields,
+                            body: responseBody
+                        )
+                    )
+                }
+            }
+        )
+    }
+    /// - Remark: HTTP `GET /collection/import/{id}`.
+    /// - Remark: Generated from `#/paths//collection/import/{id}/get(get_card_import)`.
+    public func get_card_import(_ input: Operations.get_card_import.Input) async throws -> Operations.get_card_import.Output {
+        try await client.send(
+            input: input,
+            forOperation: Operations.get_card_import.id,
+            serializer: { input in
+                let path = try converter.renderedPath(
+                    template: "/collection/import/{}",
+                    parameters: [
+                        input.path.id
+                    ]
+                )
+                var request: HTTPTypes.HTTPRequest = .init(
+                    soar_path: path,
+                    method: .get
+                )
+                suppressMutabilityWarning(&request)
+                converter.setAcceptHeader(
+                    in: &request.headerFields,
+                    contentTypes: input.headers.accept
+                )
+                return (request, nil)
+            },
+            deserializer: { response, responseBody in
+                switch response.status.code {
+                case 200:
+                    let contentType = converter.extractContentTypeIfPresent(in: response.headerFields)
+                    let body: Operations.get_card_import.Output.Ok.Body
+                    let chosenContentType = try converter.bestContentType(
+                        received: contentType,
+                        options: [
+                            "application/json"
+                        ]
+                    )
+                    switch chosenContentType {
+                    case "application/json":
+                        body = try await converter.getResponseBodyAsJSON(
+                            Components.Schemas.CardImportResponse.self,
                             from: responseBody,
                             transforming: { value in
                                 .json(value)
@@ -512,10 +638,10 @@ public struct Client: APIProtocol {
                         preconditionFailure("bestContentType chose an invalid content type.")
                     }
                     return .ok(.init(body: body))
-                case 400:
-                    return .badRequest(.init())
                 case 401:
                     return .unauthorized(.init())
+                case 404:
+                    return .notFound(.init())
                 default:
                     return .undocumented(
                         statusCode: response.status.code,

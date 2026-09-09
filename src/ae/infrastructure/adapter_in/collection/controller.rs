@@ -1,10 +1,11 @@
 use super::dto::{
-    CollectionCardResponse, CollectionParams, CollectionStatsResponse, MessageResponse,
-    PaginatedCollectionResponse, RarityFilterResponse, RarityFiltersResponse,
-    SetRarityFilterRequest,
+    CardImportResponse, CardImportStartedResponse, CollectionCardResponse, CollectionParams,
+    CollectionStatsResponse, PaginatedCollectionResponse, RarityFilterResponse,
+    RarityFiltersResponse, SetRarityFilterRequest,
 };
 use crate::application::error::AppError;
 use crate::application::service::collection_service::COLLECTION_MAX_OFFSET;
+use crate::domain::card_import::CardImportId;
 use crate::domain::collection::CollectionQuery;
 use crate::domain::error::FunctionalError;
 use crate::domain::pagination::Pagination;
@@ -14,7 +15,7 @@ use crate::infrastructure::AppState;
 use crate::infrastructure::adapter_in::auth_extractor::AuthenticatedUser;
 use crate::infrastructure::adapter_in::card::dto::{PriceHistoryEntryResponse, PriceHistoryParams};
 use axum::body::to_bytes;
-use axum::extract::State;
+use axum::extract::{Path, State};
 use axum::http::StatusCode;
 use axum::routing::{get, post};
 use axum_extra::extract::Query;
@@ -22,7 +23,8 @@ use axum_extra::extract::Query;
 pub fn create_collection_router() -> axum::Router<AppState> {
     axum::Router::new()
         .route("/", get(get_collection))
-        .route("/import", post(import_cards))
+        .route("/import", post(import_cards).get(list_card_imports))
+        .route("/import/{id}", get(get_card_import))
         .route("/stats", get(get_collection_stats))
         .route("/price-history", get(get_collection_price_history))
         .route(
@@ -40,9 +42,10 @@ pub fn create_collection_router() -> axum::Router<AppState> {
         description = "ManaBox CSV content (max 10 MB)",
     ),
     responses(
-        (status = 200, description = "Import successful", body = MessageResponse),
-        (status = 400, description = "Invalid body (non UTF-8, ...)"),
+        (status = 202, description = "Import accepted, processing in the background", body = CardImportStartedResponse),
+        (status = 400, description = "Invalid body (non UTF-8, malformed CSV, ...)"),
         (status = 401, description = "Missing or invalid token"),
+        (status = 409, description = "An import is already in progress for this user"),
     ),
     security(("bearer_auth" = [])),
     tag = "collection",
@@ -51,7 +54,7 @@ pub(crate) async fn import_cards(
     AuthenticatedUser(user): AuthenticatedUser,
     State(state): State<AppState>,
     body: axum::body::Body,
-) -> Result<axum::Json<MessageResponse>, AppError> {
+) -> Result<(StatusCode, axum::Json<CardImportStartedResponse>), AppError> {
     let bytes = to_bytes(body, 10 * 1024 * 1024)
         .await
         .map_err(|e| FunctionalError::WrongFormat(format!("Failed to read body: {}", e)))?;
@@ -61,15 +64,60 @@ pub(crate) async fn import_cards(
 
     tracing::info!("Importing cards for user: {}", user.id);
 
-    state
-        .import_card_use_case
-        .clone()
-        .import_cards(&csv, user)
-        .await?;
+    let id = state.import_card_use_case.start_import(&csv, user).await?;
 
-    Ok(axum::Json(MessageResponse {
-        message: "Cards imported successfully".to_string(),
-    }))
+    Ok((
+        StatusCode::ACCEPTED,
+        axum::Json(CardImportStartedResponse { id: id.to_string() }),
+    ))
+}
+
+#[utoipa::path(
+    get,
+    path = "/collection/import/{id}",
+    params(("id" = String, Path, description = "Import id")),
+    responses(
+        (status = 200, description = "Import status", body = CardImportResponse),
+        (status = 401, description = "Missing or invalid token"),
+        (status = 404, description = "Import not found, or not owned by the caller"),
+    ),
+    security(("bearer_auth" = [])),
+    tag = "collection",
+)]
+pub(crate) async fn get_card_import(
+    AuthenticatedUser(user): AuthenticatedUser,
+    State(state): State<AppState>,
+    Path(id): Path<String>,
+) -> Result<axum::Json<CardImportResponse>, AppError> {
+    let id = id
+        .parse()
+        .map(CardImportId)
+        .map_err(|_| FunctionalError::ImportNotFound)?;
+
+    let import = state.card_import_query_use_case.find(&id, &user).await?;
+
+    Ok(axum::Json(CardImportResponse::from(import)))
+}
+
+#[utoipa::path(
+    get,
+    path = "/collection/import",
+    responses(
+        (status = 200, description = "The caller's imports, most recent first", body = Vec<CardImportResponse>),
+        (status = 401, description = "Missing or invalid token"),
+    ),
+    security(("bearer_auth" = [])),
+    tag = "collection",
+)]
+pub(crate) async fn list_card_imports(
+    AuthenticatedUser(user): AuthenticatedUser,
+    State(state): State<AppState>,
+) -> Result<axum::Json<Vec<CardImportResponse>>, AppError> {
+    let imports = state.card_import_query_use_case.list(&user).await?;
+
+    Ok(axum::Json(
+        imports.into_iter().map(CardImportResponse::from).collect(),
+    ))
 }
 
 #[utoipa::path(

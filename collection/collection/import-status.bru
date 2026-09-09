@@ -1,0 +1,11 @@
+meta {
+  name: import-status
+  type: http
+  seq: 8
+}
+
+get {
+  url: {{baseUrl}}/collection/import/{{importId}}
+  body: none
+  auth: inherit
+}
