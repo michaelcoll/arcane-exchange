@@ -1,6 +1,8 @@
 pub mod auth_service;
 pub mod autocomplete_user_service;
 pub mod card_collection_service;
+pub mod card_import_query_service;
+pub mod card_import_worker;
 pub mod card_offer_service;
 pub mod card_price_history_service;
 pub mod cardmarket_id_enqueue_service;

@@ -1,7 +1,9 @@
 use crate::application::error::AppError;
 use async_trait::async_trait;
 
+use crate::application::card_import_job::CardImportJob;
 use crate::domain::card::{Card, CardId, CollectionEntry};
+use crate::domain::card_import::{CardImport, CardImportId};
 use crate::domain::card_offer::CardOfferSortField;
 use crate::domain::collection::{CollectionQuery, SearchQuery};
 use crate::domain::collection_stats::CollectionStats;
@@ -18,7 +20,30 @@ use mockall::automock;
 #[async_trait]
 #[cfg_attr(test, automock)]
 pub trait ImportCardUseCase: Send + Sync {
-    async fn import_cards(&self, csv: &str, user: User) -> Result<(), AppError>;
+    /// Parses `csv`, creates the `CardImport` at `Pending` and hands the parsed cards off to the
+    /// background worker. Returns the import's id. A parsing error (`400`) or an already-running
+    /// import for this user (`ImportAlreadyRunning`, `409`) is returned before any effect.
+    async fn start_import(&self, csv: &str, user: User) -> Result<CardImportId, AppError>;
+}
+
+#[async_trait]
+#[cfg_attr(test, automock)]
+pub trait RunCardImportUseCase: Send + Sync {
+    /// Executes one import job: writes the cards in batches, updating progress as it goes, then
+    /// marks the import `Completed` or `Failed`. Called by the import worker, never directly by
+    /// an HTTP handler.
+    async fn run(&self, job: CardImportJob) -> Result<(), AppError>;
+}
+
+#[async_trait]
+#[cfg_attr(test, automock)]
+pub trait GetCardImportUseCase: Send + Sync {
+    /// Returns `FunctionalError::ImportNotFound` both when the import does not exist and when it
+    /// belongs to another user, so as not to leak whether it exists.
+    async fn find(&self, id: &CardImportId, user: &User) -> Result<CardImport, AppError>;
+
+    /// The caller's imports, most recent first.
+    async fn list(&self, user: &User) -> Result<Vec<CardImport>, AppError>;
 }
 
 #[async_trait]

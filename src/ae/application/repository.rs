@@ -1,6 +1,7 @@
 use crate::application::error::AppError;
 use crate::application::imported_card::ImportedCard;
 use crate::domain::card::{Card, CardId, CollectionEntry};
+use crate::domain::card_import::{CardImport, CardImportId, CardImportStatus};
 use crate::domain::card_offer::CardOfferSortField;
 use crate::domain::collection::{CollectionQuery, SearchQuery};
 use crate::domain::collection_stats::CollectionStats;
@@ -40,7 +41,10 @@ pub trait CardRepository: Send + Sync {
         &self,
         scryfall_id: uuid::Uuid,
     ) -> Result<Option<(Option<u32>, bool)>, AppError>;
-    async fn save(&self, user: User, card: ImportedCard) -> Result<(), AppError>;
+    /// Writes `cards` in bulk (grouped `INSERT ... ON CONFLICT DO UPDATE`), in one transaction.
+    /// `cards` is expected to already fit within a single statement's bound-parameter budget —
+    /// callers importing a large collection chunk it themselves.
+    async fn save_all(&self, user: &User, cards: &[ImportedCard]) -> Result<(), AppError>;
     async fn update_cardmarket_id(
         &self,
         id: CardId,
@@ -57,8 +61,9 @@ pub trait CardRepository: Send + Sync {
 #[async_trait]
 #[cfg_attr(test, automock)]
 pub trait SetNameRepository: Send + Sync {
-    async fn exists_by_code(&self, code: SetCode) -> Result<bool, AppError>;
-    async fn save(&self, set: SetName) -> Result<(), AppError>;
+    /// Writes `sets` in bulk, `ON CONFLICT DO NOTHING` — matches the existing per-set behaviour
+    /// where an already-known set's name is never overwritten.
+    async fn save_all(&self, sets: &[SetName]) -> Result<(), AppError>;
     /// All known sets, ordered by name.
     async fn find_all(&self) -> Result<Vec<SetName>, AppError>;
     async fn find_by_code(&self, code: SetCode) -> Result<Option<SetName>, AppError>;
@@ -340,4 +345,41 @@ pub trait TradeRepository: Send + Sync {
         is_initiator: bool,
         rating: u8,
     ) -> Result<Option<TradeStatus>, AppError>;
+}
+
+#[async_trait]
+#[cfg_attr(test, automock)]
+pub trait CardImportRepository: Send + Sync {
+    /// Creates the import at `Pending`. Returns `FunctionalError::ImportAlreadyRunning` if the
+    /// user already has an import at `Pending` or `Running` (enforced by a unique partial index,
+    /// not a prior `SELECT`, so it stays correct under concurrent requests).
+    async fn create(&self, import: &CardImport) -> Result<(), AppError>;
+
+    async fn find_by_id(&self, id: &CardImportId) -> Result<Option<CardImport>, AppError>;
+
+    /// Most recent first.
+    async fn list_by_user(&self, user_id: &UserId) -> Result<Vec<CardImport>, AppError>;
+
+    async fn mark_running(&self, id: &CardImportId) -> Result<(), AppError>;
+
+    async fn update_progress(
+        &self,
+        id: &CardImportId,
+        processed_lines: u32,
+    ) -> Result<(), AppError>;
+
+    async fn finish(
+        &self,
+        id: &CardImportId,
+        status: CardImportStatus,
+        error_message: Option<&str>,
+    ) -> Result<(), AppError>;
+
+    /// Marks every `Pending`/`Running` import as `Failed` (used at server startup). Returns the
+    /// number of imports affected.
+    async fn fail_all_active(&self, reason: &str) -> Result<u64, AppError>;
+
+    /// Deletes the user's completed/failed imports beyond the `keep` most recent ones. An active
+    /// (`Pending`/`Running`) import is never purged.
+    async fn purge_old(&self, user_id: &UserId, keep: i64) -> Result<(), AppError>;
 }

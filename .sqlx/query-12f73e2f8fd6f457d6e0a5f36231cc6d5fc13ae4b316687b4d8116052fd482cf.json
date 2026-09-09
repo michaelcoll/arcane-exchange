@@ -1,0 +1,26 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT collector_number FROM card WHERE set_code = 'FDN'",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "collector_number",
+        "type_info": "Varchar",
+        "origin": {
+          "Table": {
+            "table": "card",
+            "name": "collector_number"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "12f73e2f8fd6f457d6e0a5f36231cc6d5fc13ae4b316687b4d8116052fd482cf"
+}

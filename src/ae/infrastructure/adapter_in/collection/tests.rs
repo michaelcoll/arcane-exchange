@@ -39,6 +39,28 @@ fn make_app_state_with_stats(
     }
 }
 
+fn make_app_state_with_import_card(
+    mock: crate::application::use_case::MockImportCardUseCase,
+) -> AppState {
+    AppState {
+        import_card_use_case: Arc::new(mock),
+        ..AppState::for_testing(Arc::new(
+            crate::application::use_case::MockStatsUseCase::new(),
+        ))
+    }
+}
+
+fn make_app_state_with_card_import_query(
+    mock: crate::application::use_case::MockGetCardImportUseCase,
+) -> AppState {
+    AppState {
+        card_import_query_use_case: Arc::new(mock),
+        ..AppState::for_testing(Arc::new(
+            crate::application::use_case::MockStatsUseCase::new(),
+        ))
+    }
+}
+
 fn make_app_state_with_price_history(
     mock: crate::application::use_case::MockGetCollectionPriceHistoryUseCase,
 ) -> AppState {
@@ -714,8 +736,9 @@ async fn import_cards_succeeds_with_valid_csv() {
     .await;
 
     assert!(result.is_ok());
-    let axum::Json(response) = result.unwrap();
-    assert_eq!(response.message, "Cards imported successfully");
+    let (status, axum::Json(response)) = result.unwrap();
+    assert_eq!(status, axum::http::StatusCode::ACCEPTED);
+    assert!(!response.id.is_empty());
 }
 
 #[tokio::test]
@@ -737,8 +760,9 @@ async fn import_cards_succeeds_with_multiple_cards() {
     .await;
 
     assert!(result.is_ok());
-    let axum::Json(response) = result.unwrap();
-    assert_eq!(response.message, "Cards imported successfully");
+    let (status, axum::Json(response)) = result.unwrap();
+    assert_eq!(status, axum::http::StatusCode::ACCEPTED);
+    assert!(!response.id.is_empty());
 }
 
 #[tokio::test]
@@ -759,8 +783,9 @@ async fn import_cards_succeeds_with_foil_cards() {
     .await;
 
     assert!(result.is_ok());
-    let axum::Json(response) = result.unwrap();
-    assert_eq!(response.message, "Cards imported successfully");
+    let (status, axum::Json(response)) = result.unwrap();
+    assert_eq!(status, axum::http::StatusCode::ACCEPTED);
+    assert!(!response.id.is_empty());
 }
 
 #[tokio::test]
@@ -781,8 +806,9 @@ async fn import_cards_succeeds_with_special_characters_in_card_name() {
     .await;
 
     assert!(result.is_ok());
-    let axum::Json(response) = result.unwrap();
-    assert_eq!(response.message, "Cards imported successfully");
+    let (status, axum::Json(response)) = result.unwrap();
+    assert_eq!(status, axum::http::StatusCode::ACCEPTED);
+    assert!(!response.id.is_empty());
 }
 
 #[tokio::test]
@@ -809,6 +835,118 @@ async fn import_cards_fails_with_invalid_utf8() {
         }
         _ => panic!("Expected WrongFormat error"),
     }
+}
+
+#[tokio::test]
+async fn import_cards_returns_conflict_when_already_running() {
+    let mut mock = crate::application::use_case::MockImportCardUseCase::new();
+    mock.expect_start_import().returning(|_, _| {
+        Box::pin(async { Err(AppError::Functional(FunctionalError::ImportAlreadyRunning)) })
+    });
+    let app_state = make_app_state_with_import_card(mock);
+
+    let csv_body = "Binder Name,Binder Type,Name,Set code,Set name,Collector number,Foil,Rarity,Quantity,ManaBox ID,Scryfall ID,Purchase price,Misprint,Altered,Condition,Language,Purchase price currency,Added\n\
+        bulk,binder,Goblin Boarders,FDN,Foundations,87,normal,common,3,101506,4409a063-bf2a-4a49-803e-3ce6bd474353,0.08,false,false,near_mint,fr,EUR,2026-02-05T20:44:45.815Z";
+
+    let result = import_cards(
+        AuthenticatedUser(User::for_testing()),
+        State(app_state),
+        Body::from(csv_body),
+    )
+    .await;
+
+    assert!(matches!(
+        result,
+        Err(AppError::Functional(FunctionalError::ImportAlreadyRunning))
+    ));
+}
+
+// ============================================================
+// get_card_import
+// ============================================================
+
+fn sample_card_import() -> crate::domain::card_import::CardImport {
+    crate::domain::card_import::CardImport {
+        id: crate::domain::card_import::CardImportId::new(),
+        user_id: User::for_testing().id,
+        status: crate::domain::card_import::CardImportStatus::Completed,
+        source_lines: 1,
+        total_lines: 1,
+        processed_lines: 1,
+        line_errors: vec![],
+        line_error_count: 0,
+        error_message: None,
+        created_at: chrono::Utc::now(),
+        finished_at: Some(chrono::Utc::now()),
+    }
+}
+
+#[tokio::test]
+async fn get_card_import_returns_the_import_when_owned_by_the_caller() {
+    let import = sample_card_import();
+    let import_id = import.id;
+
+    let mut mock = crate::application::use_case::MockGetCardImportUseCase::new();
+    mock.expect_find().returning(move |_, _| {
+        let import = import.clone();
+        Box::pin(async move { Ok(import) })
+    });
+    let app_state = make_app_state_with_card_import_query(mock);
+
+    let result = get_card_import(
+        AuthenticatedUser(User::for_testing()),
+        State(app_state),
+        axum::extract::Path(import_id.to_string()),
+    )
+    .await;
+
+    assert!(result.is_ok());
+    let axum::Json(response) = result.unwrap();
+    assert_eq!(response.id, import_id.to_string());
+    assert_eq!(response.status, "completed");
+}
+
+#[tokio::test]
+async fn get_card_import_returns_not_found_for_unknown_or_foreign_import() {
+    let mut mock = crate::application::use_case::MockGetCardImportUseCase::new();
+    mock.expect_find().returning(|_, _| {
+        Box::pin(async { Err(AppError::Functional(FunctionalError::ImportNotFound)) })
+    });
+    let app_state = make_app_state_with_card_import_query(mock);
+
+    let result = get_card_import(
+        AuthenticatedUser(User::for_testing()),
+        State(app_state),
+        axum::extract::Path(uuid::Uuid::new_v4().to_string()),
+    )
+    .await;
+
+    assert!(matches!(
+        result,
+        Err(AppError::Functional(FunctionalError::ImportNotFound))
+    ));
+}
+
+// ============================================================
+// list_card_imports
+// ============================================================
+
+#[tokio::test]
+async fn list_card_imports_returns_the_callers_imports() {
+    let import = sample_card_import();
+
+    let mut mock = crate::application::use_case::MockGetCardImportUseCase::new();
+    mock.expect_list().returning(move |_| {
+        let import = import.clone();
+        Box::pin(async move { Ok(vec![import]) })
+    });
+    let app_state = make_app_state_with_card_import_query(mock);
+
+    let result = list_card_imports(AuthenticatedUser(User::for_testing()), State(app_state)).await;
+
+    assert!(result.is_ok());
+    let axum::Json(response) = result.unwrap();
+    assert_eq!(response.len(), 1);
 }
 
 // ============================================================

@@ -26,9 +26,15 @@ public protocol APIProtocol: Sendable {
     /// - Remark: HTTP `GET /collection`.
     /// - Remark: Generated from `#/paths//collection/get(get_collection)`.
     func get_collection(_ input: Operations.get_collection.Input) async throws -> Operations.get_collection.Output
+    /// - Remark: HTTP `GET /collection/import`.
+    /// - Remark: Generated from `#/paths//collection/import/get(list_card_imports)`.
+    func list_card_imports(_ input: Operations.list_card_imports.Input) async throws -> Operations.list_card_imports.Output
     /// - Remark: HTTP `POST /collection/import`.
     /// - Remark: Generated from `#/paths//collection/import/post(import_cards)`.
     func import_cards(_ input: Operations.import_cards.Input) async throws -> Operations.import_cards.Output
+    /// - Remark: HTTP `GET /collection/import/{id}`.
+    /// - Remark: Generated from `#/paths//collection/import/{id}/get(get_card_import)`.
+    func get_card_import(_ input: Operations.get_card_import.Input) async throws -> Operations.get_card_import.Output
     /// - Remark: HTTP `GET /collection/price-history`.
     /// - Remark: Generated from `#/paths//collection/price-history/get(get_collection_price_history)`.
     func get_collection_price_history(_ input: Operations.get_collection_price_history.Input) async throws -> Operations.get_collection_price_history.Output
@@ -162,6 +168,11 @@ extension APIProtocol {
             headers: headers
         ))
     }
+    /// - Remark: HTTP `GET /collection/import`.
+    /// - Remark: Generated from `#/paths//collection/import/get(list_card_imports)`.
+    public func list_card_imports(headers: Operations.list_card_imports.Input.Headers = .init()) async throws -> Operations.list_card_imports.Output {
+        try await list_card_imports(Operations.list_card_imports.Input(headers: headers))
+    }
     /// - Remark: HTTP `POST /collection/import`.
     /// - Remark: Generated from `#/paths//collection/import/post(import_cards)`.
     public func import_cards(
@@ -171,6 +182,17 @@ extension APIProtocol {
         try await import_cards(Operations.import_cards.Input(
             headers: headers,
             body: body
+        ))
+    }
+    /// - Remark: HTTP `GET /collection/import/{id}`.
+    /// - Remark: Generated from `#/paths//collection/import/{id}/get(get_card_import)`.
+    public func get_card_import(
+        path: Operations.get_card_import.Input.Path,
+        headers: Operations.get_card_import.Input.Headers = .init()
+    ) async throws -> Operations.get_card_import.Output {
+        try await get_card_import(Operations.get_card_import.Input(
+            path: path,
+            headers: headers
         ))
     }
     /// - Remark: HTTP `GET /collection/price-history`.

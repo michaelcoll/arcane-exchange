@@ -66,7 +66,7 @@ mod tests {
             MockAbandonTradeUseCase, MockAcceptTradeUseCase, MockAddTradeBinderUseCase,
             MockAddTradeCardUseCase, MockAutocompleteUsersUseCase, MockConfirmTradeUseCase,
             MockCreateTradeUseCase, MockEnqueueCardMarketIdUpdateUseCase,
-            MockEnqueueGathererIdUpdateUseCase, MockGetCardOffersUseCase,
+            MockEnqueueGathererIdUpdateUseCase, MockGetCardImportUseCase, MockGetCardOffersUseCase,
             MockGetCardPriceHistoryUseCase, MockGetCollectionPriceHistoryUseCase,
             MockGetCollectionStatsUseCase, MockGetCollectionUseCase,
             MockGetCollectionVisibilityUseCase, MockGetRarityTradeFiltersUseCase,
@@ -113,6 +113,7 @@ mod tests {
             set_rarity_trade_filter_use_case: Arc::new(MockSetRarityTradeFilterUseCase::new()),
             list_sets_use_case: Arc::new(MockListSetsUseCase::new()),
             get_set_use_case: Arc::new(MockGetSetUseCase::new()),
+            card_import_query_use_case: Arc::new(MockGetCardImportUseCase::new()),
         }
     }
 

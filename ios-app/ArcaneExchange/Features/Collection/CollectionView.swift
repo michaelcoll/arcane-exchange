@@ -3,10 +3,9 @@ import SwiftUI
 struct CollectionView: View {
     @State private var model = CollectionViewModel()
     @State private var isShowingFilters = false
+    @State private var isShowingImport = false
     @State private var path = NavigationPath()
     @Namespace private var cardTransition
-
-    private let columns = [GridItem(.adaptive(minimum: 140), spacing: 14)]
 
     var body: some View {
         NavigationStack(path: $path) {
@@ -14,6 +13,13 @@ struct CollectionView: View {
                 .navigationTitle("Ma collection")
                 .navigationBarTitleDisplayMode(.inline)
                 .accountToolbar()
+                .toolbar {
+                    ToolbarItem(placement: .topBarTrailing) {
+                        Button(action: { isShowingImport = true }, label: {
+                            Label("Importer", systemImage: "square.and.arrow.down")
+                        })
+                    }
+                }
                 .refreshable { await model.reload() }
                 .task { await model.loadInitiallyIfNeeded() }
                 .task { await model.loadSetsIfNeeded() }
@@ -31,6 +37,9 @@ struct CollectionView: View {
                 .sheet(isPresented: $isShowingFilters) {
                     CollectionFiltersSheet(filters: $model.filters, sets: model.sets)
                 }
+                .sheet(isPresented: $isShowingImport, onDismiss: handleImportDismiss) {
+                    ImportView()
+                }
         }
         .tradeNavigation(path: $path)
     }
@@ -41,126 +50,22 @@ struct CollectionView: View {
                 .controlSize(.large)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
         } else if let error = model.loadError, model.cards.isEmpty {
-            errorView(error)
+            CollectionErrorView(error: error) {
+                Task { await model.reload() }
+            }
         } else if model.cards.isEmpty {
-            emptyView
+            CollectionEmptyView(hasActiveFilters: model.filters.activeCount > 0) {
+                model.filters.clearAll()
+            }
         } else {
-            grid
-        }
-    }
-
-    private var grid: some View {
-        ScrollView {
-            LazyVStack(alignment: .leading, spacing: 14) {
-                filterRail
-
-                Text(summary)
-                    .font(.caption)
-                    .textCase(.uppercase)
-                    .foregroundStyle(.secondary)
-
-                LazyVGrid(columns: columns, spacing: 18) {
-                    ForEach(model.cards, id: \.self) { card in
-                        NavigationLink(value: CardDetailRoute(card: card)) {
-                            CollectionCardCell(card: card)
-                        }
-                        .buttonStyle(.plain)
-                        .matchedTransitionSource(id: card.scryfall_id, in: cardTransition)
-                        .task { await model.loadMoreIfNeeded(displaying: card) }
-                    }
-                }
-
-                if model.isLoadingMore {
-                    ProgressView()
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 8)
-                }
-            }
-            .padding(.horizontal, 16)
-            .padding(.bottom, 24)
-        }
-    }
-
-    /// Scrolls with the grid, like the mockup's chip rail — the filters are a refinement of the
-    /// list, not app chrome.
-    private var filterRail: some View {
-        ScrollView(.horizontal) {
-            HStack(spacing: 8) {
-                sortMenu
-                chipButton(
-                    title: CollectionCopy.filterChip(activeCount: model.filters.activeCount),
-                    systemImage: "line.3.horizontal.decrease",
-                    isActive: model.filters.activeCount > 0
-                )
-            }
-            .padding(.vertical, 2)
-        }
-        .scrollIndicators(.hidden)
-        .scrollClipDisabled()
-    }
-
-    /// The arrow, not the wording, carries the direction — so the chip's icon flips with it.
-    private var sortMenu: some View {
-        Menu(content: {
-            Picker("Trier par", selection: $model.filters.sortBy) {
-                ForEach(SortField.collectionOptions, id: \.self) { field in
-                    Text(field.label).tag(field)
-                }
-            }
-            Picker("Ordre", selection: $model.filters.sortDir) {
-                ForEach([SortDirection.desc, .asc], id: \.self) { direction in
-                    Label(direction.label, systemImage: direction.icon).tag(direction)
-                }
-            }
-        }, label: {
-            chipLabel(model.filters.sortBy.label, systemImage: model.filters.sortDir.icon)
-        })
-        .buttonStyle(.bordered)
-        .buttonBorderShape(.capsule)
-        .tint(.accentColor)
-    }
-
-    private func chipButton(title: String, systemImage: String, isActive: Bool) -> some View {
-        Button(action: { isShowingFilters = true }, label: {
-            chipLabel(title, systemImage: systemImage)
-        })
-        .buttonStyle(.bordered)
-        .buttonBorderShape(.capsule)
-        .tint(isActive ? Color.accentColor : Color.secondary)
-    }
-
-    private func chipLabel(_ title: String, systemImage: String) -> some View {
-        Label(title, systemImage: systemImage)
-            .font(.subheadline)
-            .fontWeight(.medium)
-    }
-
-    private func errorView(_ error: CollectionViewModel.LoadError) -> some View {
-        ContentUnavailableView(
-            label: { Label("Collection indisponible", systemImage: "exclamationmark.triangle") },
-            description: { Text(error.message) },
-            actions: {
-                Button("Réessayer") {
-                    Task { await model.reload() }
-                }
-            }
-        )
-    }
-
-    @ViewBuilder private var emptyView: some View {
-        if model.filters.activeCount > 0 {
-            ContentUnavailableView(
-                label: { Label("Aucune carte", systemImage: "line.3.horizontal.decrease") },
-                description: { Text("Aucune carte de ta collection ne correspond à ces filtres.") },
-                actions: {
-                    Button("Réinitialiser les filtres") { model.filters.clearAll() }
-                }
-            )
-        } else {
-            ContentUnavailableView(
-                "Collection vide",
-                systemImage: "rectangle.stack",
-                description: Text("Importe ton fichier ManaBox pour voir tes cartes ici.")
+            CollectionCardGrid(
+                cards: model.cards,
+                isLoadingMore: model.isLoadingMore,
+                summary: summary,
+                filters: $model.filters,
+                cardTransition: cardTransition,
+                onFilterTap: { isShowingFilters = true },
+                onCardAppear: { card in await model.loadMoreIfNeeded(displaying: card) }
             )
         }
     }
@@ -168,8 +73,10 @@ struct CollectionView: View {
     private var summary: String {
         "\(CollectionCopy.cardCount(model.total)) · triées par \(model.filters.sortBy.label.lowercased())"
     }
-}
 
-#Preview {
-    CollectionView()
+    /// The import may have replaced the whole collection — reload from page 0 once the sheet
+    /// closes, whether it completed, failed, or was dismissed mid-import.
+    private func handleImportDismiss() {
+        Task { await model.reload() }
+    }
 }

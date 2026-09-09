@@ -1,0 +1,148 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            SELECT id, user_id, status, source_lines, total_lines, processed_lines,\n                   line_errors as \"line_errors: Json<Vec<LineErrorJson>>\",\n                   line_error_count, error_message, created_at, finished_at\n            FROM card_import\n            WHERE id = $1\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "card_import",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "user_id",
+        "type_info": "Varchar",
+        "origin": {
+          "Table": {
+            "table": "card_import",
+            "name": "user_id"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "status",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "card_import",
+            "name": "status"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "source_lines",
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "card_import",
+            "name": "source_lines"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "total_lines",
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "card_import",
+            "name": "total_lines"
+          }
+        }
+      },
+      {
+        "ordinal": 5,
+        "name": "processed_lines",
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "card_import",
+            "name": "processed_lines"
+          }
+        }
+      },
+      {
+        "ordinal": 6,
+        "name": "line_errors: Json<Vec<LineErrorJson>>",
+        "type_info": "Jsonb",
+        "origin": {
+          "Table": {
+            "table": "card_import",
+            "name": "line_errors"
+          }
+        }
+      },
+      {
+        "ordinal": 7,
+        "name": "line_error_count",
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "card_import",
+            "name": "line_error_count"
+          }
+        }
+      },
+      {
+        "ordinal": 8,
+        "name": "error_message",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "card_import",
+            "name": "error_message"
+          }
+        }
+      },
+      {
+        "ordinal": 9,
+        "name": "created_at",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "card_import",
+            "name": "created_at"
+          }
+        }
+      },
+      {
+        "ordinal": 10,
+        "name": "finished_at",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "card_import",
+            "name": "finished_at"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      true,
+      false,
+      true
+    ]
+  },
+  "hash": "63448faa75da251a5c4c67f4b9af2c184249b37682bc180ad4999668d489b652"
+}

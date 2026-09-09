@@ -2,6 +2,7 @@ use crate::application::error::{AppError, InfraError};
 use crate::application::repository::PersistenceError;
 use sqlx::Error;
 
+pub mod card_import_repository_adapter;
 pub mod card_prices_view_repository_adapter;
 pub mod card_repository_adapter;
 pub mod cardmarket_price_repository_adapter;
