@@ -67,7 +67,7 @@ run = "cargo run --bin generate-openapi"
 
 [tasks.rebuild-db-doc]
 hide = true
-run = "erdify --full --ignore-tables databases,_sqlx_migrations --output doc/db.md"
+run = "erdify --full --ignore-tables databases,_sqlx_migrations --output docs/db.md"
 
 [tasks.sqlx-prepare]
 description = "Generates the SQLx metadata for the project"
@@ -170,11 +170,11 @@ run = "xcodegen generate"
 hide = true
 
 [tasks.generate-api-client]
-description = "Regenerates the iOS APIClient sources from doc/openapi.yml"
+description = "Regenerates the iOS APIClient sources from docs/openapi.yml"
 dir = "ios-app/APIClient"
-sources = ["../../doc/openapi.yml"]
+sources = ["../../docs/openapi.yml"]
 outputs = ["Sources/APIClient/GeneratedSources/Client.swift"]
-run = "swift run swift-openapi-generator generate --mode types --mode client --access-modifier public --output-directory Sources/APIClient/GeneratedSources ../../doc/openapi.yml"
+run = "swift run swift-openapi-generator generate --mode types --mode client --access-modifier public --output-directory Sources/APIClient/GeneratedSources ../../docs/openapi.yml"
 
 [tasks.build-ios]
 description = "Builds the iOS app"

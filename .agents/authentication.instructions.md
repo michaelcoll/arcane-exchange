@@ -16,7 +16,7 @@ CLERK_FRONTEND_API_URL=https://musical-pup-67.clerk.accounts.dev
 
 Most endpoints require a bearer token. The only public (no-auth) routers are `maintenance` (`/maintenance/*`) and
 `autocomplete` (`GET /autocomplete/user`). Everything else (`card`, `collection`, `search`, `trade`, `user`) uses
-the `AuthenticatedUser` extractor. See [openapi.yml](../doc/openapi.yml) (or
+the `AuthenticatedUser` extractor. See [openapi.yml](../docs/openapi.yml) (or
 [endpoints.instructions.md](endpoints.instructions.md)) for the full, authoritative endpoint list.
 
 ## Usage Flow

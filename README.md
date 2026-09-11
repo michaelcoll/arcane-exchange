@@ -1,4 +1,4 @@
-![](doc/images/04-split-diagonal.svg "Logo")
+![](docs/images/04-split-diagonal.svg "Logo")
 
 [![codecov](https://codecov.io/gh/michaelcoll/arcane-exchange/graph/badge.svg?token=b2Wlmg2WX3)](https://codecov.io/gh/michaelcoll/arcane-exchange)
 [![license](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
@@ -56,8 +56,8 @@ Authentication is handled by [Clerk](https://clerk.com/): create an instance, th
 
 ## Contributing
 
-- The HTTP API is documented in [`doc/openapi.yml`](doc/openapi.yml) — regenerate it with `mise run openapi`.
-- Feature specs live in [`doc/specs/`](doc/specs).
+- The HTTP API is documented in [`docs/openapi.yml`](docs/openapi.yml) — regenerate it with `mise run rebuild-docs`.
+- Architecture decisions are recorded in [`docs/adr/`](docs/adr).
 - Conventions, architecture notes and the full task list are in [`AGENTS.md`](AGENTS.md) and `.agents/`.
 
 ## License

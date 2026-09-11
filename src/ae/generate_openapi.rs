@@ -6,7 +6,7 @@ fn main() {
         .to_yaml()
         .expect("Failed to serialize OpenAPI spec to YAML");
 
-    let output_dir = "doc";
+    let output_dir = "docs";
     let output_path = format!("{output_dir}/openapi.yml");
     std::fs::create_dir_all(output_dir)
         .unwrap_or_else(|e| panic!("Failed to create directory {output_dir}: {e}"));

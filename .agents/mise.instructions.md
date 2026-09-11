@@ -107,7 +107,7 @@ needs the real key. `xcodegen` maps it into `Info.plist`, where `AppConfig.clerk
 ### Docs (OpenAPI + DB schema)
 
 ```
-mise run rebuild-docs   # rebuild-openapi-doc (cargo run --bin generate-openapi) + rebuild-db-doc (erdify → doc/db.md)
+mise run rebuild-docs   # rebuild-openapi-doc (cargo run --bin generate-openapi) + rebuild-db-doc (erdify → docs/db.md)
 ```
 
 Both sub-tasks are hidden (not directly listed by `mise run`); run individually via `mise run rebuild-openapi-doc`

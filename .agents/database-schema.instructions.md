@@ -1,6 +1,6 @@
 # Database Schema Guide
 
-**Source of truth for the schema: [`doc/db.md`](../doc/db.md)** — generated ERD (tables, columns, types, PK/FK,
+**Source of truth for the schema: [`docs/db.md`](../docs/db.md)** — generated ERD (tables, columns, types, PK/FK,
 indexes, constraints). Read it when you need column names or relations; this file only documents what the ERD cannot
 express.
 
@@ -64,5 +64,5 @@ is never written to.
 1. Add `migrations/NNNN_description.sql` (4-digit sequence, forward-only — no down migrations). Applied at startup.
 2. If the view's shape changes, drop and recreate `mv_card_prices` in the same migration — dropping it also drops its
    indexes, so recreate `mv_card_prices_unique` (and any other index the view had).
-3. Run `mise run rebuild-db-doc` to regenerate `doc/db.md`, and `mise run sqlx-prepare` to refresh the SQLx metadata
+3. Run `mise run rebuild-db-doc` to regenerate `docs/db.md`, and `mise run sqlx-prepare` to refresh the SQLx metadata
    (both are covered by `mise run checks`).
