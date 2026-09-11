@@ -120,6 +120,12 @@ paths:
         schema:
           type: string
           format: uuid
+      - name: foil
+        in: query
+        description: Whether to return the foil price series
+        required: true
+        schema:
+          type: boolean
       - name: start_date
         in: query
         description: 'Start date (ISO 8601: YYYY-MM-DD, inclusive). Defaults to end_date minus 30 days'
@@ -142,7 +148,7 @@ paths:
                 items:
                   $ref: '#/components/schemas/PriceHistoryEntryResponse'
         '400':
-          description: Invalid date range (start_date > end_date)
+          description: Invalid date range (start_date > end_date), or missing `foil`
         '401':
           description: Missing or invalid token
         '404':

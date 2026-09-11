@@ -1,0 +1,17 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE card\n                SET cardmarket_id = $1\n                WHERE set_code = $2 AND collector_number = $3 AND language_code = $4;",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int4",
+        "Text",
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "679e28506a01b022650afd7062f47c3988fda4926814d9ee5e55f57d2e81da9a"
+}

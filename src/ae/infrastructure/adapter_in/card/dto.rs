@@ -7,11 +7,26 @@ use ts_rs::TS;
 use utoipa::ToSchema;
 
 // --- Price history ---
-/// Shared by `/collection/price-history` and `/card/{scryfall_id}/price-history`; both dates are
-/// optional and defaulted by the use case (last 30 days when absent).
+/// Params for `/collection/price-history`; both dates are optional and defaulted by the use case
+/// (last 30 days when absent).
 #[derive(Deserialize, TS)]
 #[ts(export, export_to = "PriceHistoryParams.ts")]
 pub(crate) struct PriceHistoryParams {
+    /// ISO 8601 date string (YYYY-MM-DD)
+    #[ts(optional, type = "string")]
+    pub(crate) start_date: Option<NaiveDate>,
+    /// ISO 8601 date string (YYYY-MM-DD)
+    #[ts(optional, type = "string")]
+    pub(crate) end_date: Option<NaiveDate>,
+}
+
+/// Params for `/card/{scryfall_id}/price-history`. Unlike [`PriceHistoryParams`], `foil` is
+/// required: the catalog no longer knows a card's finish, so the caller must say which series
+/// (normal or foil) it wants — there is no way left to derive it from the card itself.
+#[derive(Deserialize, TS)]
+#[ts(export, export_to = "CardPriceHistoryParams.ts")]
+pub(crate) struct CardPriceHistoryParams {
+    pub(crate) foil: bool,
     /// ISO 8601 date string (YYYY-MM-DD)
     #[ts(optional, type = "string")]
     pub(crate) start_date: Option<NaiveDate>,

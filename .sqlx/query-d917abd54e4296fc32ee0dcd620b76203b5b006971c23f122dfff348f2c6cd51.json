@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT tc.set_code AS \"set_code!\", tc.collector_number AS \"collector_number!\",\n                       tc.language_code AS \"language_code!\", tc.foil AS \"foil!\",\n                       tc.owner_user_id AS \"owner_user_id!\", tc.quantity AS \"quantity!\",\n                       c.name AS \"name!\", c.scryfall_id AS \"scryfall_id!\", c.the_gatherer_id,\n                       lcp.low, lcp.trend, lcp.avg\n                FROM trade_card tc\n                JOIN card c ON c.set_code = tc.set_code AND c.collector_number = tc.collector_number\n                    AND c.language_code = tc.language_code AND c.foil = tc.foil\n                LEFT JOIN mv_last_cardmarket_prices lcp ON lcp.set_code = c.set_code\n                    AND lcp.collector_number = c.collector_number AND lcp.foil = c.foil\n                WHERE tc.trade_id = $1",
+  "query": "SELECT tc.set_code AS \"set_code!\", tc.collector_number AS \"collector_number!\",\n                       tc.language_code AS \"language_code!\", tc.foil AS \"foil!\",\n                       tc.owner_user_id AS \"owner_user_id!\", tc.quantity AS \"quantity!\",\n                       c.name AS \"name!\", c.scryfall_id AS \"scryfall_id!\", c.the_gatherer_id,\n                       lcp.low, lcp.trend, lcp.avg\n                FROM trade_card tc\n                JOIN card c ON c.set_code = tc.set_code AND c.collector_number = tc.collector_number\n                    AND c.language_code = tc.language_code\n                LEFT JOIN mv_last_cardmarket_prices lcp ON lcp.set_code = c.set_code\n                    AND lcp.collector_number = c.collector_number AND lcp.foil = tc.foil\n                WHERE tc.trade_id = $1",
   "describe": {
     "columns": [
       {
@@ -156,5 +156,5 @@
       true
     ]
   },
-  "hash": "d80cb05f64902d846a093e36a40cc2990d07ea66f3d2641cf1fd8e047644d9d7"
+  "hash": "d917abd54e4296fc32ee0dcd620b76203b5b006971c23f122dfff348f2c6cd51"
 }

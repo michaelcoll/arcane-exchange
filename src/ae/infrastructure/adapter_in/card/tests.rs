@@ -55,21 +55,23 @@ async fn get_card_price_history_returns_entries() {
     let scryfall_id = Uuid::new_v4();
 
     let mut mock = MockGetCardPriceHistoryUseCase::new();
-    mock.expect_get_card_price_history().returning(|_, _, _| {
-        Box::pin(async {
-            Ok(vec![PriceHistoryEntry {
-                date: NaiveDate::from_ymd_opt(2025, 1, 15).unwrap(),
-                price_guide: PriceGuide {
-                    low: Price { value: Some(100) },
-                    trend: Price { value: Some(150) },
-                    avg: Price { value: Some(130) },
-                },
-            }])
-        })
-    });
+    mock.expect_get_card_price_history()
+        .returning(|_, _, _, _| {
+            Box::pin(async {
+                Ok(vec![PriceHistoryEntry {
+                    date: NaiveDate::from_ymd_opt(2025, 1, 15).unwrap(),
+                    price_guide: PriceGuide {
+                        low: Price { value: Some(100) },
+                        trend: Price { value: Some(150) },
+                        avg: Price { value: Some(130) },
+                    },
+                }])
+            })
+        });
 
     let app_state = make_app_state_with_card_price_history(mock);
-    let params = PriceHistoryParams {
+    let params = CardPriceHistoryParams {
+        foil: false,
         start_date: Some(NaiveDate::from_ymd_opt(2025, 1, 1).unwrap()),
         end_date: Some(NaiveDate::from_ymd_opt(2025, 1, 31).unwrap()),
     };
@@ -96,9 +98,10 @@ async fn get_card_price_history_returns_404_when_card_not_found() {
     use uuid::Uuid;
 
     let mut mock = MockGetCardPriceHistoryUseCase::new();
-    mock.expect_get_card_price_history().returning(|_, _, _| {
-        Box::pin(async { Err(AppError::Functional(FunctionalError::CardNotFound)) })
-    });
+    mock.expect_get_card_price_history()
+        .returning(|_, _, _, _| {
+            Box::pin(async { Err(AppError::Functional(FunctionalError::CardNotFound)) })
+        });
 
     let app_state = make_app_state_with_card_price_history(mock);
 
@@ -106,7 +109,8 @@ async fn get_card_price_history_returns_404_when_card_not_found() {
         AuthenticatedUser(User::for_testing()),
         State(app_state),
         axum::extract::Path(Uuid::new_v4()),
-        Query(PriceHistoryParams {
+        Query(CardPriceHistoryParams {
+            foil: false,
             start_date: None,
             end_date: None,
         }),
@@ -126,16 +130,18 @@ async fn get_card_price_history_propagates_wrong_format_error() {
     use uuid::Uuid;
 
     let mut mock = MockGetCardPriceHistoryUseCase::new();
-    mock.expect_get_card_price_history().returning(|_, _, _| {
-        Box::pin(async {
-            Err(AppError::Functional(FunctionalError::WrongFormat(
-                "start_date must be before or equal to end_date".to_string(),
-            )))
-        })
-    });
+    mock.expect_get_card_price_history()
+        .returning(|_, _, _, _| {
+            Box::pin(async {
+                Err(AppError::Functional(FunctionalError::WrongFormat(
+                    "start_date must be before or equal to end_date".to_string(),
+                )))
+            })
+        });
 
     let app_state = make_app_state_with_card_price_history(mock);
-    let params = PriceHistoryParams {
+    let params = CardPriceHistoryParams {
+        foil: false,
         start_date: Some(NaiveDate::from_ymd_opt(2025, 2, 1).unwrap()),
         end_date: Some(NaiveDate::from_ymd_opt(2025, 1, 1).unwrap()),
     };
@@ -164,7 +170,7 @@ async fn get_card_price_history_returns_empty_list() {
 
     let mut mock = MockGetCardPriceHistoryUseCase::new();
     mock.expect_get_card_price_history()
-        .returning(|_, _, _| Box::pin(async { Ok(vec![]) }));
+        .returning(|_, _, _, _| Box::pin(async { Ok(vec![]) }));
 
     let app_state = make_app_state_with_card_price_history(mock);
 
@@ -172,7 +178,8 @@ async fn get_card_price_history_returns_empty_list() {
         AuthenticatedUser(User::for_testing()),
         State(app_state),
         axum::extract::Path(Uuid::new_v4()),
-        Query(PriceHistoryParams {
+        Query(CardPriceHistoryParams {
+            foil: false,
             start_date: None,
             end_date: None,
         }),
@@ -489,6 +496,44 @@ async fn card_offers_params_rejects_non_numeric_page_size_with_bad_request() {
         Ok(_) => panic!("expected a rejection for page_size=abc"),
     };
     assert_eq!(response.status(), axum::http::StatusCode::BAD_REQUEST);
+}
+
+#[tokio::test]
+async fn card_price_history_params_rejects_missing_foil_with_bad_request() {
+    use axum::extract::FromRequestParts;
+    use axum::response::IntoResponse;
+
+    // The catalog no longer knows a card's finish, so `foil` is required on this endpoint's
+    // params — unlike `PriceHistoryParams`, shared with `/collection/price-history`, which has
+    // no notion of finish at all.
+    let request = axum::http::Request::builder()
+        .uri("/card/00000000-0000-0000-0000-000000000000/price-history")
+        .body(())
+        .unwrap();
+    let (mut parts, ()) = request.into_parts();
+
+    let response = match Query::<CardPriceHistoryParams>::from_request_parts(&mut parts, &()).await
+    {
+        Err(rejection) => rejection.into_response(),
+        Ok(_) => panic!("expected a rejection when foil is missing"),
+    };
+    assert_eq!(response.status(), axum::http::StatusCode::BAD_REQUEST);
+}
+
+#[tokio::test]
+async fn price_history_params_accepts_missing_finish_related_param() {
+    // `/collection/price-history` has never had a `foil` param and must not gain one as a
+    // side effect of this endpoint's params requiring it.
+    use axum::extract::FromRequestParts;
+
+    let request = axum::http::Request::builder()
+        .uri("/collection/price-history")
+        .body(())
+        .unwrap();
+    let (mut parts, ()) = request.into_parts();
+
+    let result = Query::<PriceHistoryParams>::from_request_parts(&mut parts, &()).await;
+    assert!(result.is_ok());
 }
 
 // --- Unit tests for dto.rs ---

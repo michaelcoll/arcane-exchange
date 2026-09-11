@@ -5,7 +5,7 @@ use crate::application::use_case::{
     CreateTradeUseCase, GetTradeUseCase, ListTradesUseCase, RateTradeUseCase,
     RemoveTradeCardUseCase,
 };
-use crate::domain::card::CardId;
+use crate::domain::card::CopyId;
 use crate::domain::error::FunctionalError;
 use crate::domain::pagination::Paginated;
 use crate::domain::trade::{
@@ -154,7 +154,7 @@ impl AddTradeCardUseCase for AddTradeCardService {
         trade_id: TradeId,
         caller_id: UserId,
         owner_username: String,
-        card_id: CardId,
+        card_id: CopyId,
         quantity: u8,
     ) -> Result<(), AppError> {
         let trade = self
@@ -242,7 +242,7 @@ impl RemoveTradeCardUseCase for RemoveTradeCardService {
         trade_id: TradeId,
         caller_id: UserId,
         owner_username: String,
-        card_id: CardId,
+        card_id: CopyId,
     ) -> Result<(), AppError> {
         let trade = self
             .trade_repository
@@ -572,8 +572,8 @@ mod tests {
         UserId::new("user_respondent")
     }
 
-    fn make_card_id() -> CardId {
-        CardId::new("FDN", "87", LanguageCode::FR, false)
+    fn make_card_id() -> CopyId {
+        CopyId::new("FDN", "87", LanguageCode::FR, false)
     }
 
     fn make_respondent_user() -> User {

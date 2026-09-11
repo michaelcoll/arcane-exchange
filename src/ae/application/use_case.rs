@@ -2,7 +2,7 @@ use crate::application::error::AppError;
 use async_trait::async_trait;
 
 use crate::application::card_import_job::CardImportJob;
-use crate::domain::card::{Card, CardId, CollectionEntry};
+use crate::domain::card::{Card, CollectionEntry, CopyId};
 use crate::domain::card_import::{CardImport, CardImportId};
 use crate::domain::card_offer::CardOfferSortField;
 use crate::domain::collection::{CollectionQuery, SearchQuery};
@@ -178,6 +178,7 @@ pub trait GetCardPriceHistoryUseCase: Send + Sync {
     async fn get_card_price_history(
         &self,
         scryfall_id: uuid::Uuid,
+        foil: bool,
         start_date: Option<chrono::NaiveDate>,
         end_date: Option<chrono::NaiveDate>,
     ) -> Result<Vec<PriceHistoryEntry>, AppError>;
@@ -195,7 +196,7 @@ pub trait GetCardOffersUseCase: Send + Sync {
     async fn get_card_offers(
         &self,
         user_id: &UserId,
-        card_id: CardId,
+        copy_id: CopyId,
         sort_by: CardOfferSortField,
         pagination: Pagination,
     ) -> Result<Paginated<CollectionEntry>, AppError>;
@@ -219,7 +220,7 @@ pub trait AddTradeCardUseCase: Send + Sync {
         trade_id: TradeId,
         caller_id: UserId,
         owner_username: String,
-        card_id: CardId,
+        copy_id: CopyId,
         quantity: u8,
     ) -> Result<(), AppError>;
 }
@@ -232,7 +233,7 @@ pub trait RemoveTradeCardUseCase: Send + Sync {
         trade_id: TradeId,
         caller_id: UserId,
         owner_username: String,
-        card_id: CardId,
+        copy_id: CopyId,
     ) -> Result<(), AppError>;
 }
 

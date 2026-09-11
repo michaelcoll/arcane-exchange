@@ -30,12 +30,13 @@ impl GetCardPriceHistoryUseCase for CardPriceHistoryService {
     async fn get_card_price_history(
         &self,
         scryfall_id: uuid::Uuid,
+        foil: bool,
         start_date: Option<NaiveDate>,
         end_date: Option<NaiveDate>,
     ) -> Result<Vec<PriceHistoryEntry>, AppError> {
         let (start_date, end_date) = resolve_date_range(start_date, end_date)?;
 
-        let Some((cardmarket_id, foil)) = self
+        let Some(cardmarket_id) = self
             .card_repository
             .find_by_scryfall_id(scryfall_id)
             .await?
@@ -74,7 +75,7 @@ mod tests {
         mock_card_repo
             .expect_find_by_scryfall_id()
             .withf(move |id| *id == scryfall_id)
-            .returning(|_| Box::pin(async { Ok(Some((Some(42), false))) }));
+            .returning(|_| Box::pin(async { Ok(Some(Some(42))) }));
 
         let mut mock_price_repo = MockCardMarketPriceRepository::new();
         mock_price_repo
@@ -102,7 +103,12 @@ mod tests {
             CardPriceHistoryService::new(Arc::new(mock_card_repo), Arc::new(mock_price_repo));
 
         let result = service
-            .get_card_price_history(scryfall_id, Some(date(2025, 1, 1)), Some(date(2025, 1, 31)))
+            .get_card_price_history(
+                scryfall_id,
+                false,
+                Some(date(2025, 1, 1)),
+                Some(date(2025, 1, 31)),
+            )
             .await;
 
         assert!(result.is_ok());
@@ -126,6 +132,7 @@ mod tests {
         let result = service
             .get_card_price_history(
                 Uuid::new_v4(),
+                false,
                 Some(date(2025, 1, 1)),
                 Some(date(2025, 1, 31)),
             )
@@ -143,7 +150,7 @@ mod tests {
         let mut mock_card_repo = MockCardRepository::new();
         mock_card_repo
             .expect_find_by_scryfall_id()
-            .returning(|_| Box::pin(async { Ok(Some((None, false))) }));
+            .returning(|_| Box::pin(async { Ok(Some(None)) }));
 
         // find_by_id_and_date_range must never be called: no expectation set on the mock,
         // mockall panics if it is called unexpectedly.
@@ -155,6 +162,7 @@ mod tests {
         let result = service
             .get_card_price_history(
                 Uuid::new_v4(),
+                false,
                 Some(date(2025, 1, 1)),
                 Some(date(2025, 1, 31)),
             )
@@ -175,6 +183,7 @@ mod tests {
         let result = service
             .get_card_price_history(
                 Uuid::new_v4(),
+                false,
                 Some(date(2025, 2, 1)),
                 Some(date(2025, 1, 1)),
             )
@@ -199,7 +208,7 @@ mod tests {
         let mut mock_card_repo = MockCardRepository::new();
         mock_card_repo
             .expect_find_by_scryfall_id()
-            .returning(|_| Box::pin(async { Ok(Some((Some(1), false))) }));
+            .returning(|_| Box::pin(async { Ok(Some(Some(1))) }));
 
         let mut mock_price_repo = MockCardMarketPriceRepository::new();
         mock_price_repo
@@ -211,7 +220,7 @@ mod tests {
             CardPriceHistoryService::new(Arc::new(mock_card_repo), Arc::new(mock_price_repo));
 
         let result = service
-            .get_card_price_history(Uuid::new_v4(), None, None)
+            .get_card_price_history(Uuid::new_v4(), false, None, None)
             .await;
 
         assert!(result.is_ok());
@@ -222,7 +231,7 @@ mod tests {
         let mut mock_card_repo = MockCardRepository::new();
         mock_card_repo
             .expect_find_by_scryfall_id()
-            .returning(|_| Box::pin(async { Ok(Some((Some(1), false))) }));
+            .returning(|_| Box::pin(async { Ok(Some(Some(1))) }));
 
         let mut mock_price_repo = MockCardMarketPriceRepository::new();
         mock_price_repo
@@ -241,6 +250,7 @@ mod tests {
         let result = service
             .get_card_price_history(
                 Uuid::new_v4(),
+                false,
                 Some(date(2025, 1, 1)),
                 Some(date(2025, 1, 31)),
             )

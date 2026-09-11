@@ -61,7 +61,6 @@ impl CollectionStatsRepository for CollectionStatsRepositoryAdapter {
                 ON  c.set_code         = ce.set_code
                 AND c.collector_number = ce.collector_number
                 AND c.language_code    = ce.language_code
-                AND c.foil             = ce.foil
             JOIN set_name sn ON sn.set_code = c.set_code
             WHERE ce.user_id = $1
             ORDER BY sn.name
@@ -139,8 +138,8 @@ mod tests {
     #[sqlx::test]
     async fn returns_correct_totals(pool: PgPool) {
         insert_set(&pool, "TST").await;
-        insert_card_without_cardmarket_id(&pool, "TST", "1", "en", false, "Card A").await;
-        insert_card_without_cardmarket_id(&pool, "TST", "2", "en", false, "Card B").await;
+        insert_card_without_cardmarket_id(&pool, "TST", "1", "en", "Card A").await;
+        insert_card_without_cardmarket_id(&pool, "TST", "2", "en", "Card B").await;
         insert_user(&pool, "user-1", "User1").await;
         insert_collection_entry(&pool, "TST", "1", "en", false, "user-1", 3, 100, Utc::now()).await;
         insert_collection_entry(&pool, "TST", "2", "en", false, "user-1", 2, 200, Utc::now()).await;
@@ -159,7 +158,7 @@ mod tests {
     #[sqlx::test]
     async fn does_not_return_other_users_cards(pool: PgPool) {
         insert_set(&pool, "TST").await;
-        insert_card_without_cardmarket_id(&pool, "TST", "1", "en", false, "Card A").await;
+        insert_card_without_cardmarket_id(&pool, "TST", "1", "en", "Card A").await;
         insert_user(&pool, "user-other", "UserOther").await;
         insert_collection_entry(
             &pool,
@@ -185,7 +184,7 @@ mod tests {
     #[sqlx::test]
     async fn counts_card_split_across_binders_once(pool: PgPool) {
         insert_set(&pool, "TST").await;
-        insert_card_without_cardmarket_id(&pool, "TST", "1", "en", false, "Card A").await;
+        insert_card_without_cardmarket_id(&pool, "TST", "1", "en", "Card A").await;
         insert_user(&pool, "user-1", "User1").await;
         insert_collection_entry_with_binder(
             &pool,
@@ -227,8 +226,8 @@ mod tests {
     #[sqlx::test]
     async fn binders_are_ordered_by_card_count_descending(pool: PgPool) {
         insert_set(&pool, "TST").await;
-        insert_card_without_cardmarket_id(&pool, "TST", "1", "en", false, "Card A").await;
-        insert_card_without_cardmarket_id(&pool, "TST", "2", "en", false, "Card B").await;
+        insert_card_without_cardmarket_id(&pool, "TST", "1", "en", "Card A").await;
+        insert_card_without_cardmarket_id(&pool, "TST", "2", "en", "Card B").await;
         insert_user(&pool, "user-1", "User1").await;
         insert_collection_entry_with_binder(
             &pool,
@@ -273,7 +272,7 @@ mod tests {
     #[sqlx::test]
     async fn entries_without_binder_are_excluded_from_binders(pool: PgPool) {
         insert_set(&pool, "TST").await;
-        insert_card_without_cardmarket_id(&pool, "TST", "1", "en", false, "Card A").await;
+        insert_card_without_cardmarket_id(&pool, "TST", "1", "en", "Card A").await;
         insert_user(&pool, "user-1", "User1").await;
         insert_collection_entry_with_binder(
             &pool,
@@ -303,7 +302,7 @@ mod tests {
     #[sqlx::test]
     async fn binders_do_not_leak_between_users(pool: PgPool) {
         insert_set(&pool, "TST").await;
-        insert_card_without_cardmarket_id(&pool, "TST", "1", "en", false, "Card A").await;
+        insert_card_without_cardmarket_id(&pool, "TST", "1", "en", "Card A").await;
         insert_user(&pool, "user-other", "UserOther").await;
         insert_collection_entry_with_binder(
             &pool,

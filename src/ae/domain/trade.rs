@@ -1,4 +1,4 @@
-use crate::domain::card::CardId;
+use crate::domain::card::CopyId;
 use crate::domain::pagination::Pagination;
 use crate::domain::price::PriceGuide;
 use crate::domain::user::UserId;
@@ -81,7 +81,7 @@ pub struct Trade {
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct TradeCard {
-    pub card_id: CardId,
+    pub card_id: CopyId,
     pub owner_user_id: UserId,
     pub quantity: u32,
 }
@@ -91,7 +91,7 @@ pub struct TradeCard {
 /// cards into `my_cards`/`partner_cards`; it isn't re-exposed once split.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct TradeCardDetail {
-    pub card_id: CardId,
+    pub card_id: CopyId,
     pub owner_user_id: UserId,
     pub name: String,
     pub quantity: u32,

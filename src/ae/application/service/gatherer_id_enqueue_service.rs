@@ -58,7 +58,7 @@ mod tests {
     use tokio::sync::mpsc::unbounded_channel;
 
     fn make_card_id(n: &str) -> CardId {
-        CardId::new(SetCode::new("FDN"), n, LanguageCode::FR, false)
+        CardId::new(SetCode::new("FDN"), n, LanguageCode::FR)
     }
 
     #[tokio::test]
@@ -70,11 +70,11 @@ mod tests {
                 Box::pin(async {
                     Ok(vec![
                         (
-                            CardId::new(SetCode::new("FDN"), "0", LanguageCode::FR, false),
+                            CardId::new(SetCode::new("FDN"), "0", LanguageCode::FR),
                             "Card A".to_string(),
                         ),
                         (
-                            CardId::new(SetCode::new("FDN"), "1", LanguageCode::FR, false),
+                            CardId::new(SetCode::new("FDN"), "1", LanguageCode::FR),
                             "Card B".to_string(),
                         ),
                     ])
@@ -99,11 +99,11 @@ mod tests {
                 Box::pin(async {
                     Ok(vec![
                         (
-                            CardId::new(SetCode::new("FDN"), "0", LanguageCode::FR, false),
+                            CardId::new(SetCode::new("FDN"), "0", LanguageCode::FR),
                             "Card A".to_string(),
                         ),
                         (
-                            CardId::new(SetCode::new("FDN"), "1", LanguageCode::FR, false),
+                            CardId::new(SetCode::new("FDN"), "1", LanguageCode::FR),
                             "Card B".to_string(),
                         ),
                     ])

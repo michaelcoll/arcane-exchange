@@ -71,7 +71,7 @@ watch(
     isSetKnown.value = false;
     try {
       const [history, offers, set] = await Promise.all([
-        getCardPriceHistory(card.scryfall_id),
+        getCardPriceHistory(card.scryfall_id, { foil: card.foil }),
         getCardOffers({
           set_code: card.set_code,
           collector_number: card.collector_number,

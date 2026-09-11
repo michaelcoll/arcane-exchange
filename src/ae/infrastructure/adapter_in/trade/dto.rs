@@ -68,9 +68,9 @@ pub struct TradeCardResponse {
 impl From<TradeCardDetail> for TradeCardResponse {
     fn from(c: TradeCardDetail) -> Self {
         Self {
-            set_code: c.card_id.set_code.to_string(),
-            collector_number: c.card_id.collector_number,
-            language_code: c.card_id.language_code.to_string(),
+            set_code: c.card_id.card_id.set_code.to_string(),
+            collector_number: c.card_id.card_id.collector_number,
+            language_code: c.card_id.card_id.language_code.to_string(),
             foil: c.card_id.foil,
             name: c.name,
             quantity: c.quantity,

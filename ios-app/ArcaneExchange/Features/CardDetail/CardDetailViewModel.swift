@@ -113,16 +113,19 @@ final class CardDetailViewModel {
         history = .loading
         do {
             let output = try await APIClientProvider.shared.get_card_price_history(
-                path: .init(scryfall_id: card.scryfall_id)
+                path: .init(scryfall_id: card.scryfall_id),
+                query: .init(foil: card.foil)
             )
             switch output {
             case let .ok(response):
                 let points = try PriceHistorySeries.points(from: response.body.json)
                 history = points.count >= 2 ? .ready(points) : .notEnoughData
-            case .badRequest, .notFound:
-                // A bad date range or an unknown card here just means "nothing to plot".
+            case .notFound:
+                // An unknown card here just means "nothing to plot".
                 history = .notEnoughData
-            case .unauthorized, .undocumented:
+            case .badRequest, .unauthorized, .undocumented:
+                // A bad date range, or a missing/malformed required param, is a real error —
+                // it must not be confused with "no data" the way a 404 is.
                 history = .failed
             }
         } catch {

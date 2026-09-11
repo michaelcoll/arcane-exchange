@@ -1,7 +1,7 @@
 use crate::application::error::AppError;
 use crate::application::repository::CardPricesViewRepository;
 use crate::application::use_case::GetCardOffersUseCase;
-use crate::domain::card::{CardId, CollectionEntry};
+use crate::domain::card::{CollectionEntry, CopyId};
 use crate::domain::card_offer::CardOfferSortField;
 use crate::domain::error::FunctionalError;
 use crate::domain::pagination::{Paginated, Pagination};
@@ -28,16 +28,16 @@ impl GetCardOffersUseCase for CardOfferService {
     async fn get_card_offers(
         &self,
         user_id: &UserId,
-        card_id: CardId,
+        copy_id: CopyId,
         sort_by: CardOfferSortField,
         pagination: Pagination,
     ) -> Result<Paginated<CollectionEntry>, AppError> {
-        if !self.repository.exists(&card_id).await? {
+        if !self.repository.exists(&copy_id.card_id).await? {
             return Err(FunctionalError::CardNotFound.into());
         }
 
         self.repository
-            .get_offers(user_id, &card_id, sort_by, pagination)
+            .get_offers(user_id, &copy_id, sort_by, pagination)
             .await
     }
 }
@@ -49,8 +49,8 @@ mod tests {
     use crate::application::repository::MockCardPricesViewRepository;
     use crate::domain::language_code::LanguageCode;
 
-    fn card_id() -> CardId {
-        CardId::new("FDN", "1", LanguageCode::EN, false)
+    fn card_id() -> CopyId {
+        CopyId::new("FDN", "1", LanguageCode::EN, false)
     }
 
     #[tokio::test]

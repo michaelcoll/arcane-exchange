@@ -6,7 +6,6 @@ erDiagram
         character_varying(5) set_code PK, FK
         character_varying(10) collector_number PK
         character_varying(2) language_code PK
-        boolean foil PK
         character_varying(255) name "not null"
         character_varying(1) rarity "not null"
         uuid scryfall_id "not null"
@@ -40,7 +39,7 @@ erDiagram
         character_varying(5) set_code FK "not null"
         character_varying(10) collector_number FK "not null"
         character_varying(2) language_code FK "not null"
-        boolean foil FK "not null"
+        boolean foil "not null"
         character_varying(50) user_id FK "not null"
         integer quantity "not null"
         integer purchase_price "not null"
@@ -110,7 +109,7 @@ erDiagram
         character_varying(5) set_code PK, FK
         character_varying(10) collector_number PK, FK
         character_varying(2) language_code PK, FK
-        boolean foil PK, FK
+        boolean foil PK
         character_varying(50) owner_user_id PK, FK
         integer quantity "not null"
     }
@@ -134,12 +133,12 @@ erDiagram
     }
     set_name ||--o{ card : "set_code"
     users ||--o| card_import : "user_id"
-    card ||--o{ collection_entry : "set_code, collector_number, language_code, foil"
+    card ||--o{ collection_entry : "set_code, collector_number, language_code"
     users ||--o{ collection_entry : "user_id"
     users ||--o{ collection_rarity_filters : "user_id"
     users ||--o{ trade : "initiator_user_id"
     users ||--o{ trade : "respondent_user_id"
-    card ||--o{ trade_card : "set_code, collector_number, language_code, foil"
+    card ||--o{ trade_card : "set_code, collector_number, language_code"
     users ||--o{ trade_card : "owner_user_id"
     trade ||--o{ trade_card : "trade_id"
     users ||--o{ trading_binders : "user_id"

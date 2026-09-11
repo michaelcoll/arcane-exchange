@@ -148,7 +148,7 @@ extension APIProtocol {
     /// - Remark: Generated from `#/paths//card/{scryfall_id}/price-history/get(get_card_price_history)`.
     public func get_card_price_history(
         path: Operations.get_card_price_history.Input.Path,
-        query: Operations.get_card_price_history.Input.Query = .init(),
+        query: Operations.get_card_price_history.Input.Query,
         headers: Operations.get_card_price_history.Input.Headers = .init()
     ) async throws -> Operations.get_card_price_history.Output {
         try await get_card_price_history(Operations.get_card_price_history.Input(

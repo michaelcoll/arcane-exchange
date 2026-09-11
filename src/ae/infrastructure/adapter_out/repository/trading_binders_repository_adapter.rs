@@ -207,7 +207,7 @@ mod tests {
     #[sqlx::test]
     async fn binder_exists_is_true_when_present_in_collection(pool: PgPool) {
         insert_set(&pool, "TST").await;
-        insert_card_without_cardmarket_id(&pool, "TST", "1", "en", false, "Card A").await;
+        insert_card_without_cardmarket_id(&pool, "TST", "1", "en", "Card A").await;
         insert_user(&pool, "user-1", "User1").await;
         insert_collection_entry_with_binder(
             &pool,
@@ -248,7 +248,7 @@ mod tests {
     #[sqlx::test]
     async fn binder_exists_is_false_for_another_users_binder(pool: PgPool) {
         insert_set(&pool, "TST").await;
-        insert_card_without_cardmarket_id(&pool, "TST", "1", "en", false, "Card A").await;
+        insert_card_without_cardmarket_id(&pool, "TST", "1", "en", "Card A").await;
         insert_user(&pool, "user-other", "UserOther").await;
         insert_user(&pool, "user-1", "User1").await;
         insert_collection_entry_with_binder(
@@ -277,7 +277,7 @@ mod tests {
     #[sqlx::test]
     async fn purge_missing_removes_orphaned_selections(pool: PgPool) {
         insert_set(&pool, "TST").await;
-        insert_card_without_cardmarket_id(&pool, "TST", "1", "en", false, "Card A").await;
+        insert_card_without_cardmarket_id(&pool, "TST", "1", "en", "Card A").await;
         insert_user(&pool, "user-1", "User1").await;
         insert_collection_entry_with_binder(
             &pool,
@@ -306,7 +306,7 @@ mod tests {
     #[sqlx::test]
     async fn purge_missing_does_not_touch_other_users(pool: PgPool) {
         insert_set(&pool, "TST").await;
-        insert_card_without_cardmarket_id(&pool, "TST", "1", "en", false, "Card A").await;
+        insert_card_without_cardmarket_id(&pool, "TST", "1", "en", "Card A").await;
         insert_user(&pool, "user-1", "User1").await;
         insert_user(&pool, "user-2", "User2").await;
         insert_collection_entry_with_binder(

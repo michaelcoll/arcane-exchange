@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT cardmarket_id, foil FROM card WHERE scryfall_id = $1",
+  "query": "SELECT cardmarket_id\n               FROM card\n               WHERE scryfall_id = $1\n               ORDER BY (language_code = 'FR') DESC, language_code\n               LIMIT 1",
   "describe": {
     "columns": [
       {
@@ -13,17 +13,6 @@
             "name": "cardmarket_id"
           }
         }
-      },
-      {
-        "ordinal": 1,
-        "name": "foil",
-        "type_info": "Bool",
-        "origin": {
-          "Table": {
-            "table": "card",
-            "name": "foil"
-          }
-        }
       }
     ],
     "parameters": {
@@ -32,9 +21,8 @@
       ]
     },
     "nullable": [
-      true,
-      false
+      true
     ]
   },
-  "hash": "93fd7c48ed94cb1ad12e3f74118011f243c02267a01f7c26961f1ab1d87e6d49"
+  "hash": "f532adfa3b52be03a3e7b73bbed8eef70bd829ad172be8f7096332f3d51cc405"
 }

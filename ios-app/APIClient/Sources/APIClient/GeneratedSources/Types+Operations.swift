@@ -523,6 +523,10 @@ public enum Operations {
             public var path: Operations.get_card_price_history.Input.Path
             /// - Remark: Generated from `#/paths/card/{scryfall_id}/price-history/GET/query`.
             public struct Query: Sendable, Hashable {
+                /// Whether to return the foil price series
+                ///
+                /// - Remark: Generated from `#/paths/card/{scryfall_id}/price-history/GET/query/foil`.
+                public var foil: Swift.Bool
                 /// Start date (ISO 8601: YYYY-MM-DD, inclusive). Defaults to end_date minus 30 days
                 ///
                 /// - Remark: Generated from `#/paths/card/{scryfall_id}/price-history/GET/query/start_date`.
@@ -534,12 +538,15 @@ public enum Operations {
                 /// Creates a new `Query`.
                 ///
                 /// - Parameters:
+                ///   - foil: Whether to return the foil price series
                 ///   - start_date: Start date (ISO 8601: YYYY-MM-DD, inclusive). Defaults to end_date minus 30 days
                 ///   - end_date: End date (ISO 8601: YYYY-MM-DD, inclusive). Defaults to today
                 public init(
+                    foil: Swift.Bool,
                     start_date: Swift.String? = nil,
                     end_date: Swift.String? = nil
                 ) {
+                    self.foil = foil
                     self.start_date = start_date
                     self.end_date = end_date
                 }
@@ -565,7 +572,7 @@ public enum Operations {
             ///   - headers:
             public init(
                 path: Operations.get_card_price_history.Input.Path,
-                query: Operations.get_card_price_history.Input.Query = .init(),
+                query: Operations.get_card_price_history.Input.Query,
                 headers: Operations.get_card_price_history.Input.Headers = .init()
             ) {
                 self.path = path
@@ -629,13 +636,13 @@ public enum Operations {
                 /// Creates a new `BadRequest`.
                 public init() {}
             }
-            /// Invalid date range (start_date > end_date)
+            /// Invalid date range (start_date > end_date), or missing `foil`
             ///
             /// - Remark: Generated from `#/paths//card/{scryfall_id}/price-history/get(get_card_price_history)/responses/400`.
             ///
             /// HTTP response code: `400 badRequest`.
             case badRequest(Operations.get_card_price_history.Output.BadRequest)
-            /// Invalid date range (start_date > end_date)
+            /// Invalid date range (start_date > end_date), or missing `foil`
             ///
             /// - Remark: Generated from `#/paths//card/{scryfall_id}/price-history/get(get_card_price_history)/responses/400`.
             ///

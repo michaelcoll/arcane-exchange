@@ -5,12 +5,13 @@ use crate::domain::rarity_code::RarityCode;
 use crate::domain::set_name::{SetCode, SetName};
 use std::fmt::{Display, Formatter};
 
+/// Identifies a card **definition** in the catalog: one printing, in one language. Does not
+/// carry the finish — a definition is shared by its normal and foil copies (see [`CopyId`]).
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct CardId {
     pub set_code: SetCode,
     pub collector_number: String,
     pub language_code: LanguageCode,
-    pub foil: bool,
 }
 
 impl CardId {
@@ -18,7 +19,6 @@ impl CardId {
         set_code: impl Into<SetCode>,
         collector_number: impl Into<String>,
         language_code: LanguageCode,
-        foil: bool,
     ) -> Result<Self, FunctionalError> {
         let collector_number = collector_number.into();
         if collector_number.chars().count() > 10 {
@@ -32,6 +32,46 @@ impl CardId {
             set_code: set_code.into(),
             collector_number,
             language_code,
+        })
+    }
+
+    pub fn new(
+        set_code: impl Into<SetCode>,
+        collector_number: impl Into<String>,
+        language_code: LanguageCode,
+    ) -> Self {
+        Self::try_new(set_code, collector_number, language_code).expect("invalid collector number")
+    }
+}
+
+impl Display for CardId {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "{:>5} {} {}",
+            self.collector_number, self.set_code, self.language_code,
+        )
+    }
+}
+
+/// Identifies a physical **copy** of a card: a [`CardId`] plus the finish it was printed in.
+/// This is the identity that a collection entry or a trade card actually carries — the finish
+/// belongs to the copy someone owns, not to the catalog definition.
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+pub struct CopyId {
+    pub card_id: CardId,
+    pub foil: bool,
+}
+
+impl CopyId {
+    pub fn try_new(
+        set_code: impl Into<SetCode>,
+        collector_number: impl Into<String>,
+        language_code: LanguageCode,
+        foil: bool,
+    ) -> Result<Self, FunctionalError> {
+        Ok(CopyId {
+            card_id: CardId::try_new(set_code, collector_number, language_code)?,
             foil,
         })
     }
@@ -47,15 +87,15 @@ impl CardId {
     }
 }
 
-impl Display for CardId {
+impl Display for CopyId {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         write!(
             f,
             "{:>5} {} {} {}",
-            self.collector_number,
-            self.set_code,
+            self.card_id.collector_number,
+            self.card_id.set_code,
             if self.foil { "⭑" } else { "·" },
-            self.language_code,
+            self.card_id.language_code,
         )
     }
 }
@@ -97,7 +137,7 @@ pub enum CollectionEntry {
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Card {
-    pub id: CardId,
+    pub id: CopyId,
     pub set_name: SetName,
     pub name: String,
     pub rarity_code: RarityCode,
@@ -125,7 +165,7 @@ impl Card {
         let set_code: SetCode = set_code.into();
         let set_name = SetName::new(set_code.clone(), set_name);
         Card {
-            id: CardId::new(set_code, collector_number.into(), language_code, foil),
+            id: CopyId::new(set_code, collector_number.into(), language_code, foil),
             set_name,
             name: name.into(),
             rarity_code,
@@ -159,7 +199,7 @@ impl Card {
         let set_code: SetCode = set_code.into();
         let set_name = SetName::new(set_code.clone(), set_name);
         Card {
-            id: CardId::new(set_code, collector_number.into(), language_code, foil),
+            id: CopyId::new(set_code, collector_number.into(), language_code, foil),
             set_name,
             name: name.into(),
             rarity_code,
@@ -185,13 +225,13 @@ mod tests {
 
     #[test]
     fn try_new_card_id_with_valid_collector_number_creates_instance() {
-        let result = CardId::try_new("FDN", "1234567890", LanguageCode::EN, true);
+        let result = CardId::try_new("FDN", "1234567890", LanguageCode::EN);
         assert!(result.is_ok());
     }
 
     #[test]
     fn try_new_card_id_with_too_long_collector_number_returns_error() {
-        let result = CardId::try_new("FDN", "12345678901", LanguageCode::EN, true);
+        let result = CardId::try_new("FDN", "12345678901", LanguageCode::EN);
         match result {
             Err(FunctionalError::InvalidCollectorNumber(msg)) => {
                 assert!(msg.contains("collector number must be 10 characters or less"))
@@ -203,25 +243,48 @@ mod tests {
     #[test]
     #[should_panic(expected = "invalid collector number")]
     fn new_card_id_with_too_long_collector_number_panics() {
-        CardId::new("FDN", "12345678901", LanguageCode::EN, true);
+        CardId::new("FDN", "12345678901", LanguageCode::EN);
     }
 
     #[test]
-    fn display_card_id_with_foil() {
-        let card_id = CardId::new("FDN", "123", LanguageCode::EN, true);
-        assert_eq!(card_id.to_string(), "  123 FDN ⭑ EN");
+    fn display_card_id() {
+        let card_id = CardId::new("FDN", "123", LanguageCode::EN);
+        assert_eq!(card_id.to_string(), "  123 FDN EN");
     }
 
     #[test]
-    fn display_card_id_with_foil_and_collection_number_on_one_digit() {
-        let card_id = CardId::new("FDN", "3", LanguageCode::EN, true);
-        assert_eq!(card_id.to_string(), "    3 FDN ⭑ EN");
+    fn display_card_id_with_collection_number_on_one_digit() {
+        let card_id = CardId::new("FDN", "3", LanguageCode::EN);
+        assert_eq!(card_id.to_string(), "    3 FDN EN");
     }
 
     #[test]
-    fn display_card_id_without_foil() {
-        let card_id = CardId::new("FDN", "456", LanguageCode::FR, false);
-        assert_eq!(card_id.to_string(), "  456 FDN · FR");
+    fn try_new_copy_id_with_too_long_collector_number_returns_error() {
+        let result = CopyId::try_new("FDN", "12345678901", LanguageCode::EN, true);
+        match result {
+            Err(FunctionalError::InvalidCollectorNumber(msg)) => {
+                assert!(msg.contains("collector number must be 10 characters or less"))
+            }
+            _ => panic!("Expected InvalidCollectorNumber variant"),
+        }
+    }
+
+    #[test]
+    fn display_copy_id_with_foil() {
+        let copy_id = CopyId::new("FDN", "123", LanguageCode::EN, true);
+        assert_eq!(copy_id.to_string(), "  123 FDN ⭑ EN");
+    }
+
+    #[test]
+    fn display_copy_id_with_foil_and_collection_number_on_one_digit() {
+        let copy_id = CopyId::new("FDN", "3", LanguageCode::EN, true);
+        assert_eq!(copy_id.to_string(), "    3 FDN ⭑ EN");
+    }
+
+    #[test]
+    fn display_copy_id_without_foil() {
+        let copy_id = CopyId::new("FDN", "456", LanguageCode::FR, false);
+        assert_eq!(copy_id.to_string(), "  456 FDN · FR");
     }
 
     #[test]
