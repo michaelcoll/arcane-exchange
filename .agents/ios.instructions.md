@@ -1,7 +1,7 @@
 # iOS App Development Guide (Swift/SwiftUI)
 
 The native client lives in `ios-app/`. It talks to the same Rust backend as `frontend-vue/`, through a client
-generated from the very same `doc/openapi.yml`.
+generated from the very same `docs/openapi.yml`.
 
 ## Project Generation (CRITICAL)
 
@@ -30,11 +30,11 @@ generated from the very same `doc/openapi.yml`.
 
 ## API Client
 
-- `APIClient/` is a local SwiftPM package whose sources are generated from `doc/openapi.yml` by
+- `APIClient/` is a local SwiftPM package whose sources are generated from `docs/openapi.yml` by
   `mise run generate-api-client` (direct `swift-openapi-generator` CLI invocation, no build plugin — a symlink
   into `Sources/` broke Portainer's git checkout, which refuses repos containing symlinks) into
   `Sources/APIClient/GeneratedSources/`, **committed to the repo**. `APIClient.swift` is intentionally empty.
-- **An API change starts in the backend + `doc/openapi.yml`**, then run `mise run generate-api-client` and commit
+- **An API change starts in the backend + `docs/openapi.yml`**, then run `mise run generate-api-client` and commit
   the regenerated files, never by hand-writing Swift models.
 - A backend DTO field typed `Option<Struct>` must carry `#[schema(value_type = TheStruct, required = false)]`,
   otherwise utoipa emits a schema the generator drops — the field silently disappears from the Swift client.

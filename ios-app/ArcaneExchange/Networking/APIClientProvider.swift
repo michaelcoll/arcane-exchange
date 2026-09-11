@@ -21,7 +21,7 @@ enum APIClientProvider {
 }
 
 /// Errors surfaced by the generated client for status codes that have no
-/// typed response schema in `doc/openapi.yml` (400/401/404 across most operations).
+/// typed response schema in `docs/openapi.yml` (400/401/404 across most operations).
 ///
 /// Each generated operation has its own `Output` enum with an
 /// `.undocumented(statusCode: Int, UndocumentedPayload)` case for these — there is

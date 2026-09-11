@@ -1,10 +1,5 @@
 # CRITICAL RULES - MUST FOLLOW
 
-## RESPONSES
-
-- Keep responses concise and to the point – unless the user asks otherwise
-- Respond to the user using his language
-
 ## PLANNING MODE
 
 - Always ask clarifying questions
@@ -25,11 +20,6 @@
 - Use any testing tools, libraries available to the project for testing your changes
 - Never assume your changes simply work, always test!
 
-## PARALLELIZATION
-
-- Always launch independent tool calls in parallel within the same message
-- Never wait for one tool's result before calling another tool that doesn't depend on it
-
 ## Instructions
 
 - **Authentication**: [authentication.instructions.md](.agents/authentication.instructions.md)
@@ -42,3 +32,13 @@
 - **iOS App**: [ios.instructions.md](.agents/ios.instructions.md)
 - **Mise & Workflow**: [mise.instructions.md](.agents/mise.instructions.md)
 - **Trade Workflow**: [trade-workflow.instructions.md](.agents/trade-workflow.instructions.md)
+
+## Agent skills
+
+### Issue tracker
+
+Issues live in GitHub Issues for michaelcoll/arcane-exchange, using the `gh` CLI. See `docs/agents/issue-tracker.md`.
+
+### Domain docs
+
+Single-context (root `CONTEXT.md` + `docs/adr/`). See `docs/agents/domain.md`.

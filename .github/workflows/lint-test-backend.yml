@@ -85,15 +85,15 @@ jobs:
       - uses: actions-rust-lang/setup-rust-toolchain@v1
 
       - name: Save current OpenAPI spec
-        run: cp doc/openapi.yml doc/openapi.yml.bak
+        run: cp docs/openapi.yml docs/openapi.yml.bak
 
       - name: Regenerate OpenAPI spec
         run: SQLX_OFFLINE=true cargo run --bin generate-openapi
 
       - name: Check openapi.yml is up-to-date
         run: |
-          if ! diff -q doc/openapi.yml.bak doc/openapi.yml > /dev/null 2>&1; then
-            echo "::error file=doc/openapi.yml::Le fichier doc/openapi.yml n'est pas à jour. Lancez 'just generate-openapi' et committez les changements."
-            diff doc/openapi.yml.bak doc/openapi.yml
+          if ! diff -q docs/openapi.yml.bak docs/openapi.yml > /dev/null 2>&1; then
+            echo "::error file=docs/openapi.yml::Le fichier docs/openapi.yml n'est pas à jour. Lancez 'mise run rebuild-docs' et committez les changements."
+            diff docs/openapi.yml.bak docs/openapi.yml
             exit 1
           fi

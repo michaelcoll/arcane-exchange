@@ -8,7 +8,7 @@
 - **test**: `cargo llvm-cov nextest` (in a `rust:1-bullseye` container with a PostgreSQL service, unpinned/`latest`
   tag) with coverage uploaded to Codecov
 - **build-offline**: `SQLX_OFFLINE=true cargo build` to validate SQLX metadata
-- **check-openapi**: regenerates `doc/openapi.yml` (`cargo run --bin generate-openapi`) and checks it's up to date
+- **check-openapi**: regenerates `docs/openapi.yml` (`cargo run --bin generate-openapi`) and checks it's up to date
 
 ### 2. Frontend CI (`lint-test-frontend.yml`) — triggered on every push
 
