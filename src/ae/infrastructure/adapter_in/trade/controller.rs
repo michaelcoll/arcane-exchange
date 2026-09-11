@@ -4,7 +4,7 @@ use super::dto::{
 };
 use crate::application::error::AppError;
 use crate::application::service::trade_service::TRADES_MAX_OFFSET;
-use crate::domain::card::CardId;
+use crate::domain::card::CopyId;
 use crate::domain::error::FunctionalError;
 use crate::domain::language_code::LanguageCode;
 use crate::domain::pagination::Pagination;
@@ -80,7 +80,7 @@ pub(crate) async fn add_trade_card(
     axum::Json(payload): axum::Json<AddTradeCardRequest>,
 ) -> Result<StatusCode, AppError> {
     let language_code = LanguageCode::try_new(&payload.language_code).map_err(AppError::from)?;
-    let card_id = CardId::try_new(
+    let copy_id = CopyId::try_new(
         payload.set_code.as_str(),
         payload.collector_number,
         language_code,
@@ -100,7 +100,7 @@ pub(crate) async fn add_trade_card(
             TradeId(trade_id),
             user.id,
             payload.owner_username,
-            card_id,
+            copy_id,
             payload.quantity,
         )
         .await?;
@@ -131,7 +131,7 @@ pub(crate) async fn remove_trade_card(
     axum::Json(payload): axum::Json<RemoveTradeCardRequest>,
 ) -> Result<StatusCode, AppError> {
     let language_code = LanguageCode::try_new(&payload.language_code).map_err(AppError::from)?;
-    let card_id = CardId::try_new(
+    let copy_id = CopyId::try_new(
         payload.set_code.as_str(),
         payload.collector_number,
         language_code,
@@ -141,7 +141,7 @@ pub(crate) async fn remove_trade_card(
 
     state
         .remove_trade_card_use_case
-        .remove_card(TradeId(trade_id), user.id, payload.owner_username, card_id)
+        .remove_card(TradeId(trade_id), user.id, payload.owner_username, copy_id)
         .await?;
 
     Ok(StatusCode::NO_CONTENT)

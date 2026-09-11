@@ -1,6 +1,6 @@
 use crate::application::error::AppError;
 use crate::application::imported_card::ImportedCard;
-use crate::domain::card::{Card, CardId, CollectionEntry};
+use crate::domain::card::{Card, CardId, CollectionEntry, CopyId};
 use crate::domain::card_import::{CardImport, CardImportId, CardImportStatus};
 use crate::domain::card_offer::CardOfferSortField;
 use crate::domain::collection::{CollectionQuery, SearchQuery};
@@ -36,11 +36,11 @@ impl From<PersistenceError> for String {
 pub trait CardRepository: Send + Sync {
     async fn get_all_without_cardmarket_id(&self) -> Result<Vec<(CardId, uuid::Uuid)>, AppError>;
     async fn get_all_without_gatherer_id(&self) -> Result<Vec<(CardId, String)>, AppError>;
-    /// Returns `(cardmarket_id, foil)` for the card matching `scryfall_id`, if any.
+    /// Returns `cardmarket_id` for the card matching `scryfall_id`, if any.
     async fn find_by_scryfall_id(
         &self,
         scryfall_id: uuid::Uuid,
-    ) -> Result<Option<(Option<u32>, bool)>, AppError>;
+    ) -> Result<Option<Option<u32>>, AppError>;
     /// Writes `cards` in bulk (grouped `INSERT ... ON CONFLICT DO UPDATE`), in one transaction.
     /// `cards` is expected to already fit within a single statement's bound-parameter budget —
     /// callers importing a large collection chunk it themselves.
@@ -128,11 +128,11 @@ pub trait CardPricesViewRepository: Send + Sync {
     /// Whether `card_id` exists in the catalog (table `card`), regardless of who owns it, or
     /// whether anyone owns it at all.
     async fn exists(&self, card_id: &CardId) -> Result<bool, AppError>;
-    /// Other users' offers for `card_id` (the caller's own entry, if any, is excluded).
+    /// Other users' offers for `copy_id` (the caller's own entry, if any, is excluded).
     async fn get_offers(
         &self,
         user_id: &UserId,
-        card_id: &CardId,
+        copy_id: &CopyId,
         sort_by: CardOfferSortField,
         pagination: Pagination,
     ) -> Result<Paginated<CollectionEntry>, AppError>;
@@ -229,26 +229,26 @@ pub trait TradeRepository: Send + Sync {
     async fn find_collection_entry_quantity(
         &self,
         user_id: &UserId,
-        card_id: &CardId,
+        copy_id: &CopyId,
     ) -> Result<Option<i32>, AppError>;
 
-    /// Quantity of `card_id` that `owner_id` actually offers to trade (`v_tradable_entry`), i.e.
+    /// Quantity of `copy_id` that `owner_id` actually offers to trade (`v_tradable_entry`), i.e.
     /// after applying their visibility, trade binders and rarity filters. Returns `0` when the
     /// owner doesn't offer this card at all (private, closed rarity, or unselected binder).
     async fn find_proposed_quantity(
         &self,
         owner_id: &UserId,
-        card_id: &CardId,
+        copy_id: &CopyId,
     ) -> Result<u8, AppError>;
 
-    /// True when `card_id` (owned by `owner_id`) already appears in a trade other than `trade_id`
+    /// True when `copy_id` (owned by `owner_id`) already appears in a trade other than `trade_id`
     /// with status `ONE_ACCEPTED` or `FULLY_ACCEPTED` — i.e. it is already committed to another
     /// trade and cannot be added to this one.
     async fn is_card_reserved_elsewhere(
         &self,
         trade_id: TradeId,
         owner_id: &UserId,
-        card_id: &CardId,
+        copy_id: &CopyId,
     ) -> Result<bool, AppError>;
 
     /// Finds the active trade (`PENDING`, `ONE_ACCEPTED` or `FULLY_ACCEPTED`) between two users, if any,
@@ -289,25 +289,25 @@ pub trait TradeRepository: Send + Sync {
         respondent_id: &UserId,
     ) -> Result<(), AppError>;
 
-    /// Adds `card_id` to an existing trade (or increments its `quantity` if already present for `owner_id`).
+    /// Adds `copy_id` to an existing trade (or increments its `quantity` if already present for `owner_id`).
     /// When `reopen_to_pending` is true, the trade's status is reset to `PENDING`.
     async fn merge_card_into_trade(
         &self,
         trade_id: TradeId,
-        card_id: &CardId,
+        copy_id: &CopyId,
         owner_id: &UserId,
         quantity: u8,
         reopen_to_pending: bool,
     ) -> Result<(), AppError>;
 
-    /// Removes the trade_card row identified by `card_id` + `owner_id` from `trade_id`, entirely
+    /// Removes the trade_card row identified by `copy_id` + `owner_id` from `trade_id`, entirely
     /// (no partial quantity decrement). When `reopen_to_pending` is true, the trade's status is reset
     /// to `PENDING` and both acceptance timestamps cleared — same effect as `merge_card_into_trade`.
     /// Returns `false` if no matching row existed (nothing changed, trade untouched).
     async fn remove_card_from_trade(
         &self,
         trade_id: TradeId,
-        card_id: &CardId,
+        copy_id: &CopyId,
         owner_id: &UserId,
         reopen_to_pending: bool,
     ) -> Result<bool, AppError>;

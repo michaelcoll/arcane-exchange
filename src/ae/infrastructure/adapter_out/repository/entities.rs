@@ -1,4 +1,4 @@
-use crate::domain::card::{Card, CardId, CollectionEntry};
+use crate::domain::card::{Card, CardId, CollectionEntry, CopyId};
 use crate::domain::language_code::LanguageCode;
 use crate::domain::price::{FullPriceGuide, Price, PriceGuide, PriceHistoryEntry};
 use crate::domain::rarity_code::RarityCode;
@@ -13,7 +13,6 @@ pub struct CardIdEntity {
     pub set_code: String,
     pub collector_number: String,
     pub language_code: String,
-    pub foil: bool,
     pub set_name: String,
     pub scryfall_id: Uuid,
 }
@@ -23,7 +22,6 @@ pub struct CardNameEntity {
     pub set_code: String,
     pub collector_number: String,
     pub language_code: String,
-    pub foil: bool,
     pub name: String,
 }
 
@@ -36,7 +34,6 @@ impl From<CardNameEntity> for CardId {
             collector_number: entity.collector_number,
             language_code: LanguageCode::try_new(entity.language_code)
                 .expect("database contains invalid language_code"),
-            foil: entity.foil,
         }
     }
 }
@@ -68,7 +65,6 @@ impl From<CardIdEntity> for CardId {
             collector_number: entity.collector_number,
             language_code: LanguageCode::try_new(entity.language_code)
                 .expect("database contains invalid language_code"),
-            foil: entity.foil,
         }
     }
 }
@@ -159,11 +155,13 @@ impl From<TradeCardEntity> for TradeCard {
         let set_code =
             SetCode::try_new(entity.set_code).expect("database contains invalid set_code");
         TradeCard {
-            card_id: CardId {
-                set_code,
-                collector_number: entity.collector_number,
-                language_code: LanguageCode::try_new(entity.language_code)
-                    .expect("database contains invalid language_code"),
+            card_id: CopyId {
+                card_id: CardId {
+                    set_code,
+                    collector_number: entity.collector_number,
+                    language_code: LanguageCode::try_new(entity.language_code)
+                        .expect("database contains invalid language_code"),
+                },
                 foil: entity.foil,
             },
             owner_user_id: UserId::new(entity.owner_user_id),
@@ -207,11 +205,13 @@ impl From<TradeCardDetailEntity> for TradeCardDetail {
         };
 
         TradeCardDetail {
-            card_id: CardId {
-                set_code,
-                collector_number: entity.collector_number,
-                language_code: LanguageCode::try_new(entity.language_code)
-                    .expect("database contains invalid language_code"),
+            card_id: CopyId {
+                card_id: CardId {
+                    set_code,
+                    collector_number: entity.collector_number,
+                    language_code: LanguageCode::try_new(entity.language_code)
+                        .expect("database contains invalid language_code"),
+                },
                 foil: entity.foil,
             },
             owner_user_id: UserId::new(entity.owner_user_id),
@@ -462,7 +462,7 @@ impl From<CardWithPriceEntity> for Card {
 
         let set_code = SetCode::try_new(&e.set_code).expect("database contains invalid set_code");
         Card {
-            id: CardId::new(
+            id: CopyId::new(
                 set_code.clone(),
                 e.collector_number,
                 LanguageCode::try_new(&e.language_code)
@@ -504,12 +504,11 @@ impl From<CardOfferEntity> for CollectionEntry {
 mod tests {
     use super::*;
 
-    fn make_card_id_entity(foil: bool) -> CardIdEntity {
+    fn make_card_id_entity() -> CardIdEntity {
         CardIdEntity {
             set_code: "FDN".to_string(),
             collector_number: "123".to_string(),
             language_code: "FR".to_string(),
-            foil,
             set_name: "Foundations".to_string(),
             scryfall_id: Uuid::parse_str("4409a063-bf2a-4a49-803e-3ce6bd474353").unwrap(),
         }
@@ -557,14 +556,13 @@ mod tests {
     }
 
     #[test]
-    fn card_id_entity_converts_to_card_id_with_foil() {
-        let entity = make_card_id_entity(true);
+    fn card_id_entity_converts_to_card_id() {
+        let entity = make_card_id_entity();
 
         let card_id: CardId = entity.into();
 
         assert_eq!(card_id.collector_number, "123");
         assert_eq!(card_id.language_code, LanguageCode::FR);
-        assert!(card_id.foil);
         assert_eq!(card_id.set_code.to_string(), "FDN");
     }
 
@@ -646,7 +644,6 @@ mod tests {
             set_code: "FDN".to_string(),
             collector_number: "42".to_string(),
             language_code: "EN".to_string(),
-            foil: false,
             name: "Sol Ring".to_string(),
         };
 
@@ -654,7 +651,6 @@ mod tests {
 
         assert_eq!(card_id.collector_number, "42");
         assert_eq!(card_id.language_code, LanguageCode::EN);
-        assert!(!card_id.foil);
         assert_eq!(card_id.set_code.to_string(), "FDN");
     }
 
@@ -749,10 +745,10 @@ mod tests {
 
         let trade_card: TradeCard = entity.into();
 
-        assert_eq!(trade_card.card_id.collector_number, "87");
-        assert_eq!(trade_card.card_id.language_code, LanguageCode::FR);
+        assert_eq!(trade_card.card_id.card_id.collector_number, "87");
+        assert_eq!(trade_card.card_id.card_id.language_code, LanguageCode::FR);
         assert!(trade_card.card_id.foil);
-        assert_eq!(trade_card.card_id.set_code.to_string(), "FDN");
+        assert_eq!(trade_card.card_id.card_id.set_code.to_string(), "FDN");
         assert_eq!(trade_card.owner_user_id, UserId::new("owner-1"));
         assert_eq!(trade_card.quantity, 3);
     }

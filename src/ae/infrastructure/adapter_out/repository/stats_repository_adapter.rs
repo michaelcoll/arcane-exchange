@@ -65,8 +65,8 @@ mod tests {
         let adapter = StatsRepositoryAdapter::new(pool.clone());
 
         insert_set(&pool, "TST").await;
-        insert_card_without_cardmarket_id(&pool, "TST", "1", "en", false, "Test Card").await;
-        insert_card_without_cardmarket_id(&pool, "TST", "2", "en", false, "Another Card").await;
+        insert_card_without_cardmarket_id(&pool, "TST", "1", "en", "Test Card").await;
+        insert_card_without_cardmarket_id(&pool, "TST", "2", "en", "Another Card").await;
 
         let result = adapter.get_card_number().await;
 

@@ -1,6 +1,6 @@
 use crate::application::error::AppError;
 use crate::application::imported_card::ImportedCard;
-use crate::domain::card::{Card, CardId, CollectionEntry};
+use crate::domain::card::{Card, CardId, CollectionEntry, CopyId};
 use crate::domain::card_import::CardImportLineError;
 use crate::domain::error::FunctionalError;
 use crate::domain::language_code::LanguageCode;
@@ -70,9 +70,11 @@ pub fn parse_cards(csv: &str) -> Result<ParsedCollection, AppError> {
         }
     }
 
-    let mut seen: HashMap<(CardId, Option<String>), ImportedCard> =
+    // Keyed on the full copy identity (finish included): a normal and a foil copy of the same
+    // card, in the same binder, must remain two distinct entries, not be summed into one.
+    let mut seen: HashMap<(CopyId, Option<String>), ImportedCard> =
         HashMap::with_capacity(cards.len());
-    let mut order: Vec<(CardId, Option<String>)> = Vec::with_capacity(cards.len());
+    let mut order: Vec<(CopyId, Option<String>)> = Vec::with_capacity(cards.len());
     for imported in cards {
         let key = (imported.card.id.clone(), imported.binder_name.clone());
         if let Some(existing) = seen.get_mut(&key) {
@@ -188,13 +190,8 @@ fn parse_line(
             .map_err(|_e| line_error(line_number, "added_at", raw))?
     };
 
-    CardId::try_new(
-        set_code.clone(),
-        collector_number,
-        language_code.clone(),
-        foil,
-    )
-    .map_err(|_| line_error(line_number, "collector_number", collector_number))?;
+    CardId::try_new(set_code.clone(), collector_number, language_code.clone())
+        .map_err(|_| line_error(line_number, "collector_number", collector_number))?;
 
     let card = Card::new_full(
         set_code,
@@ -238,9 +235,9 @@ mod tests {
         assert!(parsed.errors.is_empty());
         assert_eq!(parsed.source_lines, 3);
 
-        assert_eq!(cards[0].card.id.set_code, SetCode::new("FDN"));
-        assert_eq!(cards[0].card.id.collector_number, "87");
-        assert_eq!(cards[0].card.id.language_code, LanguageCode::FR);
+        assert_eq!(cards[0].card.id.card_id.set_code, SetCode::new("FDN"));
+        assert_eq!(cards[0].card.id.card_id.collector_number, "87");
+        assert_eq!(cards[0].card.id.card_id.language_code, LanguageCode::FR);
         assert!(!cards[0].card.id.foil);
         assert_eq!(cards[0].binder_name, Some("bulk".to_string()));
         let CollectionEntry::Mine {
@@ -254,9 +251,9 @@ mod tests {
         assert_eq!(q0, 3);
         assert_eq!(p0, 8);
 
-        assert_eq!(cards[1].card.id.set_code, SetCode::new("GPT"));
-        assert_eq!(cards[1].card.id.collector_number, "32");
-        assert_eq!(cards[1].card.id.language_code, LanguageCode::FR);
+        assert_eq!(cards[1].card.id.card_id.set_code, SetCode::new("GPT"));
+        assert_eq!(cards[1].card.id.card_id.collector_number, "32");
+        assert_eq!(cards[1].card.id.card_id.language_code, LanguageCode::FR);
         assert!(!cards[1].card.id.foil);
         let CollectionEntry::Mine {
             quantity: q1,
@@ -269,9 +266,9 @@ mod tests {
         assert_eq!(q1, 2);
         assert_eq!(p1, 17);
 
-        assert_eq!(cards[2].card.id.set_code, SetCode::new("FDN"));
-        assert_eq!(cards[2].card.id.collector_number, "217");
-        assert_eq!(cards[2].card.id.language_code, LanguageCode::FR);
+        assert_eq!(cards[2].card.id.card_id.set_code, SetCode::new("FDN"));
+        assert_eq!(cards[2].card.id.card_id.collector_number, "217");
+        assert_eq!(cards[2].card.id.card_id.language_code, LanguageCode::FR);
         assert!(!cards[2].card.id.foil);
         let CollectionEntry::Mine {
             quantity: q2,
@@ -296,8 +293,8 @@ mod tests {
 
         assert_eq!(cards.len(), 1);
         assert_eq!(cards[0].card.name, "Dwynen, Gilt-Leaf Daen");
-        assert_eq!(cards[0].card.id.set_code, SetCode::new("FDN"));
-        assert_eq!(cards[0].card.id.collector_number, "217");
+        assert_eq!(cards[0].card.id.card_id.set_code, SetCode::new("FDN"));
+        assert_eq!(cards[0].card.id.card_id.collector_number, "217");
 
         Ok(())
     }
@@ -415,8 +412,8 @@ mod tests {
         let cards = parse_cards(csv).unwrap().cards;
 
         assert_eq!(cards.len(), 1);
-        assert_eq!(cards[0].card.id.set_code, SetCode::new("FDN"));
-        assert_eq!(cards[0].card.id.collector_number, "87");
+        assert_eq!(cards[0].card.id.card_id.set_code, SetCode::new("FDN"));
+        assert_eq!(cards[0].card.id.card_id.collector_number, "87");
         assert_eq!(cards[0].binder_name, Some("bulk".to_string()));
         let CollectionEntry::Mine {
             quantity,
@@ -432,6 +429,51 @@ mod tests {
         assert_eq!(purchase_price, 8);
         // earliest date kept
         assert_eq!(added_at.to_rfc3339(), "2026-02-05T20:44:45.815+00:00");
+    }
+
+    #[test]
+    fn parse_cards_does_not_merge_normal_and_foil_copies_in_the_same_binder() {
+        // Regression test for the dedup key losing the finish once `CardId` no longer carries
+        // `foil`: a normal and a foil copy of the same card, in the same binder, must remain
+        // two distinct entries — not be silently summed into a single entry of quantity 2.
+        let csv = "Binder Name,Binder Type,Name,Set code,Set name,Collector number,Foil,Rarity,Quantity,ManaBox ID,Scryfall ID,Purchase price,Misprint,Altered,Condition,Language,Purchase price currency,Added\n\
+                   bulk,binder,Goblin Boarders,FDN,Foundations,87,normal,common,3,101506,4409a063-bf2a-4a49-803e-3ce6bd474353,0.08,false,false,near_mint,fr,EUR,2026-02-05T20:44:45.815Z\n\
+                   bulk,binder,Goblin Boarders,FDN,Foundations,87,foil,common,1,101506,4409a063-bf2a-4a49-803e-3ce6bd474353,0.50,false,false,near_mint,fr,EUR,2026-02-05T20:44:45.815Z";
+
+        let cards = parse_cards(csv).unwrap().cards;
+
+        assert_eq!(
+            cards.len(),
+            2,
+            "normal and foil must remain two distinct collection entries"
+        );
+        let normal = cards
+            .iter()
+            .find(|c| !c.card.id.foil)
+            .expect("a non-foil entry must be present");
+        let foil = cards
+            .iter()
+            .find(|c| c.card.id.foil)
+            .expect("a foil entry must be present");
+
+        let CollectionEntry::Mine {
+            quantity: normal_qty,
+            ..
+        } = normal.card.collection_entry
+        else {
+            panic!("expected CollectionEntry::Mine");
+        };
+        let CollectionEntry::Mine {
+            quantity: foil_qty, ..
+        } = foil.card.collection_entry
+        else {
+            panic!("expected CollectionEntry::Mine");
+        };
+        assert_eq!(
+            normal_qty, 3,
+            "quantities must not be summed across finishes"
+        );
+        assert_eq!(foil_qty, 1);
     }
 
     #[test]

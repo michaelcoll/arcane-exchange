@@ -50,13 +50,13 @@ impl CollectionPriceHistoryRepository for CollectionPriceHistoryRepositoryAdapte
                 FROM (SELECT ce.user_id,
                              ce.added_at,
                              cmp.date,
-                             CASE WHEN c.foil THEN cmp.low_foil ELSE cmp.low END * ce.quantity     AS low,
-                             CASE WHEN c.foil THEN cmp.avg_foil ELSE cmp.avg END * ce.quantity     AS avg,
-                             CASE WHEN c.foil THEN cmp.trend_foil ELSE cmp.trend END * ce.quantity AS trend
+                             CASE WHEN ce.foil THEN cmp.low_foil ELSE cmp.low END * ce.quantity     AS low,
+                             CASE WHEN ce.foil THEN cmp.avg_foil ELSE cmp.avg END * ce.quantity     AS avg,
+                             CASE WHEN ce.foil THEN cmp.trend_foil ELSE cmp.trend END * ce.quantity AS trend
                        FROM card c
                                JOIN collection_entry ce
                                     ON c.set_code = ce.set_code AND c.collector_number = ce.collector_number AND
-                                       c.language_code = ce.language_code AND c.foil = ce.foil
+                                       c.language_code = ce.language_code
                                JOIN cardmarket_price cmp ON cardmarket_id = cmp.id_produit) AS prices
                 WHERE prices.user_id = $1
                   AND prices.date = $2
@@ -127,7 +127,7 @@ mod tests {
         let adapter = CollectionPriceHistoryRepositoryAdapter::new(pool.clone());
 
         insert_set(&pool, "SET1").await;
-        insert_card(&pool, "SET1", "1", "EN", false, "Test Card", 1).await;
+        insert_card(&pool, "SET1", "1", "EN", "Test Card", 1).await;
         insert_user(&pool, "user1", "User1").await;
         insert_collection_entry(&pool, "SET1", "1", "EN", false, "user1", 1, 100, Utc::now()).await;
         insert_price(
@@ -159,7 +159,7 @@ mod tests {
         let date = NaiveDate::from_ymd_opt(2025, 12, 25).unwrap();
 
         insert_set(&pool, "SET2").await;
-        insert_card(&pool, "SET2", "1", "EN", false, "Test Card", 1).await;
+        insert_card(&pool, "SET2", "1", "EN", "Test Card", 1).await;
         insert_user(&pool, "user1", "User1").await;
         insert_collection_entry(&pool, "SET2", "1", "EN", false, "user1", 1, 100, Utc::now()).await;
         insert_price(
@@ -194,7 +194,7 @@ mod tests {
         let date2 = NaiveDate::from_ymd_opt(2025, 12, 26).unwrap();
 
         insert_set(&pool, "SET3").await;
-        insert_card(&pool, "SET3", "1", "EN", false, "Test Card", 1).await;
+        insert_card(&pool, "SET3", "1", "EN", "Test Card", 1).await;
         insert_user(&pool, "user1", "User1").await;
         insert_user(&pool, "user2", "User2").await;
         insert_collection_entry(&pool, "SET3", "1", "EN", false, "user1", 1, 100, Utc::now()).await;
@@ -242,7 +242,7 @@ mod tests {
         let added_at = date.and_hms_opt(0, 0, 0).unwrap().and_utc();
 
         insert_set(&pool, "SET6").await;
-        insert_card(&pool, "SET6", "1", "EN", false, "Card 1", 5).await;
+        insert_card(&pool, "SET6", "1", "EN", "Card 1", 5).await;
         insert_user(&pool, "user1", "User1").await;
         insert_user(&pool, "user2", "User2").await;
         insert_collection_entry(&pool, "SET6", "1", "EN", false, "user1", 2, 100, added_at).await;
@@ -273,5 +273,53 @@ mod tests {
         assert_eq!(rows_user1.len(), 1);
         assert_eq!(rows_user1[0].low, 20i32); // 10 * 2
         assert_eq!(rows_user2.len(), 0);
+    }
+
+    #[sqlx::test]
+    async fn update_for_date_and_user_uses_the_finish_of_each_collection_entry(pool: PgPool) {
+        // The catalog carries a single card definition for both finishes; the value computed
+        // for each `collection_entry` row must come from its own `foil` column, not from the
+        // (now finish-less) `card` row it joins to. Getting this wrong writes a wrong value to
+        // `collection_price_history`, silently — the point the spec calls out as the most
+        // sensitive of this refactor.
+        let adapter = CollectionPriceHistoryRepositoryAdapter::new(pool.clone());
+        let user = User::from_id(UserId::new("user1"));
+        let date = NaiveDate::from_ymd_opt(2025, 12, 25).unwrap();
+        let added_at = date.and_hms_opt(0, 0, 0).unwrap().and_utc();
+
+        insert_set(&pool, "SET7").await;
+        insert_card(&pool, "SET7", "1", "EN", "Card 1", 7).await;
+        insert_user(&pool, "user1", "User1").await;
+        insert_collection_entry(&pool, "SET7", "1", "EN", false, "user1", 1, 100, added_at).await;
+        insert_collection_entry(&pool, "SET7", "1", "EN", true, "user1", 1, 100, added_at).await;
+        insert_price(
+            &pool,
+            CardMarketPriceEntity {
+                id_produit: 7,
+                date,
+                normal: PriceGuideEntity {
+                    low: Some(10),
+                    avg: Some(20),
+                    trend: Some(15),
+                },
+                foil: PriceGuideEntity {
+                    low: Some(40),
+                    avg: Some(50),
+                    trend: Some(45),
+                },
+            },
+        )
+        .await;
+
+        adapter.update_for_date_and_user(date, user).await.unwrap();
+
+        let rows = fetch_collection_price_history(&pool, date, "user1").await;
+
+        assert_eq!(rows.len(), 1);
+        // One non-foil copy at `low` (10) plus one foil copy at foil `low` (40) = 50.
+        assert_eq!(
+            rows[0].low, 50i32,
+            "the foil copy must contribute its foil price, not the non-foil one"
+        );
     }
 }

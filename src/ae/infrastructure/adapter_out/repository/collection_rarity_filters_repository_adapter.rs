@@ -38,7 +38,6 @@ impl RarityTradeFilterRepository for CollectionRarityFiltersRepositoryAdapter {
                 ON  c.set_code         = ce.set_code
                 AND c.collector_number = ce.collector_number
                 AND c.language_code    = ce.language_code
-                AND c.foil             = ce.foil
             JOIN trading_binders tb
                 ON  tb.user_id     = ce.user_id
                 AND tb.binder_name = ce.binder_name
@@ -121,7 +120,7 @@ mod tests {
     #[sqlx::test]
     async fn list_is_empty_when_no_binder_is_selected(pool: PgPool) {
         insert_set(&pool, "TST").await;
-        insert_card_with_rarity(&pool, "TST", "1", "en", false, "Card A", 1, "R").await;
+        insert_card_with_rarity(&pool, "TST", "1", "en", "Card A", 1, "R").await;
         insert_user(&pool, "user-1", "User1").await;
         insert_collection_entry_with_binder(
             &pool,
@@ -149,8 +148,8 @@ mod tests {
     #[sqlx::test]
     async fn list_returns_owned_rarities_closed_by_default(pool: PgPool) {
         insert_set(&pool, "TST").await;
-        insert_card_with_rarity(&pool, "TST", "1", "en", false, "Rare Card", 1, "R").await;
-        insert_card_with_rarity(&pool, "TST", "2", "en", false, "Common Card", 2, "C").await;
+        insert_card_with_rarity(&pool, "TST", "1", "en", "Rare Card", 1, "R").await;
+        insert_card_with_rarity(&pool, "TST", "2", "en", "Common Card", 2, "C").await;
         insert_user(&pool, "user-1", "User1").await;
         insert_collection_entry_with_binder(
             &pool,
@@ -200,8 +199,8 @@ mod tests {
     #[sqlx::test]
     async fn list_computes_proposed_when_rarity_is_open(pool: PgPool) {
         insert_set(&pool, "TST").await;
-        insert_card_with_rarity(&pool, "TST", "1", "en", false, "Rare Card A", 1, "R").await;
-        insert_card_with_rarity(&pool, "TST", "2", "en", false, "Rare Card B", 2, "R").await;
+        insert_card_with_rarity(&pool, "TST", "1", "en", "Rare Card A", 1, "R").await;
+        insert_card_with_rarity(&pool, "TST", "2", "en", "Rare Card B", 2, "R").await;
         insert_user(&pool, "user-1", "User1").await;
         insert_collection_entry_with_binder(
             &pool,
@@ -260,8 +259,8 @@ mod tests {
     #[sqlx::test]
     async fn list_computes_zero_proposed_when_rarity_is_closed(pool: PgPool) {
         insert_set(&pool, "TST").await;
-        insert_card_with_rarity(&pool, "TST", "1", "en", false, "Rare Card A", 1, "R").await;
-        insert_card_with_rarity(&pool, "TST", "2", "en", false, "Rare Card B", 2, "R").await;
+        insert_card_with_rarity(&pool, "TST", "1", "en", "Rare Card A", 1, "R").await;
+        insert_card_with_rarity(&pool, "TST", "2", "en", "Rare Card B", 2, "R").await;
         insert_user(&pool, "user-1", "User1").await;
         insert_collection_entry_with_binder(
             &pool,
@@ -318,7 +317,7 @@ mod tests {
     #[sqlx::test]
     async fn list_excludes_cards_from_unselected_binders(pool: PgPool) {
         insert_set(&pool, "TST").await;
-        insert_card_with_rarity(&pool, "TST", "1", "en", false, "Rare Card", 1, "R").await;
+        insert_card_with_rarity(&pool, "TST", "1", "en", "Rare Card", 1, "R").await;
         insert_user(&pool, "user-1", "User1").await;
         insert_collection_entry_with_binder(
             &pool,
@@ -347,7 +346,7 @@ mod tests {
     #[sqlx::test]
     async fn list_excludes_cards_without_a_binder(pool: PgPool) {
         insert_set(&pool, "TST").await;
-        insert_card_with_rarity(&pool, "TST", "1", "en", false, "Rare Card", 1, "R").await;
+        insert_card_with_rarity(&pool, "TST", "1", "en", "Rare Card", 1, "R").await;
         insert_user(&pool, "user-1", "User1").await;
         insert_collection_entry_with_binder(
             &pool,
@@ -376,7 +375,7 @@ mod tests {
     #[sqlx::test]
     async fn list_includes_special_rarity_when_owned(pool: PgPool) {
         insert_set(&pool, "TST").await;
-        insert_card_with_rarity(&pool, "TST", "1", "en", false, "Special Card", 1, "S").await;
+        insert_card_with_rarity(&pool, "TST", "1", "en", "Special Card", 1, "S").await;
         insert_user(&pool, "user-1", "User1").await;
         insert_collection_entry_with_binder(
             &pool,
@@ -406,7 +405,7 @@ mod tests {
     #[sqlx::test]
     async fn upsert_then_list_reflects_the_new_rule_and_recomputed_proposed(pool: PgPool) {
         insert_set(&pool, "TST").await;
-        insert_card_with_rarity(&pool, "TST", "1", "en", false, "Mythic Card", 1, "M").await;
+        insert_card_with_rarity(&pool, "TST", "1", "en", "Mythic Card", 1, "M").await;
         insert_user(&pool, "user-1", "User1").await;
         insert_collection_entry_with_binder(
             &pool,
@@ -500,7 +499,7 @@ mod tests {
     #[sqlx::test]
     async fn list_only_reflects_the_caller_own_rule(pool: PgPool) {
         insert_set(&pool, "TST").await;
-        insert_card_with_rarity(&pool, "TST", "1", "en", false, "Rare Card", 1, "R").await;
+        insert_card_with_rarity(&pool, "TST", "1", "en", "Rare Card", 1, "R").await;
         insert_user(&pool, "user-1", "User1").await;
         insert_user(&pool, "user-2", "User2").await;
         insert_collection_entry_with_binder(
@@ -563,7 +562,7 @@ mod tests {
     #[sqlx::test]
     async fn list_only_returns_the_caller_data(pool: PgPool) {
         insert_set(&pool, "TST").await;
-        insert_card_with_rarity(&pool, "TST", "1", "en", false, "Rare Card", 1, "R").await;
+        insert_card_with_rarity(&pool, "TST", "1", "en", "Rare Card", 1, "R").await;
         insert_user(&pool, "user-1", "User1").await;
         insert_user(&pool, "user-2", "User2").await;
         insert_collection_entry_with_binder(

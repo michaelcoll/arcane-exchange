@@ -1,0 +1,17 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE card\n                SET the_gatherer_id = $1\n                WHERE set_code = $2 AND collector_number = $3 AND language_code = $4;",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Varchar",
+        "Text",
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "f63016332f962bb0f6a266b63dd51765d8200e881c9d221f207f5b4a291aee0a"
+}

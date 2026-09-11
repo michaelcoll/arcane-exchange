@@ -21,17 +21,15 @@ pub async fn insert_card(
     set_code: &str,
     collector_number: &str,
     language_code: &str,
-    foil: bool,
     name: &str,
     cardmarket_id: i32,
 ) {
     sqlx::query(
-        r#"INSERT INTO card (set_code, collector_number, language_code, foil, name, rarity, scryfall_id, cardmarket_id)
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8)"#)
+        r#"INSERT INTO card (set_code, collector_number, language_code, name, rarity, scryfall_id, cardmarket_id)
+            VALUES ($1, $2, $3, $4, $5, $6, $7)"#)
         .bind(set_code)
         .bind(collector_number)
         .bind(language_code)
-        .bind(foil)
         .bind(name)
         .bind("C")
         .bind(Uuid::new_v4())
@@ -41,24 +39,21 @@ pub async fn insert_card(
     .unwrap();
 }
 
-#[allow(clippy::too_many_arguments)]
 pub async fn insert_card_with_rarity(
     pool: &PgPool,
     set_code: &str,
     collector_number: &str,
     language_code: &str,
-    foil: bool,
     name: &str,
     cardmarket_id: i32,
     rarity: &str,
 ) {
     sqlx::query(
-        r#"INSERT INTO card (set_code, collector_number, language_code, foil, name, rarity, scryfall_id, cardmarket_id)
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8)"#)
+        r#"INSERT INTO card (set_code, collector_number, language_code, name, rarity, scryfall_id, cardmarket_id)
+            VALUES ($1, $2, $3, $4, $5, $6, $7)"#)
         .bind(set_code)
         .bind(collector_number)
         .bind(language_code)
-        .bind(foil)
         .bind(name)
         .bind(rarity)
         .bind(Uuid::new_v4())
@@ -143,24 +138,21 @@ pub async fn fetch_collection_entries(pool: &PgPool, user_id: &str) -> Vec<Colle
     .unwrap()
 }
 
-#[allow(clippy::too_many_arguments)]
 pub async fn insert_card_with_scryfall_id(
     pool: &PgPool,
     set_code: &str,
     collector_number: &str,
     language_code: &str,
-    foil: bool,
     name: &str,
     scryfall_id: Uuid,
     cardmarket_id: Option<i32>,
 ) {
     sqlx::query(
-        r#"INSERT INTO card (set_code, collector_number, language_code, foil, name, rarity, scryfall_id, cardmarket_id)
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8)"#)
+        r#"INSERT INTO card (set_code, collector_number, language_code, name, rarity, scryfall_id, cardmarket_id)
+            VALUES ($1, $2, $3, $4, $5, $6, $7)"#)
         .bind(set_code)
         .bind(collector_number)
         .bind(language_code)
-        .bind(foil)
         .bind(name)
         .bind("C")
         .bind(scryfall_id)
@@ -175,17 +167,15 @@ pub async fn insert_card_without_cardmarket_id(
     set_code: &str,
     collector_number: &str,
     language_code: &str,
-    foil: bool,
     name: &str,
 ) {
     sqlx::query(
-        r#"INSERT INTO card (set_code, collector_number, language_code, foil, name, rarity, scryfall_id)
-            VALUES ($1, $2, $3, $4, $5, $6, $7)"#,
+        r#"INSERT INTO card (set_code, collector_number, language_code, name, rarity, scryfall_id)
+            VALUES ($1, $2, $3, $4, $5, $6)"#,
     )
     .bind(set_code)
     .bind(collector_number)
     .bind(language_code)
-    .bind(foil)
     .bind(name)
     .bind("C")
     .bind(Uuid::new_v4())

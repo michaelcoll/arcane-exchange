@@ -1,6 +1,6 @@
 use crate::application::error::{AppError, InfraError};
 use crate::application::repository::CardPricesViewRepository;
-use crate::domain::card::{Card, CardId, CollectionEntry};
+use crate::domain::card::{Card, CardId, CollectionEntry, CopyId};
 use crate::domain::card_offer::CardOfferSortField;
 use crate::domain::collection::{CollectionQuery, CollectionSortField, SearchQuery};
 use crate::domain::pagination::{Paginated, Pagination};
@@ -345,11 +345,10 @@ impl CardPricesViewRepository for CardPricesViewRepositoryAdapter {
     async fn exists(&self, card_id: &CardId) -> Result<bool, AppError> {
         let exists = sqlx::query_scalar!(
             r#"SELECT EXISTS(SELECT 1 FROM card
-                 WHERE set_code = $1 AND collector_number = $2 AND language_code = $3 AND foil = $4)"#,
+                 WHERE set_code = $1 AND collector_number = $2 AND language_code = $3)"#,
             card_id.set_code.to_string(),
             card_id.collector_number,
             card_id.language_code.to_string(),
-            card_id.foil
         )
         .fetch_one(&self.pool)
         .await
@@ -362,7 +361,7 @@ impl CardPricesViewRepository for CardPricesViewRepositoryAdapter {
     async fn get_offers(
         &self,
         user_id: &UserId,
-        card_id: &CardId,
+        copy_id: &CopyId,
         sort_by: CardOfferSortField,
         pagination: Pagination,
     ) -> Result<Paginated<CollectionEntry>, AppError> {
@@ -389,10 +388,10 @@ impl CardPricesViewRepository for CardPricesViewRepositoryAdapter {
                        AND cp.foil = $4 AND cp.user_id != $5
                      ORDER BY cp.trend ASC NULLS LAST, u.username
                      LIMIT $6 OFFSET $7"#,
-                card_id.set_code.to_string(),
-                card_id.collector_number,
-                card_id.language_code.to_string(),
-                card_id.foil,
+                copy_id.card_id.set_code.to_string(),
+                copy_id.card_id.collector_number,
+                copy_id.card_id.language_code.to_string(),
+                copy_id.foil,
                 user_id.as_str(),
                 limit,
                 offset
@@ -408,10 +407,10 @@ impl CardPricesViewRepository for CardPricesViewRepositoryAdapter {
                                              (cp.user_id, cp.set_code, cp.collector_number, cp.language_code, cp.foil)
                  WHERE cp.set_code = $1 AND cp.collector_number = $2 AND cp.language_code = $3
                    AND cp.foil = $4 AND cp.user_id != $5"#,
-            card_id.set_code.to_string(),
-            card_id.collector_number,
-            card_id.language_code.to_string(),
-            card_id.foil,
+            copy_id.card_id.set_code.to_string(),
+            copy_id.card_id.collector_number,
+            copy_id.card_id.language_code.to_string(),
+            copy_id.foil,
             user_id.as_str()
         )
         .fetch_one(&self.pool)
@@ -542,7 +541,7 @@ mod tests {
     #[sqlx::test]
     async fn last_cardmarket_prices_uses_the_most_recent_dated_record(pool: PgPool) {
         insert_set(&pool, "TST").await;
-        insert_card(&pool, "TST", "1", "EN", false, "Test Card", 1).await;
+        insert_card(&pool, "TST", "1", "EN", "Test Card", 1).await;
         insert_price(
             &pool,
             CardMarketPriceEntity::simple_at(1, NaiveDate::from_ymd_opt(2024, 1, 1).unwrap(), 100),
@@ -565,7 +564,7 @@ mod tests {
     #[sqlx::test]
     async fn last_cardmarket_prices_exposes_foil_columns_for_a_foil_card(pool: PgPool) {
         insert_set(&pool, "TST").await;
-        insert_card(&pool, "TST", "1", "EN", true, "Test Card", 1).await;
+        insert_card(&pool, "TST", "1", "EN", "Test Card", 1).await;
         insert_price(&pool, CardMarketPriceEntity::with_foil(1, 100, 400)).await;
         refresh_view(&pool).await;
 
@@ -579,7 +578,7 @@ mod tests {
     #[sqlx::test]
     async fn last_cardmarket_prices_uses_non_foil_columns_for_a_non_foil_card(pool: PgPool) {
         insert_set(&pool, "TST").await;
-        insert_card(&pool, "TST", "1", "EN", false, "Test Card", 1).await;
+        insert_card(&pool, "TST", "1", "EN", "Test Card", 1).await;
         insert_price(&pool, CardMarketPriceEntity::with_foil(1, 100, 400)).await;
         refresh_view(&pool).await;
 
@@ -597,23 +596,46 @@ mod tests {
     #[sqlx::test]
     async fn last_cardmarket_prices_is_absent_without_a_cardmarket_id(pool: PgPool) {
         insert_set(&pool, "TST").await;
-        insert_card_without_cardmarket_id(&pool, "TST", "1", "EN", false, "Test Card").await;
+        insert_card_without_cardmarket_id(&pool, "TST", "1", "EN", "Test Card").await;
         refresh_view(&pool).await;
 
-        let row = fetch_last_cardmarket_price(&pool, "TST", "1", false)
-            .await
-            .unwrap();
+        // The catalog no longer carries a finish: both rows must exist, and both must have
+        // absent prices, never zero.
+        for foil in [false, true] {
+            let row = fetch_last_cardmarket_price(&pool, "TST", "1", foil)
+                .await
+                .unwrap();
 
-        assert_eq!(row.low, None);
-        assert_eq!(row.trend, None);
-        assert_eq!(row.avg, None, "price must be absent, never zero");
+            assert_eq!(row.low, None);
+            assert_eq!(row.trend, None);
+            assert_eq!(row.avg, None, "price must be absent, never zero");
+        }
+    }
+
+    #[sqlx::test]
+    async fn last_cardmarket_prices_contains_both_finishes_for_every_catalog_card(pool: PgPool) {
+        // The catalog has no notion of finish any more, so the view can't derive which finishes
+        // exist for a card — it must expose both, for every card, regardless of what anyone owns.
+        insert_set(&pool, "TST").await;
+        insert_card(&pool, "TST", "1", "EN", "Test Card", 1).await;
+        insert_price(&pool, CardMarketPriceEntity::with_foil(1, 100, 400)).await;
+        refresh_view(&pool).await;
+
+        assert_eq!(
+            count_last_cardmarket_prices(&pool, "TST", "1", false).await,
+            1
+        );
+        assert_eq!(
+            count_last_cardmarket_prices(&pool, "TST", "1", true).await,
+            1
+        );
     }
 
     #[sqlx::test]
     async fn last_cardmarket_prices_deduplicates_cards_differing_only_by_language(pool: PgPool) {
         insert_set(&pool, "TST").await;
-        insert_card(&pool, "TST", "1", "EN", false, "Test Card", 1).await;
-        insert_card(&pool, "TST", "1", "FR", false, "Carte de test", 1).await;
+        insert_card(&pool, "TST", "1", "EN", "Test Card", 1).await;
+        insert_card(&pool, "TST", "1", "FR", "Carte de test", 1).await;
         insert_price(&pool, CardMarketPriceEntity::simple(1, 100)).await;
         refresh_view(&pool).await;
 
@@ -632,7 +654,7 @@ mod tests {
         refresh_view(&pool).await;
 
         insert_set(&pool, "TST").await;
-        insert_card(&pool, "TST", "1", "EN", false, "Test Card", 1).await;
+        insert_card(&pool, "TST", "1", "EN", "Test Card", 1).await;
 
         let adapter = CardPricesViewRepositoryAdapter::new(pool.clone());
         adapter.refresh().await.unwrap();
@@ -644,7 +666,7 @@ mod tests {
     #[sqlx::test]
     async fn refresh_reflects_a_cardmarket_id_resolved_after_the_first_population(pool: PgPool) {
         insert_set(&pool, "TST").await;
-        insert_card_without_cardmarket_id(&pool, "TST", "1", "EN", false, "Test Card").await;
+        insert_card_without_cardmarket_id(&pool, "TST", "1", "EN", "Test Card").await;
         insert_price(&pool, CardMarketPriceEntity::simple(1, 100)).await;
         refresh_view(&pool).await;
 
@@ -680,7 +702,7 @@ mod tests {
         // serve a cycle-old price. `mv_card_prices` only exposes cards someone owns, so a
         // `collection_entry` is required or the test would pass vacuously.
         insert_set(&pool, "TST").await;
-        insert_card(&pool, "TST", "1", "EN", false, "Test Card", 1).await;
+        insert_card(&pool, "TST", "1", "EN", "Test Card", 1).await;
         insert_user(&pool, "user1", "User1").await;
         insert_collection_entry(&pool, "TST", "1", "EN", false, "user1", 1, 100, Utc::now()).await;
         refresh_view(&pool).await;
@@ -709,11 +731,11 @@ mod tests {
     #[sqlx::test]
     async fn exists_returns_true_for_a_card_nobody_owns(pool: PgPool) {
         insert_set(&pool, "TST").await;
-        insert_card(&pool, "TST", "1", "EN", false, "Test Card", 1).await;
+        insert_card(&pool, "TST", "1", "EN", "Test Card", 1).await;
 
         let adapter = CardPricesViewRepositoryAdapter::new(pool);
         let result = adapter
-            .exists(&card_id("TST", "1", "EN", false))
+            .exists(&copy_id("TST", "1", "EN", false).card_id)
             .await
             .unwrap();
 
@@ -726,11 +748,11 @@ mod tests {
     #[sqlx::test]
     async fn exists_returns_false_when_only_language_code_differs(pool: PgPool) {
         insert_set(&pool, "TST").await;
-        insert_card(&pool, "TST", "1", "EN", false, "Test Card", 1).await;
+        insert_card(&pool, "TST", "1", "EN", "Test Card", 1).await;
 
         let adapter = CardPricesViewRepositoryAdapter::new(pool);
         let result = adapter
-            .exists(&card_id("TST", "1", "FR", false))
+            .exists(&copy_id("TST", "1", "FR", false).card_id)
             .await
             .unwrap();
 
@@ -756,7 +778,7 @@ mod tests {
     #[sqlx::test]
     async fn get_paginated_returns_cards_for_the_given_user(pool: PgPool) {
         insert_set(&pool, "TST").await;
-        insert_card(&pool, "TST", "1", "EN", false, "Test Card", 1).await;
+        insert_card(&pool, "TST", "1", "EN", "Test Card", 1).await;
         insert_user(&pool, "user1", "User1").await;
         insert_collection_entry(&pool, "TST", "1", "EN", false, "user1", 2, 500, Utc::now()).await;
         insert_price(&pool, CardMarketPriceEntity::simple(1, 200)).await;
@@ -773,9 +795,50 @@ mod tests {
     }
 
     #[sqlx::test]
+    async fn get_paginated_exposes_distinct_prices_for_foil_and_non_foil_copies(pool: PgPool) {
+        // The catalog carries a single definition for both finishes; the finish (and therefore
+        // the price) must come from `collection_entry`, not from the (now finish-less) card.
+        insert_set(&pool, "TST").await;
+        insert_card(&pool, "TST", "1", "EN", "Test Card", 1).await;
+        insert_user(&pool, "user1", "User1").await;
+        insert_collection_entry(&pool, "TST", "1", "EN", false, "user1", 1, 100, Utc::now()).await;
+        insert_collection_entry(&pool, "TST", "1", "EN", true, "user1", 1, 100, Utc::now()).await;
+        insert_price(&pool, CardMarketPriceEntity::with_foil(1, 200, 500)).await;
+        refresh_view(&pool).await;
+
+        let adapter = CardPricesViewRepositoryAdapter::new(pool);
+        let result = adapter
+            .get_paginated(&UserId::new("user1"), CollectionQuery::default())
+            .await
+            .unwrap();
+
+        assert_eq!(result.items.len(), 2);
+        let non_foil = result
+            .items
+            .iter()
+            .find(|c| !c.id.foil)
+            .expect("a non-foil entry must be present");
+        let foil = result
+            .items
+            .iter()
+            .find(|c| c.id.foil)
+            .expect("a foil entry must be present");
+
+        assert_eq!(
+            non_foil.price_guide.as_ref().and_then(|p| p.avg.value),
+            Some(200)
+        );
+        assert_eq!(
+            foil.price_guide.as_ref().and_then(|p| p.avg.value),
+            Some(500),
+            "the foil entry must expose the foil price, not the non-foil one"
+        );
+    }
+
+    #[sqlx::test]
     async fn get_paginated_aggregates_card_split_across_binders(pool: PgPool) {
         insert_set(&pool, "TST").await;
-        insert_card(&pool, "TST", "1", "EN", false, "Test Card", 1).await;
+        insert_card(&pool, "TST", "1", "EN", "Test Card", 1).await;
         insert_user(&pool, "user1", "User1").await;
         // Postgres TIMESTAMPTZ only keeps microsecond precision, but `Utc::now()` carries
         // nanoseconds — truncate before comparing, or the round-trip through the DB drops
@@ -847,7 +910,7 @@ mod tests {
         };
 
         insert_set(&pool, "TST").await;
-        insert_card(&pool, "TST", "1", "EN", false, "Test Card", 1).await;
+        insert_card(&pool, "TST", "1", "EN", "Test Card", 1).await;
         insert_user(&pool, "user1", "alice").await;
         insert_user(&pool, "user2", "bob").await;
         insert_collection_entry(&pool, "TST", "1", "EN", false, "user1", 2, 500, Utc::now()).await;
@@ -878,7 +941,7 @@ mod tests {
         };
 
         insert_set(&pool, "TST").await;
-        insert_card(&pool, "TST", "1", "EN", false, "Test Card", 1).await;
+        insert_card(&pool, "TST", "1", "EN", "Test Card", 1).await;
         insert_user(&pool, "user1", "alice").await;
         insert_user(&pool, "user2", "bob").await;
         insert_collection_entry(&pool, "TST", "1", "EN", false, "user1", 2, 500, Utc::now()).await;
@@ -908,7 +971,7 @@ mod tests {
         };
 
         insert_set(&pool, "TST").await;
-        insert_card(&pool, "TST", "1", "EN", false, "Test Card", 1).await;
+        insert_card(&pool, "TST", "1", "EN", "Test Card", 1).await;
         insert_user(&pool, "user1", "alice").await;
         insert_user(&pool, "user2", "bob").await;
         insert_collection_entry(&pool, "TST", "1", "EN", false, "user1", 2, 500, Utc::now()).await;
@@ -934,7 +997,7 @@ mod tests {
     #[sqlx::test]
     async fn get_paginated_does_not_mark_card_as_reserved_when_no_active_trade(pool: PgPool) {
         insert_set(&pool, "TST").await;
-        insert_card(&pool, "TST", "1", "EN", false, "Test Card", 1).await;
+        insert_card(&pool, "TST", "1", "EN", "Test Card", 1).await;
         insert_user(&pool, "user1", "User1").await;
         insert_collection_entry(&pool, "TST", "1", "EN", false, "user1", 2, 500, Utc::now()).await;
         insert_price(&pool, CardMarketPriceEntity::simple(1, 200)).await;
@@ -958,7 +1021,7 @@ mod tests {
         for i in 1..=5i32 {
             let set = format!("TS{}", i);
             insert_set(&pool, &set).await;
-            insert_card(&pool, &set, "1", "EN", false, "Test Card", i).await;
+            insert_card(&pool, &set, "1", "EN", "Test Card", i).await;
             insert_collection_entry(&pool, &set, "1", "EN", false, "user1", 1, 100, Utc::now())
                 .await;
             insert_price(&pool, CardMarketPriceEntity::simple(i, i * 100)).await;
@@ -986,7 +1049,7 @@ mod tests {
         for i in 1..=4i32 {
             let set = format!("TS{}", i);
             insert_set(&pool, &set).await;
-            insert_card(&pool, &set, "1", "EN", false, "Test Card", i).await;
+            insert_card(&pool, &set, "1", "EN", "Test Card", i).await;
             insert_collection_entry(&pool, &set, "1", "EN", false, "user1", 1, 100, Utc::now())
                 .await;
             insert_price(&pool, CardMarketPriceEntity::simple(i, i * 100)).await;
@@ -1020,12 +1083,12 @@ mod tests {
         let ids_page0: Vec<_> = page0
             .items
             .iter()
-            .map(|c| c.id.set_code.to_string())
+            .map(|c| c.id.card_id.set_code.to_string())
             .collect();
         let ids_page1: Vec<_> = page1
             .items
             .iter()
-            .map(|c| c.id.set_code.to_string())
+            .map(|c| c.id.card_id.set_code.to_string())
             .collect();
         assert!(ids_page0.iter().all(|id| !ids_page1.contains(id)));
     }
@@ -1033,9 +1096,9 @@ mod tests {
     #[sqlx::test]
     async fn get_paginated_sorts_by_avg_descending_by_default(pool: PgPool) {
         insert_set(&pool, "TS1").await;
-        insert_card(&pool, "TS1", "1", "EN", false, "Test Card", 1).await;
+        insert_card(&pool, "TS1", "1", "EN", "Test Card", 1).await;
         insert_set(&pool, "TS2").await;
-        insert_card(&pool, "TS2", "1", "EN", false, "Test Card", 2).await;
+        insert_card(&pool, "TS2", "1", "EN", "Test Card", 2).await;
         insert_user(&pool, "user1", "User1").await;
         insert_collection_entry(&pool, "TS1", "1", "EN", false, "user1", 1, 100, Utc::now()).await;
         insert_collection_entry(&pool, "TS2", "1", "EN", false, "user1", 1, 100, Utc::now()).await;
@@ -1064,9 +1127,9 @@ mod tests {
     #[sqlx::test]
     async fn get_paginated_sorts_by_set_code_ascending(pool: PgPool) {
         insert_set(&pool, "ZZZ").await;
-        insert_card(&pool, "ZZZ", "1", "EN", false, "Test Card", 1).await;
+        insert_card(&pool, "ZZZ", "1", "EN", "Test Card", 1).await;
         insert_set(&pool, "AAA").await;
-        insert_card(&pool, "AAA", "1", "EN", false, "Test Card", 2).await;
+        insert_card(&pool, "AAA", "1", "EN", "Test Card", 2).await;
         insert_user(&pool, "user1", "User1").await;
         insert_collection_entry(&pool, "ZZZ", "1", "EN", false, "user1", 1, 100, Utc::now()).await;
         insert_collection_entry(&pool, "AAA", "1", "EN", false, "user1", 1, 100, Utc::now()).await;
@@ -1085,15 +1148,15 @@ mod tests {
             .await
             .unwrap();
 
-        assert_eq!(result.items[0].id.set_code.to_string(), "AAA");
-        assert_eq!(result.items[1].id.set_code.to_string(), "ZZZ");
+        assert_eq!(result.items[0].id.card_id.set_code.to_string(), "AAA");
+        assert_eq!(result.items[1].id.card_id.set_code.to_string(), "ZZZ");
     }
 
     #[sqlx::test]
     async fn get_paginated_sorts_by_language_code_ascending(pool: PgPool) {
         insert_set(&pool, "TST").await;
-        insert_card(&pool, "TST", "1", "FR", false, "Test Card", 1).await;
-        insert_card(&pool, "TST", "2", "EN", false, "Test Card", 2).await;
+        insert_card(&pool, "TST", "1", "FR", "Test Card", 1).await;
+        insert_card(&pool, "TST", "2", "EN", "Test Card", 2).await;
         insert_user(&pool, "user1", "User1").await;
         insert_collection_entry(&pool, "TST", "1", "FR", false, "user1", 1, 100, Utc::now()).await;
         insert_collection_entry(&pool, "TST", "2", "EN", false, "user1", 1, 100, Utc::now()).await;
@@ -1113,17 +1176,17 @@ mod tests {
             .unwrap();
 
         assert_eq!(result.items.len(), 2);
-        let first_lang = result.items[0].id.language_code.to_string();
-        let second_lang = result.items[1].id.language_code.to_string();
+        let first_lang = result.items[0].id.card_id.language_code.to_string();
+        let second_lang = result.items[1].id.card_id.language_code.to_string();
         assert!(first_lang <= second_lang);
     }
 
     #[sqlx::test]
     async fn get_paginated_sorts_by_added_at_ascending(pool: PgPool) {
         insert_set(&pool, "TS1").await;
-        insert_card(&pool, "TS1", "1", "EN", false, "Card A", 1).await;
+        insert_card(&pool, "TS1", "1", "EN", "Card A", 1).await;
         insert_set(&pool, "TS2").await;
-        insert_card(&pool, "TS2", "1", "EN", false, "Card B", 2).await;
+        insert_card(&pool, "TS2", "1", "EN", "Card B", 2).await;
         insert_user(&pool, "user1", "User1").await;
         let older = Utc::now() - chrono::Duration::days(2);
         let older = DateTime::from_timestamp_micros(older.timestamp_micros()).unwrap();
@@ -1156,9 +1219,9 @@ mod tests {
     #[sqlx::test]
     async fn get_paginated_sorts_by_added_at_descending(pool: PgPool) {
         insert_set(&pool, "TS1").await;
-        insert_card(&pool, "TS1", "1", "EN", false, "Card A", 1).await;
+        insert_card(&pool, "TS1", "1", "EN", "Card A", 1).await;
         insert_set(&pool, "TS2").await;
-        insert_card(&pool, "TS2", "1", "EN", false, "Card B", 2).await;
+        insert_card(&pool, "TS2", "1", "EN", "Card B", 2).await;
         insert_user(&pool, "user1", "User1").await;
         // Card B is the newer entry here (unlike the ascending test above), so the
         // alphabetical name tie-break would put Card A first if the `added_at` sort were a
@@ -1194,7 +1257,7 @@ mod tests {
     #[sqlx::test]
     async fn get_paginated_returns_empty_page_when_offset_exceeds_total(pool: PgPool) {
         insert_set(&pool, "TST").await;
-        insert_card(&pool, "TST", "1", "EN", false, "Test Card", 1).await;
+        insert_card(&pool, "TST", "1", "EN", "Test Card", 1).await;
         insert_user(&pool, "user1", "User1").await;
         insert_collection_entry(&pool, "TST", "1", "EN", false, "user1", 1, 100, Utc::now()).await;
         insert_price(&pool, CardMarketPriceEntity::simple(1, 100)).await;
@@ -1218,9 +1281,9 @@ mod tests {
     #[sqlx::test]
     async fn get_paginated_isolates_cards_between_multiple_users(pool: PgPool) {
         insert_set(&pool, "TS1").await;
-        insert_card(&pool, "TS1", "1", "EN", false, "Test Card", 1).await;
+        insert_card(&pool, "TS1", "1", "EN", "Test Card", 1).await;
         insert_set(&pool, "TS2").await;
-        insert_card(&pool, "TS2", "1", "EN", false, "Test Card", 2).await;
+        insert_card(&pool, "TS2", "1", "EN", "Test Card", 2).await;
         insert_user(&pool, "userA", "Alice").await;
         insert_user(&pool, "userB", "Bob").await;
         insert_collection_entry(&pool, "TS1", "1", "EN", false, "userA", 1, 100, Utc::now()).await;
@@ -1242,16 +1305,16 @@ mod tests {
 
         assert_eq!(result_a.total, 1);
         assert_eq!(result_b.total, 1);
-        assert_eq!(result_a.items[0].id.set_code.to_string(), "TS1");
-        assert_eq!(result_b.items[0].id.set_code.to_string(), "TS2");
+        assert_eq!(result_a.items[0].id.card_id.set_code.to_string(), "TS1");
+        assert_eq!(result_b.items[0].id.card_id.set_code.to_string(), "TS2");
     }
 
     #[sqlx::test]
     async fn search_paginated_returns_cards_from_all_users(pool: PgPool) {
         insert_set(&pool, "TS1").await;
-        insert_card(&pool, "TS1", "1", "EN", false, "Test Card", 1).await;
+        insert_card(&pool, "TS1", "1", "EN", "Test Card", 1).await;
         insert_set(&pool, "TS2").await;
-        insert_card(&pool, "TS2", "1", "EN", false, "Test Card", 2).await;
+        insert_card(&pool, "TS2", "1", "EN", "Test Card", 2).await;
         insert_user_with_visibility(&pool, "userA", "Alice", "public").await;
         insert_user_with_visibility(&pool, "userB", "Bob", "public").await;
         insert_collection_entry(&pool, "TS1", "1", "EN", false, "userA", 1, 100, Utc::now()).await;
@@ -1285,7 +1348,7 @@ mod tests {
     #[sqlx::test]
     async fn search_paginated_masks_purchase_price_and_added_at_for_every_user(pool: PgPool) {
         insert_set(&pool, "TST").await;
-        insert_card(&pool, "TST", "1", "EN", false, "Test Card", 1).await;
+        insert_card(&pool, "TST", "1", "EN", "Test Card", 1).await;
         insert_user_with_visibility(&pool, "userB", "Bob", "public").await;
         insert_collection_entry(&pool, "TST", "1", "EN", false, "userB", 3, 1500, Utc::now()).await;
         insert_price(&pool, CardMarketPriceEntity::simple(1, 100)).await;
@@ -1314,7 +1377,7 @@ mod tests {
         // search_paginated has no notion of "the current user" — it always returns
         // CollectionEntry::Public, even for the card of the user running the search.
         insert_set(&pool, "TST").await;
-        insert_card(&pool, "TST", "1", "EN", false, "Test Card", 1).await;
+        insert_card(&pool, "TST", "1", "EN", "Test Card", 1).await;
         insert_user_with_visibility(&pool, "userA", "Alice", "public").await;
         insert_collection_entry(&pool, "TST", "1", "EN", false, "userA", 3, 1500, Utc::now()).await;
         insert_price(&pool, CardMarketPriceEntity::simple(1, 100)).await;
@@ -1341,7 +1404,7 @@ mod tests {
         pool: PgPool,
     ) {
         insert_set(&pool, "TST").await;
-        insert_card(&pool, "TST", "1", "EN", false, "Test Card", 1).await;
+        insert_card(&pool, "TST", "1", "EN", "Test Card", 1).await;
         insert_user_with_visibility(&pool, "userA", "Alice", "public").await;
         insert_user_with_visibility(&pool, "userB", "Bob", "public").await;
         insert_user_with_visibility(&pool, "userC", "Carol", "public").await;
@@ -1371,8 +1434,8 @@ mod tests {
     #[sqlx::test]
     async fn search_paginated_filters_by_search_query_fuzzy(pool: PgPool) {
         insert_set(&pool, "TST").await;
-        insert_card(&pool, "TST", "1", "EN", false, "Goblin Guide", 1).await;
-        insert_card(&pool, "TST", "2", "EN", false, "Sol Ring", 2).await;
+        insert_card(&pool, "TST", "1", "EN", "Goblin Guide", 1).await;
+        insert_card(&pool, "TST", "2", "EN", "Sol Ring", 2).await;
         insert_user_with_visibility(&pool, "userA", "Alice", "public").await;
         insert_collection_entry(&pool, "TST", "1", "EN", false, "userA", 1, 100, Utc::now()).await;
         insert_collection_entry(&pool, "TST", "2", "EN", false, "userA", 1, 100, Utc::now()).await;
@@ -1397,8 +1460,8 @@ mod tests {
         use crate::infrastructure::adapter_out::repository::common_repository_tests::insert_card_with_rarity;
 
         insert_set(&pool, "TST").await;
-        insert_card_with_rarity(&pool, "TST", "1", "EN", false, "Common Card", 1, "C").await;
-        insert_card_with_rarity(&pool, "TST", "2", "EN", false, "Mythic Card", 2, "M").await;
+        insert_card_with_rarity(&pool, "TST", "1", "EN", "Common Card", 1, "C").await;
+        insert_card_with_rarity(&pool, "TST", "2", "EN", "Mythic Card", 2, "M").await;
         insert_user_with_visibility(&pool, "userA", "Alice", "public").await;
         insert_collection_entry(&pool, "TST", "1", "EN", false, "userA", 1, 100, Utc::now()).await;
         insert_collection_entry(&pool, "TST", "2", "EN", false, "userA", 1, 100, Utc::now()).await;
@@ -1423,7 +1486,7 @@ mod tests {
         for i in 1..=5i32 {
             let set = format!("TS{}", i);
             insert_set(&pool, &set).await;
-            insert_card(&pool, &set, "1", "EN", false, "Test Card", i).await;
+            insert_card(&pool, &set, "1", "EN", "Test Card", i).await;
             insert_user_with_visibility(
                 &pool,
                 &format!("user{}", i),
@@ -1462,9 +1525,9 @@ mod tests {
     #[sqlx::test]
     async fn search_paginated_filters_by_player_username_exact_match(pool: PgPool) {
         insert_set(&pool, "TS1").await;
-        insert_card(&pool, "TS1", "1", "EN", false, "Card A", 1).await;
+        insert_card(&pool, "TS1", "1", "EN", "Card A", 1).await;
         insert_set(&pool, "TS2").await;
-        insert_card(&pool, "TS2", "1", "EN", false, "Card B", 2).await;
+        insert_card(&pool, "TS2", "1", "EN", "Card B", 2).await;
         insert_user_with_visibility(&pool, "userA", "Alice", "public").await;
         insert_user_with_visibility(&pool, "userB", "Bob", "public").await;
         insert_collection_entry(&pool, "TS1", "1", "EN", false, "userA", 1, 100, Utc::now()).await;
@@ -1488,7 +1551,7 @@ mod tests {
     #[sqlx::test]
     async fn search_paginated_player_username_is_case_insensitive(pool: PgPool) {
         insert_set(&pool, "TST").await;
-        insert_card(&pool, "TST", "1", "EN", false, "Card A", 1).await;
+        insert_card(&pool, "TST", "1", "EN", "Card A", 1).await;
         insert_user_with_visibility(&pool, "userA", "Alice", "public").await;
         insert_collection_entry(&pool, "TST", "1", "EN", false, "userA", 1, 100, Utc::now()).await;
         insert_price(&pool, CardMarketPriceEntity::simple(1, 100)).await;
@@ -1508,7 +1571,7 @@ mod tests {
     #[sqlx::test]
     async fn search_paginated_player_username_requires_exact_match_no_partial(pool: PgPool) {
         insert_set(&pool, "TST").await;
-        insert_card(&pool, "TST", "1", "EN", false, "Card A", 1).await;
+        insert_card(&pool, "TST", "1", "EN", "Card A", 1).await;
         insert_user_with_visibility(&pool, "userA", "Alice", "public").await;
         insert_collection_entry(&pool, "TST", "1", "EN", false, "userA", 1, 100, Utc::now()).await;
         insert_price(&pool, CardMarketPriceEntity::simple(1, 100)).await;
@@ -1528,7 +1591,7 @@ mod tests {
     #[sqlx::test]
     async fn search_paginated_returns_empty_for_unknown_player_username(pool: PgPool) {
         insert_set(&pool, "TST").await;
-        insert_card(&pool, "TST", "1", "EN", false, "Card A", 1).await;
+        insert_card(&pool, "TST", "1", "EN", "Card A", 1).await;
         insert_user_with_visibility(&pool, "userA", "Alice", "public").await;
         insert_collection_entry(&pool, "TST", "1", "EN", false, "userA", 1, 100, Utc::now()).await;
         insert_price(&pool, CardMarketPriceEntity::simple(1, 100)).await;
@@ -1548,9 +1611,9 @@ mod tests {
     #[sqlx::test]
     async fn search_paginated_sorts_by_added_at_for_scoped_player_ascending(pool: PgPool) {
         insert_set(&pool, "TS1").await;
-        insert_card(&pool, "TS1", "1", "EN", false, "Card A", 1).await;
+        insert_card(&pool, "TS1", "1", "EN", "Card A", 1).await;
         insert_set(&pool, "TS2").await;
-        insert_card(&pool, "TS2", "1", "EN", false, "Card B", 2).await;
+        insert_card(&pool, "TS2", "1", "EN", "Card B", 2).await;
         insert_user_with_visibility(&pool, "userA", "Alice", "public").await;
         let older = Utc::now() - chrono::Duration::days(2);
         let older = DateTime::from_timestamp_micros(older.timestamp_micros()).unwrap();
@@ -1583,9 +1646,9 @@ mod tests {
     #[sqlx::test]
     async fn search_paginated_sorts_by_added_at_for_scoped_player_descending(pool: PgPool) {
         insert_set(&pool, "TS1").await;
-        insert_card(&pool, "TS1", "1", "EN", false, "Card A", 1).await;
+        insert_card(&pool, "TS1", "1", "EN", "Card A", 1).await;
         insert_set(&pool, "TS2").await;
-        insert_card(&pool, "TS2", "1", "EN", false, "Card B", 2).await;
+        insert_card(&pool, "TS2", "1", "EN", "Card B", 2).await;
         insert_user_with_visibility(&pool, "userA", "Alice", "public").await;
         // Card B is the newer entry here (unlike the ascending test above), so the
         // alphabetical name tie-break would put Card A first if the `added_at` sort were a
@@ -1625,9 +1688,9 @@ mod tests {
         // *older* entry and `sort_dir=desc` is requested: if `added_at` took priority over
         // text relevance, "Foobar" (newer) would sort first. It must not.
         insert_set(&pool, "TS1").await;
-        insert_card(&pool, "TS1", "1", "EN", false, "Foo", 1).await;
+        insert_card(&pool, "TS1", "1", "EN", "Foo", 1).await;
         insert_set(&pool, "TS2").await;
-        insert_card(&pool, "TS2", "1", "EN", false, "Foobar", 2).await;
+        insert_card(&pool, "TS2", "1", "EN", "Foobar", 2).await;
         insert_user_with_visibility(&pool, "userA", "Alice", "public").await;
         let older = Utc::now() - chrono::Duration::days(2);
         let older = DateTime::from_timestamp_micros(older.timestamp_micros()).unwrap();
@@ -1661,7 +1724,7 @@ mod tests {
     #[sqlx::test]
     async fn search_paginated_added_at_stays_masked_when_sorted_by_added_at(pool: PgPool) {
         insert_set(&pool, "TST").await;
-        insert_card(&pool, "TST", "1", "EN", false, "Card A", 1).await;
+        insert_card(&pool, "TST", "1", "EN", "Card A", 1).await;
         insert_user_with_visibility(&pool, "userA", "Alice", "public").await;
         insert_collection_entry(&pool, "TST", "1", "EN", false, "userA", 1, 100, Utc::now()).await;
         insert_price(&pool, CardMarketPriceEntity::simple(1, 100)).await;
@@ -1694,7 +1757,7 @@ mod tests {
         pool: PgPool,
     ) {
         insert_set(&pool, "TST").await;
-        insert_card(&pool, "TST", "1", "EN", false, "Card A", 1).await;
+        insert_card(&pool, "TST", "1", "EN", "Card A", 1).await;
         insert_user_with_visibility(&pool, "userA", "Alice", "public").await;
         insert_collection_entry(&pool, "TST", "1", "EN", false, "userA", 1, 100, Utc::now()).await;
         insert_price(&pool, CardMarketPriceEntity::simple(1, 100)).await;
@@ -1719,7 +1782,7 @@ mod tests {
         pool: PgPool,
     ) {
         insert_set(&pool, "TST").await;
-        insert_card(&pool, "TST", "1", "EN", false, "Test Card", 1).await;
+        insert_card(&pool, "TST", "1", "EN", "Test Card", 1).await;
         insert_user_with_visibility(&pool, "userA", "Alice", "public").await;
         insert_user_with_visibility(&pool, "userB", "Bob", "public").await;
         insert_user_with_visibility(&pool, "userC", "Carol", "public").await;
@@ -1754,7 +1817,7 @@ mod tests {
         };
 
         insert_set(&pool, "TST").await;
-        insert_card(&pool, "TST", "1", "EN", false, "Test Card", 1).await;
+        insert_card(&pool, "TST", "1", "EN", "Test Card", 1).await;
         insert_user_with_visibility(&pool, "userA", "Alice", "public").await;
         insert_user_with_visibility(&pool, "userB", "Bob", "public").await;
         insert_collection_entry(&pool, "TST", "1", "EN", false, "userA", 1, 100, Utc::now()).await;
@@ -1789,7 +1852,7 @@ mod tests {
         };
 
         insert_set(&pool, "TST").await;
-        insert_card(&pool, "TST", "1", "EN", false, "Test Card", 1).await;
+        insert_card(&pool, "TST", "1", "EN", "Test Card", 1).await;
         insert_user_with_visibility(&pool, "userA", "Alice", "public").await;
         insert_user_with_visibility(&pool, "userB", "Bob", "public").await;
         insert_collection_entry(&pool, "TST", "1", "EN", false, "userA", 1, 100, Utc::now()).await;
@@ -1821,8 +1884,8 @@ mod tests {
         use crate::infrastructure::adapter_out::repository::common_repository_tests::insert_card_with_rarity;
 
         insert_set(&pool, "TST").await;
-        insert_card_with_rarity(&pool, "TST", "1", "EN", false, "Common Card", 1, "C").await;
-        insert_card_with_rarity(&pool, "TST", "2", "EN", false, "Mythic Card", 2, "M").await;
+        insert_card_with_rarity(&pool, "TST", "1", "EN", "Common Card", 1, "C").await;
+        insert_card_with_rarity(&pool, "TST", "2", "EN", "Mythic Card", 2, "M").await;
         insert_user_with_visibility(&pool, "userA", "Alice", "public").await;
         insert_collection_entry(&pool, "TST", "1", "EN", false, "userA", 1, 100, Utc::now()).await;
         insert_collection_entry(&pool, "TST", "2", "EN", false, "userA", 1, 100, Utc::now()).await;
@@ -1848,7 +1911,7 @@ mod tests {
     #[sqlx::test]
     async fn search_paginated_excludes_card_owned_only_by_private_users(pool: PgPool) {
         insert_set(&pool, "TST").await;
-        insert_card(&pool, "TST", "1", "EN", false, "Test Card", 1).await;
+        insert_card(&pool, "TST", "1", "EN", "Test Card", 1).await;
         insert_user_with_visibility(&pool, "userA", "Alice", "private").await;
         insert_collection_entry(&pool, "TST", "1", "EN", false, "userA", 1, 100, Utc::now()).await;
         insert_price(&pool, CardMarketPriceEntity::simple(1, 100)).await;
@@ -1867,7 +1930,7 @@ mod tests {
     #[sqlx::test]
     async fn search_paginated_owner_count_ignores_owners_who_do_not_propose_the_card(pool: PgPool) {
         insert_set(&pool, "TST").await;
-        insert_card(&pool, "TST", "1", "EN", false, "Test Card", 1).await;
+        insert_card(&pool, "TST", "1", "EN", "Test Card", 1).await;
         insert_user_with_visibility(&pool, "userA", "Alice", "public").await;
         insert_user_with_visibility(&pool, "userB", "Bob", "private").await;
         insert_user_with_visibility(&pool, "userC", "Carol", "private").await;
@@ -1896,7 +1959,7 @@ mod tests {
     #[sqlx::test]
     async fn search_paginated_returns_empty_when_every_user_is_private(pool: PgPool) {
         insert_set(&pool, "TST").await;
-        insert_card(&pool, "TST", "1", "EN", false, "Test Card", 1).await;
+        insert_card(&pool, "TST", "1", "EN", "Test Card", 1).await;
         insert_user(&pool, "userA", "Alice").await;
         insert_user(&pool, "userB", "Bob").await;
         insert_collection_entry(&pool, "TST", "1", "EN", false, "userA", 1, 100, Utc::now()).await;
@@ -1917,8 +1980,8 @@ mod tests {
     #[sqlx::test]
     async fn search_paginated_player_username_only_returns_cards_the_player_proposes(pool: PgPool) {
         insert_set(&pool, "TST").await;
-        insert_card_with_rarity(&pool, "TST", "1", "EN", false, "Open Card", 1, "R").await;
-        insert_card_with_rarity(&pool, "TST", "2", "EN", false, "Closed Card", 2, "R").await;
+        insert_card_with_rarity(&pool, "TST", "1", "EN", "Open Card", 1, "R").await;
+        insert_card_with_rarity(&pool, "TST", "2", "EN", "Closed Card", 2, "R").await;
         insert_user_with_visibility(&pool, "userB", "Bob", "trade").await;
         insert_trading_binder(&pool, "userB", "Trade Binder").await;
         insert_rarity_filter(&pool, "userB", "R", true, 0).await;
@@ -1966,7 +2029,7 @@ mod tests {
     #[sqlx::test]
     async fn search_paginated_player_username_on_private_user_returns_empty(pool: PgPool) {
         insert_set(&pool, "TST").await;
-        insert_card(&pool, "TST", "1", "EN", false, "Test Card", 1).await;
+        insert_card(&pool, "TST", "1", "EN", "Test Card", 1).await;
         insert_user_with_visibility(&pool, "userA", "Alice", "private").await;
         insert_collection_entry(&pool, "TST", "1", "EN", false, "userA", 1, 100, Utc::now()).await;
         insert_price(&pool, CardMarketPriceEntity::simple(1, 100)).await;
@@ -1986,7 +2049,7 @@ mod tests {
     #[sqlx::test]
     async fn get_paginated_uses_latest_price_when_multiple_dates_exist(pool: PgPool) {
         insert_set(&pool, "TST").await;
-        insert_card(&pool, "TST", "1", "EN", false, "Test Card", 1).await;
+        insert_card(&pool, "TST", "1", "EN", "Test Card", 1).await;
         insert_user(&pool, "user1", "User1").await;
         insert_collection_entry(&pool, "TST", "1", "EN", false, "user1", 1, 100, Utc::now()).await;
 
@@ -2020,7 +2083,7 @@ mod tests {
     #[sqlx::test]
     async fn get_paginated_returns_foil_prices_for_foil_cards(pool: PgPool) {
         insert_set(&pool, "TST").await;
-        insert_card(&pool, "TST", "1", "EN", true, "Test Card", 1).await;
+        insert_card(&pool, "TST", "1", "EN", "Test Card", 1).await;
         insert_user(&pool, "user1", "User1").await;
         insert_collection_entry(&pool, "TST", "1", "EN", true, "user1", 1, 100, Utc::now()).await;
         insert_price(&pool, CardMarketPriceEntity::with_foil(1, 50, 777)).await;
@@ -2044,7 +2107,7 @@ mod tests {
     #[sqlx::test]
     async fn get_paginated_returns_correct_quantity_and_purchase_price(pool: PgPool) {
         insert_set(&pool, "TST").await;
-        insert_card(&pool, "TST", "1", "EN", false, "Test Card", 1).await;
+        insert_card(&pool, "TST", "1", "EN", "Test Card", 1).await;
         insert_user(&pool, "user1", "User1").await;
         insert_collection_entry(&pool, "TST", "1", "EN", false, "user1", 7, 1234, Utc::now()).await;
         insert_price(&pool, CardMarketPriceEntity::simple(1, 500)).await;
@@ -2072,7 +2135,7 @@ mod tests {
     #[sqlx::test]
     async fn get_paginated_price_guide_is_none_when_no_cardmarket_data(pool: PgPool) {
         insert_set(&pool, "TST").await;
-        insert_card(&pool, "TST", "1", "EN", false, "Test Card", 1).await;
+        insert_card(&pool, "TST", "1", "EN", "Test Card", 1).await;
         insert_user(&pool, "user1", "User1").await;
         insert_collection_entry(&pool, "TST", "1", "EN", false, "user1", 1, 100, Utc::now()).await;
         refresh_view(&pool).await;
@@ -2091,7 +2154,7 @@ mod tests {
     #[sqlx::test]
     async fn get_paginated_non_foil_card_does_not_use_foil_prices(pool: PgPool) {
         insert_set(&pool, "TST").await;
-        insert_card(&pool, "TST", "1", "EN", false, "Test Card", 1).await;
+        insert_card(&pool, "TST", "1", "EN", "Test Card", 1).await;
         insert_user(&pool, "user1", "User1").await;
         insert_collection_entry(&pool, "TST", "1", "EN", false, "user1", 1, 100, Utc::now()).await;
         insert_price(&pool, CardMarketPriceEntity::with_foil(1, 123, 999)).await;
@@ -2115,7 +2178,7 @@ mod tests {
     #[sqlx::test]
     async fn get_paginated_card_not_in_collection_is_not_returned(pool: PgPool) {
         insert_set(&pool, "TST").await;
-        insert_card(&pool, "TST", "1", "EN", false, "Test Card", 1).await;
+        insert_card(&pool, "TST", "1", "EN", "Test Card", 1).await;
         refresh_view(&pool).await;
 
         let adapter = CardPricesViewRepositoryAdapter::new(pool);
@@ -2131,8 +2194,8 @@ mod tests {
     #[sqlx::test]
     async fn get_paginated_filters_by_search_query_fuzzy(pool: PgPool) {
         insert_set(&pool, "TST").await;
-        insert_card(&pool, "TST", "1", "EN", false, "Goblin Guide", 1).await;
-        insert_card(&pool, "TST", "2", "EN", false, "Sol Ring", 2).await;
+        insert_card(&pool, "TST", "1", "EN", "Goblin Guide", 1).await;
+        insert_card(&pool, "TST", "2", "EN", "Sol Ring", 2).await;
         insert_user(&pool, "user1", "User1").await;
         insert_collection_entry(&pool, "TST", "1", "EN", false, "user1", 1, 100, Utc::now()).await;
         insert_collection_entry(&pool, "TST", "2", "EN", false, "user1", 1, 100, Utc::now()).await;
@@ -2160,8 +2223,8 @@ mod tests {
         use crate::infrastructure::adapter_out::repository::common_repository_tests::insert_card_with_rarity;
 
         insert_set(&pool, "TST").await;
-        insert_card_with_rarity(&pool, "TST", "1", "EN", false, "Common Card", 1, "C").await;
-        insert_card_with_rarity(&pool, "TST", "2", "EN", false, "Mythic Card", 2, "M").await;
+        insert_card_with_rarity(&pool, "TST", "1", "EN", "Common Card", 1, "C").await;
+        insert_card_with_rarity(&pool, "TST", "2", "EN", "Mythic Card", 2, "M").await;
         insert_user(&pool, "user1", "User1").await;
         insert_collection_entry(&pool, "TST", "1", "EN", false, "user1", 1, 100, Utc::now()).await;
         insert_collection_entry(&pool, "TST", "2", "EN", false, "user1", 1, 100, Utc::now()).await;
@@ -2188,8 +2251,8 @@ mod tests {
     async fn get_paginated_filters_by_sets(pool: PgPool) {
         insert_set(&pool, "TS1").await;
         insert_set(&pool, "TS2").await;
-        insert_card(&pool, "TS1", "1", "EN", false, "Card A", 1).await;
-        insert_card(&pool, "TS2", "1", "EN", false, "Card B", 2).await;
+        insert_card(&pool, "TS1", "1", "EN", "Card A", 1).await;
+        insert_card(&pool, "TS2", "1", "EN", "Card B", 2).await;
         insert_user(&pool, "user1", "User1").await;
         insert_collection_entry(&pool, "TS1", "1", "EN", false, "user1", 1, 100, Utc::now()).await;
         insert_collection_entry(&pool, "TS2", "1", "EN", false, "user1", 1, 100, Utc::now()).await;
@@ -2215,8 +2278,8 @@ mod tests {
     #[sqlx::test]
     async fn get_paginated_filters_by_price_range(pool: PgPool) {
         insert_set(&pool, "TST").await;
-        insert_card(&pool, "TST", "1", "EN", false, "Cheap Card", 1).await;
-        insert_card(&pool, "TST", "2", "EN", false, "Expensive Card", 2).await;
+        insert_card(&pool, "TST", "1", "EN", "Cheap Card", 1).await;
+        insert_card(&pool, "TST", "2", "EN", "Expensive Card", 2).await;
         insert_user(&pool, "user1", "User1").await;
         insert_collection_entry(&pool, "TST", "1", "EN", false, "user1", 1, 100, Utc::now()).await;
         insert_collection_entry(&pool, "TST", "2", "EN", false, "user1", 1, 100, Utc::now()).await;
@@ -2240,9 +2303,9 @@ mod tests {
         assert_eq!(result.items[0].name, "Expensive Card");
     }
 
-    fn card_id(set_code: &str, collector_number: &str, language_code: &str, foil: bool) -> CardId {
+    fn copy_id(set_code: &str, collector_number: &str, language_code: &str, foil: bool) -> CopyId {
         use crate::domain::language_code::LanguageCode;
-        CardId::new(
+        CopyId::new(
             set_code,
             collector_number,
             LanguageCode::new(language_code),
@@ -2253,7 +2316,7 @@ mod tests {
     #[sqlx::test]
     async fn exists_returns_true_when_card_is_in_the_catalog(pool: PgPool) {
         insert_set(&pool, "TST").await;
-        insert_card(&pool, "TST", "1", "EN", false, "Test Card", 1).await;
+        insert_card(&pool, "TST", "1", "EN", "Test Card", 1).await;
         insert_user(&pool, "user1", "User1").await;
         insert_collection_entry(&pool, "TST", "1", "EN", false, "user1", 1, 100, Utc::now()).await;
         insert_price(&pool, CardMarketPriceEntity::simple(1, 100)).await;
@@ -2261,7 +2324,7 @@ mod tests {
 
         let adapter = CardPricesViewRepositoryAdapter::new(pool);
         let result = adapter
-            .exists(&card_id("TST", "1", "EN", false))
+            .exists(&copy_id("TST", "1", "EN", false).card_id)
             .await
             .unwrap();
 
@@ -2272,7 +2335,7 @@ mod tests {
     async fn exists_returns_false_when_card_is_not_in_the_catalog(pool: PgPool) {
         let adapter = CardPricesViewRepositoryAdapter::new(pool);
         let result = adapter
-            .exists(&card_id("TST", "1", "EN", false))
+            .exists(&copy_id("TST", "1", "EN", false).card_id)
             .await
             .unwrap();
 
@@ -2282,7 +2345,7 @@ mod tests {
     #[sqlx::test]
     async fn get_offers_returns_other_owners_with_quantity_and_selling_price(pool: PgPool) {
         insert_set(&pool, "TST").await;
-        insert_card(&pool, "TST", "1", "EN", false, "Test Card", 1).await;
+        insert_card(&pool, "TST", "1", "EN", "Test Card", 1).await;
         insert_user_with_visibility(&pool, "userA", "Alice", "public").await;
         insert_user_with_visibility(&pool, "userB", "Bob", "public").await;
         insert_user_with_visibility(&pool, "userC", "Carol", "public").await;
@@ -2296,7 +2359,7 @@ mod tests {
         let result = adapter
             .get_offers(
                 &UserId::new("userA"),
-                &card_id("TST", "1", "EN", false),
+                &copy_id("TST", "1", "EN", false),
                 CardOfferSortField::SellingPrice,
                 Pagination::try_new(0, 20, CARD_OFFERS_MAX_OFFSET).unwrap(),
             )
@@ -2335,7 +2398,7 @@ mod tests {
         };
 
         insert_set(&pool, "TST").await;
-        insert_card(&pool, "TST", "1", "EN", false, "Test Card", 1).await;
+        insert_card(&pool, "TST", "1", "EN", "Test Card", 1).await;
         insert_user(&pool, "userA", "Alice").await;
         insert_user_with_visibility(&pool, "userB", "Bob", "public").await;
         insert_user_with_visibility(&pool, "userC", "Carol", "public").await;
@@ -2352,7 +2415,7 @@ mod tests {
         let result = adapter
             .get_offers(
                 &UserId::new("userA"),
-                &card_id("TST", "1", "EN", false),
+                &copy_id("TST", "1", "EN", false),
                 CardOfferSortField::SellingPrice,
                 Pagination::try_new(0, 20, CARD_OFFERS_MAX_OFFSET).unwrap(),
             )
@@ -2382,7 +2445,7 @@ mod tests {
         // same trend), so the secondary sort key (owner_username) is what's actually
         // observable in the returned order.
         insert_set(&pool, "TST").await;
-        insert_card(&pool, "TST", "1", "EN", false, "Test Card", 1).await;
+        insert_card(&pool, "TST", "1", "EN", "Test Card", 1).await;
         insert_user(&pool, "userA", "Alice").await;
         insert_user_with_visibility(&pool, "userB", "Zoe", "public").await;
         insert_user_with_visibility(&pool, "userC", "Bob", "public").await;
@@ -2395,7 +2458,7 @@ mod tests {
         let result = adapter
             .get_offers(
                 &UserId::new("userA"),
-                &card_id("TST", "1", "EN", false),
+                &copy_id("TST", "1", "EN", false),
                 CardOfferSortField::SellingPrice,
                 Pagination::try_new(0, 20, CARD_OFFERS_MAX_OFFSET).unwrap(),
             )
@@ -2420,7 +2483,7 @@ mod tests {
         // Alice is `public` (so the exclusion isn't a coincidental side effect of her being
         // filtered out as `private` by `v_tradable_entry`).
         insert_set(&pool, "TST").await;
-        insert_card(&pool, "TST", "1", "EN", false, "Test Card", 1).await;
+        insert_card(&pool, "TST", "1", "EN", "Test Card", 1).await;
         insert_user_with_visibility(&pool, "userA", "Alice", "public").await;
         insert_collection_entry(&pool, "TST", "1", "EN", false, "userA", 1, 100, Utc::now()).await;
         insert_price(&pool, CardMarketPriceEntity::simple(1, 100)).await;
@@ -2430,7 +2493,7 @@ mod tests {
         let result = adapter
             .get_offers(
                 &UserId::new("userA"),
-                &card_id("TST", "1", "EN", false),
+                &copy_id("TST", "1", "EN", false),
                 CardOfferSortField::SellingPrice,
                 Pagination::try_new(0, 20, CARD_OFFERS_MAX_OFFSET).unwrap(),
             )
@@ -2444,7 +2507,7 @@ mod tests {
     #[sqlx::test]
     async fn get_offers_paginates_results(pool: PgPool) {
         insert_set(&pool, "TST").await;
-        insert_card(&pool, "TST", "1", "EN", false, "Test Card", 1).await;
+        insert_card(&pool, "TST", "1", "EN", "Test Card", 1).await;
         insert_price(&pool, CardMarketPriceEntity::simple(1, 100)).await;
         for (i, name) in ["userB", "userC", "userD"].iter().enumerate() {
             insert_user_with_visibility(&pool, name, &format!("User{}", i), "public").await;
@@ -2456,7 +2519,7 @@ mod tests {
         let result = adapter
             .get_offers(
                 &UserId::new("userA"),
-                &card_id("TST", "1", "EN", false),
+                &copy_id("TST", "1", "EN", false),
                 CardOfferSortField::SellingPrice,
                 Pagination::try_new(0, 2, CARD_OFFERS_MAX_OFFSET).unwrap(),
             )
@@ -2474,7 +2537,7 @@ mod tests {
         pool: PgPool,
     ) {
         insert_set(&pool, "TST").await;
-        insert_card(&pool, "TST", "1", "EN", false, "Test Card", 1).await;
+        insert_card(&pool, "TST", "1", "EN", "Test Card", 1).await;
         insert_user(&pool, "userA", "Alice").await;
         insert_user_with_visibility(&pool, "userB", "Bob", "public").await;
         insert_collection_entry_with_binder(
@@ -2510,7 +2573,7 @@ mod tests {
         let result = adapter
             .get_offers(
                 &UserId::new("userA"),
-                &card_id("TST", "1", "EN", false),
+                &copy_id("TST", "1", "EN", false),
                 CardOfferSortField::SellingPrice,
                 Pagination::try_new(0, 20, CARD_OFFERS_MAX_OFFSET).unwrap(),
             )
@@ -2527,7 +2590,7 @@ mod tests {
     #[sqlx::test]
     async fn get_offers_trade_seller_offers_quantity_minus_kept_copies(pool: PgPool) {
         insert_set(&pool, "TST").await;
-        insert_card_with_rarity(&pool, "TST", "1", "EN", false, "Test Card", 1, "R").await;
+        insert_card_with_rarity(&pool, "TST", "1", "EN", "Test Card", 1, "R").await;
         insert_user(&pool, "userA", "Alice").await;
         insert_user_with_visibility(&pool, "userB", "Bob", "trade").await;
         insert_trading_binder(&pool, "userB", "Trade Binder").await;
@@ -2552,7 +2615,7 @@ mod tests {
         let result = adapter
             .get_offers(
                 &UserId::new("userA"),
-                &card_id("TST", "1", "EN", false),
+                &copy_id("TST", "1", "EN", false),
                 CardOfferSortField::SellingPrice,
                 Pagination::try_new(0, 20, CARD_OFFERS_MAX_OFFSET).unwrap(),
             )
@@ -2569,7 +2632,7 @@ mod tests {
     #[sqlx::test]
     async fn get_offers_absent_when_rarity_closed(pool: PgPool) {
         insert_set(&pool, "TST").await;
-        insert_card_with_rarity(&pool, "TST", "1", "EN", false, "Test Card", 1, "R").await;
+        insert_card_with_rarity(&pool, "TST", "1", "EN", "Test Card", 1, "R").await;
         insert_user(&pool, "userA", "Alice").await;
         insert_user_with_visibility(&pool, "userB", "Bob", "trade").await;
         insert_trading_binder(&pool, "userB", "Trade Binder").await;
@@ -2593,7 +2656,7 @@ mod tests {
         let result = adapter
             .get_offers(
                 &UserId::new("userA"),
-                &card_id("TST", "1", "EN", false),
+                &copy_id("TST", "1", "EN", false),
                 CardOfferSortField::SellingPrice,
                 Pagination::try_new(0, 20, CARD_OFFERS_MAX_OFFSET).unwrap(),
             )
@@ -2607,7 +2670,7 @@ mod tests {
     #[sqlx::test]
     async fn get_offers_absent_when_entries_in_unselected_binder(pool: PgPool) {
         insert_set(&pool, "TST").await;
-        insert_card_with_rarity(&pool, "TST", "1", "EN", false, "Test Card", 1, "R").await;
+        insert_card_with_rarity(&pool, "TST", "1", "EN", "Test Card", 1, "R").await;
         insert_user(&pool, "userA", "Alice").await;
         insert_user_with_visibility(&pool, "userB", "Bob", "trade").await;
         insert_rarity_filter(&pool, "userB", "R", true, 0).await;
@@ -2631,7 +2694,7 @@ mod tests {
         let result = adapter
             .get_offers(
                 &UserId::new("userA"),
-                &card_id("TST", "1", "EN", false),
+                &copy_id("TST", "1", "EN", false),
                 CardOfferSortField::SellingPrice,
                 Pagination::try_new(0, 20, CARD_OFFERS_MAX_OFFSET).unwrap(),
             )
@@ -2645,7 +2708,7 @@ mod tests {
     #[sqlx::test]
     async fn get_offers_absent_when_entries_have_no_binder(pool: PgPool) {
         insert_set(&pool, "TST").await;
-        insert_card_with_rarity(&pool, "TST", "1", "EN", false, "Test Card", 1, "R").await;
+        insert_card_with_rarity(&pool, "TST", "1", "EN", "Test Card", 1, "R").await;
         insert_user(&pool, "userA", "Alice").await;
         insert_user_with_visibility(&pool, "userB", "Bob", "trade").await;
         insert_rarity_filter(&pool, "userB", "R", true, 0).await;
@@ -2669,7 +2732,7 @@ mod tests {
         let result = adapter
             .get_offers(
                 &UserId::new("userA"),
-                &card_id("TST", "1", "EN", false),
+                &copy_id("TST", "1", "EN", false),
                 CardOfferSortField::SellingPrice,
                 Pagination::try_new(0, 20, CARD_OFFERS_MAX_OFFSET).unwrap(),
             )
@@ -2683,7 +2746,7 @@ mod tests {
     #[sqlx::test]
     async fn get_offers_absent_when_seller_is_private(pool: PgPool) {
         insert_set(&pool, "TST").await;
-        insert_card(&pool, "TST", "1", "EN", false, "Test Card", 1).await;
+        insert_card(&pool, "TST", "1", "EN", "Test Card", 1).await;
         insert_user(&pool, "userA", "Alice").await;
         insert_user_with_visibility(&pool, "userB", "Bob", "private").await;
         insert_trading_binder(&pool, "userB", "Trade Binder").await;
@@ -2707,7 +2770,7 @@ mod tests {
         let result = adapter
             .get_offers(
                 &UserId::new("userA"),
-                &card_id("TST", "1", "EN", false),
+                &copy_id("TST", "1", "EN", false),
                 CardOfferSortField::SellingPrice,
                 Pagination::try_new(0, 20, CARD_OFFERS_MAX_OFFSET).unwrap(),
             )
@@ -2721,7 +2784,7 @@ mod tests {
     #[sqlx::test]
     async fn get_offers_absent_when_kept_copies_covers_quantity(pool: PgPool) {
         insert_set(&pool, "TST").await;
-        insert_card_with_rarity(&pool, "TST", "1", "EN", false, "Test Card", 1, "R").await;
+        insert_card_with_rarity(&pool, "TST", "1", "EN", "Test Card", 1, "R").await;
         insert_user(&pool, "userA", "Alice").await;
         insert_user_with_visibility(&pool, "userB", "Bob", "trade").await;
         insert_trading_binder(&pool, "userB", "Trade Binder").await;
@@ -2746,7 +2809,7 @@ mod tests {
         let result = adapter
             .get_offers(
                 &UserId::new("userA"),
-                &card_id("TST", "1", "EN", false),
+                &copy_id("TST", "1", "EN", false),
                 CardOfferSortField::SellingPrice,
                 Pagination::try_new(0, 20, CARD_OFFERS_MAX_OFFSET).unwrap(),
             )
@@ -2764,7 +2827,7 @@ mod tests {
         };
 
         insert_set(&pool, "TST").await;
-        insert_card(&pool, "TST", "1", "EN", false, "Test Card", 1).await;
+        insert_card(&pool, "TST", "1", "EN", "Test Card", 1).await;
         insert_user(&pool, "userA", "Alice").await;
         insert_user_with_visibility(&pool, "userB", "Bob", "public").await;
         insert_collection_entry(&pool, "TST", "1", "EN", false, "userB", 1, 100, Utc::now()).await;
@@ -2779,7 +2842,7 @@ mod tests {
         let result = adapter
             .get_offers(
                 &UserId::new("userA"),
-                &card_id("TST", "1", "EN", false),
+                &copy_id("TST", "1", "EN", false),
                 CardOfferSortField::SellingPrice,
                 Pagination::try_new(0, 20, CARD_OFFERS_MAX_OFFSET).unwrap(),
             )

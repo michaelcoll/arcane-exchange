@@ -1,10 +1,10 @@
 use super::dto::{
-    CardOfferResponse, CardOffersParams, PaginatedCardOffersResponse, PriceHistoryEntryResponse,
-    PriceHistoryParams,
+    CardOfferResponse, CardOffersParams, CardPriceHistoryParams, PaginatedCardOffersResponse,
+    PriceHistoryEntryResponse,
 };
 use crate::application::error::AppError;
 use crate::application::service::card_offer_service::CARD_OFFERS_MAX_OFFSET;
-use crate::domain::card::CardId;
+use crate::domain::card::CopyId;
 use crate::domain::language_code::LanguageCode;
 use crate::domain::pagination::Pagination;
 use crate::infrastructure::AppState;
@@ -51,12 +51,13 @@ pub(crate) async fn get_card_info(
     path = "/card/{scryfall_id}/price-history",
     params(
         ("scryfall_id" = Uuid, Path, description = "Card's Scryfall identifier"),
+        ("foil" = bool, Query, description = "Whether to return the foil price series"),
         ("start_date" = Option<String>, Query, description = "Start date (ISO 8601: YYYY-MM-DD, inclusive). Defaults to end_date minus 30 days"),
         ("end_date" = Option<String>, Query, description = "End date (ISO 8601: YYYY-MM-DD, inclusive). Defaults to today"),
     ),
     responses(
         (status = 200, description = "Card price history", body = Vec<PriceHistoryEntryResponse>),
-        (status = 400, description = "Invalid date range (start_date > end_date)"),
+        (status = 400, description = "Invalid date range (start_date > end_date), or missing `foil`"),
         (status = 401, description = "Missing or invalid token"),
         (status = 404, description = "No card found for this scryfall_id"),
     ),
@@ -67,11 +68,11 @@ pub(crate) async fn get_card_price_history(
     AuthenticatedUser(_user): AuthenticatedUser,
     State(state): State<AppState>,
     Path(scryfall_id): Path<Uuid>,
-    Query(params): Query<PriceHistoryParams>,
+    Query(params): Query<CardPriceHistoryParams>,
 ) -> Result<axum::Json<Vec<PriceHistoryEntryResponse>>, AppError> {
     let entries = state
         .get_card_price_history_use_case
-        .get_card_price_history(scryfall_id, params.start_date, params.end_date)
+        .get_card_price_history(scryfall_id, params.foil, params.start_date, params.end_date)
         .await?;
 
     Ok(axum::Json(
@@ -114,7 +115,7 @@ pub(crate) async fn get_card_offers(
     Query(params): Query<CardOffersParams>,
 ) -> Result<axum::Json<PaginatedCardOffersResponse>, AppError> {
     let language_code = LanguageCode::try_new(&params.language_code)?;
-    let card_id = CardId::try_new(
+    let copy_id = CopyId::try_new(
         params.set_code.as_str(),
         params.collector_number,
         language_code,
@@ -124,7 +125,7 @@ pub(crate) async fn get_card_offers(
 
     let result = state
         .get_card_offers_use_case
-        .get_card_offers(&user.id, card_id, params.sort_by.into(), pagination)
+        .get_card_offers(&user.id, copy_id, params.sort_by.into(), pagination)
         .await?;
 
     Ok(axum::Json(PaginatedCardOffersResponse {

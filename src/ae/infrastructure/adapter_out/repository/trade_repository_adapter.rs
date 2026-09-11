@@ -1,6 +1,6 @@
 use crate::application::error::AppError;
 use crate::application::repository::TradeRepository;
-use crate::domain::card::CardId;
+use crate::domain::card::CopyId;
 use crate::domain::pagination::Paginated;
 use crate::domain::trade::{
     Trade, TradeCard, TradeCardDetail, TradeId, TradeListQuery, TradeStatus, TradeSummary,
@@ -28,7 +28,7 @@ impl TradeRepository for TradeRepositoryAdapter {
     async fn find_collection_entry_quantity(
         &self,
         user_id: &UserId,
-        card_id: &CardId,
+        copy_id: &CopyId,
     ) -> Result<Option<i32>, AppError> {
         // Sums across all binders: a card split across multiple `collection_entry` rows
         // (one per binder) must still count as fully owned. `SUM` over a filter matching no
@@ -39,10 +39,10 @@ impl TradeRepository for TradeRepositoryAdapter {
                 WHERE user_id = $1 AND set_code = $2 AND collector_number = $3
                   AND language_code = $4 AND foil = $5"#,
             user_id.as_str(),
-            card_id.set_code.to_string(),
-            card_id.collector_number,
-            card_id.language_code.to_string(),
-            card_id.foil,
+            copy_id.card_id.set_code.to_string(),
+            copy_id.card_id.collector_number,
+            copy_id.card_id.language_code.to_string(),
+            copy_id.foil,
         )
         .fetch_one(&self.pool)
         .await?;
@@ -54,17 +54,17 @@ impl TradeRepository for TradeRepositoryAdapter {
     async fn find_proposed_quantity(
         &self,
         owner_id: &UserId,
-        card_id: &CardId,
+        copy_id: &CopyId,
     ) -> Result<u8, AppError> {
         let quantity = sqlx::query_scalar!(
             r#"SELECT proposed_quantity FROM v_tradable_entry
                 WHERE user_id = $1 AND set_code = $2 AND collector_number = $3
                   AND language_code = $4 AND foil = $5"#,
             owner_id.as_str(),
-            card_id.set_code.to_string(),
-            card_id.collector_number,
-            card_id.language_code.to_string(),
-            card_id.foil,
+            copy_id.card_id.set_code.to_string(),
+            copy_id.card_id.collector_number,
+            copy_id.card_id.language_code.to_string(),
+            copy_id.foil,
         )
         .fetch_optional(&self.pool)
         .await?
@@ -80,7 +80,7 @@ impl TradeRepository for TradeRepositoryAdapter {
         &self,
         trade_id: TradeId,
         owner_id: &UserId,
-        card_id: &CardId,
+        copy_id: &CopyId,
     ) -> Result<bool, AppError> {
         let reserved = sqlx::query_scalar!(
             r#"SELECT EXISTS (
@@ -92,10 +92,10 @@ impl TradeRepository for TradeRepositoryAdapter {
                    AND t.id != $6
                    AND t.status IN ('ONE_ACCEPTED', 'FULLY_ACCEPTED')
                ) AS "reserved!""#,
-            card_id.set_code.to_string(),
-            card_id.collector_number,
-            card_id.language_code.to_string(),
-            card_id.foil,
+            copy_id.card_id.set_code.to_string(),
+            copy_id.card_id.collector_number,
+            copy_id.card_id.language_code.to_string(),
+            copy_id.foil,
             owner_id.as_str(),
             trade_id.0,
         )
@@ -174,9 +174,9 @@ impl TradeRepository for TradeRepositoryAdapter {
                        lcp.low, lcp.trend, lcp.avg
                 FROM trade_card tc
                 JOIN card c ON c.set_code = tc.set_code AND c.collector_number = tc.collector_number
-                    AND c.language_code = tc.language_code AND c.foil = tc.foil
+                    AND c.language_code = tc.language_code
                 LEFT JOIN mv_last_cardmarket_prices lcp ON lcp.set_code = c.set_code
-                    AND lcp.collector_number = c.collector_number AND lcp.foil = c.foil
+                    AND lcp.collector_number = c.collector_number AND lcp.foil = tc.foil
                 WHERE tc.trade_id = $1"#,
             trade_id.0
         )
@@ -270,7 +270,7 @@ impl TradeRepository for TradeRepositoryAdapter {
     async fn merge_card_into_trade(
         &self,
         trade_id: TradeId,
-        card_id: &CardId,
+        copy_id: &CopyId,
         owner_id: &UserId,
         quantity: u8,
         reopen_to_pending: bool,
@@ -283,10 +283,10 @@ impl TradeRepository for TradeRepositoryAdapter {
                 ON CONFLICT (trade_id, set_code, collector_number, language_code, foil, owner_user_id)
                     DO UPDATE SET quantity = trade_card.quantity + EXCLUDED.quantity"#,
             trade_id.0,
-            card_id.set_code.to_string(),
-            card_id.collector_number,
-            card_id.language_code.to_string(),
-            card_id.foil,
+            copy_id.card_id.set_code.to_string(),
+            copy_id.card_id.collector_number,
+            copy_id.card_id.language_code.to_string(),
+            copy_id.foil,
             owner_id.as_str(),
             quantity as i32,
         )
@@ -315,7 +315,7 @@ impl TradeRepository for TradeRepositoryAdapter {
     async fn remove_card_from_trade(
         &self,
         trade_id: TradeId,
-        card_id: &CardId,
+        copy_id: &CopyId,
         owner_id: &UserId,
         reopen_to_pending: bool,
     ) -> Result<bool, AppError> {
@@ -326,10 +326,10 @@ impl TradeRepository for TradeRepositoryAdapter {
                 WHERE trade_id = $1 AND set_code = $2 AND collector_number = $3
                   AND language_code = $4 AND foil = $5 AND owner_user_id = $6"#,
             trade_id.0,
-            card_id.set_code.to_string(),
-            card_id.collector_number,
-            card_id.language_code.to_string(),
-            card_id.foil,
+            copy_id.card_id.set_code.to_string(),
+            copy_id.card_id.collector_number,
+            copy_id.card_id.language_code.to_string(),
+            copy_id.foil,
             owner_id.as_str(),
         )
         .execute(&mut *tx)
@@ -514,14 +514,14 @@ mod tests {
         }
     }
 
-    fn make_card_id() -> CardId {
-        CardId::new("FDN", "87", LanguageCode::FR, false)
+    fn make_card_id() -> CopyId {
+        CopyId::new("FDN", "87", LanguageCode::FR, false)
     }
 
     #[sqlx::test]
     async fn find_collection_entry_quantity_returns_quantity_when_found(pool: PgPool) {
         insert_user(&pool, "user_b", "bob").await;
-        insert_card(&pool, "FDN", "87", "FR", false, "Goblin Boarders", 1).await;
+        insert_card(&pool, "FDN", "87", "FR", "Goblin Boarders", 1).await;
         insert_collection_entry(
             &pool,
             "FDN",
@@ -558,7 +558,7 @@ mod tests {
     #[sqlx::test]
     async fn find_collection_entry_quantity_sums_across_binders(pool: PgPool) {
         insert_user(&pool, "user_b", "bob").await;
-        insert_card(&pool, "FDN", "87", "FR", false, "Goblin Boarders", 1).await;
+        insert_card(&pool, "FDN", "87", "FR", "Goblin Boarders", 1).await;
         insert_collection_entry_with_binder(
             &pool,
             "FDN",
@@ -598,7 +598,7 @@ mod tests {
     #[sqlx::test]
     async fn find_proposed_quantity_is_zero_for_private_user(pool: PgPool) {
         insert_user_with_visibility(&pool, "user_b", "bob", "private").await;
-        insert_card(&pool, "FDN", "87", "FR", false, "Goblin Boarders", 1).await;
+        insert_card(&pool, "FDN", "87", "FR", "Goblin Boarders", 1).await;
         insert_trading_binder(&pool, "user_b", "Trade Binder").await;
         insert_collection_entry_with_binder(
             &pool,
@@ -637,7 +637,7 @@ mod tests {
     #[sqlx::test]
     async fn find_proposed_quantity_is_total_for_public_user(pool: PgPool) {
         insert_user_with_visibility(&pool, "user_b", "bob", "public").await;
-        insert_card(&pool, "FDN", "87", "FR", false, "Goblin Boarders", 1).await;
+        insert_card(&pool, "FDN", "87", "FR", "Goblin Boarders", 1).await;
         insert_collection_entry_with_binder(
             &pool,
             "FDN",
@@ -677,7 +677,7 @@ mod tests {
     #[sqlx::test]
     async fn find_proposed_quantity_applies_rarity_kept_copies_for_trade_user(pool: PgPool) {
         insert_user_with_visibility(&pool, "user_b", "bob", "trade").await;
-        insert_card_with_rarity(&pool, "FDN", "87", "FR", false, "Goblin Boarders", 1, "R").await;
+        insert_card_with_rarity(&pool, "FDN", "87", "FR", "Goblin Boarders", 1, "R").await;
         insert_trading_binder(&pool, "user_b", "Trade Binder").await;
         insert_rarity_filter(&pool, "user_b", "R", true, 1).await;
         insert_collection_entry_with_binder(
@@ -710,7 +710,7 @@ mod tests {
         // `collection_rarity_filters_repository_adapter::list_with_counts`'s "Proposés" counter
         // — not once on the aggregated total (which would wrongly yield 3 + 3 - 1 = 5).
         insert_user_with_visibility(&pool, "user_b", "bob", "trade").await;
-        insert_card_with_rarity(&pool, "FDN", "87", "FR", false, "Goblin Boarders", 1, "R").await;
+        insert_card_with_rarity(&pool, "FDN", "87", "FR", "Goblin Boarders", 1, "R").await;
         insert_trading_binder(&pool, "user_b", "Binder A").await;
         insert_trading_binder(&pool, "user_b", "Binder B").await;
         insert_rarity_filter(&pool, "user_b", "R", true, 1).await;
@@ -753,7 +753,7 @@ mod tests {
     #[sqlx::test]
     async fn find_proposed_quantity_is_zero_when_rarity_closed(pool: PgPool) {
         insert_user_with_visibility(&pool, "user_b", "bob", "trade").await;
-        insert_card_with_rarity(&pool, "FDN", "87", "FR", false, "Goblin Boarders", 1, "R").await;
+        insert_card_with_rarity(&pool, "FDN", "87", "FR", "Goblin Boarders", 1, "R").await;
         insert_trading_binder(&pool, "user_b", "Trade Binder").await;
         insert_collection_entry_with_binder(
             &pool,
@@ -781,7 +781,7 @@ mod tests {
     #[sqlx::test]
     async fn find_proposed_quantity_is_zero_when_binder_not_selected(pool: PgPool) {
         insert_user_with_visibility(&pool, "user_b", "bob", "trade").await;
-        insert_card_with_rarity(&pool, "FDN", "87", "FR", false, "Goblin Boarders", 1, "R").await;
+        insert_card_with_rarity(&pool, "FDN", "87", "FR", "Goblin Boarders", 1, "R").await;
         insert_rarity_filter(&pool, "user_b", "R", true, 0).await;
         insert_collection_entry_with_binder(
             &pool,
@@ -809,7 +809,7 @@ mod tests {
     #[sqlx::test]
     async fn find_proposed_quantity_is_zero_when_kept_copies_covers_quantity(pool: PgPool) {
         insert_user_with_visibility(&pool, "user_b", "bob", "trade").await;
-        insert_card_with_rarity(&pool, "FDN", "87", "FR", false, "Goblin Boarders", 1, "R").await;
+        insert_card_with_rarity(&pool, "FDN", "87", "FR", "Goblin Boarders", 1, "R").await;
         insert_trading_binder(&pool, "user_b", "Trade Binder").await;
         insert_rarity_filter(&pool, "user_b", "R", true, 2).await;
         insert_collection_entry_with_binder(
@@ -842,7 +842,7 @@ mod tests {
         insert_user(&pool, "user_a", "alice").await;
         insert_user(&pool, "user_b", "bob").await;
         insert_user(&pool, "user_c", "carol").await;
-        insert_card(&pool, "FDN", "87", "FR", false, "Goblin Boarders", 1).await;
+        insert_card(&pool, "FDN", "87", "FR", "Goblin Boarders", 1).await;
         let other_trade = uuid::Uuid::new_v4();
         insert_trade(&pool, other_trade, "user_a", "user_b", "ONE_ACCEPTED").await;
         insert_trade_card(&pool, other_trade, "FDN", "87", "FR", false, "user_a", 1).await;
@@ -870,7 +870,7 @@ mod tests {
         insert_user(&pool, "user_a", "alice").await;
         insert_user(&pool, "user_b", "bob").await;
         insert_user(&pool, "user_c", "carol").await;
-        insert_card(&pool, "FDN", "87", "FR", false, "Goblin Boarders", 1).await;
+        insert_card(&pool, "FDN", "87", "FR", "Goblin Boarders", 1).await;
         let other_trade = uuid::Uuid::new_v4();
         insert_trade(&pool, other_trade, "user_a", "user_b", "FULLY_ACCEPTED").await;
         insert_trade_card(&pool, other_trade, "FDN", "87", "FR", false, "user_a", 1).await;
@@ -895,7 +895,7 @@ mod tests {
     async fn is_card_reserved_elsewhere_false_when_only_engaged_in_this_trade(pool: PgPool) {
         insert_user(&pool, "user_a", "alice").await;
         insert_user(&pool, "user_c", "carol").await;
-        insert_card(&pool, "FDN", "87", "FR", false, "Goblin Boarders", 1).await;
+        insert_card(&pool, "FDN", "87", "FR", "Goblin Boarders", 1).await;
         let this_trade = uuid::Uuid::new_v4();
         insert_trade(&pool, this_trade, "user_a", "user_c", "ONE_ACCEPTED").await;
         insert_trade_card(&pool, this_trade, "FDN", "87", "FR", false, "user_a", 1).await;
@@ -918,7 +918,7 @@ mod tests {
         insert_user(&pool, "user_a", "alice").await;
         insert_user(&pool, "user_b", "bob").await;
         insert_user(&pool, "user_c", "carol").await;
-        insert_card(&pool, "FDN", "87", "FR", false, "Goblin Boarders", 1).await;
+        insert_card(&pool, "FDN", "87", "FR", "Goblin Boarders", 1).await;
         let other_trade = uuid::Uuid::new_v4();
         insert_trade(&pool, other_trade, "user_a", "user_b", "PENDING").await;
         insert_trade_card(&pool, other_trade, "FDN", "87", "FR", false, "user_a", 1).await;
@@ -944,7 +944,7 @@ mod tests {
         insert_user(&pool, "user_a", "alice").await;
         insert_user(&pool, "user_b", "bob").await;
         insert_user(&pool, "user_c", "carol").await;
-        insert_card(&pool, "FDN", "87", "FR", false, "Goblin Boarders", 1).await;
+        insert_card(&pool, "FDN", "87", "FR", "Goblin Boarders", 1).await;
         let this_trade = uuid::Uuid::new_v4();
         insert_trade(&pool, this_trade, "user_a", "user_c", "PENDING").await;
 
@@ -972,7 +972,7 @@ mod tests {
         insert_user(&pool, "user_a", "alice").await;
         insert_user(&pool, "user_b", "bob").await;
         insert_user(&pool, "user_c", "carol").await;
-        insert_card(&pool, "FDN", "87", "FR", false, "Goblin Boarders", 1).await;
+        insert_card(&pool, "FDN", "87", "FR", "Goblin Boarders", 1).await;
         let other_trade = uuid::Uuid::new_v4();
         insert_trade(&pool, other_trade, "user_b", "user_c", "FULLY_ACCEPTED").await;
         insert_trade_card(&pool, other_trade, "FDN", "87", "FR", false, "user_b", 1).await;
@@ -1124,7 +1124,7 @@ mod tests {
     async fn merge_card_into_trade_adds_new_card_and_keeps_status(pool: PgPool) {
         insert_user(&pool, "user_a", "alice").await;
         insert_user(&pool, "user_b", "bob").await;
-        insert_card(&pool, "FDN", "87", "FR", false, "Goblin Boarders", 1).await;
+        insert_card(&pool, "FDN", "87", "FR", "Goblin Boarders", 1).await;
         let trade_id = uuid::Uuid::new_v4();
         insert_trade(&pool, trade_id, "user_a", "user_b", "PENDING").await;
 
@@ -1159,7 +1159,7 @@ mod tests {
     async fn merge_card_into_trade_reopens_one_accepted_trade(pool: PgPool) {
         insert_user(&pool, "user_a", "alice").await;
         insert_user(&pool, "user_b", "bob").await;
-        insert_card(&pool, "FDN", "87", "FR", false, "Goblin Boarders", 1).await;
+        insert_card(&pool, "FDN", "87", "FR", "Goblin Boarders", 1).await;
         let trade_id = uuid::Uuid::new_v4();
         insert_trade(&pool, trade_id, "user_a", "user_b", "ONE_ACCEPTED").await;
         mark_trade_accepted_by_both(&pool, trade_id).await;
@@ -1192,7 +1192,7 @@ mod tests {
     ) {
         insert_user(&pool, "user_a", "alice").await;
         insert_user(&pool, "user_b", "bob").await;
-        insert_card(&pool, "FDN", "87", "FR", false, "Goblin Boarders", 1).await;
+        insert_card(&pool, "FDN", "87", "FR", "Goblin Boarders", 1).await;
         let trade_id = uuid::Uuid::new_v4();
         insert_trade(&pool, trade_id, "user_a", "user_b", "PENDING").await;
 
@@ -1221,7 +1221,7 @@ mod tests {
     async fn merge_card_into_trade_increments_quantity_when_card_already_present(pool: PgPool) {
         insert_user(&pool, "user_a", "alice").await;
         insert_user(&pool, "user_b", "bob").await;
-        insert_card(&pool, "FDN", "87", "FR", false, "Goblin Boarders", 1).await;
+        insert_card(&pool, "FDN", "87", "FR", "Goblin Boarders", 1).await;
         let trade_id = uuid::Uuid::new_v4();
         insert_trade(&pool, trade_id, "user_a", "user_b", "PENDING").await;
         insert_trade_card(&pool, trade_id, "FDN", "87", "FR", false, "user_b", 2).await;
@@ -1250,7 +1250,7 @@ mod tests {
     async fn merge_card_into_trade_updates_updated_at(pool: PgPool) {
         insert_user(&pool, "user_a", "alice").await;
         insert_user(&pool, "user_b", "bob").await;
-        insert_card(&pool, "FDN", "87", "FR", false, "Goblin Boarders", 1).await;
+        insert_card(&pool, "FDN", "87", "FR", "Goblin Boarders", 1).await;
         let trade_id = uuid::Uuid::new_v4();
         insert_trade(&pool, trade_id, "user_a", "user_b", "PENDING").await;
 
@@ -1312,7 +1312,7 @@ mod tests {
     async fn remove_card_from_trade_removes_matching_card_entirely(pool: PgPool) {
         insert_user(&pool, "user_a", "alice").await;
         insert_user(&pool, "user_b", "bob").await;
-        insert_card(&pool, "FDN", "87", "FR", false, "Goblin Boarders", 1).await;
+        insert_card(&pool, "FDN", "87", "FR", "Goblin Boarders", 1).await;
         let trade_id = uuid::Uuid::new_v4();
         insert_trade(&pool, trade_id, "user_a", "user_b", "PENDING").await;
         insert_trade_card(&pool, trade_id, "FDN", "87", "FR", false, "user_b", 5).await;
@@ -1340,7 +1340,7 @@ mod tests {
     async fn remove_card_from_trade_returns_false_when_card_absent(pool: PgPool) {
         insert_user(&pool, "user_a", "alice").await;
         insert_user(&pool, "user_b", "bob").await;
-        insert_card(&pool, "FDN", "87", "FR", false, "Goblin Boarders", 1).await;
+        insert_card(&pool, "FDN", "87", "FR", "Goblin Boarders", 1).await;
         let trade_id = uuid::Uuid::new_v4();
         insert_trade(&pool, trade_id, "user_a", "user_b", "PENDING").await;
 
@@ -1375,7 +1375,7 @@ mod tests {
     async fn remove_card_from_trade_returns_false_when_owner_does_not_match(pool: PgPool) {
         insert_user(&pool, "user_a", "alice").await;
         insert_user(&pool, "user_b", "bob").await;
-        insert_card(&pool, "FDN", "87", "FR", false, "Goblin Boarders", 1).await;
+        insert_card(&pool, "FDN", "87", "FR", "Goblin Boarders", 1).await;
         let trade_id = uuid::Uuid::new_v4();
         insert_trade(&pool, trade_id, "user_a", "user_b", "PENDING").await;
         insert_trade_card(&pool, trade_id, "FDN", "87", "FR", false, "user_b", 1).await;
@@ -1398,7 +1398,7 @@ mod tests {
     async fn remove_card_from_trade_reopens_one_accepted_trade(pool: PgPool) {
         insert_user(&pool, "user_a", "alice").await;
         insert_user(&pool, "user_b", "bob").await;
-        insert_card(&pool, "FDN", "87", "FR", false, "Goblin Boarders", 1).await;
+        insert_card(&pool, "FDN", "87", "FR", "Goblin Boarders", 1).await;
         let trade_id = uuid::Uuid::new_v4();
         insert_trade(&pool, trade_id, "user_a", "user_b", "ONE_ACCEPTED").await;
         insert_trade_card(&pool, trade_id, "FDN", "87", "FR", false, "user_b", 1).await;
@@ -1430,7 +1430,7 @@ mod tests {
     async fn remove_card_from_trade_leaves_acceptance_untouched_when_not_reopening(pool: PgPool) {
         insert_user(&pool, "user_a", "alice").await;
         insert_user(&pool, "user_b", "bob").await;
-        insert_card(&pool, "FDN", "87", "FR", false, "Goblin Boarders", 1).await;
+        insert_card(&pool, "FDN", "87", "FR", "Goblin Boarders", 1).await;
         let trade_id = uuid::Uuid::new_v4();
         insert_trade(&pool, trade_id, "user_a", "user_b", "ONE_ACCEPTED").await;
         insert_trade_card(&pool, trade_id, "FDN", "87", "FR", false, "user_b", 1).await;
@@ -1460,7 +1460,7 @@ mod tests {
     async fn remove_card_from_trade_removes_last_card_leaving_trade_empty(pool: PgPool) {
         insert_user(&pool, "user_a", "alice").await;
         insert_user(&pool, "user_b", "bob").await;
-        insert_card(&pool, "FDN", "87", "FR", false, "Goblin Boarders", 1).await;
+        insert_card(&pool, "FDN", "87", "FR", "Goblin Boarders", 1).await;
         let trade_id = uuid::Uuid::new_v4();
         insert_trade(&pool, trade_id, "user_a", "user_b", "PENDING").await;
         insert_trade_card(&pool, trade_id, "FDN", "87", "FR", false, "user_b", 1).await;
@@ -1596,7 +1596,7 @@ mod tests {
         insert_user(&pool, "user_a", "alice").await;
         insert_user(&pool, "user_b", "bob").await;
         insert_user(&pool, "user_c", "carol").await;
-        insert_card(&pool, "FDN", "87", "FR", false, "Goblin Boarders", 1).await;
+        insert_card(&pool, "FDN", "87", "FR", "Goblin Boarders", 1).await;
 
         let trade_id = uuid::Uuid::new_v4();
         insert_trade(&pool, trade_id, "user_a", "user_b", "PENDING").await;
@@ -1623,7 +1623,7 @@ mod tests {
         insert_user(&pool, "user_a", "alice").await;
         insert_user(&pool, "user_b", "bob").await;
         insert_user(&pool, "user_c", "carol").await;
-        insert_card(&pool, "FDN", "87", "FR", false, "Goblin Boarders", 1).await;
+        insert_card(&pool, "FDN", "87", "FR", "Goblin Boarders", 1).await;
 
         let trade_id = uuid::Uuid::new_v4();
         insert_trade(&pool, trade_id, "user_a", "user_b", "PENDING").await;
@@ -1649,8 +1649,8 @@ mod tests {
         insert_user(&pool, "user_a", "alice").await;
         insert_user(&pool, "user_b", "bob").await;
         insert_user(&pool, "user_c", "carol").await;
-        insert_card(&pool, "FDN", "87", "FR", false, "Goblin Boarders", 1).await;
-        insert_card(&pool, "FDN", "12", "FR", false, "Sol Ring", 2).await;
+        insert_card(&pool, "FDN", "87", "FR", "Goblin Boarders", 1).await;
+        insert_card(&pool, "FDN", "12", "FR", "Sol Ring", 2).await;
 
         let trade_id = uuid::Uuid::new_v4();
         insert_trade(&pool, trade_id, "user_a", "user_b", "PENDING").await;
@@ -1676,7 +1676,7 @@ mod tests {
         insert_user(&pool, "user_a", "alice").await;
         insert_user(&pool, "user_b", "bob").await;
         insert_user(&pool, "user_c", "carol").await;
-        insert_card(&pool, "FDN", "87", "FR", false, "Goblin Boarders", 1).await;
+        insert_card(&pool, "FDN", "87", "FR", "Goblin Boarders", 1).await;
 
         let trade_id = uuid::Uuid::new_v4();
         insert_trade(&pool, trade_id, "user_a", "user_b", "ONE_ACCEPTED").await;
@@ -1930,7 +1930,7 @@ mod tests {
     async fn find_trade_cards_with_details_returns_name_and_price_for_each_card(pool: PgPool) {
         insert_user(&pool, "user_a", "alice").await;
         insert_user(&pool, "user_b", "bob").await;
-        insert_card(&pool, "FDN", "87", "FR", false, "Goblin Boarders", 1).await;
+        insert_card(&pool, "FDN", "87", "FR", "Goblin Boarders", 1).await;
         insert_price(&pool, make_price(1, 200)).await;
         refresh_view(&pool).await;
         let trade_id = uuid::Uuid::new_v4();
@@ -1954,6 +1954,66 @@ mod tests {
     }
 
     #[sqlx::test]
+    async fn find_trade_cards_with_details_uses_the_finish_of_each_trade_card(pool: PgPool) {
+        // The catalog carries a single card definition for both finishes; the price shown for
+        // each trade_card must come from its own `foil` column, not from the (now finish-less)
+        // `card` row they both join to.
+        insert_user(&pool, "user_a", "alice").await;
+        insert_user(&pool, "user_b", "bob").await;
+        insert_card(&pool, "FDN", "87", "FR", "Goblin Boarders", 1).await;
+        insert_price(
+            &pool,
+            CardMarketPriceEntity {
+                id_produit: 1,
+                date: chrono::Local::now().date_naive(),
+                normal: PriceGuideEntity {
+                    low: Some(100),
+                    avg: Some(200),
+                    trend: Some(200),
+                },
+                foil: PriceGuideEntity {
+                    low: Some(400),
+                    avg: Some(500),
+                    trend: Some(500),
+                },
+            },
+        )
+        .await;
+        refresh_view(&pool).await;
+
+        let trade_id = uuid::Uuid::new_v4();
+        insert_trade(&pool, trade_id, "user_a", "user_b", "PENDING").await;
+        insert_trade_card(&pool, trade_id, "FDN", "87", "FR", false, "user_b", 1).await;
+        insert_trade_card(&pool, trade_id, "FDN", "87", "FR", true, "user_b", 1).await;
+
+        let repository = TradeRepositoryAdapter::new(pool);
+        let cards = repository
+            .find_trade_cards_with_details(TradeId(trade_id))
+            .await
+            .unwrap();
+
+        assert_eq!(cards.len(), 2);
+        let non_foil = cards
+            .iter()
+            .find(|c| !c.card_id.foil)
+            .expect("a non-foil trade_card must be present");
+        let foil = cards
+            .iter()
+            .find(|c| c.card_id.foil)
+            .expect("a foil trade_card must be present");
+
+        assert_eq!(
+            non_foil.price_guide.as_ref().and_then(|p| p.avg.value),
+            Some(200)
+        );
+        assert_eq!(
+            foil.price_guide.as_ref().and_then(|p| p.avg.value),
+            Some(500),
+            "the foil trade_card must expose the foil price, not the non-foil one"
+        );
+    }
+
+    #[sqlx::test]
     async fn find_trade_cards_with_details_returns_empty_for_trade_without_cards(pool: PgPool) {
         insert_user(&pool, "user_a", "alice").await;
         insert_user(&pool, "user_b", "bob").await;
@@ -1973,7 +2033,7 @@ mod tests {
     async fn find_trade_cards_with_details_price_is_none_without_cardmarket_data(pool: PgPool) {
         insert_user(&pool, "user_a", "alice").await;
         insert_user(&pool, "user_b", "bob").await;
-        insert_card(&pool, "FDN", "87", "FR", false, "Goblin Boarders", 1).await;
+        insert_card(&pool, "FDN", "87", "FR", "Goblin Boarders", 1).await;
         let trade_id = uuid::Uuid::new_v4();
         insert_trade(&pool, trade_id, "user_a", "user_b", "PENDING").await;
         insert_trade_card(&pool, trade_id, "FDN", "87", "FR", false, "user_b", 1).await;
@@ -1996,7 +2056,7 @@ mod tests {
         // `mv_last_cardmarket_prices` directly, neither of which is gated by ownership.
         insert_user(&pool, "user_a", "alice").await;
         insert_user(&pool, "user_b", "bob").await;
-        insert_card(&pool, "FDN", "87", "FR", false, "Goblin Boarders", 1).await;
+        insert_card(&pool, "FDN", "87", "FR", "Goblin Boarders", 1).await;
         insert_price(&pool, make_price(1, 200)).await;
         refresh_view(&pool).await;
         let trade_id = uuid::Uuid::new_v4();
@@ -2167,8 +2227,8 @@ mod tests {
     async fn list_trades_computes_my_and_partner_card_count_from_quantities(pool: PgPool) {
         insert_user(&pool, "user_a", "alice").await;
         insert_user(&pool, "user_b", "bob").await;
-        insert_card(&pool, "FDN", "87", "FR", false, "Goblin Boarders", 1).await;
-        insert_card(&pool, "FDN", "12", "FR", false, "Sol Ring", 2).await;
+        insert_card(&pool, "FDN", "87", "FR", "Goblin Boarders", 1).await;
+        insert_card(&pool, "FDN", "12", "FR", "Sol Ring", 2).await;
         let trade_id = uuid::Uuid::new_v4();
         insert_trade(&pool, trade_id, "user_a", "user_b", "PENDING").await;
         insert_trade_card(&pool, trade_id, "FDN", "87", "FR", false, "user_a", 2).await;

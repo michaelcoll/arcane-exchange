@@ -274,7 +274,7 @@ mod tests {
     #[sqlx::test]
     async fn autocomplete_returns_users_matching_substring(pool: PgPool) {
         insert_set(&pool, "TST").await;
-        insert_card_without_cardmarket_id(&pool, "TST", "1", "en", false, "Card A").await;
+        insert_card_without_cardmarket_id(&pool, "TST", "1", "en", "Card A").await;
         insert_user_with_visibility(&pool, "user_alice", "alice", "public").await;
         insert_collection_entry(
             &pool,
@@ -300,7 +300,7 @@ mod tests {
     #[sqlx::test]
     async fn autocomplete_is_case_insensitive(pool: PgPool) {
         insert_set(&pool, "TST").await;
-        insert_card_without_cardmarket_id(&pool, "TST", "1", "en", false, "Card A").await;
+        insert_card_without_cardmarket_id(&pool, "TST", "1", "en", "Card A").await;
         insert_user_with_visibility(&pool, "user_alice", "Alice", "public").await;
         insert_collection_entry(
             &pool,
@@ -329,7 +329,7 @@ mod tests {
     #[sqlx::test]
     async fn autocomplete_orders_results_by_similarity(pool: PgPool) {
         insert_set(&pool, "TST").await;
-        insert_card_without_cardmarket_id(&pool, "TST", "1", "en", false, "Card A").await;
+        insert_card_without_cardmarket_id(&pool, "TST", "1", "en", "Card A").await;
         insert_user_with_visibility(&pool, "user_alice", "alice", "public").await;
         insert_user_with_visibility(&pool, "user_malice", "malice", "public").await;
         insert_collection_entry(
@@ -367,7 +367,7 @@ mod tests {
     #[sqlx::test]
     async fn autocomplete_returns_empty_for_no_match(pool: PgPool) {
         insert_set(&pool, "TST").await;
-        insert_card_without_cardmarket_id(&pool, "TST", "1", "en", false, "Card A").await;
+        insert_card_without_cardmarket_id(&pool, "TST", "1", "en", "Card A").await;
         insert_user_with_visibility(&pool, "user_alice", "alice", "public").await;
         insert_collection_entry(
             &pool,
@@ -391,7 +391,7 @@ mod tests {
     #[sqlx::test]
     async fn autocomplete_respects_limit(pool: PgPool) {
         insert_set(&pool, "TST").await;
-        insert_card_without_cardmarket_id(&pool, "TST", "1", "en", false, "Card A").await;
+        insert_card_without_cardmarket_id(&pool, "TST", "1", "en", "Card A").await;
         for i in 0..15 {
             let id = format!("user_ali_{i}");
             let username = format!("ali_{i}");
@@ -409,8 +409,8 @@ mod tests {
     async fn autocomplete_sums_quantities_across_multiple_cards(pool: PgPool) {
         insert_user_with_visibility(&pool, "user_alice", "alice", "public").await;
         insert_set(&pool, "TST").await;
-        insert_card_without_cardmarket_id(&pool, "TST", "1", "en", false, "Card A").await;
-        insert_card_without_cardmarket_id(&pool, "TST", "2", "en", false, "Card B").await;
+        insert_card_without_cardmarket_id(&pool, "TST", "1", "en", "Card A").await;
+        insert_card_without_cardmarket_id(&pool, "TST", "2", "en", "Card B").await;
         insert_collection_entry(
             &pool,
             "TST",
@@ -456,7 +456,7 @@ mod tests {
     #[sqlx::test]
     async fn autocomplete_excludes_private_user(pool: PgPool) {
         insert_set(&pool, "TST").await;
-        insert_card_without_cardmarket_id(&pool, "TST", "1", "en", false, "Card A").await;
+        insert_card_without_cardmarket_id(&pool, "TST", "1", "en", "Card A").await;
         insert_user_with_visibility(&pool, "user_bob", "bob", "private").await;
         insert_collection_entry(
             &pool,
@@ -480,7 +480,7 @@ mod tests {
     #[sqlx::test]
     async fn autocomplete_excludes_trade_user_without_binder_selected(pool: PgPool) {
         insert_set(&pool, "TST").await;
-        insert_card_without_cardmarket_id(&pool, "TST", "1", "en", false, "Card A").await;
+        insert_card_without_cardmarket_id(&pool, "TST", "1", "en", "Card A").await;
         insert_user_with_visibility(&pool, "user_bob", "bob", "trade").await;
         insert_collection_entry(
             &pool,
@@ -506,7 +506,7 @@ mod tests {
         // Bob owns 40 copies total, but only 9 sit in his selected "Trade Binder" (the rest
         // are in an unselected binder) and he keeps 4 of that rarity — proposed = 9 - 4 = 5.
         insert_set(&pool, "TST").await;
-        insert_card_with_rarity(&pool, "TST", "1", "EN", false, "Card A", 1, "R").await;
+        insert_card_with_rarity(&pool, "TST", "1", "EN", "Card A", 1, "R").await;
         insert_user_with_visibility(&pool, "user_bob", "bob", "trade").await;
         insert_trading_binder(&pool, "user_bob", "Trade Binder").await;
         insert_rarity_filter(&pool, "user_bob", "R", true, 4).await;
@@ -547,7 +547,7 @@ mod tests {
     #[sqlx::test]
     async fn autocomplete_public_user_card_count_is_the_total_owned(pool: PgPool) {
         insert_set(&pool, "TST").await;
-        insert_card_without_cardmarket_id(&pool, "TST", "1", "en", false, "Card A").await;
+        insert_card_without_cardmarket_id(&pool, "TST", "1", "en", "Card A").await;
         insert_user_with_visibility(&pool, "user_bob", "bob", "public").await;
         insert_collection_entry(
             &pool,

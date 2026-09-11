@@ -221,7 +221,7 @@ fn distinct_sets(cards: &[ImportedCard]) -> Vec<SetName> {
     let mut seen = HashSet::with_capacity(cards.len());
     cards
         .iter()
-        .filter(|imported| seen.insert(imported.card.id.set_code.clone()))
+        .filter(|imported| seen.insert(imported.card.id.card_id.set_code.clone()))
         .map(|imported| imported.card.set_name.clone())
         .collect()
 }

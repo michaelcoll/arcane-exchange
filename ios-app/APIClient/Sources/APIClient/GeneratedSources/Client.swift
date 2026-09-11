@@ -274,6 +274,13 @@ public struct Client: APIProtocol {
                     in: &request,
                     style: .form,
                     explode: true,
+                    name: "foil",
+                    value: input.query.foil
+                )
+                try converter.setQueryItemAsURI(
+                    in: &request,
+                    style: .form,
+                    explode: true,
                     name: "start_date",
                     value: input.query.start_date
                 )

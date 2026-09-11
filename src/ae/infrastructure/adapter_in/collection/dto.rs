@@ -400,9 +400,9 @@ impl From<Card> for CollectionCardResponse {
         };
 
         Self {
-            set_code: c.id.set_code.to_string(),
-            collector_number: c.id.collector_number,
-            language_code: c.id.language_code.to_string(),
+            set_code: c.id.card_id.set_code.to_string(),
+            collector_number: c.id.card_id.collector_number,
+            language_code: c.id.card_id.language_code.to_string(),
             foil: c.id.foil,
             name: c.name,
             rarity_code: c.rarity_code.to_string(),

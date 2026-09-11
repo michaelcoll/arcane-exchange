@@ -96,7 +96,7 @@ mod tests {
     use tokio::sync::mpsc::unbounded_channel;
 
     fn make_card_id(n: &str) -> CardId {
-        CardId::new(SetCode::new("FDN"), n, LanguageCode::FR, false)
+        CardId::new(SetCode::new("FDN"), n, LanguageCode::FR)
     }
 
     fn mock_prices_view() -> MockCardPricesViewRepository {

@@ -10,7 +10,7 @@ use crate::application::use_case::{
     MockConfirmTradeUseCase, MockCreateTradeUseCase, MockGetTradeUseCase, MockListTradesUseCase,
     MockRateTradeUseCase, MockRemoveTradeCardUseCase, MockStatsUseCase,
 };
-use crate::domain::card::CardId;
+use crate::domain::card::CopyId;
 use crate::domain::error::FunctionalError;
 use crate::domain::language_code::LanguageCode;
 use crate::domain::pagination::{Paginated, Pagination};
@@ -961,7 +961,7 @@ async fn get_trade_propagates_trade_access_denied() {
 #[tokio::test]
 async fn get_trade_response_maps_card_details() {
     let card = TradeCardDetail {
-        card_id: CardId::new("FDN", "87", LanguageCode::FR, false),
+        card_id: CopyId::new("FDN", "87", LanguageCode::FR, false),
         owner_user_id: crate::domain::user::UserId::new("bob"),
         name: "Goblin Boarders".to_string(),
         quantity: 3,

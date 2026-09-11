@@ -30,8 +30,10 @@ is never written to.
 
 ## Invariants
 
-- **Card identity** is the composite key `(set_code, collector_number, language_code, foil)`. It propagates to
-  `collection_entry`, `trade_card` and `mv_card_prices`. Never key a card by `scryfall_id` or `cardmarket_id`.
+- **Card identity** is the composite key `(set_code, collector_number, language_code)` — `card` is a pure catalog
+  of definitions, no finish. `foil` is an attribute of the _copy_, not the definition: it lives on
+  `collection_entry` and `trade_card` (part of their unique key, not their foreign key to `card`), and on
+  `mv_card_prices` (derived from `collection_entry.foil`). Never key a card by `scryfall_id` or `cardmarket_id`.
 - **All prices are integers in cents** (`purchase_price`, `low`, `trend`, `avg`, and their `_foil` variants).
 - **Upserts, not duplicates**: `card`, `collection_entry`, `users`, `set_name` and `trade_card` writes use
   `ON CONFLICT ... DO UPDATE` on their natural key.
@@ -47,8 +49,8 @@ is never written to.
   cycle stale — no error is raised either way. `CardPricesViewRepositoryAdapter::refresh()` is the single place
   that does both, in that order, and is the only call site any of the four flows should use.
   `find_trade_cards_with_details` (`trade_repository_adapter`) also reads `mv_last_cardmarket_prices` directly,
-  joined on `card` rather than the collection-gated `mv_card_prices`, so a trade still shows a card's price after
-  its owner removes it from their collection.
+  joined on `trade_card` (its `foil` column supplies the finish) rather than the collection-gated
+  `mv_card_prices`, so a trade still shows a card's price after its owner removes it from their collection.
 - **Trade card reservation** is derived, not stored: a card is reserved when it appears in `trade_card` of a
   non-terminal trade (see [trade-workflow.instructions.md](trade-workflow.instructions.md)).
 - **`v_tradable_entry` deducts `kept_copies` per `collection_entry` row (per binder), not once per aggregated

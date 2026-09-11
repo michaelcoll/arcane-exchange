@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT EXISTS(SELECT 1 FROM card\n                 WHERE set_code = $1 AND collector_number = $2 AND language_code = $3 AND foil = $4)",
+  "query": "SELECT EXISTS(SELECT 1 FROM card\n                 WHERE set_code = $1 AND collector_number = $2 AND language_code = $3)",
   "describe": {
     "columns": [
       {
@@ -14,13 +14,12 @@
       "Left": [
         "Text",
         "Text",
-        "Text",
-        "Bool"
+        "Text"
       ]
     },
     "nullable": [
       null
     ]
   },
-  "hash": "711094e1a1c119314c84bd0c3054c38f67cc1611efeb8bd4ccbaba901fcfc162"
+  "hash": "d75ecd360c0d956a0955f589779403715336730a8888bd6224b63c64edbf93a7"
 }

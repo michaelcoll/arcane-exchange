@@ -29,7 +29,6 @@ impl CardRepository for CardRepositoryAdapter {
                 set_name.name as set_name,
                 card.collector_number,
                 card.language_code,
-                card.foil,
                 card.scryfall_id
             FROM card
             JOIN set_name ON card.set_code = set_name.set_code
@@ -50,7 +49,6 @@ impl CardRepository for CardRepositoryAdapter {
                 card.set_code,
                 card.collector_number,
                 card.language_code,
-                card.foil,
                 card.name
             FROM card
             WHERE card.the_gatherer_id IS NULL"
@@ -66,15 +64,22 @@ impl CardRepository for CardRepositoryAdapter {
     async fn find_by_scryfall_id(
         &self,
         scryfall_id: uuid::Uuid,
-    ) -> Result<Option<(Option<u32>, bool)>, AppError> {
+    ) -> Result<Option<Option<u32>>, AppError> {
+        // Several rows can share a scryfall_id — the same printing in several languages. The
+        // cardmarket_id is identical across languages, but the pick must still be deterministic:
+        // prefer the French row when it exists.
         let record = sqlx::query!(
-            "SELECT cardmarket_id, foil FROM card WHERE scryfall_id = $1",
+            r#"SELECT cardmarket_id
+               FROM card
+               WHERE scryfall_id = $1
+               ORDER BY (language_code = 'FR') DESC, language_code
+               LIMIT 1"#,
             scryfall_id
         )
         .fetch_optional(&self.pool)
         .await?;
 
-        Ok(record.map(|r| (r.cardmarket_id.map(|id| id as u32), r.foil)))
+        Ok(record.map(|r| r.cardmarket_id.map(|id| id as u32)))
     }
 
     #[tracing::instrument(name = "card_repo.save_all", skip_all, fields(sentry.op = "db"))]
@@ -85,31 +90,32 @@ impl CardRepository for CardRepositoryAdapter {
 
         let mut tx = self.pool.begin().await?;
 
-        // A card can appear once per binder (see `ImportedCard` dedup key in `parse_service`),
-        // so the same `CardId` may show up several times here. `INSERT ... ON CONFLICT DO
-        // UPDATE` cannot affect the same row twice in one statement, so the `card` table only
-        // gets the first occurrence of each id — the following are identical game data anyway.
+        // A card can appear once per binder AND in both finishes (see `ImportedCard` dedup key
+        // in `parse_service`, which keeps foil), so the same `CardId` (finish aside) may show up
+        // several times here. `INSERT ... ON CONFLICT DO UPDATE` cannot affect the same row
+        // twice in one statement, so the `card` table only gets the first occurrence of each
+        // catalog id — the following are identical game data anyway (only the finish differs,
+        // and the catalog no longer tracks it).
         let mut seen_card_ids = HashSet::with_capacity(cards.len());
         let distinct_cards: Vec<&ImportedCard> = cards
             .iter()
-            .filter(|imported| seen_card_ids.insert(imported.card.id.clone()))
+            .filter(|imported| seen_card_ids.insert(imported.card.id.card_id.clone()))
             .collect();
 
         let mut qb: QueryBuilder<Postgres> = QueryBuilder::new(
-            "INSERT INTO card (set_code, collector_number, language_code, foil, name, rarity, scryfall_id)",
+            "INSERT INTO card (set_code, collector_number, language_code, name, rarity, scryfall_id)",
         );
         qb.push_values(&distinct_cards, |mut b, imported| {
             let card = &imported.card;
-            b.push_bind(card.id.set_code.to_string())
-                .push_bind(card.id.collector_number.clone())
-                .push_bind(card.id.language_code.to_string())
-                .push_bind(card.id.foil)
+            b.push_bind(card.id.card_id.set_code.to_string())
+                .push_bind(card.id.card_id.collector_number.clone())
+                .push_bind(card.id.card_id.language_code.to_string())
                 .push_bind(card.name.clone())
                 .push_bind(card.rarity_code.to_string())
                 .push_bind(card.scryfall_id);
         });
         qb.push(
-            "ON CONFLICT (set_code, collector_number, language_code, foil)
+            "ON CONFLICT (set_code, collector_number, language_code)
              DO UPDATE SET name = EXCLUDED.name, rarity = EXCLUDED.rarity, scryfall_id = EXCLUDED.scryfall_id",
         );
         qb.build().execute(&mut *tx).await?;
@@ -129,9 +135,9 @@ impl CardRepository for CardRepositoryAdapter {
             else {
                 panic!("save_all() is only called for cards owned by the importing user");
             };
-            b.push_bind(card.id.set_code.to_string())
-                .push_bind(card.id.collector_number.clone())
-                .push_bind(card.id.language_code.to_string())
+            b.push_bind(card.id.card_id.set_code.to_string())
+                .push_bind(card.id.card_id.collector_number.clone())
+                .push_bind(card.id.card_id.language_code.to_string())
                 .push_bind(card.id.foil)
                 .push_bind(user.id.as_str())
                 .push_bind(*quantity as i32)
@@ -158,14 +164,14 @@ impl CardRepository for CardRepositoryAdapter {
         sqlx::query!(
             r#"UPDATE card
                 SET cardmarket_id = $1
-                WHERE set_code = $2 AND collector_number = $3 AND language_code = $4 AND foil = $5;"#,
+                WHERE set_code = $2 AND collector_number = $3 AND language_code = $4;"#,
             cardmarket_id.map(|id| id as i32),
             id.set_code.to_string(),
             id.collector_number,
-            id.language_code.to_string(),
-            id.foil)
-            .execute(&self.pool)
-            .await?;
+            id.language_code.to_string()
+        )
+        .execute(&self.pool)
+        .await?;
 
         Ok(())
     }
@@ -179,14 +185,14 @@ impl CardRepository for CardRepositoryAdapter {
         sqlx::query!(
             r#"UPDATE card
                 SET the_gatherer_id = $1
-                WHERE set_code = $2 AND collector_number = $3 AND language_code = $4 AND foil = $5;"#,
+                WHERE set_code = $2 AND collector_number = $3 AND language_code = $4;"#,
             gatherer_id,
             id.set_code.to_string(),
             id.collector_number,
-            id.language_code.to_string(),
-            id.foil)
-            .execute(&self.pool)
-            .await?;
+            id.language_code.to_string()
+        )
+        .execute(&self.pool)
+        .await?;
 
         Ok(())
     }
@@ -403,8 +409,8 @@ mod tests {
 
     #[sqlx::test]
     async fn delete_all_removes_all_cards(pool: PgPool) {
-        insert_card_without_cardmarket_id(&pool, "FDN", "87", "FR", false, "Goblin Boarders").await;
-        insert_card_without_cardmarket_id(&pool, "FDN", "12", "EN", true, "Goblin Boarders").await;
+        insert_card_without_cardmarket_id(&pool, "FDN", "87", "FR", "Goblin Boarders").await;
+        insert_card_without_cardmarket_id(&pool, "FDN", "12", "EN", "Goblin Boarders").await;
         insert_user(&pool, "test-user-id", "testuser").await;
         insert_collection_entry(
             &pool,
@@ -443,8 +449,8 @@ mod tests {
 
     #[sqlx::test]
     async fn get_all_without_cardmarket_id_returns_only_cards_without_cardmarket_id(pool: PgPool) {
-        insert_card_without_cardmarket_id(&pool, "FDN", "87", "FR", false, "Goblin Boarders").await;
-        insert_card(&pool, "FDN", "12", "EN", true, "Goblin Boarders", 123).await;
+        insert_card_without_cardmarket_id(&pool, "FDN", "87", "FR", "Goblin Boarders").await;
+        insert_card(&pool, "FDN", "12", "EN", "Goblin Boarders", 123).await;
         insert_user(&pool, "test-user-id", "testuser").await;
         insert_collection_entry(
             &pool,
@@ -477,21 +483,18 @@ mod tests {
             .unwrap();
 
         assert_eq!(cards.len(), 1);
-        assert_eq!(
-            cards[0].0,
-            CardId::new("FDN", "87", LanguageCode::FR, false)
-        );
+        assert_eq!(cards[0].0, CardId::new("FDN", "87", LanguageCode::FR));
     }
 
     #[sqlx::test]
     async fn get_all_without_gatherer_id_returns_only_cards_without_gatherer_id(pool: PgPool) {
-        insert_card_without_cardmarket_id(&pool, "FDN", "87", "FR", false, "Goblin Boarders").await;
-        insert_card(&pool, "FDN", "12", "EN", true, "Goblin Boarders", 123).await;
+        insert_card_without_cardmarket_id(&pool, "FDN", "87", "FR", "Goblin Boarders").await;
+        insert_card(&pool, "FDN", "12", "EN", "Goblin Boarders", 123).await;
 
         let repository = CardRepositoryAdapter::new(pool);
         repository
             .update_gatherer_id(
-                CardId::new("FDN", "12", LanguageCode::EN, true),
+                CardId::new("FDN", "12", LanguageCode::EN),
                 Some("ABC123".to_string()),
             )
             .await
@@ -500,19 +503,16 @@ mod tests {
         let cards = repository.get_all_without_gatherer_id().await.unwrap();
 
         assert_eq!(cards.len(), 1);
-        assert_eq!(
-            cards[0].0,
-            CardId::new("FDN", "87", LanguageCode::FR, false)
-        );
+        assert_eq!(cards[0].0, CardId::new("FDN", "87", LanguageCode::FR));
         assert_eq!(cards[0].1, "Goblin Boarders");
     }
 
     #[sqlx::test]
     async fn update_gatherer_id_sets_the_value(pool: PgPool) {
-        insert_card_without_cardmarket_id(&pool, "FDN", "87", "FR", false, "Goblin Boarders").await;
+        insert_card_without_cardmarket_id(&pool, "FDN", "87", "FR", "Goblin Boarders").await;
 
         let repository = CardRepositoryAdapter::new(pool);
-        let card_id = CardId::new("FDN", "87", LanguageCode::FR, false);
+        let card_id = CardId::new("FDN", "87", LanguageCode::FR);
         repository
             .update_gatherer_id(card_id.clone(), Some("ABC123".to_string()))
             .await
@@ -523,14 +523,13 @@ mod tests {
     }
 
     #[sqlx::test]
-    async fn find_by_scryfall_id_returns_cardmarket_id_and_foil_when_present(pool: PgPool) {
+    async fn find_by_scryfall_id_returns_cardmarket_id_when_present(pool: PgPool) {
         let scryfall_id = Uuid::new_v4();
         insert_card_with_scryfall_id(
             &pool,
             "FDN",
             "87",
             "FR",
-            true,
             "Goblin Boarders",
             scryfall_id,
             Some(123),
@@ -542,7 +541,7 @@ mod tests {
             .await
             .unwrap();
 
-        assert_eq!(result, Some((Some(123), true)));
+        assert_eq!(result, Some(Some(123)));
     }
 
     #[sqlx::test]
@@ -553,7 +552,6 @@ mod tests {
             "FDN",
             "87",
             "FR",
-            false,
             "Goblin Boarders",
             scryfall_id,
             None,
@@ -565,7 +563,56 @@ mod tests {
             .await
             .unwrap();
 
-        assert_eq!(result, Some((None, false)));
+        assert_eq!(result, Some(None));
+    }
+
+    #[sqlx::test]
+    async fn find_by_scryfall_id_is_deterministic_across_languages(pool: PgPool) {
+        // Several rows (one per language) can share a scryfall_id — a printing's normal and
+        // foil copies, in every language, all point to the same Scryfall card. The pick must
+        // not depend on insertion or scan order.
+        let scryfall_id = Uuid::new_v4();
+        insert_card_with_scryfall_id(
+            &pool,
+            "FDN",
+            "87",
+            "EN",
+            "Goblin Boarders",
+            scryfall_id,
+            Some(999),
+        )
+        .await;
+        insert_card_with_scryfall_id(
+            &pool,
+            "FDN",
+            "87",
+            "FR",
+            "Goblin Boarders",
+            scryfall_id,
+            Some(123),
+        )
+        .await;
+        insert_card_with_scryfall_id(
+            &pool,
+            "FDN",
+            "87",
+            "DE",
+            "Goblin Boarders",
+            scryfall_id,
+            Some(999),
+        )
+        .await;
+
+        let result = CardRepositoryAdapter::new(pool)
+            .find_by_scryfall_id(scryfall_id)
+            .await
+            .unwrap();
+
+        assert_eq!(
+            result,
+            Some(Some(123)),
+            "the French row must be preferred when it exists"
+        );
     }
 
     #[sqlx::test]
@@ -584,13 +631,29 @@ mod tests {
         purchase_price: u32,
         binder_name: Option<&str>,
     ) -> ImportedCard {
+        imported_card_with_foil(
+            collector_number,
+            false,
+            quantity,
+            purchase_price,
+            binder_name,
+        )
+    }
+
+    fn imported_card_with_foil(
+        collector_number: &str,
+        foil: bool,
+        quantity: u8,
+        purchase_price: u32,
+        binder_name: Option<&str>,
+    ) -> ImportedCard {
         ImportedCard {
             card: Card::new(
                 "FDN",
                 "Foundations",
                 collector_number,
                 LanguageCode::FR,
-                false,
+                foil,
                 "Goblin Boarders",
                 RarityCode::C,
                 quantity,
@@ -598,6 +661,42 @@ mod tests {
             ),
             binder_name: binder_name.map(str::to_string),
         }
+    }
+
+    #[sqlx::test]
+    async fn save_all_does_not_conflict_when_the_same_card_appears_in_both_finishes(pool: PgPool) {
+        // Regression test for the `ON CONFLICT DO UPDATE` violation that `save_all`'s catalog
+        // dedup key must avoid: a normal and a foil row of the same card in the same import
+        // must not be inserted twice for the same `card` primary key in one statement.
+        insert_user(&pool, "test-user-id", "testuser").await;
+        let repository = CardRepositoryAdapter::new(pool.clone());
+
+        let cards = vec![
+            imported_card_with_foil("87", false, 3, 800, Some("bulk")),
+            imported_card_with_foil("87", true, 1, 1500, Some("bulk")),
+        ];
+
+        repository
+            .save_all(&User::for_testing(), &cards)
+            .await
+            .unwrap();
+
+        let card_rows = sqlx::query!("SELECT collector_number FROM card WHERE set_code = 'FDN'")
+            .fetch_all(&pool)
+            .await
+            .unwrap();
+        assert_eq!(
+            card_rows.len(),
+            1,
+            "one card row for the shared catalog identity"
+        );
+
+        let entries = fetch_collection_entries(&pool, "test-user-id").await;
+        assert_eq!(
+            entries.len(),
+            2,
+            "one collection_entry row per finish, not summed into one"
+        );
     }
 
     #[sqlx::test]

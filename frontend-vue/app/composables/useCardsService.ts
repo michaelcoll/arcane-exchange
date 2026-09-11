@@ -1,14 +1,16 @@
 import type { CardOffersParams } from '~/bindings/CardOffersParams';
+import type { CardPriceHistoryParams } from '~/bindings/CardPriceHistoryParams';
 import type { PaginatedCardOffers } from '~/bindings/PaginatedCardOffers';
 import type { PriceHistoryEntry } from '~/bindings/PriceHistoryEntry';
-import type { PriceHistoryParams } from '~/bindings/PriceHistoryParams';
 
 export const useCardsService = () => {
   const { apiCall } = useApi();
 
   const getCardInfo = () => apiCall('/card/card-info', { method: 'POST' });
 
-  const getCardPriceHistory = (scryfallId: string, params?: PriceHistoryParams) =>
+  // `foil` is required: the catalog no longer knows a card's finish, so the caller must always
+  // say which price series it wants.
+  const getCardPriceHistory = (scryfallId: string, params: CardPriceHistoryParams) =>
     apiCall<PriceHistoryEntry[]>(`/card/${scryfallId}/price-history`, { query: params });
 
   const getCardOffers = (params: CardOffersParams) =>
