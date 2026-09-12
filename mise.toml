@@ -24,13 +24,15 @@ node = "24"
 pnpm = "12"
 "npm:@playwright/cli" = "latest"
 "go:github.com/evilmartians/lefthook/v2" = "latest"
-"cargo:erdify-rs" = "1.2.0"
+"cargo:erdify-rs" = "1"
 "aqua:yonaskolb/XcodeGen" = "latest"
 "aqua:realm/SwiftLint" = "latest"
 "github:nicklockwood/SwiftFormat" = "latest"
 swift = "latest"
 
 [tasks.checks]
+# `lint-ios` is in, `build-ios` / `test-ios` are deliberately out: lefthook.yml has no per-folder
+# scoping, so they would fire Xcode on every commit regardless of what changed.
 description = "Runs all the checks for the project"
 depends = ["rebuild-docs", "sqlx-prepare", "test-backend", "test-frontend", "lint-backend", "lint-frontend", "lint-ios"]
 
@@ -53,12 +55,16 @@ depends = ["clean-frontend"]
 run = "pnpm install"
 hide = true
 
+[tasks.install-backend-deps]
+run = "cargo fetch --locked"
+hide = true
+
 [tasks.setup]
 description = "Setups the project for development"
-depends = ["clean", "install-frontend-deps"]
+depends = ["clean", "install-backend-deps", "install-frontend-deps"]
 
 [tasks.rebuild-docs]
-description = "Refreshes the project documentation"
+description = "Regenerates docs/openapi.yml (utoipa) and docs/db.md (ERD)"
 depends = ["rebuild-openapi-doc", "rebuild-db-doc"]
 
 [tasks.rebuild-openapi-doc]
@@ -70,26 +76,73 @@ hide = true
 run = "erdify --full --ignore-tables databases,_sqlx_migrations --output docs/db.md"
 
 [tasks.sqlx-prepare]
-description = "Generates the SQLx metadata for the project"
+description = "Regenerates the .sqlx metadata — required after changing any SQL query (needs a running database)"
 run = "rm -fr .sqlx && cargo sqlx prepare --workspace -- --tests"
 
 [tasks.test-backend]
-description = "Tests the backend"
+description = "Tests the backend — also regenerates the frontend TS bindings (ts-rs runs at compile time)"
+# Skipped when nothing the tests read has changed since the last successful run (`outputs` defaults
+# to `{ auto = true }`, i.e. an internal state file). `mise run --force test-backend` to bypass.
+# The three crate roots are excluded because `cargo sqlx prepare` (run by `sqlx-prepare`, a sibling
+# inside `checks`) touches them on every run, which would defeat the skip.
+sources = [
+    "src/**/*.rs",
+    "!src/ae/lib.rs",
+    "!src/ae/main.rs",
+    "!src/ae/generate_openapi.rs",
+    "Cargo.toml",
+    "Cargo.lock",
+    "migrations/**/*.sql",
+    ".config/nextest.toml",
+]
 run = "cargo nextest run --status-level slow"
 depends_post = ["format-frontend"]
 
 [tasks.test-frontend]
 description = "Tests the frontend"
 dir = "frontend-vue"
+# Skipped when no source changed since the last successful run — `--force` to bypass.
+# Globs are relative to `dir`.
+sources = [
+    "app/**/*.{ts,vue}",
+    "test/**/*.ts",
+    "vitest.config.ts",
+    "nuxt.config.ts",
+    "package.json",
+    "pnpm-lock.yaml",
+]
 run = "pnpm run test"
 
 [tasks.lint-clippy]
 depends = ["sqlx-prepare"]
+# Skipped when no source changed since the last successful run — `--force` to bypass. Two things
+# are deliberately excluded, otherwise the task would never skip: `.sqlx/`, rewritten by
+# `sqlx-prepare` on every run, and the three crate roots of Cargo.toml, which `cargo sqlx prepare`
+# touches to force a recompilation.
+sources = [
+    "src/**/*.rs",
+    "!src/ae/lib.rs",
+    "!src/ae/main.rs",
+    "!src/ae/generate_openapi.rs",
+    "Cargo.toml",
+    "Cargo.lock",
+    "migrations/**/*.sql",
+]
 run = "SQLX_OFFLINE=true cargo clippy --locked --workspace --all-features --all-targets -- -D clippy::all"
 hide = true
 
 [tasks.lint-sqlx]
 depends = ["sqlx-prepare"]
+# Same exclusions as lint-clippy: the crate roots are touched by every `cargo sqlx prepare`.
+sources = [
+    "src/**/*.rs",
+    "!src/ae/lib.rs",
+    "!src/ae/main.rs",
+    "!src/ae/generate_openapi.rs",
+    "Cargo.toml",
+    "Cargo.lock",
+    "migrations/**/*.sql",
+]
 run = "cargo sqlx prepare --check --workspace -- --tests"
 hide = true
 
@@ -100,6 +153,17 @@ depends = ["lint-clippy", "lint-sqlx"]
 [tasks.lint-frontend]
 description = "Lints the frontend of project"
 dir = "frontend-vue"
+# `nuxi typecheck` covers the whole project, so does this list. Globs are relative to `dir`.
+sources = [
+    "app/**/*.{ts,vue}",
+    "server/**/*.ts",
+    "test/**/*.ts",
+    "nuxt.config.ts",
+    "tsconfig.json",
+    "server/tsconfig.json",
+    "package.json",
+    "pnpm-lock.yaml",
+]
 run = "pnpm lint"
 
 [tasks.format-backend]
@@ -161,7 +225,7 @@ run = "pnpm build"
 alias = ["bf"]
 
 [tasks.coverage-backend]
-description = "Runs the backend tests with coverage"
+description = "Runs the backend tests with coverage — prints a per-file summary and writes lcov.info"
 run = "cargo llvm-cov nextest --status-level slow --locked --workspace --all-features --bin ae --tests --ignore-filename-regex \"main.rs|infrastructure.rs|generate_openapi.rs\" --lcov --output-path lcov.info"
 
 [tasks.generate-ios]
@@ -175,6 +239,15 @@ dir = "ios-app/APIClient"
 sources = ["../../docs/openapi.yml"]
 outputs = ["Sources/APIClient/GeneratedSources/Client.swift"]
 run = "swift run swift-openapi-generator generate --mode types --mode client --access-modifier public --output-directory Sources/APIClient/GeneratedSources ../../docs/openapi.yml"
+
+[tasks.setup-ios]
+# SwiftPM equivalent of `cargo fetch` / `pnpm install`: resolves and checks out every package of
+# Package.resolved (Clerk, Nuke, swift-openapi-*, the local APIClient) without compiling anything.
+# Kept out of `setup` so a checkout without Xcode can still be set up.
+description = "Resolves the iOS SwiftPM dependencies without building them"
+dir = "ios-app"
+depends = ["generate-ios"]
+run = "xcodebuild -resolvePackageDependencies -project ArcaneExchange.xcodeproj -scheme ArcaneExchange"
 
 [tasks.build-ios]
 description = "Builds the iOS app"
@@ -192,6 +265,8 @@ run = "xcodebuild -scheme ArcaneExchange -destination 'platform=iOS Simulator,na
 [tasks.lint-ios]
 description = "Lints the iOS app"
 dir = "ios-app"
+# Exactly the two paths passed to swiftlint, plus its config. Globs are relative to `dir`.
+sources = ["ArcaneExchange/**/*.swift", "APIClient/Sources/**/*.swift", ".swiftlint.yml"]
 run = "swiftlint lint --strict ArcaneExchange APIClient/Sources"
 
 [tasks.format-ios]
