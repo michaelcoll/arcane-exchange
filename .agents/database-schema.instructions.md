@@ -1,68 +1,39 @@
 # Database Schema Guide
 
 **Source of truth for the schema: [`docs/db.md`](../docs/db.md)** — generated ERD (tables, columns, types, PK/FK,
-indexes, constraints). Read it when you need column names or relations; this file only documents what the ERD cannot
-express.
-
-## Table roles & ownership
-
-Each table is owned by one adapter in `src/ae/infrastructure/adapter_out/repository/`.
-
-| Table                       | Role                                                                      | Adapter                                       |
-| --------------------------- | ------------------------------------------------------------------------- | --------------------------------------------- |
-| `set_name`                  | Static reference: card sets                                               | `set_names_repository_adapter`                |
-| `card`                      | Card template (game data, no ownership)                                   | `card_repository_adapter`                     |
-| `collection_entry`          | A user's ownership of a card (quantity, purchase price)                   | `card_repository_adapter`                     |
-| `cardmarket_price`          | Append-only ledger of daily CardMarket prices                             | `cardmarket_price_repository_adapter`         |
-| `collection_price_history`  | Daily valuation of a user's collection                                    | `collection_price_history_repository_adapter` |
-| `users`                     | Local mirror of Clerk users (id, username)                                | `user_repository_adapter`                     |
-| `trade`, `trade_card`       | Trades and the cards engaged in them                                      | `trade_repository_adapter`                    |
-| `card_import`               | Async collection import jobs: status, progress, line errors               | `card_import_repository_adapter`              |
-| `mv_last_cardmarket_prices` | Materialized view: last Cardmarket price per card, no ownership condition | `card_prices_view_repository_adapter`         |
-| `mv_card_prices`            | Materialized view: collection joined with latest prices                   | `card_prices_view_repository_adapter`         |
-
-`v_tradable_entry` (plain, non-materialized view) is an exception to "one table, one adapter": it derives the
-quantity of each card a user actually offers to trade (from `users.visibility`, `trading_binders` and
-`collection_rarity_filters`) and is read directly, in SQL, by three adapters —
-`card_prices_view_repository_adapter` (`/card/offers`, public mode of `/search/card`), `user_repository_adapter`
-(`/autocomplete/user`) and `trade_repository_adapter` (validating cards added to a trade). It owns no table and
-is never written to.
+indexes, constraints). Read it for column names and relations; this file only documents what the ERD cannot express.
 
 ## Invariants
 
-- **Card identity** is the composite key `(set_code, collector_number, language_code)` — `card` is a pure catalog
-  of definitions, no finish. `foil` is an attribute of the _copy_, not the definition: it lives on
-  `collection_entry` and `trade_card` (part of their unique key, not their foreign key to `card`), and on
-  `mv_card_prices` (derived from `collection_entry.foil`). Never key a card by `scryfall_id` or `cardmarket_id`.
-- **All prices are integers in cents** (`purchase_price`, `low`, `trend`, `avg`, and their `_foil` variants).
-- **Upserts, not duplicates**: `card`, `collection_entry`, `users`, `set_name` and `trade_card` writes use
-  `ON CONFLICT ... DO UPDATE` on their natural key.
-- **`cardmarket_price` is append-only** and ingested in chunks (`CHUNK_SIZE = 1000`) per transaction.
-- **`mv_card_prices` is stale by design**: refreshed explicitly with `REFRESH MATERIALIZED VIEW CONCURRENTLY`
-  after every price import and card/collection import (`import_price_service`, `import_card_service`, and the
-  CardMarket/Gatherer update workers). Read-only — never write to it.
-  `CONCURRENTLY` requires the unique index `mv_card_prices_unique`; keep it if the view changes.
-- **`mv_card_prices` reads `mv_last_cardmarket_prices`** (keyed by `(set_code, collector_number, foil)`, no
-  `language_code` — the Cardmarket price doesn't depend on it) instead of recomputing its own `MAX(date)`
-  aggregate. **Refresh order is load-bearing**: `mv_last_cardmarket_prices` must be refreshed _before_
-  `mv_card_prices` on every one of the four call sites above, or `mv_card_prices` silently serves a price one
-  cycle stale — no error is raised either way. `CardPricesViewRepositoryAdapter::refresh()` is the single place
-  that does both, in that order, and is the only call site any of the four flows should use.
-  `find_trade_cards_with_details` (`trade_repository_adapter`) also reads `mv_last_cardmarket_prices` directly,
-  joined on `trade_card` (its `foil` column supplies the finish) rather than the collection-gated
-  `mv_card_prices`, so a trade still shows a card's price after its owner removes it from their collection.
-- **Trade card reservation** is derived, not stored: a card is reserved when it appears in `trade_card` of a
-  non-terminal trade (see [trade-workflow.instructions.md](trade-workflow.instructions.md)).
-- **`v_tradable_entry` deducts `kept_copies` per `collection_entry` row (per binder), not once per aggregated
-  card total.** This must stay numerically identical to `collection_rarity_filters_repository_adapter`'s
-  "Proposés" counter (`/collection/visibility/rarities`), which does the same per-row deduction — a card split
-  across several checked binders must not offer more copies for trade than the profile screen shows as
-  proposed.
+- **Card identity is `(set_code, collector_number, language_code)`** — never key a card by `scryfall_id` or
+  `cardmarket_id`. `foil` belongs to the _copy_, so it is part of the unique key of `collection_entry` /
+  `trade_card`, never of their foreign key to `card`.
+- **All prices are integers in cents**, `_foil` variants included.
+- **`cardmarket_price` is append-only**: one row per product per day, never updated.
+- **The materialized views are stale by design and read-only.** `mv_card_prices` is collection-gated (one row per
+  owned copy); `mv_last_cardmarket_prices` is keyed `(set_code, collector_number, foil)` without `language_code`,
+  because a Cardmarket price doesn't depend on the language.
+- **Refresh order is load-bearing**: `mv_last_cardmarket_prices` must be refreshed _before_ `mv_card_prices`, which
+  reads it. Get it wrong and `mv_card_prices` silently serves prices one cycle stale — no error either way.
+  `CardPricesViewRepositoryAdapter::refresh()` is the single place doing both in that order; every flow that
+  imports prices or cards must go through it.
+- `REFRESH MATERIALIZED VIEW CONCURRENTLY` requires a unique index — keep `mv_card_prices_unique` if the view
+  changes.
+- **A trade reads `mv_last_cardmarket_prices` directly** (joined on `trade_card`, whose own `foil` supplies the
+  finish) rather than the collection-gated `mv_card_prices`, so a trade still shows a card's price after its owner
+  removes the card from their collection.
+- **Card reservation is derived, not stored**: a card is reserved when it appears in `trade_card` of a non-terminal
+  trade.
+- **`v_tradable_entry` is the only source of what a player actually offers**, derived from `users.visibility`,
+  `trading_binders` and `collection_rarity_filters`. It deducts `kept_copies` **per `collection_entry` row (per
+  binder)**, not once per aggregated card total — this must stay numerically identical to the "Proposés" counter of
+  `/collection/visibility/rarities`, or a card split across several checked binders offers more copies for trade
+  than the profile screen announces.
 
 ## Changing the schema
 
 1. Add `migrations/NNNN_description.sql` (4-digit sequence, forward-only — no down migrations). Applied at startup.
-2. If the view's shape changes, drop and recreate `mv_card_prices` in the same migration — dropping it also drops its
-   indexes, so recreate `mv_card_prices_unique` (and any other index the view had).
-3. Run `mise run rebuild-db-doc` to regenerate `docs/db.md`, and `mise run sqlx-prepare` to refresh the SQLx metadata
-   (both are covered by `mise run checks`).
+2. If a view's shape changes, drop and recreate it in the same migration — dropping it drops its indexes too, so
+   recreate them (`mv_card_prices_unique` in particular).
+3. Run `mise run rebuild-db-doc` (regenerates `docs/db.md`) and `mise run sqlx-prepare`; both are covered by
+   `mise run checks`.

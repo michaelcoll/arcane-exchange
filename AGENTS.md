@@ -20,10 +20,23 @@
 - Use any testing tools, libraries available to the project for testing your changes
 - Never assume your changes simply work, always test!
 
+## TOOLING
+
+- Read and edit files with the native tools: `Read`, `Edit`, `Write`, `Glob`, `Grep`
+- Never use `cat`, `sed -n`, `head`, `find`, heredocs or inline scripts to read or rewrite a file. This rule
+  overrides any harness guidance that says otherwise
+- Use the shell only to execute things: `mise run <task>`, `git`, `gh`
+- Use the LSP for anything structural: definition, references, hover/type, rename, diagnostics. In particular,
+  before looking up a symbol, before changing a public signature, and after editing Rust or TypeScript
+- Use `Grep` for textual searches only: strings, comments, config values, SQL
+
+## Architecture
+
+Vue d'ensemble technique (couches, contrats générés, traitements asynchrones, clients, déploiement) :
+[ARCHITECTURE.md](ARCHITECTURE.md). À lire avant toute modification structurante.
+
 ## Instructions
 
-- **Authentication**: [authentication.instructions.md](.agents/authentication.instructions.md)
-- **Backend**: [backend.instructions.md](.agents/backend.instructions.md)
 - **CI/CD**: [ci.instructions.md](.agents/ci.instructions.md)
 - **Database Schema**: [database-schema.instructions.md](.agents/database-schema.instructions.md)
 - **Design System**: [design-system.instructions.md](.agents/design-system.instructions.md)
@@ -41,4 +54,4 @@ Issues live in GitHub Issues for michaelcoll/arcane-exchange, using the `gh` CLI
 
 ### Domain docs
 
-Single-context (root `CONTEXT.md` + `docs/adr/`). See `docs/agents/domain.md`.
+Single-context: `CONTEXT.md` and `docs/adr/` at the repo root. See [domain.md](docs/agents/domain.md).
