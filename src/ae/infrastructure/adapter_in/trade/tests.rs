@@ -8,7 +8,7 @@ use crate::application::service::trade_service::TRADES_MAX_OFFSET;
 use crate::application::use_case::{
     MockAbandonTradeUseCase, MockAcceptTradeUseCase, MockAddTradeCardUseCase,
     MockConfirmTradeUseCase, MockCreateTradeUseCase, MockGetTradeUseCase, MockListTradesUseCase,
-    MockRateTradeUseCase, MockRemoveTradeCardUseCase, MockStatsUseCase,
+    MockRateTradeUseCase, MockRemoveTradeCardUseCase,
 };
 use crate::domain::card::CopyId;
 use crate::domain::error::FunctionalError;
@@ -27,10 +27,10 @@ use axum_extra::extract::Query;
 use std::sync::Arc;
 
 fn make_app_state(create_trade_use_case: MockCreateTradeUseCase) -> AppState {
-    AppState::for_testing_with_create_trade(
-        Arc::new(MockStatsUseCase::new()),
-        Arc::new(create_trade_use_case),
-    )
+    AppState {
+        create_trade_use_case: Arc::new(create_trade_use_case),
+        ..AppState::for_testing()
+    }
 }
 
 fn make_payload() -> CreateTradeRequest {
@@ -113,10 +113,10 @@ async fn create_trade_propagates_self_trade_from_use_case() {
 // --- add_trade_card ---
 
 fn make_app_state_add_trade_card(add_trade_card_use_case: MockAddTradeCardUseCase) -> AppState {
-    AppState::for_testing_with_add_trade_card(
-        Arc::new(MockStatsUseCase::new()),
-        Arc::new(add_trade_card_use_case),
-    )
+    AppState {
+        add_trade_card_use_case: Arc::new(add_trade_card_use_case),
+        ..AppState::for_testing()
+    }
 }
 
 fn make_add_card_payload() -> AddTradeCardRequest {
@@ -303,10 +303,10 @@ async fn add_trade_card_propagates_trade_not_modifiable_from_use_case() {
 fn make_app_state_remove_trade_card(
     remove_trade_card_use_case: MockRemoveTradeCardUseCase,
 ) -> AppState {
-    AppState::for_testing_with_remove_trade_card(
-        Arc::new(MockStatsUseCase::new()),
-        Arc::new(remove_trade_card_use_case),
-    )
+    AppState {
+        remove_trade_card_use_case: Arc::new(remove_trade_card_use_case),
+        ..AppState::for_testing()
+    }
 }
 
 fn make_remove_card_payload() -> RemoveTradeCardRequest {
@@ -415,10 +415,10 @@ async fn remove_trade_card_propagates_trade_not_modifiable_from_use_case() {
 // --- accept_trade ---
 
 fn make_app_state_accept(accept_trade_use_case: MockAcceptTradeUseCase) -> AppState {
-    AppState::for_testing_with_accept_trade(
-        Arc::new(MockStatsUseCase::new()),
-        Arc::new(accept_trade_use_case),
-    )
+    AppState {
+        accept_trade_use_case: Arc::new(accept_trade_use_case),
+        ..AppState::for_testing()
+    }
 }
 
 #[tokio::test]
@@ -527,10 +527,10 @@ async fn accept_trade_propagates_trade_not_acceptable_from_use_case() {
 // --- abandon_trade ---
 
 fn make_app_state_abandon(abandon_trade_use_case: MockAbandonTradeUseCase) -> AppState {
-    AppState::for_testing_with_abandon_trade(
-        Arc::new(MockStatsUseCase::new()),
-        Arc::new(abandon_trade_use_case),
-    )
+    AppState {
+        abandon_trade_use_case: Arc::new(abandon_trade_use_case),
+        ..AppState::for_testing()
+    }
 }
 
 #[tokio::test]
@@ -618,10 +618,10 @@ async fn abandon_trade_propagates_trade_already_finalized_from_use_case() {
 // --- confirm_trade ---
 
 fn make_app_state_confirm(confirm_trade_use_case: MockConfirmTradeUseCase) -> AppState {
-    AppState::for_testing_with_confirm_trade(
-        Arc::new(MockStatsUseCase::new()),
-        Arc::new(confirm_trade_use_case),
-    )
+    AppState {
+        confirm_trade_use_case: Arc::new(confirm_trade_use_case),
+        ..AppState::for_testing()
+    }
 }
 
 #[tokio::test]
@@ -730,10 +730,10 @@ async fn confirm_trade_propagates_trade_not_fully_accepted_from_use_case() {
 // --- rate_trade ---
 
 fn make_app_state_rate(rate_trade_use_case: MockRateTradeUseCase) -> AppState {
-    AppState::for_testing_with_rate_trade(
-        Arc::new(MockStatsUseCase::new()),
-        Arc::new(rate_trade_use_case),
-    )
+    AppState {
+        rate_trade_use_case: Arc::new(rate_trade_use_case),
+        ..AppState::for_testing()
+    }
 }
 
 fn make_rate_payload(rating: u8) -> RateTradeRequest {
@@ -870,10 +870,10 @@ async fn rate_trade_propagates_trade_not_completed_from_use_case() {
 // --- get_trade ---
 
 fn make_app_state_get_trade(get_trade_use_case: MockGetTradeUseCase) -> AppState {
-    AppState::for_testing_with_get_trade(
-        Arc::new(MockStatsUseCase::new()),
-        Arc::new(get_trade_use_case),
-    )
+    AppState {
+        get_trade_use_case: Arc::new(get_trade_use_case),
+        ..AppState::for_testing()
+    }
 }
 
 fn make_trade_detail() -> TradeDetail {
@@ -1008,10 +1008,10 @@ async fn get_trade_response_maps_card_details() {
 // --- list_trades ---
 
 fn make_app_state_list_trades(list_trades_use_case: MockListTradesUseCase) -> AppState {
-    AppState::for_testing_with_list_trades(
-        Arc::new(MockStatsUseCase::new()),
-        Arc::new(list_trades_use_case),
-    )
+    AppState {
+        list_trades_use_case: Arc::new(list_trades_use_case),
+        ..AppState::for_testing()
+    }
 }
 
 fn make_list_params() -> ListTradesParams {

@@ -19,9 +19,7 @@ use std::sync::Arc;
 fn make_app_state_with_search(mock: MockSearchCardsUseCase) -> AppState {
     AppState {
         search_cards_use_case: Arc::new(mock),
-        ..AppState::for_testing(Arc::new(
-            crate::application::use_case::MockStatsUseCase::new(),
-        ))
+        ..AppState::for_testing()
     }
 }
 

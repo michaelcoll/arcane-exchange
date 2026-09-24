@@ -22,9 +22,7 @@ use std::sync::Arc;
 fn make_app_state_with_collection(mock: MockGetCollectionUseCase) -> AppState {
     AppState {
         get_collection_use_case: Arc::new(mock),
-        ..AppState::for_testing(Arc::new(
-            crate::application::use_case::MockStatsUseCase::new(),
-        ))
+        ..AppState::for_testing()
     }
 }
 
@@ -33,9 +31,7 @@ fn make_app_state_with_stats(
 ) -> AppState {
     AppState {
         get_collection_stats_use_case: Arc::new(mock),
-        ..AppState::for_testing(Arc::new(
-            crate::application::use_case::MockStatsUseCase::new(),
-        ))
+        ..AppState::for_testing()
     }
 }
 
@@ -44,9 +40,7 @@ fn make_app_state_with_import_card(
 ) -> AppState {
     AppState {
         import_card_use_case: Arc::new(mock),
-        ..AppState::for_testing(Arc::new(
-            crate::application::use_case::MockStatsUseCase::new(),
-        ))
+        ..AppState::for_testing()
     }
 }
 
@@ -55,9 +49,7 @@ fn make_app_state_with_card_import_query(
 ) -> AppState {
     AppState {
         card_import_query_use_case: Arc::new(mock),
-        ..AppState::for_testing(Arc::new(
-            crate::application::use_case::MockStatsUseCase::new(),
-        ))
+        ..AppState::for_testing()
     }
 }
 
@@ -66,9 +58,7 @@ fn make_app_state_with_price_history(
 ) -> AppState {
     AppState {
         get_collection_price_history_use_case: Arc::new(mock),
-        ..AppState::for_testing(Arc::new(
-            crate::application::use_case::MockStatsUseCase::new(),
-        ))
+        ..AppState::for_testing()
     }
 }
 
@@ -77,9 +67,7 @@ fn make_app_state_with_rarity_filters(
 ) -> AppState {
     AppState {
         get_rarity_trade_filters_use_case: Arc::new(mock),
-        ..AppState::for_testing(Arc::new(
-            crate::application::use_case::MockStatsUseCase::new(),
-        ))
+        ..AppState::for_testing()
     }
 }
 
@@ -88,9 +76,7 @@ fn make_app_state_with_set_rarity_filter(
 ) -> AppState {
     AppState {
         set_rarity_trade_filter_use_case: Arc::new(mock),
-        ..AppState::for_testing(Arc::new(
-            crate::application::use_case::MockStatsUseCase::new(),
-        ))
+        ..AppState::for_testing()
     }
 }
 
@@ -720,9 +706,7 @@ async fn get_collection_defaults_rarity_to_empty_when_absent() {
 
 #[tokio::test]
 async fn import_cards_succeeds_with_valid_csv() {
-    let app_state = AppState::for_testing(Arc::new(
-        crate::application::use_case::MockStatsUseCase::new(),
-    ));
+    let app_state = AppState::for_testing();
 
     let csv_body = "Binder Name,Binder Type,Name,Set code,Set name,Collector number,Foil,Rarity,Quantity,ManaBox ID,Scryfall ID,Purchase price,Misprint,Altered,Condition,Language,Purchase price currency\n\
         bulk,binder,Goblin Boarders,FDN,Foundations,87,normal,common,3,101506,4409a063-bf2a-4a49-803e-3ce6bd474353,0.08,false,false,near_mint,fr,EUR";
@@ -743,9 +727,7 @@ async fn import_cards_succeeds_with_valid_csv() {
 
 #[tokio::test]
 async fn import_cards_succeeds_with_multiple_cards() {
-    let app_state = AppState::for_testing(Arc::new(
-        crate::application::use_case::MockStatsUseCase::new(),
-    ));
+    let app_state = AppState::for_testing();
 
     let csv_body = "Binder Name,Binder Type,Name,Set code,Set name,Collector number,Foil,Rarity,Quantity,ManaBox ID,Scryfall ID,Purchase price,Misprint,Altered,Condition,Language,Purchase price currency\n\
         bulk,binder,Goblin Boarders,FDN,Foundations,87,normal,common,3,101506,4409a063-bf2a-4a49-803e-3ce6bd474353,0.08,false,false,near_mint,fr,EUR\n\
@@ -767,9 +749,7 @@ async fn import_cards_succeeds_with_multiple_cards() {
 
 #[tokio::test]
 async fn import_cards_succeeds_with_foil_cards() {
-    let app_state = AppState::for_testing(Arc::new(
-        crate::application::use_case::MockStatsUseCase::new(),
-    ));
+    let app_state = AppState::for_testing();
 
     let csv_body = "Binder Name,Binder Type,Name,Set code,Set name,Collector number,Foil,Rarity,Quantity,ManaBox ID,Scryfall ID,Purchase price,Misprint,Altered,Condition,Language,Purchase price currency\n\
         bulk,binder,Sol Ring,FDN,Foundations,42,foil,mythic,1,101500,11111111-1111-1111-1111-111111111111,5.00,false,false,near_mint,en,EUR";
@@ -790,9 +770,7 @@ async fn import_cards_succeeds_with_foil_cards() {
 
 #[tokio::test]
 async fn import_cards_succeeds_with_special_characters_in_card_name() {
-    let app_state = AppState::for_testing(Arc::new(
-        crate::application::use_case::MockStatsUseCase::new(),
-    ));
+    let app_state = AppState::for_testing();
 
     let csv_body = "Binder Name,Binder Type,Name,Set code,Set name,Collector number,Foil,Rarity,Quantity,ManaBox ID,Scryfall ID,Purchase price,Misprint,Altered,Condition,Language,Purchase price currency\n\
         bulk,binder,\"Dwynen, Gilt-Leaf Daen\",FDN,Foundations,217,normal,uncommon,2,100086,01c00d7b-7fac-4f8c-a1ea-de2cf4d06627,0.2,false,false,near_mint,fr,EUR";
@@ -813,9 +791,7 @@ async fn import_cards_succeeds_with_special_characters_in_card_name() {
 
 #[tokio::test]
 async fn import_cards_fails_with_invalid_utf8() {
-    let app_state = AppState::for_testing(Arc::new(
-        crate::application::use_case::MockStatsUseCase::new(),
-    ));
+    let app_state = AppState::for_testing();
 
     // Create invalid UTF-8 bytes
     let invalid_bytes = vec![0xFF, 0xFE, 0xFD];

@@ -1,6 +1,6 @@
 use super::controller::*;
 use crate::application::error::{AppError, InfraError};
-use crate::application::use_case::{MockAutocompleteUsersUseCase, MockStatsUseCase};
+use crate::application::use_case::MockAutocompleteUsersUseCase;
 use crate::domain::user::UserSuggestion;
 use crate::infrastructure::AppState;
 use crate::infrastructure::adapter_in::autocomplete::dto::AutocompleteUserParams;
@@ -11,7 +11,7 @@ use std::sync::Arc;
 fn make_app_state(autocomplete_users_use_case: MockAutocompleteUsersUseCase) -> AppState {
     AppState {
         autocomplete_users_use_case: Arc::new(autocomplete_users_use_case),
-        ..AppState::for_testing(Arc::new(MockStatsUseCase::new()))
+        ..AppState::for_testing()
     }
 }
 
