@@ -1,4 +1,4 @@
-use crate::application::error::AppError;
+use crate::application::error::{AppError, InfraError};
 use crate::application::repository::{CardAvailability, TradeRepository, UserRepository};
 use crate::application::use_case::{
     AbandonTradeUseCase, AcceptTradeUseCase, AddTradeCardUseCase, ConfirmTradeUseCase,
@@ -9,7 +9,7 @@ use crate::domain::card::CopyId;
 use crate::domain::error::FunctionalError;
 use crate::domain::pagination::Paginated;
 use crate::domain::trade::{
-    Trade, TradeDetail, TradeId, TradeListQuery, TradePartyState, TradeStatus, TradeSummary,
+    Party, Trade, TradeDetail, TradeId, TradeListQuery, TradeSummary, TradeTransition,
 };
 use crate::domain::user::UserId;
 use async_trait::async_trait;
@@ -19,38 +19,44 @@ use std::sync::Arc;
 /// needs less depth than the collection or search endpoints, but more than card offers.
 pub(crate) const TRADES_MAX_OFFSET: u32 = 2_000;
 
-/// Determines whether `caller_id` is the initiator (`true`) or the respondent (`false`) of
-/// `trade`. Fails when the caller is neither.
-fn resolve_party(trade: &Trade, caller_id: &UserId) -> Result<bool, AppError> {
-    if trade.initiator_user_id == *caller_id {
-        Ok(true)
-    } else if trade.respondent_user_id == *caller_id {
-        Ok(false)
-    } else {
-        Err(FunctionalError::TradeAccessDenied.into())
-    }
+/// An attempt only fails when another request changed the trade's status between its read and
+/// its write; the next one decides again on the fresh state, which most often yields the exact
+/// error (e.g. `TradeAlreadyAccepted` after a double submission).
+const TRANSITION_ATTEMPTS: usize = 3;
+
+/// Loads `trade_id` and resolves which of its parties `caller_id` is.
+async fn find_as_party(
+    trade_repository: &Arc<dyn TradeRepository>,
+    trade_id: TradeId,
+    caller_id: &UserId,
+) -> Result<(Trade, Party), AppError> {
+    let trade = trade_repository
+        .find_by_id(trade_id)
+        .await?
+        .ok_or(FunctionalError::TradeNotFound)?;
+    let party = trade.party_of(caller_id)?;
+    Ok((trade, party))
 }
 
-/// Reorders an (initiator, respondent) pair into (me, partner) from the caller's point of view.
-fn perspective<T>(is_initiator: bool, initiator_val: T, respondent_val: T) -> (T, T) {
-    if is_initiator {
-        (initiator_val, respondent_val)
-    } else {
-        (respondent_val, initiator_val)
+/// Lets `decide` take the caller's transition on the current state of the trade, then persists
+/// it — deciding again on fresh state whenever the trade changed in between.
+async fn transition(
+    trade_repository: &Arc<dyn TradeRepository>,
+    trade_id: TradeId,
+    caller_id: &UserId,
+    decide: impl Fn(&Trade, Party) -> Result<TradeTransition, FunctionalError>,
+) -> Result<(), AppError> {
+    for _ in 0..TRANSITION_ATTEMPTS {
+        let (trade, party) = find_as_party(trade_repository, trade_id, caller_id).await?;
+        let transition = decide(&trade, party)?;
+        if trade_repository.apply_transition(&transition).await? {
+            return Ok(());
+        }
     }
-}
 
-/// `PENDING` → no reopening needed, `ONE_ACCEPTED` → reopen to `PENDING`, terminal statuses →
-/// the trade cannot be modified at all.
-fn reopen_flag_for_modification(status: &TradeStatus) -> Result<bool, AppError> {
-    match status {
-        TradeStatus::Pending => Ok(false),
-        TradeStatus::OneAccepted => Ok(true),
-        TradeStatus::FullyAccepted
-        | TradeStatus::Completed
-        | TradeStatus::Closed
-        | TradeStatus::Abandoned => Err(FunctionalError::TradeNotModifiable.into()),
-    }
+    Err(AppError::Infra(InfraError::RepositoryError(
+        "the trade kept changing concurrently".to_string(),
+    )))
 }
 
 /// Resolves `owner_username` to a `User` who must be a party to `trade`.
@@ -64,12 +70,9 @@ async fn resolve_owner(
         .await?
         .ok_or(FunctionalError::UserNotFound)?;
 
-    if owner.id != trade.initiator_user_id && owner.id != trade.respondent_user_id {
-        return Err(FunctionalError::WrongFormat(
-            "owner_username must be a party to this trade".to_string(),
-        )
-        .into());
-    }
+    trade.party_of(&owner.id).map_err(|_| {
+        FunctionalError::WrongFormat("owner_username must be a party to this trade".to_string())
+    })?;
 
     Ok(owner.id)
 }
@@ -141,15 +144,9 @@ impl AddTradeCardUseCase for AddTradeCardService {
         card_id: CopyId,
         quantity: u8,
     ) -> Result<(), AppError> {
-        let trade = self
-            .trade_repository
-            .find_by_id(trade_id)
-            .await?
-            .ok_or(FunctionalError::TradeNotFound)?;
-        resolve_party(&trade, &caller_id)?;
-
+        let (trade, _) = find_as_party(&self.trade_repository, trade_id, &caller_id).await?;
         let owner_id = resolve_owner(&self.user_repository, &trade, &owner_username).await?;
-        let reopen = reopen_flag_for_modification(&trade.status)?;
+        let transition = trade.modify()?;
 
         // The caller disposes freely of their own side of the trade; a card put up on the other
         // party's behalf must be one that party actually offers to trade — see
@@ -161,15 +158,7 @@ impl AddTradeCardUseCase for AddTradeCardService {
         };
 
         self.trade_repository
-            .merge_card_into_trade(
-                trade_id,
-                &card_id,
-                &owner_id,
-                quantity,
-                availability,
-                trade.status,
-                reopen,
-            )
+            .merge_card_into_trade(&transition, &card_id, &owner_id, quantity, availability)
             .await
     }
 }
@@ -200,19 +189,13 @@ impl RemoveTradeCardUseCase for RemoveTradeCardService {
         owner_username: String,
         card_id: CopyId,
     ) -> Result<(), AppError> {
-        let trade = self
-            .trade_repository
-            .find_by_id(trade_id)
-            .await?
-            .ok_or(FunctionalError::TradeNotFound)?;
-        resolve_party(&trade, &caller_id)?;
-
+        let (trade, _) = find_as_party(&self.trade_repository, trade_id, &caller_id).await?;
         let owner_id = resolve_owner(&self.user_repository, &trade, &owner_username).await?;
-        let reopen = reopen_flag_for_modification(&trade.status)?;
+        let transition = trade.modify()?;
 
         let removed = self
             .trade_repository
-            .remove_card_from_trade(trade_id, &card_id, &owner_id, reopen)
+            .remove_card_from_trade(&transition, &card_id, &owner_id)
             .await?;
         if removed {
             Ok(())
@@ -235,45 +218,16 @@ impl AcceptTradeService {
 #[async_trait]
 impl AcceptTradeUseCase for AcceptTradeService {
     async fn accept(&self, trade_id: TradeId, caller_id: UserId) -> Result<(), AppError> {
-        let trade = self
-            .trade_repository
-            .find_by_id(trade_id)
-            .await?
-            .ok_or(FunctionalError::TradeNotFound)?;
-        let is_initiator = resolve_party(&trade, &caller_id)?;
-
-        let already_accepted = if is_initiator {
-            trade.initiator_accepted_at.is_some()
-        } else {
-            trade.respondent_accepted_at.is_some()
-        };
-        let error = match trade.status {
-            TradeStatus::Pending | TradeStatus::OneAccepted if already_accepted => {
-                FunctionalError::TradeAlreadyAccepted
-            }
-            TradeStatus::Pending
-            | TradeStatus::OneAccepted
-            | TradeStatus::FullyAccepted
-            | TradeStatus::Completed
-            | TradeStatus::Closed
-            | TradeStatus::Abandoned => FunctionalError::TradeNotAcceptable,
-        };
-
-        if matches!(
-            trade.status,
-            TradeStatus::Pending | TradeStatus::OneAccepted
-        ) && !already_accepted
-        {
-            let cards = self.trade_repository.find_trade_cards(trade_id).await?;
-            if cards.is_empty() {
-                return Err(FunctionalError::TradeEmpty.into());
-            }
-        }
-
-        match self.trade_repository.accept(trade_id, is_initiator).await? {
-            Some(_) => Ok(()),
-            None => Err(error.into()),
-        }
+        // Read once: a card removed meanwhile from an accepted trade reopens it, which the
+        // transition's status guard catches anyway.
+        let cards = self.trade_repository.find_trade_cards(trade_id).await?;
+        transition(
+            &self.trade_repository,
+            trade_id,
+            &caller_id,
+            |trade, party| trade.accept(party, &cards),
+        )
+        .await
     }
 }
 
@@ -290,18 +244,10 @@ impl AbandonTradeService {
 #[async_trait]
 impl AbandonTradeUseCase for AbandonTradeService {
     async fn abandon(&self, trade_id: TradeId, caller_id: UserId) -> Result<(), AppError> {
-        let trade = self
-            .trade_repository
-            .find_by_id(trade_id)
-            .await?
-            .ok_or(FunctionalError::TradeNotFound)?;
-        resolve_party(&trade, &caller_id)?;
-
-        if self.trade_repository.abandon(trade_id).await? {
-            Ok(())
-        } else {
-            Err(FunctionalError::TradeAlreadyFinalized.into())
-        }
+        transition(&self.trade_repository, trade_id, &caller_id, |trade, _| {
+            trade.abandon()
+        })
+        .await
     }
 }
 
@@ -318,38 +264,13 @@ impl ConfirmTradeService {
 #[async_trait]
 impl ConfirmTradeUseCase for ConfirmTradeService {
     async fn confirm(&self, trade_id: TradeId, caller_id: UserId) -> Result<(), AppError> {
-        let trade = self
-            .trade_repository
-            .find_by_id(trade_id)
-            .await?
-            .ok_or(FunctionalError::TradeNotFound)?;
-        let is_initiator = resolve_party(&trade, &caller_id)?;
-
-        let already_confirmed = if is_initiator {
-            trade.initiator_confirmed_at.is_some()
-        } else {
-            trade.respondent_confirmed_at.is_some()
-        };
-        let error = match trade.status {
-            TradeStatus::FullyAccepted if already_confirmed => {
-                FunctionalError::TradeAlreadyConfirmed
-            }
-            TradeStatus::Pending
-            | TradeStatus::OneAccepted
-            | TradeStatus::FullyAccepted
-            | TradeStatus::Completed
-            | TradeStatus::Closed
-            | TradeStatus::Abandoned => FunctionalError::TradeNotFullyAccepted,
-        };
-
-        match self
-            .trade_repository
-            .confirm(trade_id, is_initiator)
-            .await?
-        {
-            Some(_) => Ok(()),
-            None => Err(error.into()),
-        }
+        transition(
+            &self.trade_repository,
+            trade_id,
+            &caller_id,
+            |trade, party| trade.confirm(party),
+        )
+        .await
     }
 }
 
@@ -366,36 +287,13 @@ impl RateTradeService {
 #[async_trait]
 impl RateTradeUseCase for RateTradeService {
     async fn rate(&self, trade_id: TradeId, caller_id: UserId, rating: u8) -> Result<(), AppError> {
-        let trade = self
-            .trade_repository
-            .find_by_id(trade_id)
-            .await?
-            .ok_or(FunctionalError::TradeNotFound)?;
-        let is_initiator = resolve_party(&trade, &caller_id)?;
-
-        let already_rated = if is_initiator {
-            trade.initiator_rating.is_some()
-        } else {
-            trade.respondent_rating.is_some()
-        };
-        let error = match trade.status {
-            TradeStatus::Completed if already_rated => FunctionalError::TradeAlreadyRated,
-            TradeStatus::Pending
-            | TradeStatus::OneAccepted
-            | TradeStatus::FullyAccepted
-            | TradeStatus::Completed
-            | TradeStatus::Closed
-            | TradeStatus::Abandoned => FunctionalError::TradeNotCompleted,
-        };
-
-        match self
-            .trade_repository
-            .rate(trade_id, is_initiator, rating)
-            .await?
-        {
-            Some(_) => Ok(()),
-            None => Err(error.into()),
-        }
+        transition(
+            &self.trade_repository,
+            trade_id,
+            &caller_id,
+            |trade, party| trade.rate(party, rating),
+        )
+        .await
     }
 }
 
@@ -423,24 +321,15 @@ impl GetTradeUseCase for GetTradeService {
         trade_id: TradeId,
         caller_id: UserId,
     ) -> Result<TradeDetail, AppError> {
-        let trade = self
-            .trade_repository
-            .find_by_id(trade_id)
-            .await?
-            .ok_or(FunctionalError::TradeNotFound)?;
-        let is_initiator = resolve_party(&trade, &caller_id)?;
+        let (trade, me) = find_as_party(&self.trade_repository, trade_id, &caller_id).await?;
+        let partner = me.other();
 
-        let partner_id = if is_initiator {
-            &trade.respondent_user_id
-        } else {
-            &trade.initiator_user_id
-        };
         // `trade.initiator_user_id`/`respondent_user_id` are FK-constrained to `users.id`
         // (migration 0011), so the partner always exists and always has a username
         // (`users.username` is `NOT NULL`, migration 0009).
         let partner_username = self
             .user_repository
-            .find_by_id(partner_id)
+            .find_by_id(trade.user_id(partner))
             .await?
             .expect("database contains invalid trade: partner user not found")
             .username
@@ -454,38 +343,14 @@ impl GetTradeUseCase for GetTradeService {
             .into_iter()
             .partition(|card| card.owner_user_id == caller_id);
 
-        let (me_accepted_at, partner_accepted_at) = perspective(
-            is_initiator,
-            trade.initiator_accepted_at,
-            trade.respondent_accepted_at,
-        );
-        let (me_confirmed_at, partner_confirmed_at) = perspective(
-            is_initiator,
-            trade.initiator_confirmed_at,
-            trade.respondent_confirmed_at,
-        );
-        let (me_rating, partner_rating) = perspective(
-            is_initiator,
-            trade.initiator_rating,
-            trade.respondent_rating,
-        );
-
         Ok(TradeDetail {
             id: trade.id,
             status: trade.status,
             partner_username,
             my_cards,
             partner_cards,
-            me: TradePartyState {
-                accepted: me_accepted_at.is_some(),
-                confirmed: me_confirmed_at.is_some(),
-                rating: me_rating,
-            },
-            partner: TradePartyState {
-                accepted: partner_accepted_at.is_some(),
-                confirmed: partner_confirmed_at.is_some(),
-                rating: partner_rating,
-            },
+            me: trade.party_state(me),
+            partner: trade.party_state(partner),
         })
     }
 }
@@ -517,7 +382,7 @@ mod tests {
     use crate::application::repository::{MockTradeRepository, MockUserRepository};
     use crate::domain::language_code::LanguageCode;
     use crate::domain::pagination::Pagination;
-    use crate::domain::trade::{TradeCard, TradeCardDetail};
+    use crate::domain::trade::{TradeCard, TradeCardDetail, TradeStatus};
     use crate::domain::user::User;
 
     fn make_initiator_id() -> UserId {
@@ -650,10 +515,11 @@ mod tests {
         mock_trade_repository
             .expect_merge_card_into_trade()
             .times(1)
-            .withf(|_, _, _, _, _, expected_status, reopen| {
-                *expected_status == TradeStatus::Pending && !*reopen
+            .withf(|transition, _, _, _, _| {
+                transition.from == TradeStatus::Pending
+                    && transition.next.status == TradeStatus::Pending
             })
-            .returning(|_, _, _, _, _, _, _| Box::pin(async { Ok(()) }));
+            .returning(|_, _, _, _, _| Box::pin(async { Ok(()) }));
         let mut mock_user_repository = MockUserRepository::new();
         mock_user_repository
             .expect_find_by_username()
@@ -694,10 +560,11 @@ mod tests {
         mock_trade_repository
             .expect_merge_card_into_trade()
             .times(1)
-            .withf(|_, _, _, _, _, expected_status, reopen| {
-                *expected_status == TradeStatus::OneAccepted && *reopen
+            .withf(|transition, _, _, _, _| {
+                transition.from == TradeStatus::OneAccepted
+                    && transition.next.status == TradeStatus::Pending
             })
-            .returning(|_, _, _, _, _, _, _| Box::pin(async { Ok(()) }));
+            .returning(|_, _, _, _, _| Box::pin(async { Ok(()) }));
         let mut mock_user_repository = MockUserRepository::new();
         mock_user_repository
             .expect_find_by_username()
@@ -878,10 +745,10 @@ mod tests {
         mock_trade_repository
             .expect_merge_card_into_trade()
             .times(1)
-            .withf(|_, _, owner, _, availability, _, _| {
+            .withf(|_, _, owner, _, availability| {
                 *owner == make_respondent_id() && *availability == CardAvailability::Offered
             })
-            .returning(|_, _, _, _, _, _, _| Box::pin(async { Ok(()) }));
+            .returning(|_, _, _, _, _| Box::pin(async { Ok(()) }));
         let mut mock_user_repository = MockUserRepository::new();
         mock_user_repository
             .expect_find_by_username()
@@ -921,10 +788,10 @@ mod tests {
         mock_trade_repository
             .expect_merge_card_into_trade()
             .times(1)
-            .withf(|_, _, owner, _, availability, _, _| {
+            .withf(|_, _, owner, _, availability| {
                 *owner == make_initiator_id() && *availability == CardAvailability::Owned
             })
-            .returning(|_, _, _, _, _, _, _| Box::pin(async { Ok(()) }));
+            .returning(|_, _, _, _, _| Box::pin(async { Ok(()) }));
         let mut mock_user_repository = MockUserRepository::new();
         mock_user_repository
             .expect_find_by_username()
@@ -957,7 +824,7 @@ mod tests {
             TradeStatus::Abandoned,
         ] {
             let trade = Trade {
-                status: status.clone(),
+                status,
                 ..make_base_trade()
             };
             let mut mock_trade_repository = MockTradeRepository::new();
@@ -1014,8 +881,8 @@ mod tests {
         mock_trade_repository
             .expect_remove_card_from_trade()
             .times(1)
-            .withf(|_, _, _, reopen| !*reopen)
-            .returning(|_, _, _, _| Box::pin(async { Ok(true) }));
+            .withf(|transition, _, _| transition.from == TradeStatus::Pending)
+            .returning(|_, _, _| Box::pin(async { Ok(true) }));
         let mut mock_user_repository = MockUserRepository::new();
         mock_user_repository
             .expect_find_by_username()
@@ -1055,8 +922,11 @@ mod tests {
         mock_trade_repository
             .expect_remove_card_from_trade()
             .times(1)
-            .withf(|_, _, _, reopen| *reopen)
-            .returning(|_, _, _, _| Box::pin(async { Ok(true) }));
+            .withf(|transition, _, _| {
+                transition.from == TradeStatus::OneAccepted
+                    && transition.next.status == TradeStatus::Pending
+            })
+            .returning(|_, _, _| Box::pin(async { Ok(true) }));
         let mut mock_user_repository = MockUserRepository::new();
         mock_user_repository
             .expect_find_by_username()
@@ -1093,7 +963,7 @@ mod tests {
         mock_trade_repository
             .expect_remove_card_from_trade()
             .times(1)
-            .returning(|_, _, _, _| Box::pin(async { Ok(false) }));
+            .returning(|_, _, _| Box::pin(async { Ok(false) }));
         let mut mock_user_repository = MockUserRepository::new();
         mock_user_repository
             .expect_find_by_username()
@@ -1267,7 +1137,7 @@ mod tests {
             TradeStatus::Abandoned,
         ] {
             let trade = Trade {
-                status: status.clone(),
+                status,
                 ..make_base_trade()
             };
             let mut mock_trade_repository = MockTradeRepository::new();
@@ -1340,53 +1210,36 @@ mod tests {
         }
     }
 
-    #[tokio::test]
-    async fn accept_succeeds_for_initiator_on_pending_trade() {
-        let trade = make_base_trade();
+    /// A repository whose `find_by_id` returns each of `reads` in turn, one per call.
+    fn mock_reading(reads: Vec<Trade>) -> MockTradeRepository {
         let mut mock_repository = MockTradeRepository::new();
+        let mut reads = reads.into_iter();
+        mock_repository.expect_find_by_id().returning(move |_| {
+            let trade = reads.next().expect("unexpected extra read of the trade");
+            Box::pin(async move { Ok(Some(trade)) })
+        });
         mock_repository
-            .expect_find_by_id()
-            .times(1)
-            .returning(move |_| {
-                let trade = trade.clone();
-                Box::pin(async move { Ok(Some(trade)) })
-            });
+    }
+
+    fn with_cards(mut mock_repository: MockTradeRepository) -> MockTradeRepository {
         mock_repository
             .expect_find_trade_cards()
-            .times(1)
             .returning(|_| Box::pin(async { Ok(vec![make_trade_card()]) }));
         mock_repository
-            .expect_accept()
-            .times(1)
-            .withf(|_, is_initiator| *is_initiator)
-            .returning(|_, _| Box::pin(async { Ok(Some(TradeStatus::OneAccepted)) }));
-
-        let service = AcceptTradeService::new(Arc::new(mock_repository));
-        let result = service.accept(TradeId::new(), make_initiator_id()).await;
-
-        assert!(result.is_ok());
     }
 
     #[tokio::test]
-    async fn accept_succeeds_for_respondent_on_pending_trade() {
-        let trade = make_base_trade();
-        let mut mock_repository = MockTradeRepository::new();
+    async fn accept_applies_the_transition_decided_by_the_trade() {
+        let mut mock_repository = with_cards(mock_reading(vec![make_base_trade()]));
         mock_repository
-            .expect_find_by_id()
+            .expect_apply_transition()
             .times(1)
-            .returning(move |_| {
-                let trade = trade.clone();
-                Box::pin(async move { Ok(Some(trade)) })
-            });
-        mock_repository
-            .expect_find_trade_cards()
-            .times(1)
-            .returning(|_| Box::pin(async { Ok(vec![make_trade_card()]) }));
-        mock_repository
-            .expect_accept()
-            .times(1)
-            .withf(|_, is_initiator| !*is_initiator)
-            .returning(|_, _| Box::pin(async { Ok(Some(TradeStatus::OneAccepted)) }));
+            .withf(|transition| {
+                transition.from == TradeStatus::Pending
+                    && transition.next.status == TradeStatus::OneAccepted
+                    && transition.next.respondent_accepted_at.is_some()
+            })
+            .returning(|_| Box::pin(async { Ok(true) }));
 
         let service = AcceptTradeService::new(Arc::new(mock_repository));
         let result = service.accept(TradeId::new(), make_respondent_id()).await;
@@ -1395,21 +1248,12 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn accept_fails_with_trade_empty_when_no_cards() {
-        let trade = make_base_trade();
-        let mut mock_repository = MockTradeRepository::new();
-        mock_repository
-            .expect_find_by_id()
-            .times(1)
-            .returning(move |_| {
-                let trade = trade.clone();
-                Box::pin(async move { Ok(Some(trade)) })
-            });
+    async fn accept_returns_the_refusal_of_the_trade_without_writing() {
+        let mut mock_repository = mock_reading(vec![make_base_trade()]);
         mock_repository
             .expect_find_trade_cards()
-            .times(1)
             .returning(|_| Box::pin(async { Ok(vec![]) }));
-        mock_repository.expect_accept().times(0);
+        mock_repository.expect_apply_transition().times(0);
 
         let service = AcceptTradeService::new(Arc::new(mock_repository));
         let result = service.accept(TradeId::new(), make_initiator_id()).await;
@@ -1423,6 +1267,9 @@ mod tests {
     #[tokio::test]
     async fn accept_fails_when_trade_not_found() {
         let mut mock_repository = MockTradeRepository::new();
+        mock_repository
+            .expect_find_trade_cards()
+            .returning(|_| Box::pin(async { Ok(vec![]) }));
         mock_repository
             .expect_find_by_id()
             .times(1)
@@ -1439,15 +1286,8 @@ mod tests {
 
     #[tokio::test]
     async fn accept_fails_when_caller_is_not_a_party() {
-        let trade = make_base_trade();
-        let mut mock_repository = MockTradeRepository::new();
-        mock_repository
-            .expect_find_by_id()
-            .times(1)
-            .returning(move |_| {
-                let trade = trade.clone();
-                Box::pin(async move { Ok(Some(trade)) })
-            });
+        let mut mock_repository = with_cards(mock_reading(vec![make_base_trade()]));
+        mock_repository.expect_apply_transition().times(0);
 
         let service = AcceptTradeService::new(Arc::new(mock_repository));
         let result = service.accept(TradeId::new(), make_stranger_id()).await;
@@ -1459,24 +1299,19 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn accept_fails_with_already_accepted_when_caller_already_accepted() {
-        let trade = Trade {
+    async fn accept_decides_again_on_fresh_state_after_a_concurrent_change() {
+        // A double submission: both requests read `PENDING`, the other one commits first.
+        let already_accepted = Trade {
             status: TradeStatus::OneAccepted,
             initiator_accepted_at: Some(chrono::Utc::now()),
             ..make_base_trade()
         };
-        let mut mock_repository = MockTradeRepository::new();
+        let mut mock_repository =
+            with_cards(mock_reading(vec![make_base_trade(), already_accepted]));
         mock_repository
-            .expect_find_by_id()
+            .expect_apply_transition()
             .times(1)
-            .returning(move |_| {
-                let trade = trade.clone();
-                Box::pin(async move { Ok(Some(trade)) })
-            });
-        mock_repository
-            .expect_accept()
-            .times(1)
-            .returning(|_, _| Box::pin(async { Ok(None) }));
+            .returning(|_| Box::pin(async { Ok(false) }));
 
         let service = AcceptTradeService::new(Arc::new(mock_repository));
         let result = service.accept(TradeId::new(), make_initiator_id()).await;
@@ -1488,49 +1323,32 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn accept_fails_with_not_acceptable_when_status_is_terminal() {
-        let trade = Trade {
-            status: TradeStatus::FullyAccepted,
-            ..make_base_trade()
-        };
-        let mut mock_repository = MockTradeRepository::new();
+    async fn accept_gives_up_when_the_trade_keeps_changing() {
+        let mut mock_repository = with_cards(mock_reading(vec![
+            make_base_trade(),
+            make_base_trade(),
+            make_base_trade(),
+        ]));
         mock_repository
-            .expect_find_by_id()
-            .times(1)
-            .returning(move |_| {
-                let trade = trade.clone();
-                Box::pin(async move { Ok(Some(trade)) })
-            });
-        mock_repository
-            .expect_accept()
-            .times(1)
-            .returning(|_, _| Box::pin(async { Ok(None) }));
+            .expect_apply_transition()
+            .times(TRANSITION_ATTEMPTS)
+            .returning(|_| Box::pin(async { Ok(false) }));
 
         let service = AcceptTradeService::new(Arc::new(mock_repository));
         let result = service.accept(TradeId::new(), make_initiator_id()).await;
 
-        assert!(matches!(
-            result,
-            Err(AppError::Functional(FunctionalError::TradeNotAcceptable))
-        ));
+        assert!(matches!(result, Err(AppError::Infra(_))));
     }
 
     // --- AbandonTradeService ---
 
     #[tokio::test]
     async fn abandon_succeeds_for_party() {
-        let trade = make_base_trade();
-        let mut mock_repository = MockTradeRepository::new();
+        let mut mock_repository = mock_reading(vec![make_base_trade()]);
         mock_repository
-            .expect_find_by_id()
+            .expect_apply_transition()
             .times(1)
-            .returning(move |_| {
-                let trade = trade.clone();
-                Box::pin(async move { Ok(Some(trade)) })
-            });
-        mock_repository
-            .expect_abandon()
-            .times(1)
+            .withf(|transition| transition.next.status == TradeStatus::Abandoned)
             .returning(|_| Box::pin(async { Ok(true) }));
 
         let service = AbandonTradeService::new(Arc::new(mock_repository));
@@ -1578,21 +1396,20 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn abandon_fails_with_already_finalized_when_repo_returns_false() {
-        let trade = Trade {
+    async fn abandon_fails_with_already_finalized_once_completed_meanwhile() {
+        let completed = Trade {
             status: TradeStatus::Completed,
             ..make_base_trade()
         };
-        let mut mock_repository = MockTradeRepository::new();
+        let mut mock_repository = mock_reading(vec![
+            Trade {
+                status: TradeStatus::FullyAccepted,
+                ..make_base_trade()
+            },
+            completed,
+        ]);
         mock_repository
-            .expect_find_by_id()
-            .times(1)
-            .returning(move |_| {
-                let trade = trade.clone();
-                Box::pin(async move { Ok(Some(trade)) })
-            });
-        mock_repository
-            .expect_abandon()
+            .expect_apply_transition()
             .times(1)
             .returning(|_| Box::pin(async { Ok(false) }));
 
@@ -1609,23 +1426,18 @@ mod tests {
 
     #[tokio::test]
     async fn confirm_succeeds_for_initiator_on_fully_accepted_trade() {
-        let trade = Trade {
+        let mut mock_repository = mock_reading(vec![Trade {
             status: TradeStatus::FullyAccepted,
             ..make_base_trade()
-        };
-        let mut mock_repository = MockTradeRepository::new();
+        }]);
         mock_repository
-            .expect_find_by_id()
+            .expect_apply_transition()
             .times(1)
-            .returning(move |_| {
-                let trade = trade.clone();
-                Box::pin(async move { Ok(Some(trade)) })
-            });
-        mock_repository
-            .expect_confirm()
-            .times(1)
-            .withf(|_, is_initiator| *is_initiator)
-            .returning(|_, _| Box::pin(async { Ok(Some(TradeStatus::FullyAccepted)) }));
+            .withf(|transition| {
+                transition.next.initiator_confirmed_at.is_some()
+                    && transition.next.respondent_confirmed_at.is_none()
+            })
+            .returning(|_| Box::pin(async { Ok(true) }));
 
         let service = ConfirmTradeService::new(Arc::new(mock_repository));
         let result = service.confirm(TradeId::new(), make_initiator_id()).await;
@@ -1675,49 +1487,9 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn confirm_fails_with_already_confirmed_when_caller_already_confirmed() {
-        let trade = Trade {
-            status: TradeStatus::FullyAccepted,
-            initiator_confirmed_at: Some(chrono::Utc::now()),
-            ..make_base_trade()
-        };
-        let mut mock_repository = MockTradeRepository::new();
-        mock_repository
-            .expect_find_by_id()
-            .times(1)
-            .returning(move |_| {
-                let trade = trade.clone();
-                Box::pin(async move { Ok(Some(trade)) })
-            });
-        mock_repository
-            .expect_confirm()
-            .times(1)
-            .returning(|_, _| Box::pin(async { Ok(None) }));
-
-        let service = ConfirmTradeService::new(Arc::new(mock_repository));
-        let result = service.confirm(TradeId::new(), make_initiator_id()).await;
-
-        assert!(matches!(
-            result,
-            Err(AppError::Functional(FunctionalError::TradeAlreadyConfirmed))
-        ));
-    }
-
-    #[tokio::test]
     async fn confirm_fails_with_not_fully_accepted_when_status_is_not_fully_accepted() {
-        let trade = make_base_trade();
-        let mut mock_repository = MockTradeRepository::new();
-        mock_repository
-            .expect_find_by_id()
-            .times(1)
-            .returning(move |_| {
-                let trade = trade.clone();
-                Box::pin(async move { Ok(Some(trade)) })
-            });
-        mock_repository
-            .expect_confirm()
-            .times(1)
-            .returning(|_, _| Box::pin(async { Ok(None) }));
+        let mut mock_repository = mock_reading(vec![make_base_trade()]);
+        mock_repository.expect_apply_transition().times(0);
 
         let service = ConfirmTradeService::new(Arc::new(mock_repository));
         let result = service.confirm(TradeId::new(), make_initiator_id()).await;
@@ -1732,23 +1504,18 @@ mod tests {
 
     #[tokio::test]
     async fn rate_succeeds_for_initiator_on_completed_trade() {
-        let trade = Trade {
+        let mut mock_repository = mock_reading(vec![Trade {
             status: TradeStatus::Completed,
             ..make_base_trade()
-        };
-        let mut mock_repository = MockTradeRepository::new();
+        }]);
         mock_repository
-            .expect_find_by_id()
+            .expect_apply_transition()
             .times(1)
-            .returning(move |_| {
-                let trade = trade.clone();
-                Box::pin(async move { Ok(Some(trade)) })
-            });
-        mock_repository
-            .expect_rate()
-            .times(1)
-            .withf(|_, is_initiator, rating| *is_initiator && *rating == 5)
-            .returning(|_, _, _| Box::pin(async { Ok(Some(TradeStatus::Completed)) }));
+            .withf(|transition| {
+                transition.next.initiator_rating == Some(5)
+                    && transition.next.respondent_rating.is_none()
+            })
+            .returning(|_| Box::pin(async { Ok(true) }));
 
         let service = RateTradeService::new(Arc::new(mock_repository));
         let result = service.rate(TradeId::new(), make_initiator_id(), 5).await;
@@ -1798,49 +1565,9 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn rate_fails_with_already_rated_when_caller_already_rated() {
-        let trade = Trade {
-            status: TradeStatus::Completed,
-            initiator_rating: Some(4),
-            ..make_base_trade()
-        };
-        let mut mock_repository = MockTradeRepository::new();
-        mock_repository
-            .expect_find_by_id()
-            .times(1)
-            .returning(move |_| {
-                let trade = trade.clone();
-                Box::pin(async move { Ok(Some(trade)) })
-            });
-        mock_repository
-            .expect_rate()
-            .times(1)
-            .returning(|_, _, _| Box::pin(async { Ok(None) }));
-
-        let service = RateTradeService::new(Arc::new(mock_repository));
-        let result = service.rate(TradeId::new(), make_initiator_id(), 2).await;
-
-        assert!(matches!(
-            result,
-            Err(AppError::Functional(FunctionalError::TradeAlreadyRated))
-        ));
-    }
-
-    #[tokio::test]
     async fn rate_fails_with_not_completed_when_status_is_not_completed() {
-        let trade = make_base_trade();
-        let mut mock_repository = MockTradeRepository::new();
-        mock_repository
-            .expect_find_by_id()
-            .times(1)
-            .returning(move |_| {
-                let trade = trade.clone();
-                Box::pin(async move { Ok(Some(trade)) })
-            });
-        mock_repository
-            .expect_rate()
-            .times(1)
-            .returning(|_, _, _| Box::pin(async { Ok(None) }));
+        let mut mock_repository = mock_reading(vec![make_base_trade()]);
+        mock_repository.expect_apply_transition().times(0);
 
         let service = RateTradeService::new(Arc::new(mock_repository));
         let result = service.rate(TradeId::new(), make_initiator_id(), 5).await;

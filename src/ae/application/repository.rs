@@ -10,7 +10,7 @@ use crate::domain::price::{FullPriceGuide, PriceHistoryEntry};
 use crate::domain::rarity_trade_filter::{RarityTradeFilter, RarityTradeFilterRule};
 use crate::domain::set_name::{SetCode, SetName};
 use crate::domain::trade::{
-    Trade, TradeCard, TradeCardDetail, TradeId, TradeListQuery, TradeStatus, TradeSummary,
+    Trade, TradeCard, TradeCardDetail, TradeId, TradeListQuery, TradeSummary, TradeTransition,
 };
 use crate::domain::user::{CollectionVisibility, User, UserId, UserSuggestion};
 use async_trait::async_trait;
@@ -269,13 +269,12 @@ pub trait TradeRepository: Send + Sync {
         query: TradeListQuery,
     ) -> Result<Paginated<TradeSummary>, AppError>;
 
-    /// Adds `copy_id` to an existing trade (or increments its `quantity` if already present for
-    /// `owner_id`). When `reopen_to_pending` is true, the trade's status is reset to `PENDING`.
+    /// Adds `copy_id` to the trade of `transition` (or increments its `quantity` if already
+    /// present for `owner_id`), and writes `transition` (see `Trade::modify`).
     ///
     /// Fails, changing nothing, with:
     /// - `TradeNotFound` if the trade doesn't exist;
-    /// - `TradeNotModifiable` if its status is no longer `expected_status` (the status the
-    ///   caller based `reopen_to_pending` on);
+    /// - `TradeNotModifiable` if its status is no longer `transition.from`;
     /// - `CardNotFound` if the resulting total for (`copy_id`, `owner_id`) in this trade exceeds
     ///   what `availability` allows;
     /// - `CardAlreadyReserved` if the card is committed to another `ONE_ACCEPTED` or
@@ -283,63 +282,33 @@ pub trait TradeRepository: Send + Sync {
     ///
     /// Atomic: concurrent additions to the same trade cannot together exceed the available
     /// quantity.
-    #[allow(clippy::too_many_arguments)]
     async fn merge_card_into_trade(
         &self,
-        trade_id: TradeId,
+        transition: &TradeTransition,
         copy_id: &CopyId,
         owner_id: &UserId,
         quantity: u8,
         availability: CardAvailability,
-        expected_status: TradeStatus,
-        reopen_to_pending: bool,
     ) -> Result<(), AppError>;
 
-    /// Removes the trade_card row identified by `copy_id` + `owner_id` from `trade_id`, entirely
-    /// (no partial quantity decrement). When `reopen_to_pending` is true, the trade's status is reset
-    /// to `PENDING` and both acceptance timestamps cleared — same effect as `merge_card_into_trade`.
-    /// Returns `false` if no matching row existed (nothing changed, trade untouched).
+    /// Removes the trade_card row identified by `copy_id` + `owner_id` from the trade of
+    /// `transition`, entirely (no partial quantity decrement), and writes `transition` (see
+    /// `Trade::modify`). Fails with `TradeNotModifiable` if the trade's status is no longer
+    /// `transition.from`. Returns `false` if no matching row existed (nothing changed, trade
+    /// untouched).
     async fn remove_card_from_trade(
         &self,
-        trade_id: TradeId,
+        transition: &TradeTransition,
         copy_id: &CopyId,
         owner_id: &UserId,
-        reopen_to_pending: bool,
     ) -> Result<bool, AppError>;
 
-    /// Records the caller's acceptance (`is_initiator` selects which party) if the trade is
-    /// `PENDING` or `ONE_ACCEPTED` and the caller had not already accepted. Also abandons every
-    /// other active trade (`PENDING`/`ONE_ACCEPTED`) sharing a card with this trade, but only when
-    /// this call is the very first acceptance (i.e. the returned status is `ONE_ACCEPTED`).
-    /// Returns `None` if the precondition wasn't met (nothing changed).
-    async fn accept(
-        &self,
-        trade_id: TradeId,
-        is_initiator: bool,
-    ) -> Result<Option<TradeStatus>, AppError>;
-
-    /// Sets the trade to `ABANDONED`, unless it is already `COMPLETED`, `CLOSED` or `ABANDONED`.
-    /// Returns `false` if the precondition wasn't met (nothing changed).
-    async fn abandon(&self, trade_id: TradeId) -> Result<bool, AppError>;
-
-    /// Records the caller's confirmation of the physical exchange (`is_initiator` selects which
-    /// party) if the trade is `FULLY_ACCEPTED` and the caller had not already confirmed.
-    /// Returns `None` if the precondition wasn't met (nothing changed).
-    async fn confirm(
-        &self,
-        trade_id: TradeId,
-        is_initiator: bool,
-    ) -> Result<Option<TradeStatus>, AppError>;
-
-    /// Records the caller's rating (`is_initiator` selects which party) if the trade is
-    /// `COMPLETED` and the caller had not already rated. Returns `None` if the precondition
-    /// wasn't met (nothing changed).
-    async fn rate(
-        &self,
-        trade_id: TradeId,
-        is_initiator: bool,
-        rating: u8,
-    ) -> Result<Option<TradeStatus>, AppError>;
+    /// Writes the status and party columns of `transition.next`, provided the trade still has
+    /// status `transition.from`. When the transition reserves the trade's cards, every other
+    /// active trade (`PENDING`/`ONE_ACCEPTED`) sharing one of them is abandoned in the same
+    /// transaction. Returns `false`, changing nothing, if the status no longer matched: the
+    /// decision was taken on a stale read.
+    async fn apply_transition(&self, transition: &TradeTransition) -> Result<bool, AppError>;
 }
 
 #[async_trait]
