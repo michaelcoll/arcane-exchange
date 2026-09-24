@@ -18,19 +18,6 @@ use chrono::NaiveDate;
 #[cfg(test)]
 use mockall::automock;
 
-#[derive(Debug, PartialEq, Eq)]
-pub enum PersistenceError {
-    DBError(String),
-}
-
-impl From<PersistenceError> for String {
-    fn from(val: PersistenceError) -> String {
-        match val {
-            PersistenceError::DBError(msg) => msg,
-        }
-    }
-}
-
 #[async_trait]
 #[cfg_attr(test, automock)]
 pub trait CardRepository: Send + Sync {
@@ -144,16 +131,6 @@ pub trait StatsRepository: Send + Sync {
     async fn get_card_number(&self) -> Result<u32, AppError>;
     async fn get_card_price_number(&self) -> Result<u32, AppError>;
     async fn get_db_size(&self) -> Result<u16, AppError>;
-}
-
-#[async_trait]
-#[cfg_attr(test, automock)]
-pub trait CollectionRepository: Send + Sync {
-    async fn get_paginated(
-        &self,
-        user_id: &UserId,
-        query: CollectionQuery,
-    ) -> Result<Paginated<Card>, AppError>;
 }
 
 #[async_trait]
