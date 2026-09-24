@@ -1,4 +1,5 @@
 ---
+status: amended by ADR-0016
 date: 2026-07-19
 ---
 
@@ -16,9 +17,7 @@ de sens que sur une négociation unique.
 ## Conséquences
 
 - La création d'un trade est idempotente par paire de joueurs : elle renvoie l'identifiant du trade
-  actif existant plutôt que d'en créer un second. L'invariant est porté par la base (index unique
-  partiel `trade_one_active_per_pair`), pas par un verrou applicatif : il tient face aux requêtes
-  concurrentes comme à toute écriture hors du chemin de création.
+  actif existant plutôt que d'en créer un second.
 - Une carte ajoutée à un trade qu'une partie avait déjà accepté ramène ce trade en négociation et
   annule les acceptations — une modification ne peut pas se glisser dans un trade verrouillé.
 - Un trade déjà pleinement accepté refuse tout ajout : le joueur ne peut rien demander de plus à ce
