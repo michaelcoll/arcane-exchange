@@ -48,18 +48,6 @@ impl TradeStatus {
             TradeStatus::Abandoned => "ABANDONED",
         }
     }
-
-    pub fn from_db_str(s: &str) -> Self {
-        match s {
-            "PENDING" => TradeStatus::Pending,
-            "ONE_ACCEPTED" => TradeStatus::OneAccepted,
-            "FULLY_ACCEPTED" => TradeStatus::FullyAccepted,
-            "COMPLETED" => TradeStatus::Completed,
-            "CLOSED" => TradeStatus::Closed,
-            "ABANDONED" => TradeStatus::Abandoned,
-            _ => panic!("invalid trade status from database: {}", s),
-        }
-    }
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -371,60 +359,6 @@ mod tests {
     #[test]
     fn trade_id_new_produces_different_ids() {
         assert_ne!(TradeId::new(), TradeId::new());
-    }
-
-    #[test]
-    fn trade_status_round_trip_pending() {
-        assert_eq!(
-            TradeStatus::from_db_str(TradeStatus::Pending.as_db_str()),
-            TradeStatus::Pending
-        );
-    }
-
-    #[test]
-    fn trade_status_round_trip_one_accepted() {
-        assert_eq!(
-            TradeStatus::from_db_str(TradeStatus::OneAccepted.as_db_str()),
-            TradeStatus::OneAccepted
-        );
-    }
-
-    #[test]
-    fn trade_status_round_trip_fully_accepted() {
-        assert_eq!(
-            TradeStatus::from_db_str(TradeStatus::FullyAccepted.as_db_str()),
-            TradeStatus::FullyAccepted
-        );
-    }
-
-    #[test]
-    fn trade_status_round_trip_completed() {
-        assert_eq!(
-            TradeStatus::from_db_str(TradeStatus::Completed.as_db_str()),
-            TradeStatus::Completed
-        );
-    }
-
-    #[test]
-    fn trade_status_round_trip_closed() {
-        assert_eq!(
-            TradeStatus::from_db_str(TradeStatus::Closed.as_db_str()),
-            TradeStatus::Closed
-        );
-    }
-
-    #[test]
-    fn trade_status_round_trip_abandoned() {
-        assert_eq!(
-            TradeStatus::from_db_str(TradeStatus::Abandoned.as_db_str()),
-            TradeStatus::Abandoned
-        );
-    }
-
-    #[test]
-    #[should_panic(expected = "invalid trade status from database: UNKNOWN")]
-    fn trade_status_from_db_str_panics_on_unknown_value() {
-        TradeStatus::from_db_str("UNKNOWN");
     }
 
     // --- State machine ---

@@ -281,7 +281,10 @@ impl CardPricesViewRepositoryAdapter {
             .map_err(|e| AppError::Infra(InfraError::RepositoryError(e.to_string())))?;
 
         Ok(Paginated {
-            items: entities.into_iter().map(Card::from).collect(),
+            items: entities
+                .into_iter()
+                .map(Card::try_from)
+                .collect::<Result<_, _>>()?,
             total: total as u64,
             pagination: query.pagination,
         })

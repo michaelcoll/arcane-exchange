@@ -238,7 +238,7 @@ impl TradeRepository for TradeRepositoryAdapter {
         .fetch_optional(&self.pool)
         .await?;
 
-        Ok(row.map(Trade::from))
+        Ok(row.map(Trade::try_from).transpose()?)
     }
 
     #[tracing::instrument(name = "trade_repo.find_trade_cards", skip_all, fields(sentry.op = "db"))]
@@ -335,7 +335,10 @@ impl TradeRepository for TradeRepositoryAdapter {
         .unwrap_or(0);
 
         Ok(Paginated {
-            items: rows.into_iter().map(TradeSummary::from).collect(),
+            items: rows
+                .into_iter()
+                .map(TradeSummary::try_from)
+                .collect::<Result<_, _>>()?,
             total: total as u64,
             pagination: query.pagination,
         })
