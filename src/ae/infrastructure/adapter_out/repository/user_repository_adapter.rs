@@ -100,7 +100,9 @@ impl UserRepository for UserRepositoryAdapter {
             .fetch_optional(&self.pool)
             .await?;
 
-        Ok(row.map(|r| CollectionVisibility::from_db_str(&r.visibility)))
+        Ok(row
+            .map(|r| CollectionVisibility::try_from(r.visibility.as_str()))
+            .transpose()?)
     }
 
     #[tracing::instrument(name = "user_repo.set_visibility", skip_all, fields(sentry.op = "db"))]

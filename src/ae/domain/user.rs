@@ -87,15 +87,6 @@ impl CollectionVisibility {
             CollectionVisibility::Private => "private",
         }
     }
-
-    pub fn from_db_str(s: &str) -> Self {
-        match s {
-            "public" => CollectionVisibility::Public,
-            "trade" => CollectionVisibility::Trade,
-            "private" => CollectionVisibility::Private,
-            _ => panic!("invalid collection visibility from database: {}", s),
-        }
-    }
 }
 
 #[cfg(test)]
@@ -142,25 +133,5 @@ mod tests {
         let user2 = user1.clone();
 
         assert_eq!(user1, user2);
-    }
-
-    #[test]
-    fn collection_visibility_round_trips_through_db_str() {
-        for variant in [
-            CollectionVisibility::Public,
-            CollectionVisibility::Trade,
-            CollectionVisibility::Private,
-        ] {
-            assert_eq!(
-                CollectionVisibility::from_db_str(variant.as_db_str()),
-                variant
-            );
-        }
-    }
-
-    #[test]
-    #[should_panic(expected = "invalid collection visibility from database: unknown")]
-    fn collection_visibility_from_db_str_panics_on_unknown_value() {
-        CollectionVisibility::from_db_str("unknown");
     }
 }

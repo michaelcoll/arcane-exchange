@@ -1,10 +1,11 @@
+use crate::application::error::InfraError;
 use crate::domain::card::{Card, CardId, CollectionEntry, CopyId};
 use crate::domain::language_code::LanguageCode;
 use crate::domain::price::{FullPriceGuide, Price, PriceGuide, PriceHistoryEntry};
 use crate::domain::rarity_code::RarityCode;
 use crate::domain::set_name::{SetCode, SetName};
 use crate::domain::trade::{Trade, TradeCard, TradeCardDetail, TradeId, TradeStatus, TradeSummary};
-use crate::domain::user::{User, UserId, UserSuggestion};
+use crate::domain::user::{CollectionVisibility, User, UserId, UserSuggestion};
 use chrono::{DateTime, NaiveDate, Utc};
 use uuid::Uuid;
 
@@ -44,15 +45,44 @@ pub struct SetNameEntity {
     pub name: String,
 }
 
-fn from_db_rarity<S: AsRef<str>>(s: S) -> RarityCode {
-    let s = s.as_ref().to_uppercase();
-    match s.as_str() {
-        "C" | "c" => RarityCode::C,
-        "U" | "u" => RarityCode::U,
-        "R" | "r" => RarityCode::R,
-        "M" | "m" => RarityCode::M,
-        "S" | "s" => RarityCode::S,
-        _ => panic!("invalid rarity code from database: {}", s),
+/// An unexpected value read from the database is corrupt data, not a caller mistake: it surfaces
+/// as an `InfraError` (500), never as a panic nor as a functional (4xx) error.
+fn invalid_db_value(what: &str, value: &str) -> InfraError {
+    InfraError::RepositoryError(format!("invalid {what} from database: {value}"))
+}
+
+fn from_db_rarity(s: &str) -> Result<RarityCode, InfraError> {
+    RarityCode::try_new(s).map_err(|_| invalid_db_value("rarity code", s))
+}
+
+/// Inverse of [`TradeStatus::as_db_str`].
+impl TryFrom<&str> for TradeStatus {
+    type Error = InfraError;
+
+    fn try_from(s: &str) -> Result<Self, Self::Error> {
+        match s {
+            "PENDING" => Ok(TradeStatus::Pending),
+            "ONE_ACCEPTED" => Ok(TradeStatus::OneAccepted),
+            "FULLY_ACCEPTED" => Ok(TradeStatus::FullyAccepted),
+            "COMPLETED" => Ok(TradeStatus::Completed),
+            "CLOSED" => Ok(TradeStatus::Closed),
+            "ABANDONED" => Ok(TradeStatus::Abandoned),
+            other => Err(invalid_db_value("trade status", other)),
+        }
+    }
+}
+
+/// Inverse of [`CollectionVisibility::as_db_str`].
+impl TryFrom<&str> for CollectionVisibility {
+    type Error = InfraError;
+
+    fn try_from(s: &str) -> Result<Self, Self::Error> {
+        match s {
+            "public" => Ok(CollectionVisibility::Public),
+            "trade" => Ok(CollectionVisibility::Trade),
+            "private" => Ok(CollectionVisibility::Private),
+            other => Err(invalid_db_value("collection visibility", other)),
+        }
     }
 }
 
@@ -115,13 +145,15 @@ pub struct TradeEntity {
     pub updated_at: DateTime<Utc>,
 }
 
-impl From<TradeEntity> for Trade {
-    fn from(entity: TradeEntity) -> Trade {
-        Trade {
+impl TryFrom<TradeEntity> for Trade {
+    type Error = InfraError;
+
+    fn try_from(entity: TradeEntity) -> Result<Trade, InfraError> {
+        Ok(Trade {
             id: TradeId(entity.id),
             initiator_user_id: UserId::new(entity.initiator_user_id),
             respondent_user_id: UserId::new(entity.respondent_user_id),
-            status: TradeStatus::from_db_str(&entity.status),
+            status: TradeStatus::try_from(entity.status.as_str())?,
             initiator_amount_due: entity.initiator_amount_due.map(|v| v as u32),
             respondent_amount_due: entity.respondent_amount_due.map(|v| v as u32),
             initiator_accepted_at: entity.initiator_accepted_at,
@@ -136,7 +168,7 @@ impl From<TradeEntity> for Trade {
                 .map(|v| u8::try_from(v).expect("database contains invalid rating (expected 0-5)")),
             created_at: entity.created_at,
             updated_at: entity.updated_at,
-        }
+        })
     }
 }
 
@@ -235,16 +267,18 @@ pub struct TradeSummaryEntity {
     pub partner_card_count: i64,
 }
 
-impl From<TradeSummaryEntity> for TradeSummary {
-    fn from(entity: TradeSummaryEntity) -> TradeSummary {
-        TradeSummary {
+impl TryFrom<TradeSummaryEntity> for TradeSummary {
+    type Error = InfraError;
+
+    fn try_from(entity: TradeSummaryEntity) -> Result<TradeSummary, InfraError> {
+        Ok(TradeSummary {
             id: TradeId(entity.id),
-            status: TradeStatus::from_db_str(&entity.status),
+            status: TradeStatus::try_from(entity.status.as_str())?,
             partner_username: entity.partner_username,
             my_card_count: entity.my_card_count as u32,
             partner_card_count: entity.partner_card_count as u32,
             updated_at: entity.updated_at,
-        }
+        })
     }
 }
 
@@ -439,8 +473,10 @@ impl From<Option<i32>> for Price {
     }
 }
 
-impl From<CardWithPriceEntity> for Card {
-    fn from(e: CardWithPriceEntity) -> Self {
+impl TryFrom<CardWithPriceEntity> for Card {
+    type Error = InfraError;
+
+    fn try_from(e: CardWithPriceEntity) -> Result<Self, Self::Error> {
         let price_guide = if e.price.avg.is_some() || e.price.low.is_some() {
             Some(PriceGuide::from(e.price))
         } else {
@@ -461,7 +497,7 @@ impl From<CardWithPriceEntity> for Card {
         };
 
         let set_code = SetCode::try_new(&e.set_code).expect("database contains invalid set_code");
-        Card {
+        Ok(Card {
             id: CopyId::new(
                 set_code.clone(),
                 e.collector_number,
@@ -471,13 +507,13 @@ impl From<CardWithPriceEntity> for Card {
             ),
             set_name: SetName::new(set_code, e.set_name),
             name: e.name,
-            rarity_code: from_db_rarity(e.rarity),
+            rarity_code: from_db_rarity(&e.rarity)?,
             scryfall_id: e.scryfall_id,
             cardmarket_id: None,
             the_gatherer_id: e.the_gatherer_id,
             collection_entry,
             price_guide,
-        }
+        })
     }
 }
 
@@ -516,43 +552,97 @@ mod tests {
 
     #[test]
     fn from_db_rarity_returns_common_for_c() {
-        assert_eq!(from_db_rarity("C"), RarityCode::C);
+        assert_eq!(from_db_rarity("C"), Ok(RarityCode::C));
     }
 
     #[test]
     fn from_db_rarity_returns_uncommon_for_u() {
-        assert_eq!(from_db_rarity("U"), RarityCode::U);
+        assert_eq!(from_db_rarity("U"), Ok(RarityCode::U));
     }
 
     #[test]
     fn from_db_rarity_returns_rare_for_r() {
-        assert_eq!(from_db_rarity("R"), RarityCode::R);
+        assert_eq!(from_db_rarity("R"), Ok(RarityCode::R));
     }
 
     #[test]
     fn from_db_rarity_returns_mythic_for_m() {
-        assert_eq!(from_db_rarity("M"), RarityCode::M);
+        assert_eq!(from_db_rarity("M"), Ok(RarityCode::M));
     }
 
     #[test]
     fn from_db_rarity_returns_special_for_s() {
-        assert_eq!(from_db_rarity("S"), RarityCode::S);
+        assert_eq!(from_db_rarity("S"), Ok(RarityCode::S));
     }
 
     #[test]
     fn from_db_rarity_returns_special_for_lowercase_s() {
-        assert_eq!(from_db_rarity("s"), RarityCode::S);
+        assert_eq!(from_db_rarity("s"), Ok(RarityCode::S));
     }
 
     #[test]
     fn from_db_rarity_returns_common_for_lowercase() {
-        assert_eq!(from_db_rarity("c"), RarityCode::C);
+        assert_eq!(from_db_rarity("c"), Ok(RarityCode::C));
     }
 
     #[test]
-    #[should_panic(expected = "invalid rarity code from database")]
-    fn from_db_rarity_panics_on_unknown_code() {
-        from_db_rarity("X");
+    fn from_db_rarity_returns_repository_error_on_unknown_code() {
+        assert_eq!(
+            from_db_rarity("X"),
+            Err(InfraError::RepositoryError(
+                "invalid rarity code from database: X".to_string()
+            ))
+        );
+    }
+
+    // --- TradeStatus / CollectionVisibility ↔ database strings ---
+
+    #[test]
+    fn trade_status_round_trips_through_db_str() {
+        for status in [
+            TradeStatus::Pending,
+            TradeStatus::OneAccepted,
+            TradeStatus::FullyAccepted,
+            TradeStatus::Completed,
+            TradeStatus::Closed,
+            TradeStatus::Abandoned,
+        ] {
+            assert_eq!(TradeStatus::try_from(status.as_db_str()), Ok(status));
+        }
+    }
+
+    #[test]
+    fn trade_status_try_from_returns_repository_error_on_unknown_value() {
+        assert_eq!(
+            TradeStatus::try_from("UNKNOWN"),
+            Err(InfraError::RepositoryError(
+                "invalid trade status from database: UNKNOWN".to_string()
+            ))
+        );
+    }
+
+    #[test]
+    fn collection_visibility_round_trips_through_db_str() {
+        for visibility in [
+            CollectionVisibility::Public,
+            CollectionVisibility::Trade,
+            CollectionVisibility::Private,
+        ] {
+            assert_eq!(
+                CollectionVisibility::try_from(visibility.as_db_str()),
+                Ok(visibility)
+            );
+        }
+    }
+
+    #[test]
+    fn collection_visibility_try_from_returns_repository_error_on_unknown_value() {
+        assert_eq!(
+            CollectionVisibility::try_from("unknown"),
+            Err(InfraError::RepositoryError(
+                "invalid collection visibility from database: unknown".to_string()
+            ))
+        );
     }
 
     #[test]
@@ -695,7 +785,7 @@ mod tests {
             updated_at: chrono::Utc::now(),
         };
 
-        let trade: Trade = entity.into();
+        let trade = Trade::try_from(entity).unwrap();
 
         assert!(matches!(trade.status, TradeStatus::Pending));
         assert_eq!(trade.initiator_user_id, UserId::new("init-1"));
@@ -723,11 +813,38 @@ mod tests {
             updated_at: chrono::Utc::now(),
         };
 
-        let trade: Trade = entity.into();
+        let trade = Trade::try_from(entity).unwrap();
 
         assert!(matches!(trade.status, TradeStatus::Closed));
         assert!(trade.initiator_amount_due.is_none());
         assert!(trade.respondent_amount_due.is_none());
+    }
+
+    #[test]
+    fn trade_entity_with_unknown_status_fails_to_convert() {
+        let entity = TradeEntity {
+            id: Uuid::new_v4(),
+            initiator_user_id: "init-3".to_string(),
+            respondent_user_id: "resp-3".to_string(),
+            status: "BOGUS".to_string(),
+            initiator_amount_due: None,
+            respondent_amount_due: None,
+            initiator_accepted_at: None,
+            respondent_accepted_at: None,
+            initiator_confirmed_at: None,
+            respondent_confirmed_at: None,
+            initiator_rating: None,
+            respondent_rating: None,
+            created_at: chrono::Utc::now(),
+            updated_at: chrono::Utc::now(),
+        };
+
+        assert_eq!(
+            Trade::try_from(entity),
+            Err(InfraError::RepositoryError(
+                "invalid trade status from database: BOGUS".to_string()
+            ))
+        );
     }
 
     // --- TradeCardEntity ---
@@ -779,7 +896,7 @@ mod tests {
             },
         };
 
-        let card: Card = entity.into();
+        let card = Card::try_from(entity).unwrap();
 
         assert_eq!(card.name, "Sol Ring");
         assert!(card.price_guide.is_some());
@@ -813,7 +930,7 @@ mod tests {
             },
         };
 
-        let card: Card = entity.into();
+        let card = Card::try_from(entity).unwrap();
 
         match card.collection_entry {
             CollectionEntry::Public { owner_count, .. } => {
@@ -847,7 +964,7 @@ mod tests {
             },
         };
 
-        let card: Card = entity.into();
+        let card = Card::try_from(entity).unwrap();
 
         match card.collection_entry {
             CollectionEntry::Public { owner_count, .. } => {
@@ -881,7 +998,7 @@ mod tests {
             },
         };
 
-        let card: Card = entity.into();
+        let card = Card::try_from(entity).unwrap();
 
         assert!(card.price_guide.is_none());
     }
