@@ -252,7 +252,10 @@ impl TradeRepository for TradeRepositoryAdapter {
         .fetch_all(&self.pool)
         .await?;
 
-        Ok(rows.into_iter().map(TradeCard::from).collect())
+        Ok(rows
+            .into_iter()
+            .map(TradeCard::try_from)
+            .collect::<Result<_, _>>()?)
     }
 
     #[tracing::instrument(name = "trade_repo.find_trade_cards_with_details", skip_all, fields(sentry.op = "db"))]
@@ -278,7 +281,10 @@ impl TradeRepository for TradeRepositoryAdapter {
         .fetch_all(&self.pool)
         .await?;
 
-        Ok(rows.into_iter().map(TradeCardDetail::from).collect())
+        Ok(rows
+            .into_iter()
+            .map(TradeCardDetail::try_from)
+            .collect::<Result<_, _>>()?)
     }
 
     #[tracing::instrument(name = "trade_repo.list_trades", skip_all, fields(sentry.op = "db"))]

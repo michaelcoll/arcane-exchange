@@ -37,8 +37,11 @@ impl CardRepository for CardRepositoryAdapter {
         .fetch_all(&self.pool)
         .await?
         .into_iter()
-        .map(|e| (e.clone().into(), e.scryfall_id))
-        .collect::<Vec<(CardId, uuid::Uuid)>>())
+        .map(|e| {
+            let scryfall_id = e.scryfall_id;
+            CardId::try_from(e).map(|id| (id, scryfall_id))
+        })
+        .collect::<Result<Vec<_>, _>>()?)
     }
 
     #[tracing::instrument(name = "card_repo.get_all_without_gatherer_id", skip_all, fields(sentry.op = "db"))]
@@ -56,8 +59,11 @@ impl CardRepository for CardRepositoryAdapter {
         .fetch_all(&self.pool)
         .await?
         .into_iter()
-        .map(|e| (e.clone().into(), e.name))
-        .collect::<Vec<(CardId, String)>>())
+        .map(|e| {
+            let name = e.name.clone();
+            CardId::try_from(e).map(|id| (id, name))
+        })
+        .collect::<Result<Vec<_>, _>>()?)
     }
 
     #[tracing::instrument(name = "card_repo.find_by_scryfall_id", skip_all, fields(sentry.op = "db"))]
