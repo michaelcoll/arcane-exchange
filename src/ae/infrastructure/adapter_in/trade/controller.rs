@@ -3,9 +3,8 @@ use super::dto::{
     PaginatedTradesResponse, RateTradeRequest, RemoveTradeCardRequest, TradeDetailResponse,
 };
 use crate::application::error::AppError;
-use crate::application::service::trade_service::TRADES_MAX_OFFSET;
 use crate::domain::error::FunctionalError;
-use crate::domain::pagination::Pagination;
+use crate::domain::pagination::PageRequest;
 use crate::domain::trade::{TradeId, TradeListQuery};
 use crate::infrastructure::AppState;
 use crate::infrastructure::adapter_in::auth_extractor::AuthenticatedUser;
@@ -306,11 +305,12 @@ pub(crate) async fn list_trades(
     State(state): State<AppState>,
     Query(params): Query<ListTradesParams>,
 ) -> Result<axum::Json<PaginatedTradesResponse>, AppError> {
-    let pagination = Pagination::try_new(params.page, params.page_size, TRADES_MAX_OFFSET)?;
-
     let query = TradeListQuery {
         statuses: params.status.into_iter().map(Into::into).collect(),
-        pagination,
+        pagination: PageRequest {
+            page: params.page,
+            page_size: params.page_size,
+        },
     };
 
     let result = state

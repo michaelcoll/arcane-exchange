@@ -1,5 +1,5 @@
 use crate::domain::error::FunctionalError;
-use crate::domain::pagination::Pagination;
+use crate::domain::pagination::{PageRequest, Pagination};
 use crate::domain::rarity_code::RarityCode;
 use std::fmt;
 
@@ -41,9 +41,14 @@ impl fmt::Display for SortDirection {
     }
 }
 
+/// Filters, sort and page of a card listing.
+///
+/// `P` is the page: a raw [`PageRequest`] as it leaves the HTTP adapter, then a validated
+/// [`Pagination`] once the use case has applied its own depth limit with
+/// [`CollectionQuery::paginate`] — only the latter reaches a repository.
 #[derive(Clone, Debug, Default)]
-pub struct CollectionQuery {
-    pub pagination: Pagination,
+pub struct CollectionQuery<P = Pagination> {
+    pub pagination: P,
     pub sort_by: CollectionSortField,
     pub sort_dir: SortDirection,
     pub search_query: Option<String>,
@@ -53,15 +58,49 @@ pub struct CollectionQuery {
     pub price_max: Option<u32>,
 }
 
+impl CollectionQuery<PageRequest> {
+    /// Validates the requested page against `max_offset`, keeping every other field.
+    ///
+    /// # Errors
+    ///
+    /// Same as [`PageRequest::paginate`].
+    pub fn paginate(self, max_offset: u32) -> Result<CollectionQuery, FunctionalError> {
+        Ok(CollectionQuery {
+            pagination: self.pagination.paginate(max_offset)?,
+            sort_by: self.sort_by,
+            sort_dir: self.sort_dir,
+            search_query: self.search_query,
+            rarity: self.rarity,
+            sets: self.sets,
+            price_min: self.price_min,
+            price_max: self.price_max,
+        })
+    }
+}
+
 /// A search across every user's cards, adding an optional exact-match filter on the
 /// owning player's username to the shared `CollectionQuery` filters.
 #[derive(Clone, Debug, Default)]
-pub struct SearchQuery {
-    pub collection_query: CollectionQuery,
+pub struct SearchQuery<P = Pagination> {
+    pub collection_query: CollectionQuery<P>,
     pub player_username: Option<String>,
 }
 
-impl SearchQuery {
+impl SearchQuery<PageRequest> {
+    /// Validates the requested page against `max_offset`, see [`CollectionQuery::paginate`].
+    ///
+    /// # Errors
+    ///
+    /// Same as [`PageRequest::paginate`].
+    pub fn paginate(self, max_offset: u32) -> Result<SearchQuery, FunctionalError> {
+        Ok(SearchQuery {
+            collection_query: self.collection_query.paginate(max_offset)?,
+            player_username: self.player_username,
+        })
+    }
+}
+
+impl<P> SearchQuery<P> {
     /// Builds a `SearchQuery`, rejecting combinations that don't make sense together.
     ///
     /// # Errors
@@ -71,7 +110,7 @@ impl SearchQuery {
     /// group cards from several owners into a single row, so there is no single `added_at` value
     /// to sort by.
     pub fn try_new(
-        collection_query: CollectionQuery,
+        collection_query: CollectionQuery<P>,
         player_username: Option<String>,
     ) -> Result<Self, FunctionalError> {
         if collection_query.sort_by == CollectionSortField::AddedAt && player_username.is_none() {
@@ -85,8 +124,8 @@ impl SearchQuery {
     }
 }
 
-impl From<CollectionQuery> for SearchQuery {
-    fn from(collection_query: CollectionQuery) -> Self {
+impl<P> From<CollectionQuery<P>> for SearchQuery<P> {
+    fn from(collection_query: CollectionQuery<P>) -> Self {
         Self {
             collection_query,
             player_username: None,
@@ -127,7 +166,7 @@ mod tests {
 
     #[test]
     fn collection_query_default_values() {
-        let q = CollectionQuery::default();
+        let q: CollectionQuery = CollectionQuery::default();
         assert_eq!(q.pagination.page(), 0);
         assert_eq!(q.pagination.page_size(), 20);
         assert_eq!(q.sort_by, CollectionSortField::Trend);
@@ -137,7 +176,7 @@ mod tests {
 
     #[test]
     fn search_query_default_has_no_player_username() {
-        let q = SearchQuery::default();
+        let q: SearchQuery = SearchQuery::default();
         assert_eq!(q.player_username, None);
     }
 
@@ -148,8 +187,65 @@ mod tests {
     }
 
     #[test]
-    fn search_query_try_new_rejects_added_at_sort_without_player_username() {
+    fn collection_query_paginate_validates_the_page_and_keeps_the_filters() {
         let query = CollectionQuery {
+            pagination: PageRequest {
+                page: 2,
+                page_size: 10,
+            },
+            sort_by: CollectionSortField::SetCode,
+            sets: vec!["FDN".to_string()],
+            price_min: Some(100),
+            ..Default::default()
+        };
+
+        let paginated = query.paginate(20).unwrap();
+
+        assert_eq!(
+            paginated.pagination,
+            Pagination::try_new(2, 10, 20).unwrap()
+        );
+        assert_eq!(paginated.sort_by, CollectionSortField::SetCode);
+        assert_eq!(paginated.sets, vec!["FDN".to_string()]);
+        assert_eq!(paginated.price_min, Some(100));
+    }
+
+    #[test]
+    fn collection_query_paginate_rejects_a_page_beyond_max_offset() {
+        let query = CollectionQuery {
+            pagination: PageRequest {
+                page: 3,
+                page_size: 10,
+            },
+            ..Default::default()
+        };
+
+        let result = query.paginate(20);
+
+        assert!(matches!(
+            result,
+            Err(FunctionalError::PaginationTooDeep {
+                requested_offset: 30,
+                max: 20
+            })
+        ));
+    }
+
+    #[test]
+    fn search_query_paginate_keeps_the_player_username() {
+        let query = SearchQuery {
+            collection_query: CollectionQuery::<PageRequest>::default(),
+            player_username: Some("alice".to_string()),
+        };
+
+        let paginated = query.paginate(20).unwrap();
+
+        assert_eq!(paginated.player_username, Some("alice".to_string()));
+    }
+
+    #[test]
+    fn search_query_try_new_rejects_added_at_sort_without_player_username() {
+        let query = CollectionQuery::<PageRequest> {
             sort_by: CollectionSortField::AddedAt,
             ..Default::default()
         };
@@ -164,7 +260,7 @@ mod tests {
 
     #[test]
     fn search_query_try_new_accepts_added_at_sort_with_player_username() {
-        let query = CollectionQuery {
+        let query = CollectionQuery::<PageRequest> {
             sort_by: CollectionSortField::AddedAt,
             ..Default::default()
         };
@@ -177,7 +273,7 @@ mod tests {
 
     #[test]
     fn search_query_try_new_accepts_non_added_at_sort_without_player_username() {
-        let query = CollectionQuery::default();
+        let query = CollectionQuery::<PageRequest>::default();
 
         let result = SearchQuery::try_new(query, None);
 

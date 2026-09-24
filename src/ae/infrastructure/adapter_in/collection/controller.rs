@@ -4,11 +4,10 @@ use super::dto::{
     RarityFiltersResponse, SetRarityFilterRequest,
 };
 use crate::application::error::AppError;
-use crate::application::service::collection_service::COLLECTION_MAX_OFFSET;
 use crate::domain::card_import::CardImportId;
 use crate::domain::collection::CollectionQuery;
 use crate::domain::error::FunctionalError;
-use crate::domain::pagination::Pagination;
+use crate::domain::pagination::PageRequest;
 use crate::domain::rarity_code::RarityCode;
 use crate::domain::rarity_trade_filter::RarityTradeFilterRule;
 use crate::infrastructure::AppState;
@@ -147,7 +146,10 @@ pub(crate) async fn get_collection(
     State(state): State<AppState>,
     Query(params): Query<CollectionParams>,
 ) -> Result<axum::Json<PaginatedCollectionResponse>, AppError> {
-    let pagination = Pagination::try_new(params.page, params.page_size, COLLECTION_MAX_OFFSET)?;
+    let pagination = PageRequest {
+        page: params.page,
+        page_size: params.page_size,
+    };
 
     let rarity = params.rarity.into_iter().map(Into::into).collect();
 

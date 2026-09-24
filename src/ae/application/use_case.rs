@@ -7,7 +7,7 @@ use crate::domain::card_import::{CardImport, CardImportId};
 use crate::domain::card_offer::CardOfferSortField;
 use crate::domain::collection::{CollectionQuery, SearchQuery};
 use crate::domain::collection_stats::CollectionStats;
-use crate::domain::pagination::{Paginated, Pagination};
+use crate::domain::pagination::{PageRequest, Paginated};
 use crate::domain::price::PriceHistoryEntry;
 use crate::domain::rarity_trade_filter::{RarityTradeFilter, RarityTradeFilterRule};
 use crate::domain::set_name::{SetCode, SetName};
@@ -148,17 +148,24 @@ pub trait StatsUseCase: Send + Sync {
 #[async_trait]
 #[cfg_attr(test, automock)]
 pub trait GetCollectionUseCase: Send + Sync {
+    /// Rejects the requested page with `InvalidPageSize` or `PaginationTooDeep` (`400`) when it
+    /// is out of the collection's bounds.
     async fn get_collection(
         &self,
         user_id: &UserId,
-        query: CollectionQuery,
+        query: CollectionQuery<PageRequest>,
     ) -> Result<Paginated<Card>, AppError>;
 }
 
 #[async_trait]
 #[cfg_attr(test, automock)]
 pub trait SearchCardsUseCase: Send + Sync {
-    async fn search_cards(&self, query: SearchQuery) -> Result<Paginated<Card>, AppError>;
+    /// Rejects the requested page with `InvalidPageSize` or `PaginationTooDeep` (`400`) when it
+    /// is out of the search's bounds.
+    async fn search_cards(
+        &self,
+        query: SearchQuery<PageRequest>,
+    ) -> Result<Paginated<Card>, AppError>;
 }
 
 #[async_trait]
@@ -193,12 +200,14 @@ pub trait GetCollectionStatsUseCase: Send + Sync {
 #[async_trait]
 #[cfg_attr(test, automock)]
 pub trait GetCardOffersUseCase: Send + Sync {
+    /// Rejects the requested page with `InvalidPageSize` or `PaginationTooDeep` (`400`) when it
+    /// is out of the offers' bounds, before looking the card up.
     async fn get_card_offers(
         &self,
         user_id: &UserId,
         copy_id: CopyId,
         sort_by: CardOfferSortField,
-        pagination: Pagination,
+        page: PageRequest,
     ) -> Result<Paginated<CollectionEntry>, AppError>;
 }
 
@@ -280,10 +289,12 @@ pub trait GetTradeUseCase: Send + Sync {
 #[async_trait]
 #[cfg_attr(test, automock)]
 pub trait ListTradesUseCase: Send + Sync {
+    /// Rejects the requested page with `InvalidPageSize` or `PaginationTooDeep` (`400`) when it
+    /// is out of the trade list's bounds.
     async fn list_trades(
         &self,
         caller_id: UserId,
-        query: TradeListQuery,
+        query: TradeListQuery<PageRequest>,
     ) -> Result<Paginated<TradeSummary>, AppError>;
 }
 

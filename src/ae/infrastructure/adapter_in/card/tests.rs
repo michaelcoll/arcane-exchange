@@ -195,24 +195,23 @@ async fn get_card_price_history_returns_empty_list() {
 async fn get_card_offers_returns_paginated_offers() {
     use crate::application::use_case::MockGetCardOffersUseCase;
     use crate::domain::card::CollectionEntry;
-    use crate::domain::pagination::Paginated;
+    use crate::domain::pagination::{Paginated, Pagination};
 
     let mut mock = MockGetCardOffersUseCase::new();
-    mock.expect_get_card_offers()
-        .returning(|_, _, _, pagination| {
-            Box::pin(async move {
-                Ok(Paginated {
-                    items: vec![CollectionEntry::Owned {
-                        owner_username: "Bob".to_string(),
-                        quantity: 3,
-                        selling_price: Some(1500),
-                        reserved: false,
-                    }],
-                    total: 1,
-                    pagination,
-                })
+    mock.expect_get_card_offers().returning(|_, _, _, _| {
+        Box::pin(async move {
+            Ok(Paginated {
+                items: vec![CollectionEntry::Owned {
+                    owner_username: "Bob".to_string(),
+                    quantity: 3,
+                    selling_price: Some(1500),
+                    reserved: false,
+                }],
+                total: 1,
+                pagination: Pagination::default(),
             })
-        });
+        })
+    });
 
     let app_state = make_app_state_with_card_offers(mock);
 
@@ -343,14 +342,34 @@ async fn get_card_offers_returns_empty_items_with_nonzero_total_for_page_beyond_
 }
 
 #[tokio::test]
-async fn get_card_offers_rejects_page_size_above_max() {
+async fn get_card_offers_passes_the_requested_page_to_the_use_case_unvalidated() {
     use crate::application::use_case::MockGetCardOffersUseCase;
+    use crate::domain::pagination::PageRequest;
 
-    // The use case must never be reached: the pagination is rejected before that.
-    let mock = MockGetCardOffersUseCase::new();
+    // Validating the page against the offers' depth limit is the use case's job: the controller
+    // forwards whatever the client asked for, even a page the use case will reject.
+    let mut mock = MockGetCardOffersUseCase::new();
+    mock.expect_get_card_offers()
+        .withf(|_, _, _, page| {
+            *page
+                == PageRequest {
+                    page: 1000,
+                    page_size: 1000,
+                }
+        })
+        .returning(|_, _, _, _| {
+            Box::pin(async {
+                Err(AppError::Functional(FunctionalError::InvalidPageSize {
+                    requested: 1000,
+                    max: 100,
+                }))
+            })
+        });
+
     let app_state = make_app_state_with_card_offers(mock);
 
     let mut params = valid_offers_params();
+    params.page = 1000;
     params.page_size = 1000;
 
     let result = get_card_offers(
@@ -361,103 +380,9 @@ async fn get_card_offers_rejects_page_size_above_max() {
     .await;
 
     match result.unwrap_err() {
-        AppError::Functional(FunctionalError::InvalidPageSize {
-            requested: 1000,
-            max: 100,
-        }) => {}
+        AppError::Functional(FunctionalError::InvalidPageSize { .. }) => {}
         other => panic!("Expected InvalidPageSize, got {:?}", other),
     }
-}
-
-#[tokio::test]
-async fn get_card_offers_rejects_page_size_zero() {
-    use crate::application::use_case::MockGetCardOffersUseCase;
-
-    let mock = MockGetCardOffersUseCase::new();
-    let app_state = make_app_state_with_card_offers(mock);
-
-    let mut params = valid_offers_params();
-    params.page_size = 0;
-
-    let result = get_card_offers(
-        AuthenticatedUser(User::for_testing()),
-        State(app_state),
-        Query(params),
-    )
-    .await;
-
-    match result.unwrap_err() {
-        AppError::Functional(FunctionalError::InvalidPageSize {
-            requested: 0,
-            max: 100,
-        }) => {}
-        other => panic!("Expected InvalidPageSize, got {:?}", other),
-    }
-}
-
-#[tokio::test]
-async fn get_card_offers_rejects_offset_beyond_max() {
-    use crate::application::service::card_offer_service::CARD_OFFERS_MAX_OFFSET;
-    use crate::application::use_case::MockGetCardOffersUseCase;
-
-    let mock = MockGetCardOffersUseCase::new();
-    let app_state = make_app_state_with_card_offers(mock);
-
-    let mut params = valid_offers_params();
-    params.page = 1000;
-    params.page_size = 20;
-
-    let result = get_card_offers(
-        AuthenticatedUser(User::for_testing()),
-        State(app_state),
-        Query(params),
-    )
-    .await;
-
-    match result.unwrap_err() {
-        AppError::Functional(FunctionalError::PaginationTooDeep {
-            requested_offset: 20000,
-            max,
-        }) => {
-            assert_eq!(max, CARD_OFFERS_MAX_OFFSET);
-        }
-        other => panic!("Expected PaginationTooDeep, got {:?}", other),
-    }
-}
-
-#[tokio::test]
-async fn get_card_offers_accepts_low_page_size_with_high_page_under_the_offset_limit() {
-    use crate::application::use_case::MockGetCardOffersUseCase;
-    use crate::domain::pagination::Paginated;
-
-    // page 29 * page_size 2 = offset 58, within CARD_OFFERS_MAX_OFFSET (60) — the page number
-    // alone must never cause a rejection.
-    let mut mock = MockGetCardOffersUseCase::new();
-    mock.expect_get_card_offers()
-        .returning(|_, _, _, pagination| {
-            Box::pin(async move {
-                Ok(Paginated {
-                    items: vec![],
-                    total: 0,
-                    pagination,
-                })
-            })
-        });
-
-    let app_state = make_app_state_with_card_offers(mock);
-
-    let mut params = valid_offers_params();
-    params.page = 29;
-    params.page_size = 2;
-
-    let result = get_card_offers(
-        AuthenticatedUser(User::for_testing()),
-        State(app_state),
-        Query(params),
-    )
-    .await;
-
-    assert!(result.is_ok());
 }
 
 #[tokio::test]
