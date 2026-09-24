@@ -48,6 +48,7 @@ impl IntoResponse for AppError {
                 | FunctionalError::TradeAlreadyConfirmed
                 | FunctionalError::TradeNotCompleted
                 | FunctionalError::TradeAlreadyRated
+                | FunctionalError::TradeConcurrentlyModified
                 | FunctionalError::TradeEmpty
                 | FunctionalError::CardAlreadyReserved
                 | FunctionalError::ImportAlreadyRunning => StatusCode::CONFLICT,
