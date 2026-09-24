@@ -5,6 +5,7 @@ use crate::domain::error::FunctionalError;
 use crate::domain::pagination::Paginated;
 use crate::domain::trade::{
     Trade, TradeCard, TradeCardDetail, TradeId, TradeListQuery, TradeStatus, TradeSummary,
+    TradeTransition,
 };
 use crate::domain::user::UserId;
 use crate::infrastructure::adapter_out::repository::entities::{
@@ -113,6 +114,38 @@ async fn is_card_reserved_elsewhere(
     .await?;
 
     Ok(reserved)
+}
+
+/// Writes the status and party columns of `transition.next` if the trade still has status
+/// `transition.from`. The decision itself belongs to `Trade`: this only persists it.
+#[tracing::instrument(name = "trade_repo.write_transition", skip_all, fields(sentry.op = "db"))]
+async fn write_transition(
+    executor: impl PgExecutor<'_>,
+    transition: &TradeTransition,
+) -> Result<bool, AppError> {
+    let next = &transition.next;
+    let result = sqlx::query!(
+        r#"UPDATE trade
+            SET status = $3,
+                initiator_accepted_at = $4, respondent_accepted_at = $5,
+                initiator_confirmed_at = $6, respondent_confirmed_at = $7,
+                initiator_rating = $8, respondent_rating = $9,
+                updated_at = NOW()
+            WHERE id = $1 AND status = $2"#,
+        next.id.0,
+        transition.from.as_db_str(),
+        next.status.as_db_str(),
+        next.initiator_accepted_at,
+        next.respondent_accepted_at,
+        next.initiator_confirmed_at,
+        next.respondent_confirmed_at,
+        next.initiator_rating.map(i16::from),
+        next.respondent_rating.map(i16::from),
+    )
+    .execute(executor)
+    .await?;
+
+    Ok(result.rows_affected() > 0)
 }
 
 #[async_trait]
@@ -286,20 +319,19 @@ impl TradeRepository for TradeRepositoryAdapter {
     #[tracing::instrument(name = "trade_repo.merge_card_into_trade", skip_all, fields(sentry.op = "db"))]
     async fn merge_card_into_trade(
         &self,
-        trade_id: TradeId,
+        transition: &TradeTransition,
         copy_id: &CopyId,
         owner_id: &UserId,
         quantity: u8,
         availability: CardAvailability,
-        expected_status: TradeStatus,
-        reopen_to_pending: bool,
     ) -> Result<(), AppError> {
+        let trade_id = transition.next.id;
         let mut tx = self.pool.begin().await?;
 
         // Serializes every addition to this trade: a concurrent one waits here, then sees the
-        // quantity this one committed. The status the caller decided on must still hold under
-        // the lock — else an acceptance committed meanwhile would let a card slip into a trade
-        // without reopening it.
+        // quantity this one committed. The status the transition was decided from must still
+        // hold under the lock — else an acceptance committed meanwhile would let a card slip
+        // into a trade without reopening it.
         let status = sqlx::query_scalar!(
             "SELECT status FROM trade WHERE id = $1 FOR UPDATE",
             trade_id.0
@@ -307,7 +339,7 @@ impl TradeRepository for TradeRepositoryAdapter {
         .fetch_optional(&mut *tx)
         .await?
         .ok_or(FunctionalError::TradeNotFound)?;
-        if TradeStatus::from_db_str(&status) != expected_status {
+        if TradeStatus::from_db_str(&status) != transition.from {
             return Err(FunctionalError::TradeNotModifiable.into());
         }
 
@@ -367,18 +399,8 @@ impl TradeRepository for TradeRepositoryAdapter {
         .execute(&mut *tx)
         .await?;
 
-        sqlx::query!(
-            r#"UPDATE trade
-                SET status = CASE WHEN $2 THEN 'PENDING' ELSE status END,
-                    initiator_accepted_at = CASE WHEN $2 THEN NULL ELSE initiator_accepted_at END,
-                    respondent_accepted_at = CASE WHEN $2 THEN NULL ELSE respondent_accepted_at END,
-                    updated_at = NOW()
-                WHERE id = $1"#,
-            trade_id.0,
-            reopen_to_pending,
-        )
-        .execute(&mut *tx)
-        .await?;
+        // The status was checked under the row lock above, so the guard always holds here.
+        write_transition(&mut *tx, transition).await?;
 
         tx.commit().await?;
 
@@ -388,12 +410,18 @@ impl TradeRepository for TradeRepositoryAdapter {
     #[tracing::instrument(name = "trade_repo.remove_card_from_trade", skip_all, fields(sentry.op = "db"))]
     async fn remove_card_from_trade(
         &self,
-        trade_id: TradeId,
+        transition: &TradeTransition,
         copy_id: &CopyId,
         owner_id: &UserId,
-        reopen_to_pending: bool,
     ) -> Result<bool, AppError> {
+        let trade_id = transition.next.id;
         let mut tx = self.pool.begin().await?;
+
+        // Written first so its guard also locks the trade row for the rest of the transaction;
+        // rolled back below if there turns out to be no card to remove.
+        if !write_transition(&mut *tx, transition).await? {
+            return Err(FunctionalError::TradeNotModifiable.into());
+        }
 
         let result = sqlx::query!(
             r#"DELETE FROM trade_card
@@ -409,60 +437,28 @@ impl TradeRepository for TradeRepositoryAdapter {
         .execute(&mut *tx)
         .await?;
 
-        let removed = result.rows_affected() > 0;
-        if removed {
-            sqlx::query!(
-                r#"UPDATE trade
-                    SET status = CASE WHEN $2 THEN 'PENDING' ELSE status END,
-                        initiator_accepted_at = CASE WHEN $2 THEN NULL ELSE initiator_accepted_at END,
-                        respondent_accepted_at = CASE WHEN $2 THEN NULL ELSE respondent_accepted_at END,
-                        updated_at = NOW()
-                    WHERE id = $1"#,
-                trade_id.0,
-                reopen_to_pending,
-            )
-            .execute(&mut *tx)
-            .await?;
+        if result.rows_affected() == 0 {
+            // Dropping `tx` rolls back the transition written above.
+            return Ok(false);
         }
 
         tx.commit().await?;
 
-        Ok(removed)
+        Ok(true)
     }
 
-    #[tracing::instrument(name = "trade_repo.accept", skip_all, fields(sentry.op = "db"))]
-    async fn accept(
-        &self,
-        trade_id: TradeId,
-        is_initiator: bool,
-    ) -> Result<Option<TradeStatus>, AppError> {
+    #[tracing::instrument(name = "trade_repo.apply_transition", skip_all, fields(sentry.op = "db"))]
+    async fn apply_transition(&self, transition: &TradeTransition) -> Result<bool, AppError> {
+        let trade_id = transition.next.id;
         let mut tx = self.pool.begin().await?;
 
-        let row = sqlx::query!(
-            r#"UPDATE trade
-                SET initiator_accepted_at = CASE WHEN $2 THEN NOW() ELSE initiator_accepted_at END,
-                    respondent_accepted_at = CASE WHEN NOT $2 THEN NOW() ELSE respondent_accepted_at END,
-                    status = CASE
-                        WHEN ($2 AND respondent_accepted_at IS NOT NULL)
-                          OR (NOT $2 AND initiator_accepted_at IS NOT NULL)
-                        THEN 'FULLY_ACCEPTED' ELSE 'ONE_ACCEPTED' END,
-                    updated_at = NOW()
-                WHERE id = $1
-                  AND status IN ('PENDING', 'ONE_ACCEPTED')
-                  AND ( ($2 AND initiator_accepted_at IS NULL) OR (NOT $2 AND respondent_accepted_at IS NULL) )
-                RETURNING status"#,
-            trade_id.0,
-            is_initiator,
-        )
-        .fetch_optional(&mut *tx)
-        .await?;
+        if !write_transition(&mut *tx, transition).await? {
+            return Ok(false);
+        }
 
-        let new_status = row.map(|r| TradeStatus::from_db_str(&r.status));
-
-        // `ONE_ACCEPTED` can only be reached from `PENDING` (see `TradeRepository::accept` doc):
-        // it is the signal that this is the very first acceptance, hence the moment to reserve
-        // this trade's cards by abandoning every other active trade sharing one of them.
-        if matches!(new_status, Some(TradeStatus::OneAccepted)) {
+        // Reserving this trade's cards means abandoning every other active trade sharing one of
+        // them, in the same transaction (ADR-0008).
+        if transition.reserves_cards() {
             sqlx::query!(
                 r#"UPDATE trade SET status = 'ABANDONED', updated_at = NOW()
                     WHERE id != $1 AND status IN ('PENDING', 'ONE_ACCEPTED')
@@ -482,78 +478,7 @@ impl TradeRepository for TradeRepositoryAdapter {
 
         tx.commit().await?;
 
-        Ok(new_status)
-    }
-
-    #[tracing::instrument(name = "trade_repo.abandon", skip_all, fields(sentry.op = "db"))]
-    async fn abandon(&self, trade_id: TradeId) -> Result<bool, AppError> {
-        let result = sqlx::query!(
-            r#"UPDATE trade SET status = 'ABANDONED', updated_at = NOW()
-                WHERE id = $1 AND status NOT IN ('COMPLETED', 'CLOSED', 'ABANDONED')"#,
-            trade_id.0,
-        )
-        .execute(&self.pool)
-        .await?;
-
-        Ok(result.rows_affected() > 0)
-    }
-
-    #[tracing::instrument(name = "trade_repo.confirm", skip_all, fields(sentry.op = "db"))]
-    async fn confirm(
-        &self,
-        trade_id: TradeId,
-        is_initiator: bool,
-    ) -> Result<Option<TradeStatus>, AppError> {
-        let row = sqlx::query!(
-            r#"UPDATE trade
-                SET initiator_confirmed_at = CASE WHEN $2 THEN NOW() ELSE initiator_confirmed_at END,
-                    respondent_confirmed_at = CASE WHEN NOT $2 THEN NOW() ELSE respondent_confirmed_at END,
-                    status = CASE
-                        WHEN ($2 AND respondent_confirmed_at IS NOT NULL)
-                          OR (NOT $2 AND initiator_confirmed_at IS NOT NULL)
-                        THEN 'COMPLETED' ELSE 'FULLY_ACCEPTED' END,
-                    updated_at = NOW()
-                WHERE id = $1
-                  AND status = 'FULLY_ACCEPTED'
-                  AND ( ($2 AND initiator_confirmed_at IS NULL) OR (NOT $2 AND respondent_confirmed_at IS NULL) )
-                RETURNING status"#,
-            trade_id.0,
-            is_initiator,
-        )
-        .fetch_optional(&self.pool)
-        .await?;
-
-        Ok(row.map(|r| TradeStatus::from_db_str(&r.status)))
-    }
-
-    #[tracing::instrument(name = "trade_repo.rate", skip_all, fields(sentry.op = "db"))]
-    async fn rate(
-        &self,
-        trade_id: TradeId,
-        is_initiator: bool,
-        rating: u8,
-    ) -> Result<Option<TradeStatus>, AppError> {
-        let row = sqlx::query!(
-            r#"UPDATE trade
-                SET initiator_rating = CASE WHEN $2 THEN $3 ELSE initiator_rating END,
-                    respondent_rating = CASE WHEN NOT $2 THEN $3 ELSE respondent_rating END,
-                    status = CASE
-                        WHEN ($2 AND respondent_rating IS NOT NULL)
-                          OR (NOT $2 AND initiator_rating IS NOT NULL)
-                        THEN 'CLOSED' ELSE 'COMPLETED' END,
-                    updated_at = NOW()
-                WHERE id = $1
-                  AND status = 'COMPLETED'
-                  AND ( ($2 AND initiator_rating IS NULL) OR (NOT $2 AND respondent_rating IS NULL) )
-                RETURNING status"#,
-            trade_id.0,
-            is_initiator,
-            rating as i16,
-        )
-        .fetch_optional(&self.pool)
-        .await?;
-
-        Ok(row.map(|r| TradeStatus::from_db_str(&r.status)))
+        Ok(true)
     }
 }
 
@@ -563,6 +488,7 @@ mod tests {
     use crate::application::service::trade_service::TRADES_MAX_OFFSET;
     use crate::domain::language_code::LanguageCode;
     use crate::domain::pagination::Pagination;
+    use crate::domain::trade::Party;
     use crate::infrastructure::adapter_out::repository::common_repository_tests::{
         insert_card, insert_card_with_rarity, insert_collection_entry,
         insert_collection_entry_with_binder, insert_price, insert_rarity_filter, insert_trade,
@@ -1048,6 +974,30 @@ mod tests {
         drop((first, second));
     }
 
+    /// Forces a status behind the repository's back, e.g. to free a pair for the next active
+    /// trade or to simulate a concurrent change.
+    async fn set_status(pool: &PgPool, trade_id: uuid::Uuid, status: &str) {
+        sqlx::query("UPDATE trade SET status = $2 WHERE id = $1")
+            .bind(trade_id)
+            .bind(status)
+            .execute(pool)
+            .await
+            .unwrap();
+    }
+
+    async fn find(repository: &TradeRepositoryAdapter, trade_id: uuid::Uuid) -> Trade {
+        repository
+            .find_by_id(TradeId(trade_id))
+            .await
+            .unwrap()
+            .unwrap()
+    }
+
+    /// The transition a card addition/removal decides on the trade's current state.
+    async fn modify(repository: &TradeRepositoryAdapter, trade_id: uuid::Uuid) -> TradeTransition {
+        find(repository, trade_id).await.modify().unwrap()
+    }
+
     // --- create_or_find_active ---
 
     async fn count_active_trades(pool: &PgPool) -> i64 {
@@ -1096,7 +1046,7 @@ mod tests {
 
             assert_eq!(result, TradeId(trade_id), "status {status} is active");
             assert_eq!(count_active_trades(&pool).await, 1);
-            repository.abandon(TradeId(trade_id)).await.unwrap();
+            set_status(&pool, trade_id, "ABANDONED").await;
         }
     }
 
@@ -1237,7 +1187,6 @@ mod tests {
         repository: &TradeRepositoryAdapter,
         trade_id: uuid::Uuid,
         quantity: u8,
-        reopen_to_pending: bool,
     ) -> Result<(), AppError> {
         insert_collection_entry(
             pool,
@@ -1253,18 +1202,11 @@ mod tests {
         .await;
         repository
             .merge_card_into_trade(
-                TradeId(trade_id),
+                &modify(repository, trade_id).await,
                 &make_card_id(),
                 &UserId::new("user_b"),
                 quantity,
                 CardAvailability::Owned,
-                // The fixtures reopen exactly the `ONE_ACCEPTED` trades.
-                if reopen_to_pending {
-                    TradeStatus::OneAccepted
-                } else {
-                    TradeStatus::Pending
-                },
-                reopen_to_pending,
             )
             .await
     }
@@ -1292,51 +1234,63 @@ mod tests {
         trade_id
     }
 
+    async fn merge_offered_card_with(
+        repository: &TradeRepositoryAdapter,
+        transition: &TradeTransition,
+        quantity: u8,
+    ) -> Result<(), AppError> {
+        repository
+            .merge_card_into_trade(
+                transition,
+                &make_card_id(),
+                &UserId::new("user_b"),
+                quantity,
+                CardAvailability::Offered,
+            )
+            .await
+    }
+
     async fn merge_offered_card(
         repository: &TradeRepositoryAdapter,
         trade_id: uuid::Uuid,
         quantity: u8,
     ) -> Result<(), AppError> {
-        repository
-            .merge_card_into_trade(
-                TradeId(trade_id),
-                &make_card_id(),
-                &UserId::new("user_b"),
-                quantity,
-                CardAvailability::Offered,
-                TradeStatus::Pending,
-                false,
-            )
-            .await
+        let transition = modify(repository, trade_id).await;
+        merge_offered_card_with(repository, &transition, quantity).await
     }
 
     #[sqlx::test]
     async fn merge_card_into_trade_fails_when_status_changed_since_it_was_read(pool: PgPool) {
         // The caller read `PENDING` (no reopening needed), but an acceptance committed since.
         let trade_id = setup_trade_with_offered_copies(&pool, 1).await;
+        let repository = TradeRepositoryAdapter::new(pool.clone());
+        let transition = modify(&repository, trade_id).await;
         mark_trade_party_accepted(&pool, trade_id, false).await;
-        sqlx::query("UPDATE trade SET status = 'ONE_ACCEPTED' WHERE id = $1")
-            .bind(trade_id)
-            .execute(&pool)
-            .await
-            .unwrap();
-        let repository = TradeRepositoryAdapter::new(pool);
+        set_status(&pool, trade_id, "ONE_ACCEPTED").await;
 
-        let result = merge_offered_card(&repository, trade_id, 1).await;
+        let result = merge_offered_card_with(&repository, &transition, 1).await;
 
         assert!(matches!(
             result,
             Err(AppError::Functional(FunctionalError::TradeNotModifiable))
         ));
         assert_eq!(quantity_in_trade(&repository, trade_id).await, 0);
+        assert!(
+            find(&repository, trade_id)
+                .await
+                .respondent_accepted_at
+                .is_some()
+        );
     }
 
     #[sqlx::test]
     async fn merge_card_into_trade_fails_when_trade_does_not_exist(pool: PgPool) {
-        setup_trade_with_offered_copies(&pool, 1).await;
+        let trade_id = setup_trade_with_offered_copies(&pool, 1).await;
         let repository = TradeRepositoryAdapter::new(pool);
+        let mut transition = modify(&repository, trade_id).await;
+        transition.next.id = TradeId::new();
 
-        let result = merge_offered_card(&repository, uuid::Uuid::new_v4(), 1).await;
+        let result = merge_offered_card_with(&repository, &transition, 1).await;
 
         assert!(matches!(
             result,
@@ -1406,7 +1360,7 @@ mod tests {
 
         let offered = merge_offered_card(&repository, trade_id, 1).await;
         // The same copies are fully available to their owner, whatever their visibility.
-        let owned = merge_owned_card(&pool, &repository, trade_id, 1, false).await;
+        let owned = merge_owned_card(&pool, &repository, trade_id, 1).await;
 
         assert!(matches!(
             offered,
@@ -1479,7 +1433,7 @@ mod tests {
         insert_trade(&pool, trade_id, "user_a", "user_b", "PENDING").await;
 
         let repository = TradeRepositoryAdapter::new(pool.clone());
-        merge_owned_card(&pool, &repository, trade_id, 2, false)
+        merge_owned_card(&pool, &repository, trade_id, 2)
             .await
             .unwrap();
 
@@ -1508,7 +1462,7 @@ mod tests {
         mark_trade_accepted_by_both(&pool, trade_id).await;
 
         let repository = TradeRepositoryAdapter::new(pool.clone());
-        merge_owned_card(&pool, &repository, trade_id, 1, true)
+        merge_owned_card(&pool, &repository, trade_id, 1)
             .await
             .unwrap();
 
@@ -1533,7 +1487,7 @@ mod tests {
         insert_trade(&pool, trade_id, "user_a", "user_b", "PENDING").await;
 
         let repository = TradeRepositoryAdapter::new(pool.clone());
-        merge_owned_card(&pool, &repository, trade_id, 1, false)
+        merge_owned_card(&pool, &repository, trade_id, 1)
             .await
             .unwrap();
 
@@ -1556,7 +1510,7 @@ mod tests {
         insert_trade_card(&pool, trade_id, "FDN", "87", "FR", false, "user_b", 2).await;
 
         let repository = TradeRepositoryAdapter::new(pool.clone());
-        merge_owned_card(&pool, &repository, trade_id, 3, false)
+        merge_owned_card(&pool, &repository, trade_id, 3)
             .await
             .unwrap();
 
@@ -1584,7 +1538,7 @@ mod tests {
             .unwrap()
             .updated_at;
 
-        merge_owned_card(&pool, &repository, trade_id, 1, false)
+        merge_owned_card(&pool, &repository, trade_id, 1)
             .await
             .unwrap();
 
@@ -1612,10 +1566,9 @@ mod tests {
         let repository = TradeRepositoryAdapter::new(pool.clone());
         let removed = repository
             .remove_card_from_trade(
-                TradeId(trade_id),
+                &modify(&repository, trade_id).await,
                 &make_card_id(),
                 &UserId::new("user_b"),
-                false,
             )
             .await
             .unwrap();
@@ -1645,10 +1598,9 @@ mod tests {
 
         let removed = repository
             .remove_card_from_trade(
-                TradeId(trade_id),
+                &modify(&repository, trade_id).await,
                 &make_card_id(),
                 &UserId::new("user_b"),
-                false,
             )
             .await
             .unwrap();
@@ -1675,10 +1627,9 @@ mod tests {
         let repository = TradeRepositoryAdapter::new(pool.clone());
         let removed = repository
             .remove_card_from_trade(
-                TradeId(trade_id),
+                &modify(&repository, trade_id).await,
                 &make_card_id(),
                 &UserId::new("user_a"),
-                false,
             )
             .await
             .unwrap();
@@ -1699,10 +1650,9 @@ mod tests {
         let repository = TradeRepositoryAdapter::new(pool.clone());
         let removed = repository
             .remove_card_from_trade(
-                TradeId(trade_id),
+                &modify(&repository, trade_id).await,
                 &make_card_id(),
                 &UserId::new("user_b"),
-                true,
             )
             .await
             .unwrap();
@@ -1719,33 +1669,37 @@ mod tests {
     }
 
     #[sqlx::test]
-    async fn remove_card_from_trade_leaves_acceptance_untouched_when_not_reopening(pool: PgPool) {
+    async fn remove_card_from_trade_fails_when_status_changed_since_it_was_read(pool: PgPool) {
         insert_user(&pool, "user_a", "alice").await;
         insert_user(&pool, "user_b", "bob").await;
         insert_card(&pool, "FDN", "87", "FR", "Goblin Boarders", 1).await;
         let trade_id = uuid::Uuid::new_v4();
-        insert_trade(&pool, trade_id, "user_a", "user_b", "ONE_ACCEPTED").await;
+        insert_trade(&pool, trade_id, "user_a", "user_b", "PENDING").await;
         insert_trade_card(&pool, trade_id, "FDN", "87", "FR", false, "user_b", 1).await;
-        mark_trade_party_accepted(&pool, trade_id, true).await;
-
         let repository = TradeRepositoryAdapter::new(pool.clone());
-        repository
-            .remove_card_from_trade(
-                TradeId(trade_id),
-                &make_card_id(),
-                &UserId::new("user_b"),
-                false,
-            )
-            .await
-            .unwrap();
+        let transition = modify(&repository, trade_id).await;
+        mark_trade_party_accepted(&pool, trade_id, true).await;
+        set_status(&pool, trade_id, "ONE_ACCEPTED").await;
 
-        let trade = repository
-            .find_by_id(TradeId(trade_id))
-            .await
-            .unwrap()
-            .unwrap();
+        let result = repository
+            .remove_card_from_trade(&transition, &make_card_id(), &UserId::new("user_b"))
+            .await;
+
+        assert!(matches!(
+            result,
+            Err(AppError::Functional(FunctionalError::TradeNotModifiable))
+        ));
+        let trade = find(&repository, trade_id).await;
         assert_eq!(trade.status, TradeStatus::OneAccepted);
         assert!(trade.initiator_accepted_at.is_some());
+        assert_eq!(
+            repository
+                .find_trade_cards(TradeId(trade_id))
+                .await
+                .unwrap()
+                .len(),
+            1
+        );
     }
 
     #[sqlx::test]
@@ -1760,10 +1714,9 @@ mod tests {
         let repository = TradeRepositoryAdapter::new(pool.clone());
         let removed = repository
             .remove_card_from_trade(
-                TradeId(trade_id),
+                &modify(&repository, trade_id).await,
                 &make_card_id(),
                 &UserId::new("user_b"),
-                false,
             )
             .await
             .unwrap();
@@ -1782,6 +1735,110 @@ mod tests {
         assert!(trade_cards.is_empty());
     }
 
+    // --- apply_transition ---
+
+    /// Takes a transition on the trade's current state, as the services do, then applies it.
+    async fn apply(
+        repository: &TradeRepositoryAdapter,
+        trade_id: uuid::Uuid,
+        decide: impl FnOnce(&Trade) -> Result<TradeTransition, FunctionalError>,
+    ) -> bool {
+        let transition = decide(&find(repository, trade_id).await).unwrap();
+        repository.apply_transition(&transition).await.unwrap()
+    }
+
+    async fn accept(
+        repository: &TradeRepositoryAdapter,
+        trade_id: uuid::Uuid,
+        party: Party,
+    ) -> bool {
+        // The domain refuses an empty trade; which cards it holds is irrelevant here.
+        let cards = [TradeCard {
+            card_id: make_card_id(),
+            owner_user_id: UserId::new("user_b"),
+            quantity: 1,
+        }];
+        apply(repository, trade_id, |trade| trade.accept(party, &cards)).await
+    }
+
+    async fn confirm(
+        repository: &TradeRepositoryAdapter,
+        trade_id: uuid::Uuid,
+        party: Party,
+    ) -> bool {
+        apply(repository, trade_id, |trade| trade.confirm(party)).await
+    }
+
+    async fn rate(
+        repository: &TradeRepositoryAdapter,
+        trade_id: uuid::Uuid,
+        party: Party,
+        rating: u8,
+    ) -> bool {
+        apply(repository, trade_id, |trade| trade.rate(party, rating)).await
+    }
+
+    async fn abandon(repository: &TradeRepositoryAdapter, trade_id: uuid::Uuid) -> bool {
+        apply(repository, trade_id, Trade::abandon).await
+    }
+
+    #[sqlx::test]
+    async fn apply_transition_writes_nothing_when_status_changed_since_it_was_read(pool: PgPool) {
+        insert_user(&pool, "user_a", "alice").await;
+        insert_user(&pool, "user_b", "bob").await;
+        insert_user(&pool, "user_c", "carol").await;
+        insert_card(&pool, "FDN", "87", "FR", "Goblin Boarders", 1).await;
+        let trade_id = uuid::Uuid::new_v4();
+        insert_trade(&pool, trade_id, "user_a", "user_b", "PENDING").await;
+        insert_trade_card(&pool, trade_id, "FDN", "87", "FR", false, "user_b", 1).await;
+        let other_trade_id = uuid::Uuid::new_v4();
+        insert_trade(&pool, other_trade_id, "user_c", "user_b", "PENDING").await;
+        insert_trade_card(&pool, other_trade_id, "FDN", "87", "FR", false, "user_b", 1).await;
+        let repository = TradeRepositoryAdapter::new(pool.clone());
+        // The initiator's first acceptance, decided on `PENDING`...
+        let cards = repository
+            .find_trade_cards(TradeId(trade_id))
+            .await
+            .unwrap();
+        let stale = find(&repository, trade_id)
+            .await
+            .accept(Party::Initiator, &cards)
+            .unwrap();
+        // ...while the respondent's acceptance commits first.
+        assert!(accept(&repository, trade_id, Party::Respondent).await);
+        set_status(&pool, other_trade_id, "PENDING").await;
+
+        let applied = repository.apply_transition(&stale).await.unwrap();
+
+        assert!(!applied);
+        let trade = find(&repository, trade_id).await;
+        assert_eq!(trade.status, TradeStatus::OneAccepted);
+        assert_eq!(trade.initiator_accepted_at, None);
+        assert!(trade.respondent_accepted_at.is_some());
+        // Nor is the cascade of a first acceptance replayed.
+        assert_eq!(
+            find(&repository, other_trade_id).await.status,
+            TradeStatus::Pending
+        );
+    }
+
+    #[sqlx::test]
+    async fn apply_transition_returns_false_for_an_unknown_trade(pool: PgPool) {
+        insert_user(&pool, "user_a", "alice").await;
+        insert_user(&pool, "user_b", "bob").await;
+        let trade_id = uuid::Uuid::new_v4();
+        insert_trade(&pool, trade_id, "user_a", "user_b", "PENDING").await;
+        let repository = TradeRepositoryAdapter::new(pool);
+        let mut transition = find(&repository, trade_id).await.abandon().unwrap();
+        transition.next.id = TradeId::new();
+
+        assert!(!repository.apply_transition(&transition).await.unwrap());
+        assert_eq!(
+            find(&repository, trade_id).await.status,
+            TradeStatus::Pending
+        );
+    }
+
     // --- accept ---
 
     #[sqlx::test]
@@ -1792,9 +1849,7 @@ mod tests {
         insert_trade(&pool, trade_id, "user_a", "user_b", "PENDING").await;
 
         let repository = TradeRepositoryAdapter::new(pool.clone());
-        let result = repository.accept(TradeId(trade_id), true).await.unwrap();
-
-        assert_eq!(result, Some(TradeStatus::OneAccepted));
+        assert!(accept(&repository, trade_id, Party::Initiator).await);
         let trade = repository
             .find_by_id(TradeId(trade_id))
             .await
@@ -1813,9 +1868,7 @@ mod tests {
         insert_trade(&pool, trade_id, "user_a", "user_b", "PENDING").await;
 
         let repository = TradeRepositoryAdapter::new(pool.clone());
-        let result = repository.accept(TradeId(trade_id), false).await.unwrap();
-
-        assert_eq!(result, Some(TradeStatus::OneAccepted));
+        assert!(accept(&repository, trade_id, Party::Respondent).await);
         let trade = repository
             .find_by_id(TradeId(trade_id))
             .await
@@ -1834,9 +1887,7 @@ mod tests {
         mark_trade_party_accepted(&pool, trade_id, true).await;
 
         let repository = TradeRepositoryAdapter::new(pool.clone());
-        let result = repository.accept(TradeId(trade_id), false).await.unwrap();
-
-        assert_eq!(result, Some(TradeStatus::FullyAccepted));
+        assert!(accept(&repository, trade_id, Party::Respondent).await);
         let trade = repository
             .find_by_id(TradeId(trade_id))
             .await
@@ -1845,42 +1896,6 @@ mod tests {
         assert_eq!(trade.status, TradeStatus::FullyAccepted);
         assert!(trade.initiator_accepted_at.is_some());
         assert!(trade.respondent_accepted_at.is_some());
-    }
-
-    #[sqlx::test]
-    async fn accept_by_party_who_already_accepted_returns_none(pool: PgPool) {
-        insert_user(&pool, "user_a", "alice").await;
-        insert_user(&pool, "user_b", "bob").await;
-        let trade_id = uuid::Uuid::new_v4();
-        insert_trade(&pool, trade_id, "user_a", "user_b", "ONE_ACCEPTED").await;
-        mark_trade_party_accepted(&pool, trade_id, true).await;
-
-        let repository = TradeRepositoryAdapter::new(pool.clone());
-        let result = repository.accept(TradeId(trade_id), true).await.unwrap();
-
-        assert_eq!(result, None);
-        let trade = repository
-            .find_by_id(TradeId(trade_id))
-            .await
-            .unwrap()
-            .unwrap();
-        assert_eq!(trade.status, TradeStatus::OneAccepted);
-    }
-
-    #[sqlx::test]
-    async fn accept_returns_none_for_terminal_statuses(pool: PgPool) {
-        insert_user(&pool, "user_a", "alice").await;
-        insert_user(&pool, "user_b", "bob").await;
-        let repository = TradeRepositoryAdapter::new(pool.clone());
-
-        for status in ["FULLY_ACCEPTED", "COMPLETED", "CLOSED", "ABANDONED"] {
-            let trade_id = uuid::Uuid::new_v4();
-            insert_trade(&pool, trade_id, "user_a", "user_b", status).await;
-
-            let result = repository.accept(TradeId(trade_id), true).await.unwrap();
-
-            assert_eq!(result, None, "status {status} should not be acceptable");
-        }
     }
 
     #[sqlx::test]
@@ -1899,9 +1914,7 @@ mod tests {
         insert_trade_card(&pool, other_trade_id, "FDN", "87", "FR", false, "user_b", 1).await;
 
         let repository = TradeRepositoryAdapter::new(pool.clone());
-        let result = repository.accept(TradeId(trade_id), true).await.unwrap();
-
-        assert_eq!(result, Some(TradeStatus::OneAccepted));
+        assert!(accept(&repository, trade_id, Party::Initiator).await);
         let other_trade = repository
             .find_by_id(TradeId(other_trade_id))
             .await
@@ -1926,7 +1939,7 @@ mod tests {
         insert_trade_card(&pool, other_trade_id, "FDN", "87", "FR", false, "user_b", 1).await;
 
         let repository = TradeRepositoryAdapter::new(pool.clone());
-        repository.accept(TradeId(trade_id), true).await.unwrap();
+        assert!(accept(&repository, trade_id, Party::Initiator).await);
 
         let other_trade = repository
             .find_by_id(TradeId(other_trade_id))
@@ -1953,7 +1966,7 @@ mod tests {
         insert_trade_card(&pool, other_trade_id, "FDN", "12", "FR", false, "user_b", 1).await;
 
         let repository = TradeRepositoryAdapter::new(pool.clone());
-        repository.accept(TradeId(trade_id), true).await.unwrap();
+        assert!(accept(&repository, trade_id, Party::Initiator).await);
 
         let other_trade = repository
             .find_by_id(TradeId(other_trade_id))
@@ -1980,9 +1993,7 @@ mod tests {
         insert_trade_card(&pool, other_trade_id, "FDN", "87", "FR", false, "user_b", 1).await;
 
         let repository = TradeRepositoryAdapter::new(pool.clone());
-        let result = repository.accept(TradeId(trade_id), false).await.unwrap();
-
-        assert_eq!(result, Some(TradeStatus::FullyAccepted));
+        assert!(accept(&repository, trade_id, Party::Respondent).await);
         let other_trade = repository
             .find_by_id(TradeId(other_trade_id))
             .await
@@ -2001,9 +2012,7 @@ mod tests {
         insert_trade(&pool, trade_id, "user_a", "user_b", "PENDING").await;
 
         let repository = TradeRepositoryAdapter::new(pool.clone());
-        let result = repository.abandon(TradeId(trade_id)).await.unwrap();
-
-        assert!(result);
+        assert!(abandon(&repository, trade_id).await);
         let trade = repository
             .find_by_id(TradeId(trade_id))
             .await
@@ -2020,9 +2029,7 @@ mod tests {
         insert_trade(&pool, trade_id, "user_a", "user_b", "ONE_ACCEPTED").await;
 
         let repository = TradeRepositoryAdapter::new(pool.clone());
-        let result = repository.abandon(TradeId(trade_id)).await.unwrap();
-
-        assert!(result);
+        assert!(abandon(&repository, trade_id).await);
     }
 
     #[sqlx::test]
@@ -2033,25 +2040,7 @@ mod tests {
         insert_trade(&pool, trade_id, "user_a", "user_b", "FULLY_ACCEPTED").await;
 
         let repository = TradeRepositoryAdapter::new(pool.clone());
-        let result = repository.abandon(TradeId(trade_id)).await.unwrap();
-
-        assert!(result);
-    }
-
-    #[sqlx::test]
-    async fn abandon_returns_false_for_terminal_statuses(pool: PgPool) {
-        insert_user(&pool, "user_a", "alice").await;
-        insert_user(&pool, "user_b", "bob").await;
-        let repository = TradeRepositoryAdapter::new(pool.clone());
-
-        for status in ["COMPLETED", "CLOSED", "ABANDONED"] {
-            let trade_id = uuid::Uuid::new_v4();
-            insert_trade(&pool, trade_id, "user_a", "user_b", status).await;
-
-            let result = repository.abandon(TradeId(trade_id)).await.unwrap();
-
-            assert!(!result, "status {status} should not be abandonable");
-        }
+        assert!(abandon(&repository, trade_id).await);
     }
 
     // --- confirm ---
@@ -2064,9 +2053,7 @@ mod tests {
         insert_trade(&pool, trade_id, "user_a", "user_b", "FULLY_ACCEPTED").await;
 
         let repository = TradeRepositoryAdapter::new(pool.clone());
-        let result = repository.confirm(TradeId(trade_id), true).await.unwrap();
-
-        assert_eq!(result, Some(TradeStatus::FullyAccepted));
+        assert!(confirm(&repository, trade_id, Party::Initiator).await);
         let trade = repository
             .find_by_id(TradeId(trade_id))
             .await
@@ -2086,9 +2073,7 @@ mod tests {
         mark_trade_party_confirmed(&pool, trade_id, true).await;
 
         let repository = TradeRepositoryAdapter::new(pool.clone());
-        let result = repository.confirm(TradeId(trade_id), false).await.unwrap();
-
-        assert_eq!(result, Some(TradeStatus::Completed));
+        assert!(confirm(&repository, trade_id, Party::Respondent).await);
         let trade = repository
             .find_by_id(TradeId(trade_id))
             .await
@@ -2097,44 +2082,6 @@ mod tests {
         assert_eq!(trade.status, TradeStatus::Completed);
         assert!(trade.initiator_confirmed_at.is_some());
         assert!(trade.respondent_confirmed_at.is_some());
-    }
-
-    #[sqlx::test]
-    async fn confirm_by_party_who_already_confirmed_returns_none(pool: PgPool) {
-        insert_user(&pool, "user_a", "alice").await;
-        insert_user(&pool, "user_b", "bob").await;
-        let trade_id = uuid::Uuid::new_v4();
-        insert_trade(&pool, trade_id, "user_a", "user_b", "FULLY_ACCEPTED").await;
-        mark_trade_party_confirmed(&pool, trade_id, true).await;
-
-        let repository = TradeRepositoryAdapter::new(pool.clone());
-        let result = repository.confirm(TradeId(trade_id), true).await.unwrap();
-
-        assert_eq!(result, None);
-    }
-
-    #[sqlx::test]
-    async fn confirm_returns_none_when_not_fully_accepted(pool: PgPool) {
-        insert_user(&pool, "user_a", "alice").await;
-        insert_user(&pool, "user_b", "bob").await;
-        let repository = TradeRepositoryAdapter::new(pool.clone());
-
-        for status in [
-            "PENDING",
-            "ONE_ACCEPTED",
-            "COMPLETED",
-            "CLOSED",
-            "ABANDONED",
-        ] {
-            let trade_id = uuid::Uuid::new_v4();
-            insert_trade(&pool, trade_id, "user_a", "user_b", status).await;
-
-            let result = repository.confirm(TradeId(trade_id), true).await.unwrap();
-
-            assert_eq!(result, None, "status {status} should not be confirmable");
-            // Frees the pair for the next active status (one active trade per pair).
-            repository.abandon(TradeId(trade_id)).await.unwrap();
-        }
     }
 
     // --- rate ---
@@ -2147,9 +2094,7 @@ mod tests {
         insert_trade(&pool, trade_id, "user_a", "user_b", "COMPLETED").await;
 
         let repository = TradeRepositoryAdapter::new(pool.clone());
-        let result = repository.rate(TradeId(trade_id), true, 5).await.unwrap();
-
-        assert_eq!(result, Some(TradeStatus::Completed));
+        assert!(rate(&repository, trade_id, Party::Initiator, 5).await);
         let trade = repository
             .find_by_id(TradeId(trade_id))
             .await
@@ -2169,9 +2114,7 @@ mod tests {
         mark_trade_party_rated(&pool, trade_id, true, 5).await;
 
         let repository = TradeRepositoryAdapter::new(pool.clone());
-        let result = repository.rate(TradeId(trade_id), false, 3).await.unwrap();
-
-        assert_eq!(result, Some(TradeStatus::Closed));
+        assert!(rate(&repository, trade_id, Party::Respondent, 3).await);
         let trade = repository
             .find_by_id(TradeId(trade_id))
             .await
@@ -2180,44 +2123,6 @@ mod tests {
         assert_eq!(trade.status, TradeStatus::Closed);
         assert_eq!(trade.initiator_rating, Some(5));
         assert_eq!(trade.respondent_rating, Some(3));
-    }
-
-    #[sqlx::test]
-    async fn rate_by_party_who_already_rated_returns_none(pool: PgPool) {
-        insert_user(&pool, "user_a", "alice").await;
-        insert_user(&pool, "user_b", "bob").await;
-        let trade_id = uuid::Uuid::new_v4();
-        insert_trade(&pool, trade_id, "user_a", "user_b", "COMPLETED").await;
-        mark_trade_party_rated(&pool, trade_id, true, 5).await;
-
-        let repository = TradeRepositoryAdapter::new(pool.clone());
-        let result = repository.rate(TradeId(trade_id), true, 2).await.unwrap();
-
-        assert_eq!(result, None);
-    }
-
-    #[sqlx::test]
-    async fn rate_returns_none_when_not_completed(pool: PgPool) {
-        insert_user(&pool, "user_a", "alice").await;
-        insert_user(&pool, "user_b", "bob").await;
-        let repository = TradeRepositoryAdapter::new(pool.clone());
-
-        for status in [
-            "PENDING",
-            "ONE_ACCEPTED",
-            "FULLY_ACCEPTED",
-            "CLOSED",
-            "ABANDONED",
-        ] {
-            let trade_id = uuid::Uuid::new_v4();
-            insert_trade(&pool, trade_id, "user_a", "user_b", status).await;
-
-            let result = repository.rate(TradeId(trade_id), true, 4).await.unwrap();
-
-            assert_eq!(result, None, "status {status} should not be ratable");
-            // Frees the pair for the next active status (one active trade per pair).
-            repository.abandon(TradeId(trade_id)).await.unwrap();
-        }
     }
 
     // --- find_trade_cards_with_details ---
