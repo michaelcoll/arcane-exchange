@@ -34,7 +34,7 @@ impl CardMarketIdEnricher {
 #[async_trait]
 impl Enricher for CardMarketIdEnricher {
     /// The card's Scryfall id.
-    type Job = Uuid;
+    type Lookup = Uuid;
     const NAME: &'static str = "CardMarket id";
 
     async fn pending(&self) -> Result<Vec<(CardId, Uuid)>, AppError> {
