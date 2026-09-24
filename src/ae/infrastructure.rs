@@ -418,10 +418,9 @@ async fn schedule_price_import_job(import_price_use_case: Arc<dyn ImportPriceUse
     cron.add_fn("0 0 */12 * * *", move || {
         let service = import_price_use_case.clone();
         async move {
-            service
-                .import_prices_for_current_date()
-                .await
-                .expect("Failed to import prices");
+            if let Err(e) = service.import_prices_for_current_date().await {
+                tracing::error!(error = %e, "failed to import prices");
+            }
         }
     })
     .await
