@@ -90,9 +90,11 @@ Tout tourne dans le même processus que l'API, sans ordonnanceur externe :
   un worker via un canal Tokio et répond immédiatement. Le client suit l'avancement en interrogeant
   l'état de l'import. Au démarrage, les imports restés actifs d'un process précédent sont marqués en
   échec.
-- **Enrichissement des cartes** (identifiants Cardmarket via Scryfall, identifiants Gatherer) :
-  workers alimentés par des canaux, avec un ensemble de déduplication partagé entre l'émetteur et le
-  worker pour ne pas retraiter une carte déjà en file.
+- **Enrichissement des cartes** (identifiants Cardmarket via Scryfall, identifiants Gatherer) : une
+  `EnrichmentQueue` générique par source (`application/service/enrichment_queue.rs`) possède le
+  canal, l'ensemble des cartes en file (une carte n'y est jamais deux fois) et le rafraîchissement
+  des vues quand la file se vide. Chaque source n'est qu'un `Enricher` (cartes en attente +
+  résolution d'une carte) ; une nouvelle source coûte un adapter.
 - **Import des prix** : tâche planifiée (cron in-process) toutes les 12 heures.
 
 Corollaire : le backend est **stateful en mémoire** (files, dédup). Il n'est pas conçu pour tourner

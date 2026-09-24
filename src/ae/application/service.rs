@@ -5,12 +5,13 @@ pub mod card_import_query_service;
 pub mod card_import_worker;
 pub mod card_offer_service;
 pub mod card_price_history_service;
-pub mod cardmarket_id_enqueue_service;
+pub mod cardmarket_id_enricher;
 pub mod collection_price_history_service;
 pub mod collection_service;
 pub mod collection_stats_service;
 pub mod collection_visibility_service;
-pub mod gatherer_id_enqueue_service;
+pub mod enrichment_queue;
+pub mod gatherer_id_enricher;
 pub mod get_user_profile_service;
 pub mod import_card_service;
 pub mod import_price_service;
@@ -22,8 +23,6 @@ pub mod set_service;
 pub mod stats_service;
 pub mod trade_binder_service;
 pub mod trade_service;
-pub mod update_card_market_service;
-pub mod update_gatherer_service;
 
 #[cfg(test)]
 mod pagination_frontend_sync_tests {
