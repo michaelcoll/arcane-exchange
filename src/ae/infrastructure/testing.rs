@@ -1,7 +1,11 @@
-//! Harnais de test de l'`AppState` : chaque use case est remplacé par un mock.
+//! `AppState` test harness: every use case defaults to a mock.
 //!
-//! Un test ne remplace que le champ qui l'intéresse via la syntaxe de mise à jour de struct :
+//! A test overrides only the field it cares about with struct update syntax:
 //! `AppState { get_collection_use_case: Arc::new(mock), ..AppState::for_testing() }`.
+//!
+//! Most mocks have no expectation and panic if called. Four are pre-armed to succeed on any
+//! call: `import_card_use_case`, `edh_rec_caller_adapter`, `auth_service` and
+//! `import_price_use_case`. Override them to assert on calls.
 
 use super::AppState;
 use crate::application::caller::MockEdhRecCaller;
@@ -25,7 +29,7 @@ use crate::domain::user::User;
 use std::sync::Arc;
 
 impl AppState {
-    pub fn for_testing() -> Self {
+    pub(crate) fn for_testing() -> Self {
         let mut mock_import_card = MockImportCardUseCase::new();
         mock_import_card
             .expect_start_import()
