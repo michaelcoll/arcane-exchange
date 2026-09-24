@@ -1,4 +1,4 @@
-use crate::application::error::{AppError, InfraError};
+use crate::application::error::AppError;
 use crate::application::repository::{CardAvailability, TradeRepository, UserRepository};
 use crate::application::use_case::{
     AbandonTradeUseCase, AcceptTradeUseCase, AddTradeCardUseCase, ConfirmTradeUseCase,
@@ -19,9 +19,9 @@ use std::sync::Arc;
 /// needs less depth than the collection or search endpoints, but more than card offers.
 pub(crate) const TRADES_MAX_OFFSET: u32 = 2_000;
 
-/// An attempt only fails when another request changed the trade's status between its read and
-/// its write; the next one decides again on the fresh state, which most often yields the exact
-/// error (e.g. `TradeAlreadyAccepted` after a double submission).
+/// An attempt only fails when another request changed the trade between its read and its write;
+/// the next one decides again on the fresh state, which most often yields the exact error (e.g.
+/// `TradeAlreadyAccepted` after a double submission).
 const TRANSITION_ATTEMPTS: usize = 3;
 
 /// Loads `trade_id` and resolves which of its parties `caller_id` is.
@@ -40,23 +40,24 @@ async fn find_as_party(
 
 /// Lets `decide` take the caller's transition on the current state of the trade, then persists
 /// it — deciding again on fresh state whenever the trade changed in between.
-async fn transition(
+async fn decide_and_apply<Decision>(
     trade_repository: &Arc<dyn TradeRepository>,
     trade_id: TradeId,
     caller_id: &UserId,
-    decide: impl Fn(&Trade, Party) -> Result<TradeTransition, FunctionalError>,
-) -> Result<(), AppError> {
+    decide: impl Fn(Trade, Party) -> Decision,
+) -> Result<(), AppError>
+where
+    Decision: Future<Output = Result<TradeTransition, AppError>>,
+{
     for _ in 0..TRANSITION_ATTEMPTS {
         let (trade, party) = find_as_party(trade_repository, trade_id, caller_id).await?;
-        let transition = decide(&trade, party)?;
+        let transition = decide(trade, party).await?;
         if trade_repository.apply_transition(&transition).await? {
             return Ok(());
         }
     }
 
-    Err(AppError::Infra(InfraError::RepositoryError(
-        "the trade kept changing concurrently".to_string(),
-    )))
+    Err(FunctionalError::TradeConcurrentlyModified.into())
 }
 
 /// Resolves `owner_username` to a `User` who must be a party to `trade`.
@@ -218,14 +219,19 @@ impl AcceptTradeService {
 #[async_trait]
 impl AcceptTradeUseCase for AcceptTradeService {
     async fn accept(&self, trade_id: TradeId, caller_id: UserId) -> Result<(), AppError> {
-        // Read once: a card removed meanwhile from an accepted trade reopens it, which the
-        // transition's status guard catches anyway.
-        let cards = self.trade_repository.find_trade_cards(trade_id).await?;
-        transition(
-            &self.trade_repository,
+        // Cards are read on every attempt, once the caller is known to be a party. The guard
+        // covers the trade row only: the last card removed from a `PENDING` trade between this
+        // read and the write leaves the trade accepted though empty (same as before the domain
+        // held these rules).
+        let trade_repository = &self.trade_repository;
+        decide_and_apply(
+            trade_repository,
             trade_id,
             &caller_id,
-            |trade, party| trade.accept(party, &cards),
+            |trade, party| async move {
+                let cards = trade_repository.find_trade_cards(trade.id).await?;
+                Ok(trade.accept(party, &cards)?)
+            },
         )
         .await
     }
@@ -244,9 +250,12 @@ impl AbandonTradeService {
 #[async_trait]
 impl AbandonTradeUseCase for AbandonTradeService {
     async fn abandon(&self, trade_id: TradeId, caller_id: UserId) -> Result<(), AppError> {
-        transition(&self.trade_repository, trade_id, &caller_id, |trade, _| {
-            trade.abandon()
-        })
+        decide_and_apply(
+            &self.trade_repository,
+            trade_id,
+            &caller_id,
+            |trade, _| async move { Ok(trade.abandon()?) },
+        )
         .await
     }
 }
@@ -264,11 +273,11 @@ impl ConfirmTradeService {
 #[async_trait]
 impl ConfirmTradeUseCase for ConfirmTradeService {
     async fn confirm(&self, trade_id: TradeId, caller_id: UserId) -> Result<(), AppError> {
-        transition(
+        decide_and_apply(
             &self.trade_repository,
             trade_id,
             &caller_id,
-            |trade, party| trade.confirm(party),
+            |trade, party| async move { Ok(trade.confirm(party)?) },
         )
         .await
     }
@@ -287,11 +296,11 @@ impl RateTradeService {
 #[async_trait]
 impl RateTradeUseCase for RateTradeService {
     async fn rate(&self, trade_id: TradeId, caller_id: UserId, rating: u8) -> Result<(), AppError> {
-        transition(
+        decide_and_apply(
             &self.trade_repository,
             trade_id,
             &caller_id,
-            |trade, party| trade.rate(party, rating),
+            |trade, party| async move { Ok(trade.rate(party, rating)?) },
         )
         .await
     }
@@ -516,8 +525,8 @@ mod tests {
             .expect_merge_card_into_trade()
             .times(1)
             .withf(|transition, _, _, _, _| {
-                transition.from == TradeStatus::Pending
-                    && transition.next.status == TradeStatus::Pending
+                transition.from().status == TradeStatus::Pending
+                    && transition.next().status == TradeStatus::Pending
             })
             .returning(|_, _, _, _, _| Box::pin(async { Ok(()) }));
         let mut mock_user_repository = MockUserRepository::new();
@@ -561,8 +570,8 @@ mod tests {
             .expect_merge_card_into_trade()
             .times(1)
             .withf(|transition, _, _, _, _| {
-                transition.from == TradeStatus::OneAccepted
-                    && transition.next.status == TradeStatus::Pending
+                transition.from().status == TradeStatus::OneAccepted
+                    && transition.next().status == TradeStatus::Pending
             })
             .returning(|_, _, _, _, _| Box::pin(async { Ok(()) }));
         let mut mock_user_repository = MockUserRepository::new();
@@ -881,7 +890,7 @@ mod tests {
         mock_trade_repository
             .expect_remove_card_from_trade()
             .times(1)
-            .withf(|transition, _, _| transition.from == TradeStatus::Pending)
+            .withf(|transition, _, _| transition.from().status == TradeStatus::Pending)
             .returning(|_, _, _| Box::pin(async { Ok(true) }));
         let mut mock_user_repository = MockUserRepository::new();
         mock_user_repository
@@ -923,8 +932,8 @@ mod tests {
             .expect_remove_card_from_trade()
             .times(1)
             .withf(|transition, _, _| {
-                transition.from == TradeStatus::OneAccepted
-                    && transition.next.status == TradeStatus::Pending
+                transition.from().status == TradeStatus::OneAccepted
+                    && transition.next().status == TradeStatus::Pending
             })
             .returning(|_, _, _| Box::pin(async { Ok(true) }));
         let mut mock_user_repository = MockUserRepository::new();
@@ -1235,9 +1244,9 @@ mod tests {
             .expect_apply_transition()
             .times(1)
             .withf(|transition| {
-                transition.from == TradeStatus::Pending
-                    && transition.next.status == TradeStatus::OneAccepted
-                    && transition.next.respondent_accepted_at.is_some()
+                transition.from().status == TradeStatus::Pending
+                    && transition.next().status == TradeStatus::OneAccepted
+                    && transition.next().respondent_accepted_at.is_some()
             })
             .returning(|_| Box::pin(async { Ok(true) }));
 
@@ -1337,7 +1346,12 @@ mod tests {
         let service = AcceptTradeService::new(Arc::new(mock_repository));
         let result = service.accept(TradeId::new(), make_initiator_id()).await;
 
-        assert!(matches!(result, Err(AppError::Infra(_))));
+        assert!(matches!(
+            result,
+            Err(AppError::Functional(
+                FunctionalError::TradeConcurrentlyModified
+            ))
+        ));
     }
 
     // --- AbandonTradeService ---
@@ -1348,7 +1362,7 @@ mod tests {
         mock_repository
             .expect_apply_transition()
             .times(1)
-            .withf(|transition| transition.next.status == TradeStatus::Abandoned)
+            .withf(|transition| transition.next().status == TradeStatus::Abandoned)
             .returning(|_| Box::pin(async { Ok(true) }));
 
         let service = AbandonTradeService::new(Arc::new(mock_repository));
@@ -1434,8 +1448,8 @@ mod tests {
             .expect_apply_transition()
             .times(1)
             .withf(|transition| {
-                transition.next.initiator_confirmed_at.is_some()
-                    && transition.next.respondent_confirmed_at.is_none()
+                transition.next().initiator_confirmed_at.is_some()
+                    && transition.next().respondent_confirmed_at.is_none()
             })
             .returning(|_| Box::pin(async { Ok(true) }));
 
@@ -1512,8 +1526,8 @@ mod tests {
             .expect_apply_transition()
             .times(1)
             .withf(|transition| {
-                transition.next.initiator_rating == Some(5)
-                    && transition.next.respondent_rating.is_none()
+                transition.next().initiator_rating == Some(5)
+                    && transition.next().respondent_rating.is_none()
             })
             .returning(|_| Box::pin(async { Ok(true) }));
 

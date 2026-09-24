@@ -97,20 +97,34 @@ impl Party {
     }
 }
 
-/// A state change decided by [`Trade`]: the trade as it must now be written, and the status the
-/// decision was taken from. It is only persisted if the trade still has that status, so a decision
-/// taken on a stale read never reaches the database.
+/// A state change decided by [`Trade`]: the trade as the decision read it, and as it must now be
+/// written. It is only persisted if the trade's state is still exactly the one read, so a decision
+/// taken on a stale read never reaches the database. Only `Trade` can build one.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct TradeTransition {
-    pub from: TradeStatus,
-    pub next: Trade,
+    from: Trade,
+    next: Trade,
 }
 
 impl TradeTransition {
+    pub fn trade_id(&self) -> TradeId {
+        self.next.id
+    }
+
+    /// The trade as the decision read it.
+    pub fn from(&self) -> &Trade {
+        &self.from
+    }
+
+    /// The trade as it must now be written.
+    pub fn next(&self) -> &Trade {
+        &self.next
+    }
+
     /// The very first acceptance: the trade's cards become reserved, so every other active trade
     /// sharing one of them must be abandoned (ADR-0008).
     pub fn reserves_cards(&self) -> bool {
-        self.from == TradeStatus::Pending && self.next.status == TradeStatus::OneAccepted
+        self.from.status == TradeStatus::Pending && self.next.status == TradeStatus::OneAccepted
     }
 }
 
@@ -179,7 +193,7 @@ impl Trade {
         let mut next = self.clone();
         change(&mut next);
         TradeTransition {
-            from: self.status,
+            from: self.clone(),
             next,
         }
     }
@@ -528,13 +542,13 @@ mod tests {
     }
 
     #[test]
-    fn transition_records_the_status_it_was_decided_from() {
+    fn transition_records_the_state_it_was_decided_from() {
         let trade = make_trade(TradeStatus::Pending);
 
         let transition = trade.abandon().unwrap();
 
-        assert_eq!(transition.from, TradeStatus::Pending);
-        assert_eq!(transition.next.id, trade.id);
+        assert_eq!(transition.from(), &trade);
+        assert_eq!(transition.trade_id(), trade.id);
     }
 
     // modify

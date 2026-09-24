@@ -4,8 +4,7 @@ use crate::domain::card::CopyId;
 use crate::domain::error::FunctionalError;
 use crate::domain::pagination::Paginated;
 use crate::domain::trade::{
-    Trade, TradeCard, TradeCardDetail, TradeId, TradeListQuery, TradeStatus, TradeSummary,
-    TradeTransition,
+    Trade, TradeCard, TradeCardDetail, TradeId, TradeListQuery, TradeSummary, TradeTransition,
 };
 use crate::domain::user::UserId;
 use crate::infrastructure::adapter_out::repository::entities::{
@@ -116,24 +115,43 @@ async fn is_card_reserved_elsewhere(
     Ok(reserved)
 }
 
-/// Writes the status and party columns of `transition.next` if the trade still has status
-/// `transition.from`. The decision itself belongs to `Trade`: this only persists it.
+/// Locks the trade row until the end of the transaction. Fails with `TradeNotFound` if it
+/// doesn't exist.
+#[tracing::instrument(name = "trade_repo.lock_trade", skip_all, fields(sentry.op = "db"))]
+async fn lock_trade(executor: impl PgExecutor<'_>, trade_id: TradeId) -> Result<(), AppError> {
+    sqlx::query_scalar!("SELECT id FROM trade WHERE id = $1 FOR UPDATE", trade_id.0)
+        .fetch_optional(executor)
+        .await?
+        .ok_or(FunctionalError::TradeNotFound)?;
+    Ok(())
+}
+
+/// Writes the status and party columns of `transition.next()` if they all still hold the values
+/// the transition was decided from (`transition.from()`). The decision itself belongs to `Trade`:
+/// this only persists it. Comparing the party columns and not just the status matters: a first
+/// confirmation or rating keeps the status, and an acceptance withdrawn then given again brings
+/// it back — either way the transition would overwrite a change it never saw.
 #[tracing::instrument(name = "trade_repo.write_transition", skip_all, fields(sentry.op = "db"))]
 async fn write_transition(
     executor: impl PgExecutor<'_>,
     transition: &TradeTransition,
 ) -> Result<bool, AppError> {
-    let next = &transition.next;
+    let (from, next) = (transition.from(), transition.next());
     let result = sqlx::query!(
         r#"UPDATE trade
-            SET status = $3,
-                initiator_accepted_at = $4, respondent_accepted_at = $5,
-                initiator_confirmed_at = $6, respondent_confirmed_at = $7,
-                initiator_rating = $8, respondent_rating = $9,
+            SET status = $2,
+                initiator_accepted_at = $3, respondent_accepted_at = $4,
+                initiator_confirmed_at = $5, respondent_confirmed_at = $6,
+                initiator_rating = $7, respondent_rating = $8,
                 updated_at = NOW()
-            WHERE id = $1 AND status = $2"#,
-        next.id.0,
-        transition.from.as_db_str(),
+            WHERE id = $1 AND status = $9
+              AND initiator_accepted_at IS NOT DISTINCT FROM $10
+              AND respondent_accepted_at IS NOT DISTINCT FROM $11
+              AND initiator_confirmed_at IS NOT DISTINCT FROM $12
+              AND respondent_confirmed_at IS NOT DISTINCT FROM $13
+              AND initiator_rating IS NOT DISTINCT FROM $14
+              AND respondent_rating IS NOT DISTINCT FROM $15"#,
+        transition.trade_id().0,
         next.status.as_db_str(),
         next.initiator_accepted_at,
         next.respondent_accepted_at,
@@ -141,6 +159,13 @@ async fn write_transition(
         next.respondent_confirmed_at,
         next.initiator_rating.map(i16::from),
         next.respondent_rating.map(i16::from),
+        from.status.as_db_str(),
+        from.initiator_accepted_at,
+        from.respondent_accepted_at,
+        from.initiator_confirmed_at,
+        from.respondent_confirmed_at,
+        from.initiator_rating.map(i16::from),
+        from.respondent_rating.map(i16::from),
     )
     .execute(executor)
     .await?;
@@ -325,21 +350,15 @@ impl TradeRepository for TradeRepositoryAdapter {
         quantity: u8,
         availability: CardAvailability,
     ) -> Result<(), AppError> {
-        let trade_id = transition.next.id;
+        let trade_id = transition.trade_id();
         let mut tx = self.pool.begin().await?;
 
         // Serializes every addition to this trade: a concurrent one waits here, then sees the
-        // quantity this one committed. The status the transition was decided from must still
+        // quantity this one committed. The state the transition was decided from must still
         // hold under the lock — else an acceptance committed meanwhile would let a card slip
-        // into a trade without reopening it.
-        let status = sqlx::query_scalar!(
-            "SELECT status FROM trade WHERE id = $1 FOR UPDATE",
-            trade_id.0
-        )
-        .fetch_optional(&mut *tx)
-        .await?
-        .ok_or(FunctionalError::TradeNotFound)?;
-        if TradeStatus::from_db_str(&status) != transition.from {
+        // into a trade without reopening it. Everything is rolled back if a check below fails.
+        lock_trade(&mut *tx, trade_id).await?;
+        if !write_transition(&mut *tx, transition).await? {
             return Err(FunctionalError::TradeNotModifiable.into());
         }
 
@@ -399,9 +418,6 @@ impl TradeRepository for TradeRepositoryAdapter {
         .execute(&mut *tx)
         .await?;
 
-        // The status was checked under the row lock above, so the guard always holds here.
-        write_transition(&mut *tx, transition).await?;
-
         tx.commit().await?;
 
         Ok(())
@@ -414,14 +430,11 @@ impl TradeRepository for TradeRepositoryAdapter {
         copy_id: &CopyId,
         owner_id: &UserId,
     ) -> Result<bool, AppError> {
-        let trade_id = transition.next.id;
+        let trade_id = transition.trade_id();
         let mut tx = self.pool.begin().await?;
 
-        // Written first so its guard also locks the trade row for the rest of the transaction;
-        // rolled back below if there turns out to be no card to remove.
-        if !write_transition(&mut *tx, transition).await? {
-            return Err(FunctionalError::TradeNotModifiable.into());
-        }
+        // Same lock order as `merge_card_into_trade` (trade row, then its cards).
+        lock_trade(&mut *tx, trade_id).await?;
 
         let result = sqlx::query!(
             r#"DELETE FROM trade_card
@@ -438,8 +451,11 @@ impl TradeRepository for TradeRepositoryAdapter {
         .await?;
 
         if result.rows_affected() == 0 {
-            // Dropping `tx` rolls back the transition written above.
             return Ok(false);
+        }
+        // Dropping `tx` rolls back the removal above.
+        if !write_transition(&mut *tx, transition).await? {
+            return Err(FunctionalError::TradeNotModifiable.into());
         }
 
         tx.commit().await?;
@@ -449,7 +465,7 @@ impl TradeRepository for TradeRepositoryAdapter {
 
     #[tracing::instrument(name = "trade_repo.apply_transition", skip_all, fields(sentry.op = "db"))]
     async fn apply_transition(&self, transition: &TradeTransition) -> Result<bool, AppError> {
-        let trade_id = transition.next.id;
+        let trade_id = transition.trade_id();
         let mut tx = self.pool.begin().await?;
 
         if !write_transition(&mut *tx, transition).await? {
@@ -488,7 +504,7 @@ mod tests {
     use crate::application::service::trade_service::TRADES_MAX_OFFSET;
     use crate::domain::language_code::LanguageCode;
     use crate::domain::pagination::Pagination;
-    use crate::domain::trade::Party;
+    use crate::domain::trade::{Party, TradeStatus};
     use crate::infrastructure::adapter_out::repository::common_repository_tests::{
         insert_card, insert_card_with_rarity, insert_collection_entry,
         insert_collection_entry_with_binder, insert_price, insert_rarity_filter, insert_trade,
@@ -1287,8 +1303,11 @@ mod tests {
     async fn merge_card_into_trade_fails_when_trade_does_not_exist(pool: PgPool) {
         let trade_id = setup_trade_with_offered_copies(&pool, 1).await;
         let repository = TradeRepositoryAdapter::new(pool);
-        let mut transition = modify(&repository, trade_id).await;
-        transition.next.id = TradeId::new();
+        let unknown = Trade {
+            id: TradeId::new(),
+            ..find(&repository, trade_id).await
+        };
+        let transition = unknown.modify().unwrap();
 
         let result = merge_offered_card_with(&repository, &transition, 1).await;
 
@@ -1829,14 +1848,73 @@ mod tests {
         let trade_id = uuid::Uuid::new_v4();
         insert_trade(&pool, trade_id, "user_a", "user_b", "PENDING").await;
         let repository = TradeRepositoryAdapter::new(pool);
-        let mut transition = find(&repository, trade_id).await.abandon().unwrap();
-        transition.next.id = TradeId::new();
+        let unknown = Trade {
+            id: TradeId::new(),
+            ..find(&repository, trade_id).await
+        };
+        let transition = unknown.abandon().unwrap();
 
         assert!(!repository.apply_transition(&transition).await.unwrap());
         assert_eq!(
             find(&repository, trade_id).await.status,
             TradeStatus::Pending
         );
+    }
+
+    #[sqlx::test]
+    async fn apply_transition_does_not_erase_a_change_that_kept_the_status(pool: PgPool) {
+        // Both parties confirm at once: a first confirmation keeps `FULLY_ACCEPTED`.
+        insert_user(&pool, "user_a", "alice").await;
+        insert_user(&pool, "user_b", "bob").await;
+        let trade_id = uuid::Uuid::new_v4();
+        insert_trade(&pool, trade_id, "user_a", "user_b", "FULLY_ACCEPTED").await;
+        let repository = TradeRepositoryAdapter::new(pool);
+        let stale = find(&repository, trade_id)
+            .await
+            .confirm(Party::Initiator)
+            .unwrap();
+        assert!(confirm(&repository, trade_id, Party::Respondent).await);
+
+        assert!(!repository.apply_transition(&stale).await.unwrap());
+        let trade = find(&repository, trade_id).await;
+        assert_eq!(trade.status, TradeStatus::FullyAccepted);
+        assert!(trade.respondent_confirmed_at.is_some());
+        // Decided again on the fresh state, the same confirmation completes the trade.
+        assert!(confirm(&repository, trade_id, Party::Initiator).await);
+        assert_eq!(
+            find(&repository, trade_id).await.status,
+            TradeStatus::Completed
+        );
+    }
+
+    #[sqlx::test]
+    async fn apply_transition_does_not_revive_a_withdrawn_acceptance(pool: PgPool) {
+        insert_user(&pool, "user_a", "alice").await;
+        insert_user(&pool, "user_b", "bob").await;
+        let trade_id = uuid::Uuid::new_v4();
+        insert_trade(&pool, trade_id, "user_a", "user_b", "ONE_ACCEPTED").await;
+        mark_trade_party_accepted(&pool, trade_id, true).await;
+        let repository = TradeRepositoryAdapter::new(pool);
+        // The respondent decides to accept on top of the initiator's acceptance...
+        let cards = [TradeCard {
+            card_id: make_card_id(),
+            owner_user_id: UserId::new("user_b"),
+            quantity: 1,
+        }];
+        let stale = find(&repository, trade_id)
+            .await
+            .accept(Party::Respondent, &cards)
+            .unwrap();
+        // ...while the trade is modified (acceptances withdrawn) and accepted by them again,
+        // which brings the status back to `ONE_ACCEPTED`.
+        let modification = modify(&repository, trade_id).await;
+        assert!(repository.apply_transition(&modification).await.unwrap());
+        assert!(accept(&repository, trade_id, Party::Respondent).await);
+
+        assert!(!repository.apply_transition(&stale).await.unwrap());
+        let trade = find(&repository, trade_id).await;
+        assert_eq!(trade.status, TradeStatus::OneAccepted);
+        assert_eq!(trade.initiator_accepted_at, None);
     }
 
     // --- accept ---

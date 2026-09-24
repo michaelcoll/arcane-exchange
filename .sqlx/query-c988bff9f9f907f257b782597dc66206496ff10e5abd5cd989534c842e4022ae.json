@@ -1,0 +1,28 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE trade\n            SET status = $2,\n                initiator_accepted_at = $3, respondent_accepted_at = $4,\n                initiator_confirmed_at = $5, respondent_confirmed_at = $6,\n                initiator_rating = $7, respondent_rating = $8,\n                updated_at = NOW()\n            WHERE id = $1 AND status = $9\n              AND initiator_accepted_at IS NOT DISTINCT FROM $10\n              AND respondent_accepted_at IS NOT DISTINCT FROM $11\n              AND initiator_confirmed_at IS NOT DISTINCT FROM $12\n              AND respondent_confirmed_at IS NOT DISTINCT FROM $13\n              AND initiator_rating IS NOT DISTINCT FROM $14\n              AND respondent_rating IS NOT DISTINCT FROM $15",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Varchar",
+        "Timestamptz",
+        "Timestamptz",
+        "Timestamptz",
+        "Timestamptz",
+        "Int2",
+        "Int2",
+        "Text",
+        "Timestamptz",
+        "Timestamptz",
+        "Timestamptz",
+        "Timestamptz",
+        "Int2",
+        "Int2"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "c988bff9f9f907f257b782597dc66206496ff10e5abd5cd989534c842e4022ae"
+}
