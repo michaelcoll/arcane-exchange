@@ -26,16 +26,15 @@ pub struct CardNameEntity {
     pub name: String,
 }
 
-impl From<CardNameEntity> for CardId {
-    fn from(entity: CardNameEntity) -> CardId {
-        let set_code =
-            SetCode::try_new(entity.set_code).expect("database contains invalid set_code");
-        CardId {
-            set_code,
-            collector_number: entity.collector_number,
-            language_code: LanguageCode::try_new(entity.language_code)
-                .expect("database contains invalid language_code"),
-        }
+impl TryFrom<CardNameEntity> for CardId {
+    type Error = InfraError;
+
+    fn try_from(entity: CardNameEntity) -> Result<CardId, InfraError> {
+        card_id_from_db(
+            &entity.set_code,
+            entity.collector_number,
+            &entity.language_code,
+        )
     }
 }
 
@@ -47,12 +46,31 @@ pub struct SetNameEntity {
 
 /// An unexpected value read from the database is corrupt data, not a caller mistake: it surfaces
 /// as an `InfraError` (500), never as a panic nor as a functional (4xx) error.
-fn invalid_db_value(what: &str, value: &str) -> InfraError {
+pub(crate) fn invalid_db_value(what: &str, value: &str) -> InfraError {
     InfraError::RepositoryError(format!("invalid {what} from database: {value}"))
 }
 
-fn from_db_rarity(s: &str) -> Result<RarityCode, InfraError> {
+pub(crate) fn from_db_rarity(s: &str) -> Result<RarityCode, InfraError> {
     RarityCode::try_new(s).map_err(|_| invalid_db_value("rarity code", s))
+}
+
+fn card_id_from_db(
+    set_code: &str,
+    collector_number: String,
+    language_code: &str,
+) -> Result<CardId, InfraError> {
+    Ok(CardId {
+        set_code: SetCode::try_new(set_code).map_err(|_| invalid_db_value("set code", set_code))?,
+        collector_number,
+        language_code: LanguageCode::try_new(language_code)
+            .map_err(|_| invalid_db_value("language code", language_code))?,
+    })
+}
+
+fn rating_from_db(rating: Option<i16>) -> Result<Option<u8>, InfraError> {
+    rating
+        .map(|v| u8::try_from(v).map_err(|_| invalid_db_value("rating", &v.to_string())))
+        .transpose()
 }
 
 /// Inverse of [`TradeStatus::as_db_str`].
@@ -86,16 +104,15 @@ impl TryFrom<&str> for CollectionVisibility {
     }
 }
 
-impl From<CardIdEntity> for CardId {
-    fn from(entity: CardIdEntity) -> CardId {
-        let set_code =
-            SetCode::try_new(entity.set_code).expect("database contains invalid set_code");
-        CardId {
-            set_code: set_code.clone(),
-            collector_number: entity.collector_number,
-            language_code: LanguageCode::try_new(entity.language_code)
-                .expect("database contains invalid language_code"),
-        }
+impl TryFrom<CardIdEntity> for CardId {
+    type Error = InfraError;
+
+    fn try_from(entity: CardIdEntity) -> Result<CardId, InfraError> {
+        card_id_from_db(
+            &entity.set_code,
+            entity.collector_number,
+            &entity.language_code,
+        )
     }
 }
 
@@ -160,12 +177,8 @@ impl TryFrom<TradeEntity> for Trade {
             respondent_accepted_at: entity.respondent_accepted_at,
             initiator_confirmed_at: entity.initiator_confirmed_at,
             respondent_confirmed_at: entity.respondent_confirmed_at,
-            initiator_rating: entity
-                .initiator_rating
-                .map(|v| u8::try_from(v).expect("database contains invalid rating (expected 0-5)")),
-            respondent_rating: entity
-                .respondent_rating
-                .map(|v| u8::try_from(v).expect("database contains invalid rating (expected 0-5)")),
+            initiator_rating: rating_from_db(entity.initiator_rating)?,
+            respondent_rating: rating_from_db(entity.respondent_rating)?,
             created_at: entity.created_at,
             updated_at: entity.updated_at,
         })
@@ -182,23 +195,22 @@ pub struct TradeCardEntity {
     pub quantity: i32,
 }
 
-impl From<TradeCardEntity> for TradeCard {
-    fn from(entity: TradeCardEntity) -> TradeCard {
-        let set_code =
-            SetCode::try_new(entity.set_code).expect("database contains invalid set_code");
-        TradeCard {
+impl TryFrom<TradeCardEntity> for TradeCard {
+    type Error = InfraError;
+
+    fn try_from(entity: TradeCardEntity) -> Result<TradeCard, InfraError> {
+        Ok(TradeCard {
             card_id: CopyId {
-                card_id: CardId {
-                    set_code,
-                    collector_number: entity.collector_number,
-                    language_code: LanguageCode::try_new(entity.language_code)
-                        .expect("database contains invalid language_code"),
-                },
+                card_id: card_id_from_db(
+                    &entity.set_code,
+                    entity.collector_number,
+                    &entity.language_code,
+                )?,
                 foil: entity.foil,
             },
             owner_user_id: UserId::new(entity.owner_user_id),
             quantity: entity.quantity as u32,
-        }
+        })
     }
 }
 
@@ -221,10 +233,10 @@ pub struct TradeCardDetailEntity {
     pub trend: Option<i32>,
 }
 
-impl From<TradeCardDetailEntity> for TradeCardDetail {
-    fn from(entity: TradeCardDetailEntity) -> TradeCardDetail {
-        let set_code =
-            SetCode::try_new(entity.set_code).expect("database contains invalid set_code");
+impl TryFrom<TradeCardDetailEntity> for TradeCardDetail {
+    type Error = InfraError;
+
+    fn try_from(entity: TradeCardDetailEntity) -> Result<TradeCardDetail, InfraError> {
         let price_guide = if entity.low.is_some() || entity.avg.is_some() || entity.trend.is_some()
         {
             Some(PriceGuide::from(PriceGuideEntity {
@@ -236,14 +248,13 @@ impl From<TradeCardDetailEntity> for TradeCardDetail {
             None
         };
 
-        TradeCardDetail {
+        Ok(TradeCardDetail {
             card_id: CopyId {
-                card_id: CardId {
-                    set_code,
-                    collector_number: entity.collector_number,
-                    language_code: LanguageCode::try_new(entity.language_code)
-                        .expect("database contains invalid language_code"),
-                },
+                card_id: card_id_from_db(
+                    &entity.set_code,
+                    entity.collector_number,
+                    &entity.language_code,
+                )?,
                 foil: entity.foil,
             },
             owner_user_id: UserId::new(entity.owner_user_id),
@@ -252,7 +263,7 @@ impl From<TradeCardDetailEntity> for TradeCardDetail {
             price_guide,
             scryfall_id: entity.scryfall_id,
             the_gatherer_id: entity.the_gatherer_id,
-        }
+        })
     }
 }
 
@@ -496,16 +507,13 @@ impl TryFrom<CardWithPriceEntity> for Card {
             },
         };
 
-        let set_code = SetCode::try_new(&e.set_code).expect("database contains invalid set_code");
+        let card_id = card_id_from_db(&e.set_code, e.collector_number, &e.language_code)?;
         Ok(Card {
-            id: CopyId::new(
-                set_code.clone(),
-                e.collector_number,
-                LanguageCode::try_new(&e.language_code)
-                    .expect("database contains invalid language_code"),
-                e.foil,
-            ),
-            set_name: SetName::new(set_code, e.set_name),
+            set_name: SetName::new(card_id.set_code.clone(), e.set_name),
+            id: CopyId {
+                card_id,
+                foil: e.foil,
+            },
             name: e.name,
             rarity_code: from_db_rarity(&e.rarity)?,
             scryfall_id: e.scryfall_id,
@@ -649,7 +657,7 @@ mod tests {
     fn card_id_entity_converts_to_card_id() {
         let entity = make_card_id_entity();
 
-        let card_id: CardId = entity.into();
+        let card_id = CardId::try_from(entity).unwrap();
 
         assert_eq!(card_id.collector_number, "123");
         assert_eq!(card_id.language_code, LanguageCode::FR);
@@ -737,7 +745,7 @@ mod tests {
             name: "Sol Ring".to_string(),
         };
 
-        let card_id: CardId = entity.into();
+        let card_id = CardId::try_from(entity).unwrap();
 
         assert_eq!(card_id.collector_number, "42");
         assert_eq!(card_id.language_code, LanguageCode::EN);
@@ -860,7 +868,7 @@ mod tests {
             quantity: 3,
         };
 
-        let trade_card: TradeCard = entity.into();
+        let trade_card = TradeCard::try_from(entity).unwrap();
 
         assert_eq!(trade_card.card_id.card_id.collector_number, "87");
         assert_eq!(trade_card.card_id.card_id.language_code, LanguageCode::FR);
@@ -868,6 +876,38 @@ mod tests {
         assert_eq!(trade_card.card_id.card_id.set_code.to_string(), "FDN");
         assert_eq!(trade_card.owner_user_id, UserId::new("owner-1"));
         assert_eq!(trade_card.quantity, 3);
+    }
+
+    #[test]
+    fn card_id_from_db_returns_repository_error_on_unknown_language_code() {
+        assert_eq!(
+            card_id_from_db("FDN", "87".to_string(), "XX"),
+            Err(InfraError::RepositoryError(
+                "invalid language code from database: XX".to_string()
+            ))
+        );
+    }
+
+    #[test]
+    fn card_id_from_db_returns_repository_error_on_invalid_set_code() {
+        assert_eq!(
+            card_id_from_db("F", "87".to_string(), "EN"),
+            Err(InfraError::RepositoryError(
+                "invalid set code from database: F".to_string()
+            ))
+        );
+    }
+
+    #[test]
+    fn rating_from_db_returns_repository_error_on_out_of_range_value() {
+        assert_eq!(rating_from_db(Some(4)), Ok(Some(4)));
+        assert_eq!(rating_from_db(None), Ok(None));
+        assert_eq!(
+            rating_from_db(Some(-1)),
+            Err(InfraError::RepositoryError(
+                "invalid rating from database: -1".to_string()
+            ))
+        );
     }
 
     // --- CardWithPriceEntity ---

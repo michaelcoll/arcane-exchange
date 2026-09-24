@@ -1,8 +1,8 @@
 use crate::application::error::AppError;
 use crate::application::repository::RarityTradeFilterRepository;
-use crate::domain::rarity_code::RarityCode;
 use crate::domain::rarity_trade_filter::{RarityTradeFilter, RarityTradeFilterRule};
 use crate::domain::user::UserId;
+use crate::infrastructure::adapter_out::repository::entities::from_db_rarity;
 use async_trait::async_trait;
 use sqlx::{Pool, Postgres};
 
@@ -63,7 +63,7 @@ impl RarityTradeFilterRepository for CollectionRarityFiltersRepositoryAdapter {
         rows.into_iter()
             .map(|r| {
                 Ok(RarityTradeFilter {
-                    rarity: RarityCode::try_new(&r.rarity)?,
+                    rarity: from_db_rarity(&r.rarity)?,
                     is_open: r.is_open,
                     kept_copies: u8::try_from(r.kept_copies).unwrap_or(0),
                     copies: r.copies as u64,
@@ -97,6 +97,7 @@ impl RarityTradeFilterRepository for CollectionRarityFiltersRepositoryAdapter {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::domain::rarity_code::RarityCode;
     use crate::infrastructure::adapter_out::repository::common_repository_tests::{
         insert_card_with_rarity, insert_collection_entry_with_binder, insert_set,
         insert_trading_binder, insert_user,

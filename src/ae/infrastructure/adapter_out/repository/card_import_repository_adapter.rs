@@ -3,6 +3,7 @@ use crate::application::repository::CardImportRepository;
 use crate::domain::card_import::{CardImport, CardImportId, CardImportLineError, CardImportStatus};
 use crate::domain::error::FunctionalError;
 use crate::domain::user::UserId;
+use crate::infrastructure::adapter_out::repository::entities::invalid_db_value;
 use async_trait::async_trait;
 use chrono::{DateTime, Utc};
 use sqlx::types::Json;
@@ -71,7 +72,8 @@ impl TryFrom<CardImportRow> for CardImport {
         Ok(CardImport {
             id: CardImportId(row.id),
             user_id: UserId::new(row.user_id),
-            status: CardImportStatus::try_new(&row.status)?,
+            status: CardImportStatus::try_new(&row.status)
+                .map_err(|_| invalid_db_value("card import status", &row.status))?,
             source_lines: row.source_lines as u32,
             total_lines: row.total_lines as u32,
             processed_lines: row.processed_lines as u32,
