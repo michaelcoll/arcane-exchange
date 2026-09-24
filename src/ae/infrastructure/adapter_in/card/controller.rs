@@ -4,11 +4,10 @@ use super::dto::{
 };
 use crate::application::error::AppError;
 use crate::application::service::card_offer_service::CARD_OFFERS_MAX_OFFSET;
-use crate::domain::card::CopyId;
-use crate::domain::language_code::LanguageCode;
 use crate::domain::pagination::Pagination;
 use crate::infrastructure::AppState;
 use crate::infrastructure::adapter_in::auth_extractor::AuthenticatedUser;
+use crate::infrastructure::adapter_in::parse_copy_id;
 use axum::extract::{Path, Query, State};
 use axum::http::StatusCode;
 use axum::routing::{get, post};
@@ -114,11 +113,10 @@ pub(crate) async fn get_card_offers(
     State(state): State<AppState>,
     Query(params): Query<CardOffersParams>,
 ) -> Result<axum::Json<PaginatedCardOffersResponse>, AppError> {
-    let language_code = LanguageCode::try_new(&params.language_code)?;
-    let copy_id = CopyId::try_new(
-        params.set_code.as_str(),
-        params.collector_number,
-        language_code,
+    let copy_id = parse_copy_id(
+        &params.set_code,
+        &params.collector_number,
+        &params.language_code,
         params.foil,
     )?;
     let pagination = Pagination::try_new(params.page, params.page_size, CARD_OFFERS_MAX_OFFSET)?;
