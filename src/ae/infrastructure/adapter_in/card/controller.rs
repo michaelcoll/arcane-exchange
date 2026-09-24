@@ -3,8 +3,7 @@ use super::dto::{
     PriceHistoryEntryResponse,
 };
 use crate::application::error::AppError;
-use crate::application::service::card_offer_service::CARD_OFFERS_MAX_OFFSET;
-use crate::domain::pagination::Pagination;
+use crate::domain::pagination::PageRequest;
 use crate::infrastructure::AppState;
 use crate::infrastructure::adapter_in::auth_extractor::AuthenticatedUser;
 use crate::infrastructure::adapter_in::parse_copy_id;
@@ -119,11 +118,14 @@ pub(crate) async fn get_card_offers(
         &params.language_code,
         params.foil,
     )?;
-    let pagination = Pagination::try_new(params.page, params.page_size, CARD_OFFERS_MAX_OFFSET)?;
+    let page = PageRequest {
+        page: params.page,
+        page_size: params.page_size,
+    };
 
     let result = state
         .get_card_offers_use_case
-        .get_card_offers(&user.id, copy_id, params.sort_by.into(), pagination)
+        .get_card_offers(&user.id, copy_id, params.sort_by.into(), page)
         .await?;
 
     Ok(axum::Json(PaginatedCardOffersResponse {

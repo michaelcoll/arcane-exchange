@@ -1,6 +1,6 @@
 use crate::domain::card::CopyId;
 use crate::domain::error::FunctionalError;
-use crate::domain::pagination::Pagination;
+use crate::domain::pagination::{PageRequest, Pagination};
 use crate::domain::price::PriceGuide;
 use crate::domain::user::UserId;
 use chrono::{DateTime, Utc};
@@ -339,10 +339,28 @@ pub struct TradeSummary {
 }
 
 /// `statuses` empty means no filter (every status included).
+///
+/// `P` is the page: a raw [`PageRequest`] as it leaves the HTTP adapter, then a validated
+/// [`Pagination`] once the use case has applied its own depth limit with
+/// [`TradeListQuery::paginate`] — only the latter reaches a repository.
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct TradeListQuery {
+pub struct TradeListQuery<P = Pagination> {
     pub statuses: Vec<TradeStatus>,
-    pub pagination: Pagination,
+    pub pagination: P,
+}
+
+impl TradeListQuery<PageRequest> {
+    /// Validates the requested page against `max_offset`, keeping the status filter.
+    ///
+    /// # Errors
+    ///
+    /// Same as [`PageRequest::paginate`].
+    pub fn paginate(self, max_offset: u32) -> Result<TradeListQuery, FunctionalError> {
+        Ok(TradeListQuery {
+            statuses: self.statuses,
+            pagination: self.pagination.paginate(max_offset)?,
+        })
+    }
 }
 
 #[cfg(test)]

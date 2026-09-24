@@ -1,8 +1,7 @@
 use super::dto::SearchParams;
 use crate::application::error::AppError;
-use crate::application::service::search_service::SEARCH_MAX_OFFSET;
 use crate::domain::collection::{CollectionQuery, SearchQuery};
-use crate::domain::pagination::Pagination;
+use crate::domain::pagination::PageRequest;
 use crate::infrastructure::AppState;
 use crate::infrastructure::adapter_in::auth_extractor::AuthenticatedUser;
 use crate::infrastructure::adapter_in::collection::dto::{
@@ -44,7 +43,10 @@ pub(crate) async fn search_cards(
     State(state): State<AppState>,
     Query(params): Query<SearchParams>,
 ) -> Result<axum::Json<PaginatedCollectionResponse>, AppError> {
-    let pagination = Pagination::try_new(params.page, params.page_size, SEARCH_MAX_OFFSET)?;
+    let pagination = PageRequest {
+        page: params.page,
+        page_size: params.page_size,
+    };
 
     let rarity = params.rarity.into_iter().map(Into::into).collect();
 

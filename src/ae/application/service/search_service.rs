@@ -3,7 +3,7 @@ use crate::application::repository::CardPricesViewRepository;
 use crate::application::use_case::SearchCardsUseCase;
 use crate::domain::card::Card;
 use crate::domain::collection::SearchQuery;
-use crate::domain::pagination::Paginated;
+use crate::domain::pagination::{PageRequest, Paginated};
 use async_trait::async_trait;
 use std::sync::Arc;
 
@@ -23,7 +23,11 @@ impl SearchService {
 
 #[async_trait]
 impl SearchCardsUseCase for SearchService {
-    async fn search_cards(&self, query: SearchQuery) -> Result<Paginated<Card>, AppError> {
+    async fn search_cards(
+        &self,
+        query: SearchQuery<PageRequest>,
+    ) -> Result<Paginated<Card>, AppError> {
+        let query = query.paginate(SEARCH_MAX_OFFSET)?;
         self.repository.search_paginated(query).await
     }
 }
@@ -34,31 +38,75 @@ mod tests {
     use crate::application::error::InfraError;
     use crate::application::repository::MockCardPricesViewRepository;
     use crate::domain::collection::{CollectionQuery, CollectionSortField, SortDirection};
-    use crate::domain::pagination::Pagination;
+    use crate::domain::error::FunctionalError;
+
+    fn query_for(page: u32, page_size: u32) -> SearchQuery<PageRequest> {
+        CollectionQuery {
+            pagination: PageRequest { page, page_size },
+            ..Default::default()
+        }
+        .into()
+    }
+
+    /// A repository that echoes the validated pagination it receives back as an empty page.
+    fn echoing_repository() -> MockCardPricesViewRepository {
+        let mut mock_repo = MockCardPricesViewRepository::new();
+        mock_repo.expect_search_paginated().returning(|q| {
+            Box::pin(async move {
+                Ok(Paginated {
+                    items: vec![],
+                    total: 0,
+                    pagination: q.collection_query.pagination,
+                })
+            })
+        });
+        mock_repo
+    }
 
     #[tokio::test]
-    async fn search_cards_delegates_to_repository_with_correct_args() {
-        let mut mock_repo = MockCardPricesViewRepository::new();
-        let expected_query = SearchQuery {
-            collection_query: CollectionQuery {
-                pagination: Pagination::try_new(1, 10, SEARCH_MAX_OFFSET).unwrap(),
-                sort_by: CollectionSortField::SetCode,
-                sort_dir: SortDirection::Asc,
-                search_query: None,
-                rarity: Vec::new(),
-                sets: Vec::new(),
-                price_min: None,
-                price_max: None,
-            },
-            player_username: None,
-        };
-        let expected_result = Paginated {
-            items: vec![],
-            total: 0,
-            pagination: Pagination::try_new(1, 10, SEARCH_MAX_OFFSET).unwrap(),
-        };
-        let result_clone = expected_result.clone();
+    async fn search_cards_accepts_an_offset_at_the_search_limit() {
+        let service = SearchService::new(Arc::new(echoing_repository()));
 
+        // 100 * 100 = 10 000, exactly SEARCH_MAX_OFFSET.
+        let result = service.search_cards(query_for(100, 100)).await.unwrap();
+
+        assert_eq!(result.pagination.offset(), SEARCH_MAX_OFFSET);
+    }
+
+    #[tokio::test]
+    async fn search_cards_rejects_an_offset_beyond_the_search_limit_without_reaching_the_repository()
+     {
+        // No expectation set: mockall panics if the repository is called.
+        let service = SearchService::new(Arc::new(MockCardPricesViewRepository::new()));
+
+        let result = service.search_cards(query_for(101, 100)).await;
+
+        match result {
+            Err(AppError::Functional(FunctionalError::PaginationTooDeep {
+                requested_offset: 10_100,
+                max: SEARCH_MAX_OFFSET,
+            })) => {}
+            other => panic!("Expected PaginationTooDeep, got {:?}", other),
+        }
+    }
+
+    #[tokio::test]
+    async fn search_cards_rejects_a_page_size_above_the_max() {
+        let service = SearchService::new(Arc::new(MockCardPricesViewRepository::new()));
+
+        let result = service.search_cards(query_for(0, 101)).await;
+
+        match result {
+            Err(AppError::Functional(FunctionalError::InvalidPageSize {
+                requested: 101, ..
+            })) => {}
+            other => panic!("Expected InvalidPageSize, got {:?}", other),
+        }
+    }
+
+    #[tokio::test]
+    async fn search_cards_passes_filters_and_player_username_to_the_repository() {
+        let mut mock_repo = MockCardPricesViewRepository::new();
         mock_repo
             .expect_search_paginated()
             .withf(|q| {
@@ -66,45 +114,34 @@ mod tests {
                     && q.collection_query.pagination.page_size() == 10
                     && q.collection_query.sort_by == CollectionSortField::SetCode
                     && q.collection_query.sort_dir == SortDirection::Asc
+                    && q.player_username == Some("alice".to_string())
             })
-            .returning(move |_| {
-                let r = result_clone.clone();
-                Box::pin(async move { Ok(r) })
+            .returning(|q| {
+                Box::pin(async move {
+                    Ok(Paginated {
+                        items: vec![],
+                        total: 0,
+                        pagination: q.collection_query.pagination,
+                    })
+                })
             });
 
         let service = SearchService::new(Arc::new(mock_repo));
-        let result = service.search_cards(expected_query).await;
-        assert!(result.is_ok());
-        let paginated = result.unwrap();
-        assert_eq!(paginated.pagination.page(), 1);
-        assert_eq!(paginated.pagination.page_size(), 10);
-        assert_eq!(paginated.total, 0);
-    }
-
-    #[tokio::test]
-    async fn search_cards_delegates_player_username_to_repository() {
-        let mut mock_repo = MockCardPricesViewRepository::new();
-        let expected_query = SearchQuery {
-            collection_query: CollectionQuery::default(),
+        let query = SearchQuery {
+            collection_query: CollectionQuery {
+                pagination: PageRequest {
+                    page: 1,
+                    page_size: 10,
+                },
+                sort_by: CollectionSortField::SetCode,
+                sort_dir: SortDirection::Asc,
+                ..Default::default()
+            },
             player_username: Some("alice".to_string()),
         };
-        let expected_result = Paginated {
-            items: vec![],
-            total: 0,
-            pagination: Pagination::default(),
-        };
-        let result_clone = expected_result.clone();
 
-        mock_repo
-            .expect_search_paginated()
-            .withf(|q| q.player_username == Some("alice".to_string()))
-            .returning(move |_| {
-                let r = result_clone.clone();
-                Box::pin(async move { Ok(r) })
-            });
+        let result = service.search_cards(query).await;
 
-        let service = SearchService::new(Arc::new(mock_repo));
-        let result = service.search_cards(expected_query).await;
         assert!(result.is_ok());
     }
 

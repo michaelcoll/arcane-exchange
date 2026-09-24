@@ -6,6 +6,37 @@ pub const DEFAULT_PAGE_SIZE: u32 = 20;
 /// Highest `page_size` any endpoint accepts, regardless of its offset limit.
 pub const MAX_PAGE_SIZE: u32 = 100;
 
+/// A `page` / `page_size` pair as the client asked for it, not yet checked against any bound.
+///
+/// Each paginated use case turns it into a [`Pagination`] with [`PageRequest::paginate`],
+/// supplying its own `max_offset`: the adapter that receives the request never knows how deep
+/// the endpoint may be paginated.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct PageRequest {
+    pub page: u32,
+    pub page_size: u32,
+}
+
+impl PageRequest {
+    /// Validates this request against `max_offset`, see [`Pagination::try_new`].
+    ///
+    /// # Errors
+    ///
+    /// Same as [`Pagination::try_new`].
+    pub fn paginate(self, max_offset: u32) -> Result<Pagination, FunctionalError> {
+        Pagination::try_new(self.page, self.page_size, max_offset)
+    }
+}
+
+impl Default for PageRequest {
+    fn default() -> Self {
+        Self {
+            page: 0,
+            page_size: DEFAULT_PAGE_SIZE,
+        }
+    }
+}
+
 /// A validated `page` / `page_size` pair.
 ///
 /// The only way to obtain an instance is [`Pagination::try_new`], so a `Pagination` in hand is
@@ -169,6 +200,29 @@ mod tests {
                 max: 1000
             })
         );
+    }
+
+    #[test]
+    fn page_request_paginate_applies_the_given_max_offset() {
+        let request = PageRequest {
+            page: 3,
+            page_size: 20,
+        };
+
+        assert_eq!(request.paginate(60), Pagination::try_new(3, 20, 60));
+        assert_eq!(
+            request.paginate(40),
+            Err(FunctionalError::PaginationTooDeep {
+                requested_offset: 60,
+                max: 40
+            })
+        );
+    }
+
+    #[test]
+    fn default_page_request_matches_default_pagination() {
+        let pagination = PageRequest::default().paginate(0).unwrap();
+        assert_eq!(pagination, Pagination::default());
     }
 
     #[test]

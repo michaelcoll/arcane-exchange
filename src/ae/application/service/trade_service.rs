@@ -7,7 +7,7 @@ use crate::application::use_case::{
 };
 use crate::domain::card::CopyId;
 use crate::domain::error::FunctionalError;
-use crate::domain::pagination::Paginated;
+use crate::domain::pagination::{PageRequest, Paginated};
 use crate::domain::trade::{
     Party, Trade, TradeDetail, TradeId, TradeListQuery, TradeSummary, TradeTransition,
 };
@@ -379,8 +379,9 @@ impl ListTradesUseCase for ListTradesService {
     async fn list_trades(
         &self,
         caller_id: UserId,
-        query: TradeListQuery,
+        query: TradeListQuery<PageRequest>,
     ) -> Result<Paginated<TradeSummary>, AppError> {
+        let query = query.paginate(TRADES_MAX_OFFSET)?;
         self.trade_repository.list_trades(&caller_id, query).await
     }
 }
@@ -390,7 +391,6 @@ mod tests {
     use super::*;
     use crate::application::repository::{MockTradeRepository, MockUserRepository};
     use crate::domain::language_code::LanguageCode;
-    use crate::domain::pagination::Pagination;
     use crate::domain::trade::{TradeCard, TradeCardDetail, TradeStatus};
     use crate::domain::user::User;
 
@@ -1791,12 +1791,15 @@ mod tests {
 
     // --- ListTradesService ---
 
-    #[tokio::test]
-    async fn list_trades_delegates_to_repository_with_caller_id_and_query() {
-        let query = TradeListQuery {
+    fn trade_list_query_for(page: u32, page_size: u32) -> TradeListQuery<PageRequest> {
+        TradeListQuery {
             statuses: vec![TradeStatus::Pending],
-            pagination: Pagination::try_new(0, 20, TRADES_MAX_OFFSET).unwrap(),
-        };
+            pagination: PageRequest { page, page_size },
+        }
+    }
+
+    #[tokio::test]
+    async fn list_trades_accepts_an_offset_at_the_trades_limit_and_passes_caller_and_statuses() {
         let mut mock_repository = MockTradeRepository::new();
         mock_repository
             .expect_list_trades()
@@ -1815,11 +1818,47 @@ mod tests {
             });
 
         let service = ListTradesService::new(Arc::new(mock_repository));
+        // 20 * 100 = 2 000, exactly TRADES_MAX_OFFSET.
         let result = service
-            .list_trades(make_initiator_id(), query)
+            .list_trades(make_initiator_id(), trade_list_query_for(20, 100))
             .await
             .unwrap();
 
-        assert_eq!(result.total, 0);
+        assert_eq!(result.pagination.offset(), TRADES_MAX_OFFSET);
+    }
+
+    #[tokio::test]
+    async fn list_trades_rejects_an_offset_beyond_the_trades_limit_without_reaching_the_repository()
+    {
+        // No expectation set: mockall panics if the repository is called.
+        let service = ListTradesService::new(Arc::new(MockTradeRepository::new()));
+
+        let result = service
+            .list_trades(make_initiator_id(), trade_list_query_for(21, 100))
+            .await;
+
+        match result {
+            Err(AppError::Functional(FunctionalError::PaginationTooDeep {
+                requested_offset: 2_100,
+                max: TRADES_MAX_OFFSET,
+            })) => {}
+            other => panic!("Expected PaginationTooDeep, got {:?}", other),
+        }
+    }
+
+    #[tokio::test]
+    async fn list_trades_rejects_a_page_size_above_the_max() {
+        let service = ListTradesService::new(Arc::new(MockTradeRepository::new()));
+
+        let result = service
+            .list_trades(make_initiator_id(), trade_list_query_for(0, 101))
+            .await;
+
+        match result {
+            Err(AppError::Functional(FunctionalError::InvalidPageSize {
+                requested: 101, ..
+            })) => {}
+            other => panic!("Expected InvalidPageSize, got {:?}", other),
+        }
     }
 }
