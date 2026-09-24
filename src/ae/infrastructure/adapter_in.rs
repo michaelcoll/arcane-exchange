@@ -1,5 +1,7 @@
 use crate::application::error::{AppError, InfraError};
+use crate::domain::card::CopyId;
 use crate::domain::error::FunctionalError;
+use crate::domain::language_code::LanguageCode;
 use axum::Json;
 use axum::http::StatusCode;
 use axum::response::{IntoResponse, Response};
@@ -15,6 +17,24 @@ pub mod search;
 pub mod sets;
 pub mod trade;
 pub mod user;
+
+/// Builds the card copy a request designates by its raw `set_code` / `collector_number` /
+/// `language_code` / `foil` fields. An unknown language code or an invalid collector number is a
+/// functional error (400).
+pub(crate) fn parse_copy_id(
+    set_code: &str,
+    collector_number: &str,
+    language_code: &str,
+    foil: bool,
+) -> Result<CopyId, AppError> {
+    let language_code = LanguageCode::try_new(language_code)?;
+    Ok(CopyId::try_new(
+        set_code,
+        collector_number,
+        language_code,
+        foil,
+    )?)
+}
 
 impl IntoResponse for AppError {
     fn into_response(self) -> Response {
@@ -72,6 +92,37 @@ impl IntoResponse for AppError {
 mod tests {
     use super::*;
     use crate::application::error::AuthenticationError;
+
+    #[test]
+    fn parse_copy_id_builds_the_copy() {
+        let copy_id = parse_copy_id("FDN", "87", "FR", true).unwrap();
+
+        assert_eq!(copy_id, CopyId::new("FDN", "87", LanguageCode::FR, true));
+    }
+
+    #[test]
+    fn parse_copy_id_rejects_unknown_language_code() {
+        let result = parse_copy_id("FDN", "87", "XX", false);
+
+        assert!(matches!(
+            result,
+            Err(AppError::Functional(FunctionalError::InvalidLanguageCode(
+                _
+            )))
+        ));
+    }
+
+    #[test]
+    fn parse_copy_id_rejects_too_long_collector_number() {
+        let result = parse_copy_id("FDN", "12345678901", "EN", false);
+
+        assert!(matches!(
+            result,
+            Err(AppError::Functional(
+                FunctionalError::InvalidCollectorNumber(_)
+            ))
+        ));
+    }
 
     #[test]
     fn parse_error_returns_bad_request_status() {

@@ -4,13 +4,12 @@ use super::dto::{
 };
 use crate::application::error::AppError;
 use crate::application::service::trade_service::TRADES_MAX_OFFSET;
-use crate::domain::card::CopyId;
 use crate::domain::error::FunctionalError;
-use crate::domain::language_code::LanguageCode;
 use crate::domain::pagination::Pagination;
 use crate::domain::trade::{TradeId, TradeListQuery};
 use crate::infrastructure::AppState;
 use crate::infrastructure::adapter_in::auth_extractor::AuthenticatedUser;
+use crate::infrastructure::adapter_in::parse_copy_id;
 use axum::extract::{Path, State};
 use axum::http::StatusCode;
 use axum::routing::{get, post};
@@ -79,14 +78,12 @@ pub(crate) async fn add_trade_card(
     Path(trade_id): Path<uuid::Uuid>,
     axum::Json(payload): axum::Json<AddTradeCardRequest>,
 ) -> Result<StatusCode, AppError> {
-    let language_code = LanguageCode::try_new(&payload.language_code).map_err(AppError::from)?;
-    let copy_id = CopyId::try_new(
-        payload.set_code.as_str(),
-        payload.collector_number,
-        language_code,
+    let copy_id = parse_copy_id(
+        &payload.set_code,
+        &payload.collector_number,
+        &payload.language_code,
         payload.foil,
-    )
-    .map_err(AppError::from)?;
+    )?;
 
     if payload.quantity == 0 {
         return Err(AppError::Functional(FunctionalError::WrongFormat(
@@ -130,14 +127,12 @@ pub(crate) async fn remove_trade_card(
     Path(trade_id): Path<uuid::Uuid>,
     axum::Json(payload): axum::Json<RemoveTradeCardRequest>,
 ) -> Result<StatusCode, AppError> {
-    let language_code = LanguageCode::try_new(&payload.language_code).map_err(AppError::from)?;
-    let copy_id = CopyId::try_new(
-        payload.set_code.as_str(),
-        payload.collector_number,
-        language_code,
+    let copy_id = parse_copy_id(
+        &payload.set_code,
+        &payload.collector_number,
+        &payload.language_code,
         payload.foil,
-    )
-    .map_err(AppError::from)?;
+    )?;
 
     state
         .remove_trade_card_use_case
