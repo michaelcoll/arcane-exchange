@@ -28,7 +28,7 @@ impl GathererIdEnricher {
 #[async_trait]
 impl Enricher for GathererIdEnricher {
     /// The card's name.
-    type Job = String;
+    type Lookup = String;
     const NAME: &'static str = "Gatherer id";
 
     async fn pending(&self) -> Result<Vec<(CardId, String)>, AppError> {

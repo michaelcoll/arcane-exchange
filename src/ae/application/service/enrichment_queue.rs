@@ -11,23 +11,24 @@ use crate::domain::card::CardId;
 use async_trait::async_trait;
 use std::collections::HashSet;
 use std::sync::{Arc, Mutex, PoisonError};
+use tokio::sync::mpsc::error::SendError;
 use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender, unbounded_channel};
 
 /// One enrichment source (e.g. Cardmarket id via Scryfall, Gatherer id).
 #[async_trait]
 pub trait Enricher: Send + Sync + 'static {
     /// What `resolve` needs, besides the card id, to look the card up in the external source.
-    type Job: Send + 'static;
+    type Lookup: Send + 'static;
 
     /// Source name, used in logs.
     const NAME: &'static str;
 
     /// Cards still missing the enriched attribute.
-    async fn pending(&self) -> Result<Vec<(CardId, Self::Job)>, AppError>;
+    async fn pending(&self) -> Result<Vec<(CardId, Self::Lookup)>, AppError>;
 
     /// Looks the card up and stores the result. An error is logged by the queue and does not
     /// stop it.
-    async fn resolve(&self, card_id: &CardId, job: Self::Job) -> Result<(), AppError>;
+    async fn resolve(&self, card_id: &CardId, lookup: Self::Lookup) -> Result<(), AppError>;
 
     /// Source-specific work run when the queue drains, before the views are refreshed.
     async fn after_drain(&self) -> Result<(), AppError> {
@@ -38,7 +39,7 @@ pub trait Enricher: Send + Sync + 'static {
 /// Enqueue side of an enrichment queue. Its worker runs in its own task, see [`Self::spawn`].
 pub struct EnrichmentQueue<E: Enricher> {
     enricher: Arc<E>,
-    sender: UnboundedSender<(CardId, E::Job)>,
+    sender: UnboundedSender<(CardId, E::Lookup)>,
     in_flight: Arc<InFlightCards>,
 }
 
@@ -75,12 +76,12 @@ impl<E: Enricher> EnrichmentQueue<E> {
     pub async fn enqueue_pending(&self) -> Result<usize, AppError> {
         let cards = self.enricher.pending().await?;
         let mut enqueued = 0;
-        for (card_id, job) in cards {
+        for (card_id, lookup) in cards {
             if !self.in_flight.insert(card_id.clone()) {
                 continue;
             }
-            if let Err(rejected) = self.sender.send((card_id, job)) {
-                self.in_flight.remove(&rejected.0.0);
+            if let Err(SendError((card_id, _))) = self.sender.send((card_id, lookup)) {
+                self.in_flight.remove(&card_id);
                 return Err(InfraError::QueueError(format!(
                     "{} worker channel closed, cannot enqueue card",
                     E::NAME
@@ -95,7 +96,7 @@ impl<E: Enricher> EnrichmentQueue<E> {
 
 struct EnrichmentWorker<E: Enricher> {
     enricher: Arc<E>,
-    receiver: UnboundedReceiver<(CardId, E::Job)>,
+    receiver: UnboundedReceiver<(CardId, E::Lookup)>,
     in_flight: Arc<InFlightCards>,
     card_prices_view: Arc<dyn CardPricesViewRepository>,
 }
@@ -105,8 +106,8 @@ impl<E: Enricher> EnrichmentWorker<E> {
     async fn run(mut self) {
         tracing::info!("{} enrichment worker started.", E::NAME);
 
-        while let Some((card_id, job)) = self.receiver.recv().await {
-            if let Err(e) = self.enricher.resolve(&card_id, job).await {
+        while let Some((card_id, lookup)) = self.receiver.recv().await {
+            if let Err(e) = self.enricher.resolve(&card_id, lookup).await {
                 tracing::error!(
                     "{} enrichment failed for card {}: {:?}",
                     E::NAME,
@@ -163,7 +164,7 @@ mod tests {
     use std::sync::atomic::{AtomicUsize, Ordering};
     use tokio::sync::Notify;
 
-    fn card(n: &str) -> CardId {
+    fn make_card_id(n: &str) -> CardId {
         CardId::new(SetCode::new("FDN"), n, LanguageCode::FR)
     }
 
@@ -181,7 +182,7 @@ mod tests {
     impl FakeEnricher {
         fn with_pending(cards: &[&str]) -> Self {
             Self {
-                pending: cards.iter().copied().map(card).collect(),
+                pending: cards.iter().copied().map(make_card_id).collect(),
                 ..Self::default()
             }
         }
@@ -189,7 +190,7 @@ mod tests {
 
     #[async_trait]
     impl Enricher for FakeEnricher {
-        type Job = ();
+        type Lookup = ();
         const NAME: &'static str = "Fake";
 
         async fn pending(&self) -> Result<Vec<(CardId, ())>, AppError> {
@@ -251,7 +252,7 @@ mod tests {
     async fn only_cards_not_in_flight_are_queued() {
         let (queue, _worker) =
             EnrichmentQueue::new(FakeEnricher::with_pending(&["0", "1"]), prices_view(0));
-        queue.in_flight.insert(card("0"));
+        queue.in_flight.insert(make_card_id("0"));
 
         assert_eq!(queue.enqueue_pending().await.unwrap(), 1);
     }
@@ -279,7 +280,7 @@ mod tests {
             result,
             Err(AppError::Infra(InfraError::QueueError(_)))
         ));
-        assert!(queue.in_flight.insert(card("0")));
+        assert!(queue.in_flight.insert(make_card_id("0")));
     }
 
     #[tokio::test]
@@ -298,7 +299,7 @@ mod tests {
         handle.await.unwrap();
         assert_eq!(
             *enricher.resolved.lock().unwrap(),
-            vec![card("0"), card("0")]
+            vec![make_card_id("0"), make_card_id("0")]
         );
     }
 
@@ -319,7 +320,7 @@ mod tests {
     #[tokio::test]
     async fn a_failed_resolution_does_not_stop_the_worker() {
         let enricher = FakeEnricher {
-            failing_card: Some(card("0")),
+            failing_card: Some(make_card_id("0")),
             ..FakeEnricher::with_pending(&["0", "1"])
         };
         let (queue, worker) = EnrichmentQueue::new(enricher, prices_view(1));
@@ -331,7 +332,7 @@ mod tests {
 
         assert_eq!(
             *enricher.resolved.lock().unwrap(),
-            vec![card("0"), card("1")]
+            vec![make_card_id("0"), make_card_id("1")]
         );
         assert_eq!(enricher.drains.load(Ordering::SeqCst), 1);
     }

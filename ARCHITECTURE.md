@@ -94,7 +94,7 @@ Tout tourne dans le même processus que l'API, sans ordonnanceur externe :
   `EnrichmentQueue` générique par source (`application/service/enrichment_queue.rs`) possède le
   canal, l'ensemble des cartes en file (une carte n'y est jamais deux fois) et le rafraîchissement
   des vues quand la file se vide. Chaque source n'est qu'un `Enricher` (cartes en attente +
-  résolution d'une carte) ; une nouvelle source coûte un adapter.
+  résolution d'une carte) ; une nouvelle source coûte un `Enricher`.
 - **Import des prix** : tâche planifiée (cron in-process) toutes les 12 heures.
 
 Corollaire : le backend est **stateful en mémoire** (files, dédup). Il n'est pas conçu pour tourner
