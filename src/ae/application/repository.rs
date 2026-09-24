@@ -223,41 +223,28 @@ pub trait RarityTradeFilterRepository: Send + Sync {
     async fn upsert(&self, user_id: &UserId, rule: &RarityTradeFilterRule) -> Result<(), AppError>;
 }
 
+/// Which quantity bounds a card added to a trade.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum CardAvailability {
+    /// Every copy the owner has in their collection: the caller disposes freely of their own side.
+    Owned,
+    /// Only what the owner actually offers to trade (`v_tradable_entry`: visibility, trade binders
+    /// and rarity filters applied), for a card put up on the other party's behalf.
+    Offered,
+}
+
 #[async_trait]
 #[cfg_attr(test, automock)]
 pub trait TradeRepository: Send + Sync {
-    async fn find_collection_entry_quantity(
+    /// Returns the active trade (`PENDING`, `ONE_ACCEPTED` or `FULLY_ACCEPTED`) between the two
+    /// users, whichever of them opened it, or creates it at `PENDING` with `initiator_id` as
+    /// initiator when there is none. Atomic: the unique partial index `trade_one_active_per_pair`
+    /// makes concurrent calls for the same pair converge on a single trade.
+    async fn create_or_find_active(
         &self,
-        user_id: &UserId,
-        copy_id: &CopyId,
-    ) -> Result<Option<i32>, AppError>;
-
-    /// Quantity of `copy_id` that `owner_id` actually offers to trade (`v_tradable_entry`), i.e.
-    /// after applying their visibility, trade binders and rarity filters. Returns `0` when the
-    /// owner doesn't offer this card at all (private, closed rarity, or unselected binder).
-    async fn find_proposed_quantity(
-        &self,
-        owner_id: &UserId,
-        copy_id: &CopyId,
-    ) -> Result<u8, AppError>;
-
-    /// True when `copy_id` (owned by `owner_id`) already appears in a trade other than `trade_id`
-    /// with status `ONE_ACCEPTED` or `FULLY_ACCEPTED` — i.e. it is already committed to another
-    /// trade and cannot be added to this one.
-    async fn is_card_reserved_elsewhere(
-        &self,
-        trade_id: TradeId,
-        owner_id: &UserId,
-        copy_id: &CopyId,
-    ) -> Result<bool, AppError>;
-
-    /// Finds the active trade (`PENDING`, `ONE_ACCEPTED` or `FULLY_ACCEPTED`) between two users, if any,
-    /// regardless of which one is `initiator_user_id` vs `respondent_user_id` on that trade.
-    async fn find_active_trade(
-        &self,
-        user_a: &UserId,
-        user_b: &UserId,
-    ) -> Result<Option<(TradeId, TradeStatus)>, AppError>;
+        initiator_id: &UserId,
+        respondent_id: &UserId,
+    ) -> Result<TradeId, AppError>;
 
     /// Fetches a trade by its id, if it exists.
     async fn find_by_id(&self, id: TradeId) -> Result<Option<Trade>, AppError>;
@@ -282,21 +269,29 @@ pub trait TradeRepository: Send + Sync {
         query: TradeListQuery,
     ) -> Result<Paginated<TradeSummary>, AppError>;
 
-    async fn create(
-        &self,
-        id: TradeId,
-        initiator_id: &UserId,
-        respondent_id: &UserId,
-    ) -> Result<(), AppError>;
-
-    /// Adds `copy_id` to an existing trade (or increments its `quantity` if already present for `owner_id`).
-    /// When `reopen_to_pending` is true, the trade's status is reset to `PENDING`.
+    /// Adds `copy_id` to an existing trade (or increments its `quantity` if already present for
+    /// `owner_id`). When `reopen_to_pending` is true, the trade's status is reset to `PENDING`.
+    ///
+    /// Fails, changing nothing, with:
+    /// - `TradeNotFound` if the trade doesn't exist;
+    /// - `TradeNotModifiable` if its status is no longer `expected_status` (the status the
+    ///   caller based `reopen_to_pending` on);
+    /// - `CardNotFound` if the resulting total for (`copy_id`, `owner_id`) in this trade exceeds
+    ///   what `availability` allows;
+    /// - `CardAlreadyReserved` if the card is committed to another `ONE_ACCEPTED` or
+    ///   `FULLY_ACCEPTED` trade.
+    ///
+    /// Atomic: concurrent additions to the same trade cannot together exceed the available
+    /// quantity.
+    #[allow(clippy::too_many_arguments)]
     async fn merge_card_into_trade(
         &self,
         trade_id: TradeId,
         copy_id: &CopyId,
         owner_id: &UserId,
         quantity: u8,
+        availability: CardAvailability,
+        expected_status: TradeStatus,
         reopen_to_pending: bool,
     ) -> Result<(), AppError>;
 

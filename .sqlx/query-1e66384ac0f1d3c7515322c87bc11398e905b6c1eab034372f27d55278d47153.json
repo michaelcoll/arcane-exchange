@@ -1,0 +1,29 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT id FROM trade\n                    WHERE LEAST(initiator_user_id, respondent_user_id) = LEAST($1, $2)\n                      AND GREATEST(initiator_user_id, respondent_user_id) = GREATEST($1, $2)\n                      AND status IN ('PENDING', 'ONE_ACCEPTED', 'FULLY_ACCEPTED')",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "trade",
+            "name": "id"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "1e66384ac0f1d3c7515322c87bc11398e905b6c1eab034372f27d55278d47153"
+}

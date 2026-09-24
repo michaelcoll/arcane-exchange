@@ -179,6 +179,7 @@ erDiagram
 
 ### trade
 
+- unique index `trade_one_active_per_pair` (expression)
 - check constraint `trade_initiator_rating_check`: `CHECK (((initiator_rating >= 0) AND (initiator_rating <= 5)))`
 - check constraint `trade_respondent_rating_check`: `CHECK (((respondent_rating >= 0) AND (respondent_rating <= 5)))`
 
