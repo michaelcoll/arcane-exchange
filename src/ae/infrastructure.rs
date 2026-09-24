@@ -8,14 +8,15 @@ use crate::application::service::card_import_query_service::CardImportQueryServi
 use crate::application::service::card_import_worker::CardImportWorker;
 use crate::application::service::card_offer_service::CardOfferService;
 use crate::application::service::card_price_history_service::CardPriceHistoryService;
-use crate::application::service::cardmarket_id_enqueue_service::CardMarketIdEnqueueService;
+use crate::application::service::cardmarket_id_enricher::CardMarketIdEnricher;
 use crate::application::service::collection_price_history_service::CollectionPriceHistoryService;
 use crate::application::service::collection_service::CollectionService;
 use crate::application::service::collection_stats_service::CollectionStatsService;
 use crate::application::service::collection_visibility_service::{
     GetCollectionVisibilityService, SetCollectionVisibilityService,
 };
-use crate::application::service::gatherer_id_enqueue_service::GathererIdEnqueueService;
+use crate::application::service::enrichment_queue::EnrichmentQueue;
+use crate::application::service::gatherer_id_enricher::GathererIdEnricher;
 use crate::application::service::get_user_profile_service::GetUserProfileService;
 use crate::application::service::import_card_service::{ImportCardService, RunCardImportService};
 use crate::application::service::import_price_service::ImportPriceService;
@@ -34,8 +35,6 @@ use crate::application::service::trade_service::{
     CreateTradeService, GetTradeService, ListTradesService, RateTradeService,
     RemoveTradeCardService,
 };
-use crate::application::service::update_card_market_service::CardMarketIdWorker;
-use crate::application::service::update_gatherer_service::GathererIdWorker;
 use crate::application::use_case::{
     AbandonTradeUseCase, AcceptTradeUseCase, AddTradeBinderUseCase, AddTradeCardUseCase,
     AutocompleteUsersUseCase, ConfirmTradeUseCase, CreateTradeUseCase,
@@ -49,7 +48,6 @@ use crate::application::use_case::{
     SetCollectionVisibilityUseCase, SetRarityTradeFilterUseCase, StatsUseCase,
 };
 use crate::config::Config;
-use crate::domain::card::CardId;
 use crate::infrastructure::adapter_in::autocomplete::controller::create_autocomplete_router;
 use crate::infrastructure::adapter_in::card::controller::create_card_router;
 use crate::infrastructure::adapter_in::collection::controller::create_collection_router;
@@ -81,9 +79,7 @@ use chrono::Utc;
 use cron_tab::AsyncCron;
 use sentry::integrations::tower::{NewSentryLayer, SentryHttpLayer};
 use sqlx::{Pool, Postgres};
-use std::collections::HashSet;
-use std::sync::{Arc, Mutex};
-use uuid::Uuid;
+use std::sync::Arc;
 
 pub mod adapter_in;
 pub mod adapter_out;
@@ -201,72 +197,12 @@ async fn create_auth_service(config: &Config) -> Arc<dyn AuthService> {
 }
 
 // ---- Background workers ----
-// Canal non borné + HashSet de déduplication partagé entre enqueue service et worker
-fn spawn_cardmarket_id_worker(
-    repos: &Repositories,
-    scryfall_caller_adapter: Arc<ScryfallCallerAdapter>,
-    card_collection_service: Arc<CardCollectionService>,
-) -> Arc<CardMarketIdEnqueueService> {
-    let (sender, receiver) = tokio::sync::mpsc::unbounded_channel::<(CardId, Uuid)>();
-    let dedup_set = Arc::new(Mutex::new(HashSet::<CardId>::new()));
-
-    let enqueue_service = Arc::new(CardMarketIdEnqueueService::new(
-        repos.card.clone(),
-        sender,
-        dedup_set.clone(),
-    ));
-
-    let worker = CardMarketIdWorker::new(
-        repos.card.clone(),
-        scryfall_caller_adapter,
-        card_collection_service,
-        repos.card_prices_view.clone(),
-        dedup_set,
-    );
-    tokio::spawn(async move {
-        if let Err(e) = worker.run(receiver).await {
-            tracing::error!("CardMarket worker terminated with error: {:?}", e);
-        }
-    });
-
-    enqueue_service
-}
-
-// Canal + HashSet de déduplication dédiés à l'enrichissement the_gatherer_id
-fn spawn_gatherer_id_worker(
-    repos: &Repositories,
-    gatherer_caller_adapter: Arc<GathererCallerAdapter>,
-) -> Arc<GathererIdEnqueueService> {
-    let (sender, receiver) = tokio::sync::mpsc::unbounded_channel::<(CardId, String)>();
-    let dedup_set = Arc::new(Mutex::new(HashSet::<CardId>::new()));
-
-    let enqueue_service = Arc::new(GathererIdEnqueueService::new(
-        repos.card.clone(),
-        sender,
-        dedup_set.clone(),
-    ));
-
-    let worker = GathererIdWorker::new(
-        repos.card.clone(),
-        gatherer_caller_adapter,
-        repos.card_prices_view.clone(),
-        dedup_set,
-    );
-    tokio::spawn(async move {
-        if let Err(e) = worker.run(receiver).await {
-            tracing::error!("Gatherer worker terminated with error: {:?}", e);
-        }
-    });
-
-    enqueue_service
-}
-
 // Canal non borné consommé en série par un unique worker : au plus un import actif par
 // utilisateur (contrainte portée par la base), donc pas de besoin de parallélisme ici.
 fn spawn_card_import_worker(
     repos: &Repositories,
-    enqueue_cardmarket_id_use_case: Arc<CardMarketIdEnqueueService>,
-    enqueue_gatherer_id_use_case: Arc<GathererIdEnqueueService>,
+    enqueue_cardmarket_id_use_case: Arc<dyn EnqueueCardMarketIdUpdateUseCase>,
+    enqueue_gatherer_id_use_case: Arc<dyn EnqueueGathererIdUpdateUseCase>,
 ) -> tokio::sync::mpsc::UnboundedSender<CardImportJob> {
     let (sender, receiver) = tokio::sync::mpsc::unbounded_channel::<CardImportJob>();
 
@@ -295,8 +231,8 @@ fn create_app_state(
     callers: Callers,
     auth_service: Arc<dyn AuthService>,
     card_collection_service: Arc<CardCollectionService>,
-    enqueue_cardmarket_id_use_case: Arc<CardMarketIdEnqueueService>,
-    enqueue_gatherer_id_use_case: Arc<GathererIdEnqueueService>,
+    enqueue_cardmarket_id_use_case: Arc<dyn EnqueueCardMarketIdUpdateUseCase>,
+    enqueue_gatherer_id_use_case: Arc<dyn EnqueueGathererIdUpdateUseCase>,
     card_import_sender: tokio::sync::mpsc::UnboundedSender<CardImportJob>,
 ) -> AppState {
     let import_card_service = Arc::new(ImportCardService::new(
@@ -469,12 +405,20 @@ pub async fn create_infra(pool: Pool<Postgres>, config: &Config) -> Router {
         Err(e) => tracing::error!(error = %e, "failed to reset stale card imports on startup"),
     }
 
-    let enqueue_cardmarket_id_use_case = spawn_cardmarket_id_worker(
-        &repos,
-        callers.scryfall.clone(),
-        card_collection_service.clone(),
-    );
-    let enqueue_gatherer_id_use_case = spawn_gatherer_id_worker(&repos, callers.gatherer.clone());
+    let enqueue_cardmarket_id_use_case: Arc<dyn EnqueueCardMarketIdUpdateUseCase> =
+        EnrichmentQueue::spawn(
+            CardMarketIdEnricher::new(
+                repos.card.clone(),
+                callers.scryfall.clone(),
+                card_collection_service.clone(),
+            ),
+            repos.card_prices_view.clone(),
+        );
+    let enqueue_gatherer_id_use_case: Arc<dyn EnqueueGathererIdUpdateUseCase> =
+        EnrichmentQueue::spawn(
+            GathererIdEnricher::new(repos.card.clone(), callers.gatherer.clone()),
+            repos.card_prices_view.clone(),
+        );
     let card_import_sender = spawn_card_import_worker(
         &repos,
         enqueue_cardmarket_id_use_case.clone(),
