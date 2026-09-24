@@ -1,0 +1,33 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT quantity FROM trade_card\n                WHERE trade_id = $1 AND set_code = $2 AND collector_number = $3\n                  AND language_code = $4 AND foil = $5 AND owner_user_id = $6",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "quantity",
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "trade_card",
+            "name": "quantity"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Text",
+        "Text",
+        "Text",
+        "Bool",
+        "Text"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "f4940fc83c273a382b583e59e0218d7eb4dd33ede80f2cced03a2e28880e8454"
+}

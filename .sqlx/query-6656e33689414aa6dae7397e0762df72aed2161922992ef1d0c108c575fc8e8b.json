@@ -1,0 +1,30 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO trade (id, initiator_user_id, respondent_user_id, status)\n                    VALUES ($1, $2, $3, 'PENDING')\n                    ON CONFLICT DO NOTHING\n                    RETURNING id",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "trade",
+            "name": "id"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Varchar",
+        "Varchar"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "6656e33689414aa6dae7397e0762df72aed2161922992ef1d0c108c575fc8e8b"
+}

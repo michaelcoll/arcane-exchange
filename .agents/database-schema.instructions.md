@@ -22,6 +22,10 @@ indexes, constraints). Read it for column names and relations; this file only do
 - **A trade reads `mv_last_cardmarket_prices` directly** (joined on `trade_card`, whose own `foil` supplies the
   finish) rather than the collection-gated `mv_card_prices`, so a trade still shows a card's price after its owner
   removes the card from their collection.
+- **One active trade per pair of players is enforced by the data**: the partial unique index
+  `trade_one_active_per_pair` is keyed on `(LEAST, GREATEST)` of the two user ids, so it ignores direction, and it only
+  covers `PENDING`/`ONE_ACCEPTED`/`FULLY_ACCEPTED`. The active-status list in `create_or_find_active`'s fallback
+  `SELECT` must stay identical to the index predicate, or a conflicting insert finds nothing to return.
 - **Card reservation is derived, not stored**: a card is reserved when it appears in `trade_card` of a non-terminal
   trade.
 - **`v_tradable_entry` is the only source of what a player actually offers**, derived from `users.visibility`,
