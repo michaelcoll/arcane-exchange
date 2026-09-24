@@ -17,19 +17,17 @@ fn make_app_state_with_card_price_history(
 ) -> AppState {
     AppState {
         get_card_price_history_use_case: Arc::new(mock),
-        ..AppState::for_testing(Arc::new(
-            crate::application::use_case::MockStatsUseCase::new(),
-        ))
+        ..AppState::for_testing()
     }
 }
 
 fn make_app_state_with_card_offers(
     mock: crate::application::use_case::MockGetCardOffersUseCase,
 ) -> AppState {
-    AppState::for_testing_with_card_offers(
-        Arc::new(crate::application::use_case::MockStatsUseCase::new()),
-        Arc::new(mock),
-    )
+    AppState {
+        get_card_offers_use_case: Arc::new(mock),
+        ..AppState::for_testing()
+    }
 }
 
 fn valid_offers_params() -> CardOffersParams {

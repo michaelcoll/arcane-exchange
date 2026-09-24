@@ -43,7 +43,12 @@ async fn test_get_stats_returns_stats_response_on_success() {
             })
         });
 
-    let result = get_stats(State(AppState::for_testing(Arc::new(mock_stats_use_case)))).await;
+    let app_state = AppState {
+        stats_use_case: Arc::new(mock_stats_use_case),
+        ..AppState::for_testing()
+    };
+
+    let result = get_stats(State(app_state)).await;
 
     assert!(result.is_ok());
     let Json(response) = result.unwrap();
@@ -66,7 +71,12 @@ async fn test_get_stats_returns_error_on_repository_error() {
             })
         });
 
-    let result = get_stats(State(AppState::for_testing(Arc::new(mock_stats_use_case)))).await;
+    let app_state = AppState {
+        stats_use_case: Arc::new(mock_stats_use_case),
+        ..AppState::for_testing()
+    };
+
+    let result = get_stats(State(app_state)).await;
 
     assert!(result.is_err());
     match result.unwrap_err() {
@@ -85,7 +95,12 @@ async fn test_get_stats_returns_error_on_price_not_found() {
             Box::pin(async { Err(AppError::Functional(FunctionalError::PriceNotFound)) })
         });
 
-    let result = get_stats(State(AppState::for_testing(Arc::new(mock_stats_use_case)))).await;
+    let app_state = AppState {
+        stats_use_case: Arc::new(mock_stats_use_case),
+        ..AppState::for_testing()
+    };
+
+    let result = get_stats(State(app_state)).await;
 
     assert!(result.is_err());
     match result.unwrap_err() {
@@ -110,7 +125,10 @@ async fn test_get_stats_with_multiple_calls() {
             })
         });
 
-    let app_state = AppState::for_testing(Arc::new(mock_stats_use_case));
+    let app_state = AppState {
+        stats_use_case: Arc::new(mock_stats_use_case),
+        ..AppState::for_testing()
+    };
     assert!(get_stats(State(app_state.clone())).await.is_ok());
     assert!(get_stats(State(app_state)).await.is_ok());
 }
@@ -125,10 +143,10 @@ async fn test_trigger_price_update_returns_no_content_on_success() {
         .times(1)
         .returning(|| Box::pin(async { Ok(()) }));
 
-    let app_state = AppState::for_testing_with_import_price(
-        Arc::new(MockStatsUseCase::new()),
-        Arc::new(mock_import_price),
-    );
+    let app_state = AppState {
+        import_price_use_case: Arc::new(mock_import_price),
+        ..AppState::for_testing()
+    };
 
     let result = trigger_price_update(State(app_state)).await;
     assert!(result.is_ok());
@@ -145,10 +163,10 @@ async fn trigger_price_update_returns_price_not_found_error() {
             Box::pin(async { Err(AppError::Functional(FunctionalError::PriceNotFound)) })
         });
 
-    let app_state = AppState::for_testing_with_import_price(
-        Arc::new(MockStatsUseCase::new()),
-        Arc::new(mock_import_price),
-    );
+    let app_state = AppState {
+        import_price_use_case: Arc::new(mock_import_price),
+        ..AppState::for_testing()
+    };
 
     let result = trigger_price_update(State(app_state)).await;
     assert!(result.is_err());
@@ -166,10 +184,10 @@ async fn trigger_price_update_can_be_called_multiple_times_successfully() {
         .times(2)
         .returning(|| Box::pin(async { Ok(()) }));
 
-    let app_state = AppState::for_testing_with_import_price(
-        Arc::new(MockStatsUseCase::new()),
-        Arc::new(mock_import_price),
-    );
+    let app_state = AppState {
+        import_price_use_case: Arc::new(mock_import_price),
+        ..AppState::for_testing()
+    };
 
     assert_eq!(
         trigger_price_update(State(app_state.clone()))
@@ -197,7 +215,12 @@ async fn get_stats_returns_error_when_use_case_returns_call_error() {
             })
         });
 
-    let result = get_stats(State(AppState::for_testing(Arc::new(mock_stats_use_case)))).await;
+    let app_state = AppState {
+        stats_use_case: Arc::new(mock_stats_use_case),
+        ..AppState::for_testing()
+    };
+
+    let result = get_stats(State(app_state)).await;
 
     assert!(result.is_err());
     match result.unwrap_err() {
@@ -220,10 +243,10 @@ async fn test_trigger_price_update_returns_error_on_failure() {
             })
         });
 
-    let app_state = AppState::for_testing_with_import_price(
-        Arc::new(MockStatsUseCase::new()),
-        Arc::new(mock_import_price),
-    );
+    let app_state = AppState {
+        import_price_use_case: Arc::new(mock_import_price),
+        ..AppState::for_testing()
+    };
 
     let result = trigger_price_update(State(app_state)).await;
     assert!(result.is_err());
@@ -243,10 +266,10 @@ async fn test_update_cardmarket_ids_returns_accepted_with_enqueued_count() {
         .times(1)
         .returning(|| Box::pin(async { Ok(5) }));
 
-    let app_state = AppState::for_testing_with_enqueue_cardmarket_id(
-        Arc::new(MockStatsUseCase::new()),
-        Arc::new(mock_enqueue),
-    );
+    let app_state = AppState {
+        enqueue_cardmarket_id_use_case: Arc::new(mock_enqueue),
+        ..AppState::for_testing()
+    };
 
     let result = update_cardmarket_ids(State(app_state)).await;
     assert!(result.is_ok());
@@ -263,10 +286,10 @@ async fn test_update_cardmarket_ids_returns_accepted_with_zero_when_all_deduplic
         .times(1)
         .returning(|| Box::pin(async { Ok(0) }));
 
-    let app_state = AppState::for_testing_with_enqueue_cardmarket_id(
-        Arc::new(MockStatsUseCase::new()),
-        Arc::new(mock_enqueue),
-    );
+    let app_state = AppState {
+        enqueue_cardmarket_id_use_case: Arc::new(mock_enqueue),
+        ..AppState::for_testing()
+    };
 
     let result = update_cardmarket_ids(State(app_state)).await;
     assert!(result.is_ok());
@@ -289,10 +312,10 @@ async fn test_update_cardmarket_ids_returns_error_on_repository_error() {
             })
         });
 
-    let app_state = AppState::for_testing_with_enqueue_cardmarket_id(
-        Arc::new(MockStatsUseCase::new()),
-        Arc::new(mock_enqueue),
-    );
+    let app_state = AppState {
+        enqueue_cardmarket_id_use_case: Arc::new(mock_enqueue),
+        ..AppState::for_testing()
+    };
 
     let result = update_cardmarket_ids(State(app_state)).await;
     assert!(result.is_err());
@@ -310,10 +333,10 @@ async fn test_update_cardmarket_ids_can_be_called_multiple_times() {
         .times(2)
         .returning(|| Box::pin(async { Ok(3) }));
 
-    let app_state = AppState::for_testing_with_enqueue_cardmarket_id(
-        Arc::new(MockStatsUseCase::new()),
-        Arc::new(mock_enqueue),
-    );
+    let app_state = AppState {
+        enqueue_cardmarket_id_use_case: Arc::new(mock_enqueue),
+        ..AppState::for_testing()
+    };
 
     let (s1, Json(b1)) = update_cardmarket_ids(State(app_state.clone()))
         .await
@@ -337,10 +360,10 @@ async fn test_update_gatherer_ids_returns_accepted_with_enqueued_count() {
         .times(1)
         .returning(|| Box::pin(async { Ok(5) }));
 
-    let app_state = AppState::for_testing_with_enqueue_gatherer_id(
-        Arc::new(MockStatsUseCase::new()),
-        Arc::new(mock_enqueue),
-    );
+    let app_state = AppState {
+        enqueue_gatherer_id_use_case: Arc::new(mock_enqueue),
+        ..AppState::for_testing()
+    };
 
     let result = update_gatherer_ids(State(app_state)).await;
     assert!(result.is_ok());
@@ -365,10 +388,10 @@ async fn test_update_gatherer_ids_returns_error_on_repository_error() {
             })
         });
 
-    let app_state = AppState::for_testing_with_enqueue_gatherer_id(
-        Arc::new(MockStatsUseCase::new()),
-        Arc::new(mock_enqueue),
-    );
+    let app_state = AppState {
+        enqueue_gatherer_id_use_case: Arc::new(mock_enqueue),
+        ..AppState::for_testing()
+    };
 
     let result = update_gatherer_ids(State(app_state)).await;
     assert!(result.is_err());

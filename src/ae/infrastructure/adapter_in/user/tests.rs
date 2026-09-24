@@ -4,7 +4,7 @@ use crate::application::error::{AppError, InfraError};
 use crate::application::use_case::{
     MockAddTradeBinderUseCase, MockGetCollectionVisibilityUseCase, MockGetTradeBindersUseCase,
     MockGetUserProfileUseCase, MockRegisterUserUseCase, MockRemoveTradeBinderUseCase,
-    MockSetCollectionVisibilityUseCase, MockStatsUseCase,
+    MockSetCollectionVisibilityUseCase,
 };
 use crate::domain::error::FunctionalError;
 use crate::domain::user::{CollectionVisibility, User};
@@ -18,49 +18,49 @@ use std::sync::Arc;
 fn make_app_state(register_user_use_case: MockRegisterUserUseCase) -> AppState {
     AppState {
         register_user_use_case: Arc::new(register_user_use_case),
-        ..AppState::for_testing(Arc::new(MockStatsUseCase::new()))
+        ..AppState::for_testing()
     }
 }
 
 fn make_app_state_get_visibility(uc: MockGetCollectionVisibilityUseCase) -> AppState {
     AppState {
         get_collection_visibility_use_case: Arc::new(uc),
-        ..AppState::for_testing(Arc::new(MockStatsUseCase::new()))
+        ..AppState::for_testing()
     }
 }
 
 fn make_app_state_set_visibility(uc: MockSetCollectionVisibilityUseCase) -> AppState {
     AppState {
         set_collection_visibility_use_case: Arc::new(uc),
-        ..AppState::for_testing(Arc::new(MockStatsUseCase::new()))
+        ..AppState::for_testing()
     }
 }
 
 fn make_app_state_get_trade_binders(uc: MockGetTradeBindersUseCase) -> AppState {
     AppState {
         get_trade_binders_use_case: Arc::new(uc),
-        ..AppState::for_testing(Arc::new(MockStatsUseCase::new()))
+        ..AppState::for_testing()
     }
 }
 
 fn make_app_state_add_trade_binder(uc: MockAddTradeBinderUseCase) -> AppState {
     AppState {
         add_trade_binder_use_case: Arc::new(uc),
-        ..AppState::for_testing(Arc::new(MockStatsUseCase::new()))
+        ..AppState::for_testing()
     }
 }
 
 fn make_app_state_remove_trade_binder(uc: MockRemoveTradeBinderUseCase) -> AppState {
     AppState {
         remove_trade_binder_use_case: Arc::new(uc),
-        ..AppState::for_testing(Arc::new(MockStatsUseCase::new()))
+        ..AppState::for_testing()
     }
 }
 
 fn make_app_state_get_profile(uc: MockGetUserProfileUseCase) -> AppState {
     AppState {
         get_user_profile_use_case: Arc::new(uc),
-        ..AppState::for_testing(Arc::new(MockStatsUseCase::new()))
+        ..AppState::for_testing()
     }
 }
 

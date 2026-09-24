@@ -1,6 +1,6 @@
 use super::controller::*;
 use crate::application::error::{AppError, InfraError};
-use crate::application::use_case::{MockGetSetUseCase, MockListSetsUseCase, MockStatsUseCase};
+use crate::application::use_case::{MockGetSetUseCase, MockListSetsUseCase};
 use crate::domain::set_name::{SetCode, SetName};
 use crate::infrastructure::AppState;
 use axum::extract::{Path, State};
@@ -13,7 +13,7 @@ fn make_app_state(
     AppState {
         list_sets_use_case: Arc::new(list_sets_use_case),
         get_set_use_case: Arc::new(get_set_use_case),
-        ..AppState::for_testing(Arc::new(MockStatsUseCase::new()))
+        ..AppState::for_testing()
     }
 }
 
