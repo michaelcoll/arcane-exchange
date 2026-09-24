@@ -30,9 +30,9 @@ impl GetCardOffersUseCase for CardOfferService {
         user_id: &UserId,
         copy_id: CopyId,
         sort_by: CardOfferSortField,
-        page: PageRequest,
+        page_request: PageRequest,
     ) -> Result<Paginated<CollectionEntry>, AppError> {
-        let pagination = page.paginate(CARD_OFFERS_MAX_OFFSET)?;
+        let pagination = page_request.paginate(CARD_OFFERS_MAX_OFFSET)?;
 
         if !self.repository.exists(&copy_id.card_id).await? {
             return Err(FunctionalError::CardNotFound.into());

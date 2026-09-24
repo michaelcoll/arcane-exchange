@@ -207,7 +207,7 @@ pub trait GetCardOffersUseCase: Send + Sync {
         user_id: &UserId,
         copy_id: CopyId,
         sort_by: CardOfferSortField,
-        page: PageRequest,
+        page_request: PageRequest,
     ) -> Result<Paginated<CollectionEntry>, AppError>;
 }
 

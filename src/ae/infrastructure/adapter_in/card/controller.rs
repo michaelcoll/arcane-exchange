@@ -118,14 +118,14 @@ pub(crate) async fn get_card_offers(
         &params.language_code,
         params.foil,
     )?;
-    let page = PageRequest {
+    let page_request = PageRequest {
         page: params.page,
         page_size: params.page_size,
     };
 
     let result = state
         .get_card_offers_use_case
-        .get_card_offers(&user.id, copy_id, params.sort_by.into(), page)
+        .get_card_offers(&user.id, copy_id, params.sort_by.into(), page_request)
         .await?;
 
     Ok(axum::Json(PaginatedCardOffersResponse {
