@@ -1,9 +1,12 @@
-use crate::application::caller::GathererCaller;
+use crate::application::caller::{GathererCaller, GathererCard, GathererLookup, GathererMiss};
 use crate::application::error::{AppError, InfraError};
+use crate::domain::card_image::CardImages;
 use crate::domain::language_code::LanguageCode;
 use crate::domain::set_name::SetCode;
+use crate::infrastructure::adapter_out::caller::http;
 use async_trait::async_trait;
-use ratelimit::{Ratelimiter, TryWaitError};
+use ratelimit::Ratelimiter;
+use serde_json::Value;
 
 pub struct GathererCallerAdapter {
     client: reqwest::Client,
@@ -14,13 +17,15 @@ pub struct GathererCallerAdapter {
 impl GathererCallerAdapter {
     pub fn new(gatherer_base_url: impl Into<String>) -> Self {
         Self {
-            client: reqwest::Client::builder()
-                .user_agent("reqwest")
-                .build()
-                .unwrap(),
+            client: http::client(),
             gatherer_base_url: gatherer_base_url.into(),
             ratelimiter: Ratelimiter::builder(2).max_tokens(2).build().unwrap(),
         }
+    }
+
+    async fn get_image(&self, url: &str) -> Result<Option<Vec<u8>>, AppError> {
+        http::throttle(&self.ratelimiter, "Gatherer").await?;
+        http::get_bytes_unless_not_found(&self.client, url).await
     }
 }
 
@@ -58,16 +63,125 @@ fn extract_image_id(image_url: &str) -> Option<String> {
     }
 }
 
-#[async_trait]
-impl GathererCaller for GathererCallerAdapter {
-    #[tracing::instrument(name = "gatherer.get_gatherer_id", skip_all, fields(sentry.op = "http.client"))]
-    async fn get_gatherer_id(
+/// The image URLs a Gatherer card page shows.
+#[derive(Debug, PartialEq, Eq)]
+struct GathererPage {
+    /// The `og:image`, the front face.
+    front_url: String,
+    back: Back,
+}
+
+#[derive(Debug, PartialEq, Eq)]
+enum Back {
+    /// Not a double-faced card (split, adventure and flip cards included).
+    None,
+    Url(String),
+    /// A double-faced card whose back image the page does not give.
+    Missing,
+    /// The card is not in the page data, so whether it has a back is unknown. Treated as a
+    /// technical error: guessing "single-faced" would store a front alone and never retry it.
+    Unreadable,
+}
+
+/// Reads the front image from the `og:image` meta tag and, for a double-faced card, the back
+/// image from the page's data, or `None` if the page has no `og:image`.
+fn parse_page(html: &str) -> Option<GathererPage> {
+    let document = scraper::Html::parse_document(html);
+    let og_image = scraper::Selector::parse(r#"meta[property="og:image"]"#).unwrap();
+    let front_url = document
+        .select(&og_image)
+        .next()?
+        .value()
+        .attr("content")?
+        .to_string();
+
+    let script = scraper::Selector::parse("script").unwrap();
+    let payload: String = document
+        .select(&script)
+        .filter_map(|element| flight_chunk(&element.text().collect::<String>()))
+        .collect();
+    let back = find_back(&payload, &front_url);
+
+    Some(GathererPage { front_url, back })
+}
+
+/// The page data is streamed by Next.js as `self.__next_f.push([1,"<chunk>"])` scripts; their
+/// concatenated chunks form lines of `<hex id>:<JSON>`.
+fn flight_chunk(script: &str) -> Option<String> {
+    let arguments = script
+        .trim()
+        .strip_prefix("self.__next_f.push(")?
+        .strip_suffix(')')?;
+    match serde_json::from_str::<Value>(arguments).ok()? {
+        Value::Array(items) if items.first() == Some(&Value::from(1)) => {
+            items.get(1)?.as_str().map(str::to_string)
+        }
+        _ => None,
+    }
+}
+
+/// Finds, in the page data, the card whose front image is `front_url` (the page also lists other
+/// printings) and reads its back from its `compositeCard`.
+fn find_back(payload: &str, front_url: &str) -> Back {
+    for line in payload.lines() {
+        let Some((id, json)) = line.split_once(':') else {
+            continue;
+        };
+        if id.is_empty() || !id.chars().all(|c| c.is_ascii_hexdigit()) {
+            continue;
+        }
+        let Ok(value) = serde_json::from_str::<Value>(json) else {
+            continue;
+        };
+        if let Some(card) = find_card(&value, front_url) {
+            let composite = &card["compositeCard"];
+            if composite["compositeType"] != "Doublefaced" {
+                return Back::None;
+            }
+            return match composite["imageUrls"]["medium"].as_str() {
+                Some(url) => Back::Url(url.to_string()),
+                None => Back::Missing,
+            };
+        }
+    }
+    Back::Unreadable
+}
+
+fn find_card<'a>(value: &'a Value, front_url: &str) -> Option<&'a Value> {
+    match value {
+        Value::Object(object) => {
+            if object
+                .get("imageUrls")
+                .and_then(|urls| urls.get("medium"))
+                .is_some_and(|medium| medium == front_url)
+            {
+                return Some(value);
+            }
+            object
+                .values()
+                .find_map(|child| find_card(child, front_url))
+        }
+        Value::Array(items) => items.iter().find_map(|child| find_card(child, front_url)),
+        _ => None,
+    }
+}
+
+/// A card page as read, with the Gatherer id of its front image.
+struct ReadPage {
+    url: String,
+    gatherer_id: String,
+    page: GathererPage,
+}
+
+impl GathererCallerAdapter {
+    /// Reads the card page in `language_code`, or why it has no usable image.
+    async fn read_page(
         &self,
         set_code: SetCode,
         collector_number: String,
         language_code: LanguageCode,
         name: String,
-    ) -> Result<Option<String>, AppError> {
+    ) -> Result<Result<ReadPage, GathererMiss>, AppError> {
         let url = format!(
             "{}/{}/{}/{}/{}",
             self.gatherer_base_url,
@@ -77,56 +191,99 @@ impl GathererCaller for GathererCallerAdapter {
             slugify(&name),
         );
 
-        if let Err(err) = self.ratelimiter.try_wait() {
-            match err {
-                TryWaitError::Insufficient(duration) => {
-                    tokio::time::sleep(duration).await;
-                }
-                TryWaitError::ExceedsCapacity => {
-                    return Err(InfraError::CallError(
-                        "Gatherer rate limiter overflow".to_string(),
-                    )
-                    .into());
-                }
-                _ => {
-                    return Err(
-                        InfraError::CallError("Gatherer rate limiter error".to_string()).into(),
-                    );
-                }
-            }
-        }
-
-        let response = self.client.get(&url).send().await?;
-
-        if !response.status().is_success() {
-            tracing::warn!(
-                "Gatherer page not found for {url} (status {})",
-                response.status()
-            );
-            return Ok(None);
-        }
-
+        http::throttle(&self.ratelimiter, "Gatherer").await?;
+        let Some(response) = http::get_unless_not_found(&self.client, &url).await? else {
+            tracing::debug!("Gatherer page not found for {url}");
+            return Ok(Err(GathererMiss::NoPage));
+        };
         let html = response.text().await?;
 
-        let document = scraper::Html::parse_document(&html);
-        let selector = scraper::Selector::parse(r#"meta[property="og:image"]"#)
-            .map_err(|e| InfraError::CallError(format!("invalid selector: {e}")))?;
-
-        let Some(content) = document
-            .select(&selector)
-            .next()
-            .and_then(|el| el.value().attr("content"))
-        else {
+        let Some(page) = parse_page(&html) else {
             tracing::warn!("Gatherer page for {url} has no og:image meta tag");
-            return Ok(None);
+            return Ok(Err(GathererMiss::NoImageOnPage));
+        };
+        let Some(gatherer_id) = extract_image_id(&page.front_url) else {
+            tracing::warn!(
+                "Gatherer og:image URL for {url} has no extractable id: {}",
+                page.front_url
+            );
+            return Ok(Err(GathererMiss::NoImageOnPage));
+        };
+        Ok(Ok(ReadPage {
+            url,
+            gatherer_id,
+            page,
+        }))
+    }
+}
+
+#[async_trait]
+impl GathererCaller for GathererCallerAdapter {
+    #[tracing::instrument(name = "gatherer.get_card", skip_all, fields(sentry.op = "http.client"))]
+    async fn get_card(
+        &self,
+        set_code: SetCode,
+        collector_number: String,
+        language_code: LanguageCode,
+        name: String,
+    ) -> Result<GathererLookup, AppError> {
+        let ReadPage {
+            url,
+            gatherer_id,
+            page,
+        } = match self
+            .read_page(set_code, collector_number, language_code, name)
+            .await?
+        {
+            Ok(read) => read,
+            Err(miss) => return Ok(GathererLookup::NotFound(miss)),
         };
 
-        let Some(id) = extract_image_id(content) else {
-            tracing::warn!("Gatherer og:image URL for {url} has no extractable id: {content}");
-            return Ok(None);
+        let back_url = match page.back {
+            Back::None => None,
+            Back::Url(back_url) => Some(back_url),
+            Back::Missing => {
+                tracing::debug!("Gatherer page for {url} has no back image");
+                return Ok(GathererLookup::NotFound(GathererMiss::NoBackOnPage));
+            }
+            Back::Unreadable => {
+                return Err(InfraError::CallError(format!(
+                    "Gatherer page for {url} has no data for its og:image card"
+                ))
+                .into());
+            }
         };
 
-        Ok(Some(id))
+        let Some(front) = self.get_image(&page.front_url).await? else {
+            return Ok(GathererLookup::NotFound(GathererMiss::NoImage));
+        };
+        let back = match back_url {
+            None => None,
+            Some(back_url) => match self.get_image(&back_url).await? {
+                Some(back) => Some(back),
+                None => return Ok(GathererLookup::NotFound(GathererMiss::NoBack)),
+            },
+        };
+
+        Ok(GathererLookup::Found(GathererCard {
+            gatherer_id,
+            images: CardImages { front, back },
+        }))
+    }
+
+    #[tracing::instrument(name = "gatherer.get_gatherer_id", skip_all, fields(sentry.op = "http.client"))]
+    async fn get_gatherer_id(
+        &self,
+        set_code: SetCode,
+        collector_number: String,
+        language_code: LanguageCode,
+        name: String,
+    ) -> Result<Option<String>, AppError> {
+        Ok(self
+            .read_page(set_code, collector_number, language_code, name)
+            .await?
+            .ok()
+            .map(|read| read.gatherer_id))
     }
 }
 
@@ -136,8 +293,75 @@ mod tests {
     use wiremock::matchers::path;
     use wiremock::{Mock, MockServer, ResponseTemplate};
 
-    fn og_image_html(content: &str) -> String {
-        format!(r#"<html><head><meta property="og:image" content="{content}"/></head></html>"#)
+    /// A card page as Gatherer serves it: the `og:image` meta tag, and the page data streamed as
+    /// Next.js flight chunks, listing the card (optionally double-faced) and another printing.
+    fn page_html(front_url: &str, composite: Option<Value>) -> String {
+        let card = serde_json::json!({
+            "setCode": "ISD",
+            "cardNumber": "51",
+            "imageUrls": { "small": "ignored", "medium": front_url },
+            "compositeCard": composite,
+        });
+        let other_printing = serde_json::json!({
+            "setCode": "INR",
+            "imageUrls": { "medium": "https://other/front.webp" },
+            "compositeCard": {
+                "compositeType": "Doublefaced",
+                "imageUrls": { "medium": "https://other/back.webp" }
+            },
+        });
+        let line = format!(
+            "1a:[\"$\",\"div\",null,{}]\n",
+            serde_json::json!({ "printings": [other_printing, card] })
+        );
+        // The line is split across two chunks, as Next.js does.
+        let (first, second) = line.split_at(line.len() / 2);
+        let script = |chunk: &str| {
+            format!(
+                "<script>self.__next_f.push([1,{}])</script>",
+                serde_json::to_string(chunk).unwrap()
+            )
+        };
+        format!(
+            r#"<html><head><meta property="og:image" content="{front_url}"/></head><body>
+            <script>self.__next_f.push([0])</script>{}{}</body></html>"#,
+            script("0:{\"P\":null}\n"),
+            script(first) + &script(second),
+        )
+    }
+
+    fn double_faced(back_url: Option<&str>) -> Option<Value> {
+        let mut composite = serde_json::json!({ "compositeType": "Doublefaced" });
+        if let Some(back_url) = back_url {
+            composite["imageUrls"] = serde_json::json!({ "medium": back_url });
+        }
+        Some(composite)
+    }
+
+    async fn mount(server: &MockServer, url_path: &str, response: ResponseTemplate) {
+        Mock::given(path(url_path))
+            .respond_with(response)
+            .mount(server)
+            .await;
+    }
+
+    async fn get_card(server: &MockServer, language: LanguageCode) -> GathererLookup {
+        GathererCallerAdapter::new(server.uri())
+            .get_card(
+                SetCode::new("ISD"),
+                "51".to_string(),
+                language,
+                "Delver of Secrets // Insectile Aberration".to_string(),
+            )
+            .await
+            .unwrap()
+    }
+
+    fn found(lookup: GathererLookup) -> GathererCard {
+        match lookup {
+            GathererLookup::Found(card) => card,
+            GathererLookup::NotFound(miss) => panic!("expected a card, Gatherer missed: {miss}"),
+        }
     }
 
     #[test]
@@ -193,99 +417,398 @@ mod tests {
         assert_eq!(extract_image_id("https://example.com/"), None);
     }
 
-    #[tokio::test]
-    async fn get_gatherer_id_returns_id_from_og_image() {
-        let mock_server = MockServer::start().await;
+    #[test]
+    fn parse_page_reads_the_back_of_the_card_itself_not_of_another_printing() {
+        let html = page_html(
+            "https://g/Cards/medium/FRONT.webp",
+            double_faced(Some("https://g/Cards/medium/BACK.webp")),
+        );
 
-        Mock::given(path("/ECL/en-us/41/wanderbrine-preacher"))
-            .respond_with(ResponseTemplate::new(200).set_body_string(og_image_html(
-                "https://gatherer-static.wizards.com/Cards/medium/ABC123.webp",
-            )))
-            .mount(&mock_server)
-            .await;
+        assert_eq!(
+            parse_page(&html),
+            Some(GathererPage {
+                front_url: "https://g/Cards/medium/FRONT.webp".to_string(),
+                back: Back::Url("https://g/Cards/medium/BACK.webp".to_string()),
+            })
+        );
+    }
 
-        let adapter = GathererCallerAdapter::new(mock_server.uri());
-        let result = adapter
-            .get_gatherer_id(
-                SetCode::new("ECL"),
-                "41".to_string(),
-                LanguageCode::EN,
-                "Wanderbrine Preacher".to_string(),
-            )
-            .await;
+    #[test]
+    fn parse_page_gives_no_back_to_a_flip_card() {
+        let composite = Some(serde_json::json!({
+            "compositeType": "Flip",
+            "imageUrls": { "medium": "https://g/Cards/medium/FLIPPED.webp" }
+        }));
+        let html = page_html("https://g/Cards/medium/FRONT.webp", composite);
 
-        assert!(result.is_ok());
-        assert_eq!(result.unwrap(), Some("ABC123".to_string()));
+        assert_eq!(parse_page(&html).unwrap().back, Back::None);
+    }
+
+    #[test]
+    fn parse_page_without_data_for_the_og_image_card_is_unreadable() {
+        let html = page_html("https://g/Cards/medium/FRONT.webp", None).replace(
+            r#"content="https://g/Cards/medium/FRONT.webp""#,
+            r#"content="https://g/Cards/medium/ELSEWHERE.webp""#,
+        );
+
+        assert_eq!(parse_page(&html).unwrap().back, Back::Unreadable);
+    }
+
+    #[test]
+    fn find_back_skips_the_lines_that_are_not_card_data() {
+        let card = serde_json::json!({
+            "imageUrls": { "medium": "FRONT" },
+            "compositeCard": { "compositeType": "Doublefaced", "imageUrls": { "medium": "BACK" } },
+        });
+        let payload = format!("no separator\nHL:[\"not an id\"]\n1b:not json\n1c:{card}\n");
+
+        assert_eq!(find_back(&payload, "FRONT"), Back::Url("BACK".to_string()));
     }
 
     #[tokio::test]
-    async fn get_gatherer_id_returns_none_on_404() {
-        let mock_server = MockServer::start().await;
+    async fn get_card_is_not_found_when_the_og_image_has_no_id() {
+        let server = MockServer::start().await;
+        mount(
+            &server,
+            "/ISD/fr-fr/51/delver-of-secrets",
+            ResponseTemplate::new(200).set_body_string(
+                r#"<html><head><meta property="og:image" content="https://g/Cards/"/></head></html>"#,
+            ),
+        )
+        .await;
 
-        Mock::given(path("/ECL/en-us/41/unknown-card"))
-            .respond_with(ResponseTemplate::new(404))
-            .mount(&mock_server)
-            .await;
-
-        let adapter = GathererCallerAdapter::new(mock_server.uri());
-        let result = adapter
-            .get_gatherer_id(
-                SetCode::new("ECL"),
-                "41".to_string(),
-                LanguageCode::EN,
-                "Unknown Card".to_string(),
-            )
-            .await;
-
-        assert!(result.is_ok());
-        assert_eq!(result.unwrap(), None);
+        assert_eq!(
+            get_card(&server, LanguageCode::FR).await,
+            GathererLookup::NotFound(GathererMiss::NoImageOnPage)
+        );
     }
 
     #[tokio::test]
-    async fn get_gatherer_id_returns_none_when_meta_tag_missing() {
-        let mock_server = MockServer::start().await;
+    async fn get_card_fails_when_the_page_data_cannot_be_read() {
+        let server = MockServer::start().await;
+        let front_url = format!("{}/Cards/medium/FRONT.webp", server.uri());
+        mount(
+            &server,
+            "/ISD/fr-fr/51/delver-of-secrets",
+            ResponseTemplate::new(200).set_body_string(format!(
+                r#"<html><head><meta property="og:image" content="{front_url}"/></head></html>"#
+            )),
+        )
+        .await;
 
-        Mock::given(path("/ECL/en-us/41/wanderbrine-preacher"))
-            .respond_with(ResponseTemplate::new(200).set_body_string("<html></html>"))
-            .mount(&mock_server)
-            .await;
-
-        let adapter = GathererCallerAdapter::new(mock_server.uri());
-        let result = adapter
-            .get_gatherer_id(
-                SetCode::new("ECL"),
-                "41".to_string(),
-                LanguageCode::EN,
-                "Wanderbrine Preacher".to_string(),
-            )
-            .await;
-
-        assert!(result.is_ok());
-        assert_eq!(result.unwrap(), None);
-    }
-
-    #[tokio::test]
-    async fn get_gatherer_id_builds_url_with_correct_locale_per_language() {
-        let mock_server = MockServer::start().await;
-
-        Mock::given(path("/FDN/fr-fr/1/goblin-boarders"))
-            .respond_with(ResponseTemplate::new(200).set_body_string(og_image_html(
-                "https://gatherer-static.wizards.com/Cards/medium/XYZ789.webp",
-            )))
-            .mount(&mock_server)
-            .await;
-
-        let adapter = GathererCallerAdapter::new(mock_server.uri());
-        let result = adapter
-            .get_gatherer_id(
-                SetCode::new("FDN"),
-                "1".to_string(),
+        let result = GathererCallerAdapter::new(server.uri())
+            .get_card(
+                SetCode::new("ISD"),
+                "51".to_string(),
                 LanguageCode::FR,
-                "Goblin Boarders".to_string(),
+                "Delver of Secrets".to_string(),
             )
             .await;
 
-        assert!(result.is_ok());
-        assert_eq!(result.unwrap(), Some("XYZ789".to_string()));
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn parse_page_without_og_image_is_none() {
+        assert_eq!(parse_page("<html></html>"), None);
+    }
+
+    #[tokio::test]
+    async fn get_card_downloads_the_front_byte_for_byte() {
+        let server = MockServer::start().await;
+        let front_url = format!("{}/Cards/medium/ABC123.webp", server.uri());
+        mount(
+            &server,
+            "/ISD/fr-fr/51/delver-of-secrets",
+            ResponseTemplate::new(200).set_body_string(page_html(&front_url, None)),
+        )
+        .await;
+        mount(
+            &server,
+            "/Cards/medium/ABC123.webp",
+            ResponseTemplate::new(200).set_body_bytes(b"front webp".to_vec()),
+        )
+        .await;
+
+        let card = get_card(&server, LanguageCode::FR).await;
+
+        assert_eq!(
+            card,
+            GathererLookup::Found(GathererCard {
+                gatherer_id: "ABC123".to_string(),
+                images: CardImages {
+                    front: b"front webp".to_vec(),
+                    back: None,
+                },
+            })
+        );
+    }
+
+    #[tokio::test]
+    async fn get_card_downloads_the_back_of_a_double_faced_card() {
+        let server = MockServer::start().await;
+        let front_url = format!("{}/Cards/medium/FRONT.webp", server.uri());
+        let back_url = format!("{}/Cards/medium/BACK.webp", server.uri());
+        mount(
+            &server,
+            "/ISD/en-us/51/delver-of-secrets",
+            ResponseTemplate::new(200)
+                .set_body_string(page_html(&front_url, double_faced(Some(&back_url)))),
+        )
+        .await;
+        mount(
+            &server,
+            "/Cards/medium/FRONT.webp",
+            ResponseTemplate::new(200).set_body_bytes(b"front".to_vec()),
+        )
+        .await;
+        mount(
+            &server,
+            "/Cards/medium/BACK.webp",
+            ResponseTemplate::new(200).set_body_bytes(b"back".to_vec()),
+        )
+        .await;
+
+        let card = found(get_card(&server, LanguageCode::EN).await);
+
+        assert_eq!(
+            card.images,
+            CardImages {
+                front: b"front".to_vec(),
+                back: Some(b"back".to_vec()),
+            }
+        );
+    }
+
+    #[tokio::test]
+    async fn get_card_returns_small_images_as_they_are() {
+        use crate::domain::card_image::{test_images::webp_of_width, webp_width};
+
+        let server = MockServer::start().await;
+        let front_url = format!("{}/Cards/medium/SMALL.webp", server.uri());
+        mount(
+            &server,
+            "/ISD/fr-fr/51/delver-of-secrets",
+            ResponseTemplate::new(200).set_body_string(page_html(&front_url, None)),
+        )
+        .await;
+        mount(
+            &server,
+            "/Cards/medium/SMALL.webp",
+            ResponseTemplate::new(200).set_body_bytes(webp_of_width(200)),
+        )
+        .await;
+
+        let card = found(get_card(&server, LanguageCode::FR).await);
+
+        assert_eq!(webp_width(&card.images.front), Some(200));
+    }
+
+    #[tokio::test]
+    async fn get_card_is_not_found_when_the_back_is_missing_from_the_page() {
+        let server = MockServer::start().await;
+        let front_url = format!("{}/Cards/medium/FRONT.webp", server.uri());
+        mount(
+            &server,
+            "/ISD/fr-fr/51/delver-of-secrets",
+            ResponseTemplate::new(200).set_body_string(page_html(&front_url, double_faced(None))),
+        )
+        .await;
+        mount(
+            &server,
+            "/Cards/medium/FRONT.webp",
+            ResponseTemplate::new(200).set_body_bytes(b"front".to_vec()),
+        )
+        .await;
+
+        assert_eq!(
+            get_card(&server, LanguageCode::FR).await,
+            GathererLookup::NotFound(GathererMiss::NoBackOnPage)
+        );
+    }
+
+    #[tokio::test]
+    async fn get_card_is_not_found_when_the_back_image_is_404() {
+        let server = MockServer::start().await;
+        let front_url = format!("{}/Cards/medium/FRONT.webp", server.uri());
+        let back_url = format!("{}/Cards/medium/BACK.webp", server.uri());
+        mount(
+            &server,
+            "/ISD/fr-fr/51/delver-of-secrets",
+            ResponseTemplate::new(200)
+                .set_body_string(page_html(&front_url, double_faced(Some(&back_url)))),
+        )
+        .await;
+        mount(
+            &server,
+            "/Cards/medium/FRONT.webp",
+            ResponseTemplate::new(200).set_body_bytes(b"front".to_vec()),
+        )
+        .await;
+        mount(
+            &server,
+            "/Cards/medium/BACK.webp",
+            ResponseTemplate::new(404),
+        )
+        .await;
+
+        assert_eq!(
+            get_card(&server, LanguageCode::FR).await,
+            GathererLookup::NotFound(GathererMiss::NoBack)
+        );
+    }
+
+    #[tokio::test]
+    async fn get_card_is_not_found_when_the_front_image_is_404() {
+        let server = MockServer::start().await;
+        let front_url = format!("{}/Cards/medium/FRONT.webp", server.uri());
+        mount(
+            &server,
+            "/ISD/fr-fr/51/delver-of-secrets",
+            ResponseTemplate::new(200).set_body_string(page_html(&front_url, None)),
+        )
+        .await;
+        mount(
+            &server,
+            "/Cards/medium/FRONT.webp",
+            ResponseTemplate::new(404),
+        )
+        .await;
+
+        assert_eq!(
+            get_card(&server, LanguageCode::FR).await,
+            GathererLookup::NotFound(GathererMiss::NoImage)
+        );
+    }
+
+    #[tokio::test]
+    async fn get_gatherer_id_reads_only_the_page() {
+        let server = MockServer::start().await;
+        let front_url = format!("{}/Cards/medium/ABC123.webp", server.uri());
+        mount(
+            &server,
+            "/ISD/en-us/51/delver-of-secrets",
+            ResponseTemplate::new(200).set_body_string(page_html(&front_url, None)),
+        )
+        .await;
+        // No image is mounted (404): the id must not depend on downloading it.
+
+        let gatherer_id = GathererCallerAdapter::new(server.uri())
+            .get_gatherer_id(
+                SetCode::new("ISD"),
+                "51".to_string(),
+                LanguageCode::EN,
+                "Delver of Secrets".to_string(),
+            )
+            .await
+            .unwrap();
+
+        assert_eq!(gatherer_id, Some("ABC123".to_string()));
+    }
+
+    #[tokio::test]
+    async fn get_gatherer_id_is_none_on_a_404_page() {
+        let server = MockServer::start().await;
+        mount(
+            &server,
+            "/ISD/en-us/51/delver-of-secrets",
+            ResponseTemplate::new(404),
+        )
+        .await;
+
+        let gatherer_id = GathererCallerAdapter::new(server.uri())
+            .get_gatherer_id(
+                SetCode::new("ISD"),
+                "51".to_string(),
+                LanguageCode::EN,
+                "Delver of Secrets".to_string(),
+            )
+            .await
+            .unwrap();
+
+        assert_eq!(gatherer_id, None);
+    }
+
+    #[tokio::test]
+    async fn get_card_is_not_found_on_a_404_page() {
+        let server = MockServer::start().await;
+        mount(
+            &server,
+            "/ISD/fr-fr/51/delver-of-secrets",
+            ResponseTemplate::new(404),
+        )
+        .await;
+
+        assert_eq!(
+            get_card(&server, LanguageCode::FR).await,
+            GathererLookup::NotFound(GathererMiss::NoPage)
+        );
+    }
+
+    #[tokio::test]
+    async fn get_card_is_not_found_when_the_meta_tag_is_missing() {
+        let server = MockServer::start().await;
+        mount(
+            &server,
+            "/ISD/fr-fr/51/delver-of-secrets",
+            ResponseTemplate::new(200).set_body_string("<html></html>"),
+        )
+        .await;
+
+        assert_eq!(
+            get_card(&server, LanguageCode::FR).await,
+            GathererLookup::NotFound(GathererMiss::NoImageOnPage)
+        );
+    }
+
+    #[tokio::test]
+    async fn get_card_fails_on_a_server_error() {
+        let server = MockServer::start().await;
+        mount(
+            &server,
+            "/ISD/fr-fr/51/delver-of-secrets",
+            ResponseTemplate::new(503),
+        )
+        .await;
+
+        let result = GathererCallerAdapter::new(server.uri())
+            .get_card(
+                SetCode::new("ISD"),
+                "51".to_string(),
+                LanguageCode::FR,
+                "Delver of Secrets".to_string(),
+            )
+            .await;
+
+        assert!(result.is_err());
+    }
+
+    #[tokio::test]
+    async fn get_card_fails_when_the_image_download_fails() {
+        let server = MockServer::start().await;
+        let front_url = format!("{}/Cards/medium/FRONT.webp", server.uri());
+        mount(
+            &server,
+            "/ISD/fr-fr/51/delver-of-secrets",
+            ResponseTemplate::new(200).set_body_string(page_html(&front_url, None)),
+        )
+        .await;
+        mount(
+            &server,
+            "/Cards/medium/FRONT.webp",
+            ResponseTemplate::new(500),
+        )
+        .await;
+
+        let result = GathererCallerAdapter::new(server.uri())
+            .get_card(
+                SetCode::new("ISD"),
+                "51".to_string(),
+                LanguageCode::FR,
+                "Delver of Secrets".to_string(),
+            )
+            .await;
+
+        assert!(result.is_err());
     }
 }

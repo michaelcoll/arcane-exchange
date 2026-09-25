@@ -23,6 +23,27 @@ Le fait qu'un exemplaire soit foil ou normal. Propriété de l'exemplaire possé
 la Card.
 _Avoid_ : variante, version foil
 
+**Image de carte** :
+Le visuel d'une Card, une image par face : le recto, et un verso pour les seules cartes à double face
+physique (transform, modale, meld). Les cartes split, aventure ou flip n'ont qu'un recto. Une Card
+sans image est en attente, jamais en erreur.
+_Avoid_ : artwork, illustration, scan, visuel Gatherer/Scryfall
+
+**Source d'image** :
+L'origine retenue pour les images d'une Card, par ordre de préférence : Gatherer dans la langue de
+la carte, Gatherer en anglais, puis Scryfall. Une source n'est retenue que si elle fournit toutes les
+faces : les faces d'une même carte ont toujours la même source. Une vignette Gatherer (image trop
+petite) compte comme absente ; Scryfall, dernier recours, est toujours accepté.
+_Avoid_ : provider
+
+**Fallback** (d'image) :
+Une Card est en fallback quand son image ne vient pas de Gatherer dans la langue de la carte : elle
+utilise alors l'image anglaise de la même carte (Gatherer en anglais ou Scryfall), quelle que soit
+la langue de la Card. Cette image est partagée par toutes les Cards du même set et numéro en
+fallback, et par la Card anglaise : elle ne peut que s'améliorer, jamais se dégrader. Le terme
+« fallback » est réservé à ce sens.
+_Avoid_ : repli, image de repli, image par défaut
+
 **Set** :
 L'édition dont une carte est issue, identifiée par son code et portant un nom complet.
 _Avoid_ : extension, bloc

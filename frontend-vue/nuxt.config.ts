@@ -118,6 +118,13 @@ export default defineNuxtConfig({
   },
   nitro: {
     routeRules: {
+      // Card images (server/routes/card-images): a collection page loads dozens at once, and
+      // Cloudflare caches them — the default per-IP rate limit would only reject legit pages.
+      '/card-images/**': {
+        security: {
+          rateLimiter: false,
+        },
+      },
       '/api/v1/**': {
         proxy: {
           to: `http://${process.env.NUXT_BACKEND_HOSTNAME}:8080/**`,

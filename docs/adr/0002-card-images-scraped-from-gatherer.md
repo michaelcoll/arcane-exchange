@@ -1,5 +1,6 @@
 ---
 date: 2026-07-08
+status: superseded by ADR-0017
 ---
 
 # Les images de cartes viennent de Gatherer, par scraping

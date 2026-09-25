@@ -1,0 +1,38 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT image_source, image_has_back FROM card",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "image_source",
+        "type_info": "Varchar",
+        "origin": {
+          "Table": {
+            "table": "card",
+            "name": "image_source"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "image_has_back",
+        "type_info": "Bool",
+        "origin": {
+          "Table": {
+            "table": "card",
+            "name": "image_has_back"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": [
+      true,
+      false
+    ]
+  },
+  "hash": "e4e91588c13f7f7131203da1d2251c5d67362b0be5a621dc731299fff66d1a02"
+}

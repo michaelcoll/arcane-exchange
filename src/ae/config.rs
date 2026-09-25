@@ -1,4 +1,5 @@
 use std::env;
+use std::path::PathBuf;
 use std::str::FromStr;
 
 #[derive(Debug, Clone)]
@@ -12,6 +13,8 @@ pub struct Config {
     pub scryfall_base_url: String,
     pub gatherer_base_url: String,
     pub clerk_frontend_api_url: String,
+    /// Folder the card images are written to, shared with the frontend that serves them.
+    pub card_images_dir: PathBuf,
 }
 
 impl Config {
@@ -36,6 +39,9 @@ impl Config {
                 .unwrap_or_else(|_| "https://gatherer.wizards.com".to_string()),
             clerk_frontend_api_url: env::var("CLERK_FRONTEND_API_URL")
                 .expect("CLERK_FRONTEND_API_URL must be set in environment variables"),
+            card_images_dir: env::var("CARD_IMAGES_DIR")
+                .expect("CARD_IMAGES_DIR must be set in environment variables")
+                .into(),
         }
     }
 }
@@ -71,6 +77,7 @@ mod tests {
         "SCRYFALL_BASE_URL",
         "GATHERER_BASE_URL",
         "CLERK_FRONTEND_API_URL",
+        "CARD_IMAGES_DIR",
     ];
 
     // Les variables d'env sont un état global du process : chaque test repart d'un état propre
@@ -92,6 +99,7 @@ mod tests {
     fn from_env_reads_and_validates_configuration() {
         reset_env();
         set("CLERK_FRONTEND_API_URL", "https://clerk.example.com");
+        set("CARD_IMAGES_DIR", "/data/card-images");
 
         let config = Config::from_env();
 
@@ -111,12 +119,14 @@ mod tests {
         assert_eq!(config.scryfall_base_url, "https://api.scryfall.com");
         assert_eq!(config.gatherer_base_url, "https://gatherer.wizards.com");
         assert_eq!(config.clerk_frontend_api_url, "https://clerk.example.com");
+        assert_eq!(config.card_images_dir, PathBuf::from("/data/card-images"));
 
         reset_env();
         set("DATABASE_MAX_CONNECTIONS", "42");
         set("BACKEND_PORT", "9090");
         set("SCRYFALL_RATE_LIMIT_TOKENS", "16");
         set("CLERK_FRONTEND_API_URL", "https://clerk.example.com");
+        set("CARD_IMAGES_DIR", "/data/card-images");
 
         let config = Config::from_env();
 
@@ -131,6 +141,13 @@ mod tests {
 
         reset_env();
         set("CLERK_FRONTEND_API_URL", "https://clerk.example.com");
+        let result = std::panic::catch_unwind(Config::from_env);
+        let message = *result.unwrap_err().downcast::<String>().unwrap();
+        assert!(message.contains("CARD_IMAGES_DIR must be set"));
+
+        reset_env();
+        set("CLERK_FRONTEND_API_URL", "https://clerk.example.com");
+        set("CARD_IMAGES_DIR", "/data/card-images");
         set("BACKEND_PORT", "not-a-port");
 
         let result = std::panic::catch_unwind(Config::from_env);

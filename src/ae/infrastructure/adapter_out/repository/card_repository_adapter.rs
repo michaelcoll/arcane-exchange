@@ -1,9 +1,13 @@
-use crate::application::error::AppError;
+use crate::application::error::{AppError, InfraError};
 use crate::application::imported_card::ImportedCard;
-use crate::application::repository::CardRepository;
+use crate::application::repository::{CardImageLookup, CardRepository};
 use crate::domain::card::{CardId, CollectionEntry};
+use crate::domain::card_image::{CardImageSource, EnglishImage};
+use crate::domain::language_code::LanguageCode;
 use crate::domain::user::User;
-use crate::infrastructure::adapter_out::repository::entities::{CardIdEntity, CardNameEntity};
+use crate::infrastructure::adapter_out::repository::entities::{
+    CardIdEntity, CardImageLookupEntity,
+};
 use async_trait::async_trait;
 use sqlx::{Pool, Postgres, QueryBuilder};
 use std::collections::HashSet;
@@ -44,25 +48,38 @@ impl CardRepository for CardRepositoryAdapter {
         .collect::<Result<Vec<_>, _>>()?)
     }
 
-    #[tracing::instrument(name = "card_repo.get_all_without_gatherer_id", skip_all, fields(sentry.op = "db"))]
-    async fn get_all_without_gatherer_id(&self) -> Result<Vec<(CardId, String)>, AppError> {
+    #[tracing::instrument(name = "card_repo.get_all_without_image_source", skip_all, fields(sentry.op = "db"))]
+    async fn get_all_without_image_source(
+        &self,
+    ) -> Result<Vec<(CardId, CardImageLookup)>, AppError> {
         Ok(sqlx::query_as!(
-            CardNameEntity,
-            "SELECT
-                card.set_code,
-                card.collector_number,
-                card.language_code,
-                card.name
+            CardImageLookupEntity,
+            "SELECT set_code, collector_number, language_code, name, scryfall_id
             FROM card
-            WHERE card.the_gatherer_id IS NULL"
+            WHERE image_source IS NULL"
         )
         .fetch_all(&self.pool)
         .await?
         .into_iter()
-        .map(|e| {
-            let name = e.name.clone();
-            CardId::try_from(e).map(|id| (id, name))
-        })
+        .map(TryInto::try_into)
+        .collect::<Result<Vec<_>, _>>()?)
+    }
+
+    #[tracing::instrument(name = "card_repo.get_all_in_fallback_or_pending", skip_all, fields(sentry.op = "db"))]
+    async fn get_all_in_fallback_or_pending(
+        &self,
+    ) -> Result<Vec<(CardId, CardImageLookup)>, AppError> {
+        Ok(sqlx::query_as!(
+            CardImageLookupEntity,
+            "SELECT set_code, collector_number, language_code, name, scryfall_id
+            FROM card
+            WHERE image_source IS DISTINCT FROM $1",
+            CardImageSource::GathererLocalized.as_str()
+        )
+        .fetch_all(&self.pool)
+        .await?
+        .into_iter()
+        .map(TryInto::try_into)
         .collect::<Result<Vec<_>, _>>()?)
     }
 
@@ -203,6 +220,90 @@ impl CardRepository for CardRepositoryAdapter {
         Ok(())
     }
 
+    #[tracing::instrument(name = "card_repo.update_image_source", skip_all, fields(sentry.op = "db"))]
+    async fn update_image_source(
+        &self,
+        id: CardId,
+        source: CardImageSource,
+        has_back: bool,
+    ) -> Result<(), AppError> {
+        sqlx::query!(
+            r#"UPDATE card
+                SET image_source = $1, image_has_back = $2
+                WHERE set_code = $3 AND collector_number = $4 AND language_code = $5;"#,
+            source.as_str(),
+            has_back,
+            id.set_code.to_string(),
+            id.collector_number,
+            id.language_code.to_string()
+        )
+        .execute(&self.pool)
+        .await?;
+
+        Ok(())
+    }
+
+    #[tracing::instrument(name = "card_repo.find_english_image", skip_all, fields(sentry.op = "db"))]
+    async fn find_english_image(&self, id: &CardId) -> Result<Option<EnglishImage>, AppError> {
+        // Every card using the English image records its origin; they are kept aligned, but the
+        // worst one is taken so that a stale row fails safe: an image wrongly seen as Scryfall is
+        // only tried again on Gatherer, one wrongly seen as Gatherer would never be.
+        let row = sqlx::query!(
+            r#"SELECT image_source AS "image_source!", image_has_back
+               FROM card
+               WHERE set_code = $1 AND collector_number = $2
+                 AND image_source IS NOT NULL
+                 AND (language_code = $3 OR image_source <> $4)
+               ORDER BY image_source = $5 DESC, language_code
+               LIMIT 1"#,
+            id.set_code.to_string(),
+            id.collector_number,
+            LanguageCode::EN.to_string(),
+            CardImageSource::GathererLocalized.as_str(),
+            CardImageSource::Scryfall.as_str(),
+        )
+        .fetch_optional(&self.pool)
+        .await?;
+
+        row.map(|row| {
+            let source = CardImageSource::from_stored(&row.image_source).ok_or_else(|| {
+                InfraError::RepositoryError(format!("unknown image source {}", row.image_source))
+            })?;
+            Ok(EnglishImage {
+                origin: source.origin(),
+                has_back: row.image_has_back,
+            })
+        })
+        .transpose()
+    }
+
+    #[tracing::instrument(name = "card_repo.record_english_image", skip_all, fields(sentry.op = "db"))]
+    async fn record_english_image(&self, id: CardId, image: EnglishImage) -> Result<(), AppError> {
+        // The card itself, plus every card already using the English image: the English card
+        // whatever its source, and the other cards whose source is a fallback.
+        sqlx::query!(
+            r#"UPDATE card
+                SET image_source   = CASE WHEN language_code = $1 THEN $2 ELSE $3 END,
+                    image_has_back = $4
+                WHERE set_code = $5 AND collector_number = $6
+                  AND (language_code = $7
+                       OR (image_source IS NOT NULL
+                           AND (language_code = $1 OR image_source <> $8)));"#,
+            LanguageCode::EN.to_string(),
+            CardImageSource::of_english_image(&LanguageCode::EN, image.origin).as_str(),
+            CardImageSource::of_fallback(image.origin).as_str(),
+            image.has_back,
+            id.set_code.to_string(),
+            id.collector_number,
+            id.language_code.to_string(),
+            CardImageSource::GathererLocalized.as_str(),
+        )
+        .execute(&self.pool)
+        .await?;
+
+        Ok(())
+    }
+
     #[tracing::instrument(name = "card_repo.delete_all", skip_all, fields(sentry.op = "db"))]
     async fn delete_all(&self, user: User) -> Result<(), AppError> {
         sqlx::query!(
@@ -220,7 +321,7 @@ impl CardRepository for CardRepositoryAdapter {
 mod tests {
     use super::*;
     use crate::domain::card::Card;
-    use crate::domain::language_code::LanguageCode;
+    use crate::domain::card_image::ImageOrigin;
     use crate::domain::rarity_code::RarityCode;
     use crate::infrastructure::adapter_out::repository::common_repository_tests::{
         fetch_collection_entries, insert_card, insert_card_with_scryfall_id,
@@ -493,39 +594,294 @@ mod tests {
     }
 
     #[sqlx::test]
-    async fn get_all_without_gatherer_id_returns_only_cards_without_gatherer_id(pool: PgPool) {
-        insert_card_without_cardmarket_id(&pool, "FDN", "87", "FR", "Goblin Boarders").await;
+    async fn get_all_without_image_source_returns_only_pending_cards(pool: PgPool) {
+        let scryfall_id = Uuid::new_v4();
+        insert_card_with_scryfall_id(
+            &pool,
+            "FDN",
+            "87",
+            "FR",
+            "Goblin Boarders",
+            scryfall_id,
+            None,
+        )
+        .await;
         insert_card(&pool, "FDN", "12", "EN", "Goblin Boarders", 123).await;
 
         let repository = CardRepositoryAdapter::new(pool);
         repository
-            .update_gatherer_id(
+            .update_image_source(
                 CardId::new("FDN", "12", LanguageCode::EN),
-                Some("ABC123".to_string()),
+                CardImageSource::Scryfall,
+                false,
             )
             .await
             .unwrap();
 
-        let cards = repository.get_all_without_gatherer_id().await.unwrap();
+        let cards = repository.get_all_without_image_source().await.unwrap();
 
-        assert_eq!(cards.len(), 1);
-        assert_eq!(cards[0].0, CardId::new("FDN", "87", LanguageCode::FR));
-        assert_eq!(cards[0].1, "Goblin Boarders");
+        assert_eq!(
+            cards,
+            vec![(
+                CardId::new("FDN", "87", LanguageCode::FR),
+                CardImageLookup {
+                    name: "Goblin Boarders".to_string(),
+                    scryfall_id,
+                }
+            )]
+        );
+    }
+
+    #[sqlx::test]
+    async fn get_all_in_fallback_or_pending_skips_only_localized_gatherer_images(pool: PgPool) {
+        let repository = CardRepositoryAdapter::new(pool.clone());
+        for (number, source) in [
+            ("1", Some(CardImageSource::GathererLocalized)),
+            ("2", Some(CardImageSource::GathererEn)),
+            ("3", Some(CardImageSource::Scryfall)),
+            ("4", None),
+        ] {
+            insert_card(&pool, "FDN", number, "FR", "Goblin Boarders", 123).await;
+            if let Some(source) = source {
+                repository
+                    .update_image_source(CardId::new("FDN", number, LanguageCode::FR), source, true)
+                    .await
+                    .unwrap();
+            }
+        }
+
+        let mut numbers: Vec<String> = repository
+            .get_all_in_fallback_or_pending()
+            .await
+            .unwrap()
+            .into_iter()
+            .map(|(card_id, _)| card_id.collector_number)
+            .collect();
+        numbers.sort();
+
+        assert_eq!(numbers, vec!["2", "3", "4"]);
+    }
+
+    #[sqlx::test]
+    async fn update_image_source_records_the_source_and_the_back(pool: PgPool) {
+        insert_card(&pool, "FDN", "87", "FR", "Goblin Boarders", 123).await;
+        let repository = CardRepositoryAdapter::new(pool.clone());
+
+        repository
+            .update_image_source(
+                CardId::new("FDN", "87", LanguageCode::FR),
+                CardImageSource::GathererEn,
+                true,
+            )
+            .await
+            .unwrap();
+
+        let row = sqlx::query!("SELECT image_source, image_has_back FROM card")
+            .fetch_one(&pool)
+            .await
+            .unwrap();
+        assert_eq!(row.image_source.as_deref(), Some("gatherer_en"));
+        assert!(row.image_has_back);
+    }
+
+    async fn image_sources(pool: &PgPool) -> Vec<(String, Option<String>, bool)> {
+        sqlx::query!(
+            "SELECT language_code, image_source, image_has_back FROM card ORDER BY language_code"
+        )
+        .fetch_all(pool)
+        .await
+        .unwrap()
+        .into_iter()
+        .map(|row| (row.language_code, row.image_source, row.image_has_back))
+        .collect()
+    }
+
+    fn gatherer_image(has_back: bool) -> EnglishImage {
+        EnglishImage {
+            origin: ImageOrigin::Gatherer,
+            has_back,
+        }
+    }
+
+    #[sqlx::test]
+    async fn find_english_image_is_none_when_no_card_uses_it(pool: PgPool) {
+        insert_card(&pool, "FDN", "51", "EN", "Delver of Secrets", 1).await;
+        insert_card(&pool, "FDN", "51", "FR", "Delver of Secrets", 1).await;
+        let repository = CardRepositoryAdapter::new(pool);
+        // The French card uses its own image, not the English one.
+        repository
+            .update_image_source(
+                CardId::new("FDN", "51", LanguageCode::FR),
+                CardImageSource::GathererLocalized,
+                true,
+            )
+            .await
+            .unwrap();
+
+        let image = repository
+            .find_english_image(&CardId::new("FDN", "51", LanguageCode::DE))
+            .await
+            .unwrap();
+
+        assert_eq!(image, None);
+    }
+
+    #[sqlx::test]
+    async fn find_english_image_reads_it_from_the_english_card(pool: PgPool) {
+        insert_card(&pool, "FDN", "51", "EN", "Delver of Secrets", 1).await;
+        let repository = CardRepositoryAdapter::new(pool);
+        repository
+            .update_image_source(
+                CardId::new("FDN", "51", LanguageCode::EN),
+                CardImageSource::GathererLocalized,
+                true,
+            )
+            .await
+            .unwrap();
+
+        let image = repository
+            .find_english_image(&CardId::new("FDN", "51", LanguageCode::FR))
+            .await
+            .unwrap();
+
+        assert_eq!(image, Some(gatherer_image(true)));
+    }
+
+    #[sqlx::test]
+    async fn find_english_image_takes_the_worst_origin_when_cards_disagree(pool: PgPool) {
+        insert_card(&pool, "FDN", "51", "EN", "Delver of Secrets", 1).await;
+        insert_card(&pool, "FDN", "51", "DE", "Delver of Secrets", 1).await;
+        let repository = CardRepositoryAdapter::new(pool);
+        // Out of sync on purpose: EN says Gatherer, DE says Scryfall.
+        repository
+            .update_image_source(
+                CardId::new("FDN", "51", LanguageCode::EN),
+                CardImageSource::GathererLocalized,
+                false,
+            )
+            .await
+            .unwrap();
+        repository
+            .update_image_source(
+                CardId::new("FDN", "51", LanguageCode::DE),
+                CardImageSource::Scryfall,
+                false,
+            )
+            .await
+            .unwrap();
+
+        let image = repository
+            .find_english_image(&CardId::new("FDN", "51", LanguageCode::FR))
+            .await
+            .unwrap();
+
+        assert_eq!(image.map(|image| image.origin), Some(ImageOrigin::Scryfall));
+    }
+
+    #[sqlx::test]
+    async fn find_english_image_reads_it_from_a_card_in_fallback(pool: PgPool) {
+        insert_card(&pool, "FDN", "51", "DE", "Delver of Secrets", 1).await;
+        let repository = CardRepositoryAdapter::new(pool);
+        repository
+            .record_english_image(
+                CardId::new("FDN", "51", LanguageCode::DE),
+                EnglishImage {
+                    origin: ImageOrigin::Scryfall,
+                    has_back: false,
+                },
+            )
+            .await
+            .unwrap();
+
+        let image = repository
+            .find_english_image(&CardId::new("FDN", "51", LanguageCode::FR))
+            .await
+            .unwrap();
+
+        assert_eq!(
+            image,
+            Some(EnglishImage {
+                origin: ImageOrigin::Scryfall,
+                has_back: false,
+            })
+        );
+    }
+
+    #[sqlx::test]
+    async fn record_english_image_aligns_every_card_using_it(pool: PgPool) {
+        for language in ["DE", "EN", "FR", "IT", "JA"] {
+            insert_card(&pool, "FDN", "51", language, "Delver of Secrets", 1).await;
+        }
+        insert_card(&pool, "FDN", "52", "SP", "Other card", 1).await;
+        let repository = CardRepositoryAdapter::new(pool.clone());
+        let scryfall = EnglishImage {
+            origin: ImageOrigin::Scryfall,
+            has_back: false,
+        };
+        // EN and DE use the English image from Scryfall; IT has its own; JA is pending.
+        repository
+            .record_english_image(CardId::new("FDN", "51", LanguageCode::EN), scryfall)
+            .await
+            .unwrap();
+        repository
+            .record_english_image(CardId::new("FDN", "51", LanguageCode::DE), scryfall)
+            .await
+            .unwrap();
+        repository
+            .update_image_source(
+                CardId::new("FDN", "51", LanguageCode::IT),
+                CardImageSource::GathererLocalized,
+                false,
+            )
+            .await
+            .unwrap();
+
+        // FR finds a better English image on Gatherer.
+        repository
+            .record_english_image(
+                CardId::new("FDN", "51", LanguageCode::FR),
+                gatherer_image(true),
+            )
+            .await
+            .unwrap();
+
+        assert_eq!(
+            image_sources(&pool).await,
+            vec![
+                ("DE".to_string(), Some("gatherer_en".to_string()), true),
+                (
+                    "EN".to_string(),
+                    Some("gatherer_localized".to_string()),
+                    true
+                ),
+                ("FR".to_string(), Some("gatherer_en".to_string()), true),
+                (
+                    "IT".to_string(),
+                    Some("gatherer_localized".to_string()),
+                    false
+                ),
+                ("JA".to_string(), None, false),
+                ("SP".to_string(), None, false),
+            ]
+        );
     }
 
     #[sqlx::test]
     async fn update_gatherer_id_sets_the_value(pool: PgPool) {
         insert_card_without_cardmarket_id(&pool, "FDN", "87", "FR", "Goblin Boarders").await;
 
-        let repository = CardRepositoryAdapter::new(pool);
+        let repository = CardRepositoryAdapter::new(pool.clone());
         let card_id = CardId::new("FDN", "87", LanguageCode::FR);
         repository
             .update_gatherer_id(card_id.clone(), Some("ABC123".to_string()))
             .await
             .unwrap();
 
-        let remaining = repository.get_all_without_gatherer_id().await.unwrap();
-        assert!(remaining.is_empty());
+        let row = sqlx::query!("SELECT the_gatherer_id FROM card")
+            .fetch_one(&pool)
+            .await
+            .unwrap();
+        assert_eq!(row.the_gatherer_id.as_deref(), Some("ABC123"));
     }
 
     #[sqlx::test]

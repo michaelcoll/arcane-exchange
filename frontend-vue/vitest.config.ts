@@ -11,7 +11,7 @@ export default defineConfig({
       {
         test: {
           name: 'unit',
-          include: ['app/**/*.{test,spec}.ts'],
+          include: ['app/**/*.{test,spec}.ts', 'server/**/*.{test,spec}.ts'],
           environment: 'node',
         },
       },

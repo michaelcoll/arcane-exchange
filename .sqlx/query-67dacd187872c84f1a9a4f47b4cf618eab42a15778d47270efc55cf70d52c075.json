@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT\n                card.set_code,\n                card.collector_number,\n                card.language_code,\n                card.name\n            FROM card\n            WHERE card.the_gatherer_id IS NULL",
+  "query": "SELECT set_code, collector_number, language_code, name, scryfall_id\n            FROM card\n            WHERE image_source IS NULL",
   "describe": {
     "columns": [
       {
@@ -46,6 +46,17 @@
             "name": "name"
           }
         }
+      },
+      {
+        "ordinal": 4,
+        "name": "scryfall_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "card",
+            "name": "scryfall_id"
+          }
+        }
       }
     ],
     "parameters": {
@@ -55,8 +66,9 @@
       false,
       false,
       false,
+      false,
       false
     ]
   },
-  "hash": "7d42c364dfd9e2541f3fc8b8fd11a529c8f9a69e052c131c4ee9276e1e4de2ff"
+  "hash": "67dacd187872c84f1a9a4f47b4cf618eab42a15778d47270efc55cf70d52c075"
 }

@@ -10,6 +10,9 @@ example-files
 .claude
 CLAUDE.md
 
+# Card images downloaded by the local backend (CARD_IMAGES_DIR)
+.card-images
+
 # Nuxt dev/build outputs
 .output
 .data

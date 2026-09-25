@@ -51,7 +51,8 @@ impl<E: Enricher> EnrichmentQueue<E> {
         Arc::new(queue)
     }
 
-    fn new(
+    /// Creates the queue and its worker, left to the caller to run.
+    pub(super) fn new(
         enricher: E,
         card_prices_view: Arc<dyn CardPricesViewRepository>,
     ) -> (Self, EnrichmentWorker<E>) {
@@ -75,6 +76,16 @@ impl<E: Enricher> EnrichmentQueue<E> {
     /// Queues every pending card that is not already in flight and returns how many were queued.
     pub async fn enqueue_pending(&self) -> Result<usize, AppError> {
         let cards = self.enricher.pending().await?;
+        self.enqueue(cards)
+    }
+
+    pub fn enricher(&self) -> &E {
+        &self.enricher
+    }
+
+    /// Queues the given cards that are not already in flight, whether pending or not, and
+    /// returns how many were queued.
+    pub fn enqueue(&self, cards: Vec<(CardId, E::Lookup)>) -> Result<usize, AppError> {
         let mut enqueued = 0;
         for (card_id, lookup) in cards {
             if !self.in_flight.insert(card_id.clone()) {
@@ -94,7 +105,7 @@ impl<E: Enricher> EnrichmentQueue<E> {
     }
 }
 
-struct EnrichmentWorker<E: Enricher> {
+pub(super) struct EnrichmentWorker<E: Enricher> {
     enricher: Arc<E>,
     receiver: UnboundedReceiver<(CardId, E::Lookup)>,
     in_flight: Arc<InFlightCards>,
@@ -255,6 +266,19 @@ mod tests {
         queue.in_flight.insert(make_card_id("0"));
 
         assert_eq!(queue.enqueue_pending().await.unwrap(), 1);
+    }
+
+    #[tokio::test]
+    async fn given_cards_are_queued_whether_pending_or_not_but_never_twice() {
+        let (queue, _worker) =
+            EnrichmentQueue::new(FakeEnricher::with_pending(&["0"]), prices_view(0));
+        queue.enqueue_pending().await.unwrap();
+
+        let enqueued = queue
+            .enqueue(vec![(make_card_id("0"), ()), (make_card_id("9"), ())])
+            .unwrap();
+
+        assert_eq!(enqueued, 1);
     }
 
     #[tokio::test]
