@@ -14,5 +14,12 @@ export type TradeCard = {
   quantity: number;
   price_guide: PriceGuide | null;
   scryfall_id: string;
-  the_gatherer_id: string | null;
+  /**
+   * Front image, relative to the frontend; `null` while the card's image is pending.
+   */
+  image_url: string | null;
+  /**
+   * Back image of a double-faced card; `null` for a single-faced card.
+   */
+  image_back_url: string | null;
 };

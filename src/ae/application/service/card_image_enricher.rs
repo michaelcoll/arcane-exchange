@@ -57,7 +57,7 @@ impl CardImageEnricher {
         name: &str,
         language: LanguageCode,
     ) -> Result<Result<CardImages, Skipped>, AppError> {
-        let card = match self
+        let images = match self
             .gatherer_caller
             .get_card(
                 card_id.set_code.clone(),
@@ -67,45 +67,15 @@ impl CardImageEnricher {
             )
             .await?
         {
-            GathererLookup::Found(card) => card,
+            GathererLookup::Found(images) => images,
             GathererLookup::NotFound(miss) => return Ok(Err(Skipped::Gatherer(language, miss))),
         };
 
-        // Clients still build Gatherer URLs from this id, resolved in the card's language only.
-        if language == card_id.language_code {
-            self.card_repository
-                .update_gatherer_id(card_id.clone(), Some(card.gatherer_id))
-                .await?;
-        }
-
-        if card.images.all_faces_at_least(MIN_GATHERER_IMAGE_WIDTH) {
-            Ok(Ok(card.images))
+        if images.all_faces_at_least(MIN_GATHERER_IMAGE_WIDTH) {
+            Ok(Ok(images))
         } else {
-            Ok(Err(Skipped::TooSmall(
-                language,
-                FaceWidths::of(&card.images),
-            )))
+            Ok(Err(Skipped::TooSmall(language, FaceWidths::of(&images))))
         }
-    }
-
-    /// Fills the English card's Gatherer id when it reuses an image another card downloaded, by
-    /// reading its page only.
-    async fn fill_english_gatherer_id(&self, card_id: &CardId, name: &str) -> Result<(), AppError> {
-        if let Some(gatherer_id) = self
-            .gatherer_caller
-            .get_gatherer_id(
-                card_id.set_code.clone(),
-                card_id.collector_number.clone(),
-                LanguageCode::EN,
-                name.to_string(),
-            )
-            .await?
-        {
-            self.card_repository
-                .update_gatherer_id(card_id.clone(), Some(gatherer_id))
-                .await?;
-        }
-        Ok(())
     }
 
     /// Stores the card's own image, in its language.
@@ -275,11 +245,6 @@ impl Enricher for CardImageEnricher {
         if let Some(image) = existing
             && image.origin == ImageOrigin::Gatherer
         {
-            // Clients still read the_gatherer_id (until #425), which the English card only gets
-            // from its own Gatherer page.
-            if card_id.language_code == LanguageCode::EN {
-                self.fill_english_gatherer_id(card_id, &lookup.name).await?;
-            }
             skipped.push(Skipped::Reused(ImageOrigin::Gatherer));
             return self.use_english(card_id, image, &skipped).await;
         }
@@ -336,9 +301,7 @@ impl EnqueueCardImageUpdateUseCase for EnrichmentQueue<CardImageEnricher> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::application::caller::{
-        GathererCard, GathererMiss, MockGathererCaller, MockScryfallCaller,
-    };
+    use crate::application::caller::{GathererMiss, MockGathererCaller, MockScryfallCaller};
     use crate::application::error::InfraError;
     use crate::application::repository::{
         MockCardImageRepository, MockCardPricesViewRepository, MockCardRepository,
@@ -368,13 +331,6 @@ mod tests {
         }
     }
 
-    fn gatherer_card(front: u16, back: Option<u16>) -> GathererCard {
-        GathererCard {
-            gatherer_id: "GID".to_string(),
-            images: images(front, back),
-        }
-    }
-
     fn english_image(origin: ImageOrigin, has_back: bool) -> EnglishImage {
         EnglishImage { origin, has_back }
     }
@@ -384,7 +340,7 @@ mod tests {
     }
 
     /// What Gatherer answers in one language: `Ok(None)` is "not found", `Err` a technical error.
-    type Answer = Result<Option<GathererCard>, ()>;
+    type Answer = Result<Option<CardImages>, ()>;
 
     /// Gatherer answers per language; a language mapped to `None` must never be asked.
     fn gatherer(fr: Option<Answer>, en: Option<Answer>) -> MockGathererCaller {
@@ -398,8 +354,8 @@ mod tests {
                     expectation.returning(move |_, _, _, _| {
                         let answer = answer
                             .clone()
-                            .map(|card| match card {
-                                Some(card) => GathererLookup::Found(card),
+                            .map(|images| match images {
+                                Some(images) => GathererLookup::Found(images),
                                 None => GathererLookup::NotFound(GathererMiss::NoPage),
                             })
                             .map_err(|_| technical_error());
@@ -439,13 +395,9 @@ mod tests {
         English(EnglishImage),
     }
 
-    /// Accepts any gatherer id update, answers `existing` as the English image already stored,
-    /// and expects exactly `recorded`.
+    /// Answers `existing` as the English image already stored, and expects exactly `recorded`.
     fn card_repository(existing: Option<EnglishImage>, recorded: Recorded) -> MockCardRepository {
         let mut repository = MockCardRepository::new();
-        repository
-            .expect_update_gatherer_id()
-            .returning(|_, _| Box::pin(async { Ok(()) }));
         repository
             .expect_find_english_image()
             .returning(move |_| Box::pin(async move { Ok(existing) }));
@@ -634,34 +586,7 @@ mod tests {
         let enricher = enricher(
             card_repository(None, Recorded::Own { has_back: false }),
             image_repository(Some((make_card_id(LanguageCode::FR), images(BIG, None)))),
-            gatherer(Some(Ok(Some(gatherer_card(BIG, None)))), None),
-            no_scryfall_call(),
-        );
-
-        resolve(enricher, LanguageCode::FR).await.unwrap();
-    }
-
-    #[tokio::test]
-    async fn the_localized_gatherer_id_is_stored_even_when_its_image_is_too_small() {
-        let mut card_repository = MockCardRepository::new();
-        card_repository
-            .expect_update_gatherer_id()
-            .withf(|id, gid| *id == make_card_id(LanguageCode::FR) && gid.as_deref() == Some("GID"))
-            .times(1)
-            .returning(|_, _| Box::pin(async { Ok(()) }));
-        card_repository
-            .expect_find_english_image()
-            .returning(|_| Box::pin(async { Ok(None) }));
-        card_repository
-            .expect_record_english_image()
-            .returning(|_, _| Box::pin(async { Ok(()) }));
-        let enricher = enricher(
-            card_repository,
-            image_repository(Some((make_card_id(LanguageCode::EN), images(BIG, None)))),
-            gatherer(
-                Some(Ok(Some(gatherer_card(SMALL, None)))),
-                Some(Ok(Some(gatherer_card(BIG, None)))),
-            ),
+            gatherer(Some(Ok(Some(images(BIG, None)))), None),
             no_scryfall_call(),
         );
 
@@ -676,7 +601,7 @@ mod tests {
                 Recorded::English(english_image(ImageOrigin::Gatherer, false)),
             ),
             image_repository(Some((make_card_id(LanguageCode::EN), images(BIG, None)))),
-            gatherer(Some(Ok(None)), Some(Ok(Some(gatherer_card(BIG, None))))),
+            gatherer(Some(Ok(None)), Some(Ok(Some(images(BIG, None))))),
             no_scryfall_call(),
         );
 
@@ -692,8 +617,8 @@ mod tests {
             ),
             image_repository(Some((make_card_id(LanguageCode::EN), images(BIG, None)))),
             gatherer(
-                Some(Ok(Some(gatherer_card(SMALL, None)))),
-                Some(Ok(Some(gatherer_card(BIG, None)))),
+                Some(Ok(Some(images(SMALL, None)))),
+                Some(Ok(Some(images(BIG, None)))),
             ),
             no_scryfall_call(),
         );
@@ -717,60 +642,10 @@ mod tests {
     #[tokio::test]
     async fn an_english_card_reuses_the_english_image_a_card_in_fallback_stored() {
         let existing = english_image(ImageOrigin::Gatherer, false);
-        // No image download (get_card): only the page, for the card's Gatherer id.
-        let mut gatherer_caller = gatherer(None, None);
-        gatherer_caller
-            .expect_get_gatherer_id()
-            .withf(|_, _, language, _| *language == LanguageCode::EN)
-            .times(1)
-            .returning(|_, _, _, _| Box::pin(async { Ok(Some("EN-GID".to_string())) }));
-        let mut card_repository = MockCardRepository::new();
-        card_repository
-            .expect_find_english_image()
-            .returning(move |_| Box::pin(async move { Ok(Some(existing)) }));
-        card_repository
-            .expect_update_gatherer_id()
-            .withf(|id, gid| {
-                *id == make_card_id(LanguageCode::EN) && gid.as_deref() == Some("EN-GID")
-            })
-            .times(1)
-            .returning(|_, _| Box::pin(async { Ok(()) }));
-        card_repository
-            .expect_record_english_image()
-            .withf(move |_, image| *image == existing)
-            .times(1)
-            .returning(|_, _| Box::pin(async { Ok(()) }));
         let enricher = enricher(
-            card_repository,
+            card_repository(Some(existing), Recorded::English(existing)),
             image_repository(None),
-            gatherer_caller,
-            no_scryfall_call(),
-        );
-
-        resolve(enricher, LanguageCode::EN).await.unwrap();
-    }
-
-    #[tokio::test]
-    async fn an_english_card_without_a_gatherer_page_reuses_the_image_without_an_id() {
-        let existing = english_image(ImageOrigin::Gatherer, false);
-        let mut gatherer_caller = gatherer(None, None);
-        gatherer_caller
-            .expect_get_gatherer_id()
-            .returning(|_, _, _, _| Box::pin(async { Ok(None) }));
-        let mut card_repository = MockCardRepository::new();
-        card_repository
-            .expect_find_english_image()
-            .returning(move |_| Box::pin(async move { Ok(Some(existing)) }));
-        card_repository.expect_update_gatherer_id().times(0);
-        card_repository
-            .expect_record_english_image()
-            .withf(move |_, image| *image == existing)
-            .times(1)
-            .returning(|_, _| Box::pin(async { Ok(()) }));
-        let enricher = enricher(
-            card_repository,
-            image_repository(None),
-            gatherer_caller,
+            gatherer(None, None),
             no_scryfall_call(),
         );
 
@@ -785,7 +660,7 @@ mod tests {
                 Recorded::English(english_image(ImageOrigin::Gatherer, false)),
             ),
             image_repository(Some((make_card_id(LanguageCode::EN), images(BIG, None)))),
-            gatherer(Some(Ok(None)), Some(Ok(Some(gatherer_card(BIG, None))))),
+            gatherer(Some(Ok(None)), Some(Ok(Some(images(BIG, None))))),
             no_scryfall_call(),
         );
 
@@ -813,7 +688,7 @@ mod tests {
                 Recorded::English(english_image(ImageOrigin::Scryfall, false)),
             ),
             image_repository(Some((make_card_id(LanguageCode::EN), images(SMALL, None)))),
-            gatherer(Some(Ok(None)), Some(Ok(Some(gatherer_card(SMALL, None))))),
+            gatherer(Some(Ok(None)), Some(Ok(Some(images(SMALL, None))))),
             scryfall(Ok(Some(images(SMALL, None)))),
         );
 
@@ -902,7 +777,7 @@ mod tests {
                 make_card_id(LanguageCode::FR),
                 images(BIG, Some(BIG)),
             ))),
-            gatherer(Some(Ok(Some(gatherer_card(BIG, Some(BIG))))), None),
+            gatherer(Some(Ok(Some(images(BIG, Some(BIG))))), None),
             no_scryfall_call(),
         );
 
@@ -921,8 +796,8 @@ mod tests {
                 images(BIG, Some(BIG)),
             ))),
             gatherer(
-                Some(Ok(Some(gatherer_card(BIG, Some(SMALL))))),
-                Some(Ok(Some(gatherer_card(BIG, Some(BIG))))),
+                Some(Ok(Some(images(BIG, Some(SMALL))))),
+                Some(Ok(Some(images(BIG, Some(BIG))))),
             ),
             no_scryfall_call(),
         );
@@ -939,7 +814,7 @@ mod tests {
         let enricher = enricher(
             card_repository(None, Recorded::Nothing),
             image_repository,
-            gatherer(Some(Ok(Some(gatherer_card(BIG, None)))), None),
+            gatherer(Some(Ok(Some(images(BIG, None)))), None),
             no_scryfall_call(),
         );
 

@@ -1,3 +1,4 @@
+use crate::domain::card_image::CardImage;
 use crate::domain::error::FunctionalError;
 use crate::domain::language_code::LanguageCode;
 use crate::domain::price::PriceGuide;
@@ -144,7 +145,8 @@ pub struct Card {
     pub collection_entry: CollectionEntry,
     pub scryfall_id: uuid::Uuid,
     pub cardmarket_id: Option<u32>,
-    pub the_gatherer_id: Option<String>,
+    /// `None` while the card's image is pending.
+    pub image: Option<CardImage>,
     pub price_guide: Option<PriceGuide>,
 }
 
@@ -177,7 +179,7 @@ impl Card {
             },
             scryfall_id: uuid::Uuid::default(),
             cardmarket_id: None,
-            the_gatherer_id: None,
+            image: None,
             price_guide: None,
         }
     }
@@ -193,7 +195,6 @@ impl Card {
         rarity_code: RarityCode,
         scryfall_id: uuid::Uuid,
         cardmarket_id: Option<u32>,
-        the_gatherer_id: Option<String>,
         collection_entry: CollectionEntry,
     ) -> Self {
         let set_code: SetCode = set_code.into();
@@ -206,7 +207,7 @@ impl Card {
             collection_entry,
             scryfall_id,
             cardmarket_id,
-            the_gatherer_id,
+            image: None,
             price_guide: None,
         }
     }

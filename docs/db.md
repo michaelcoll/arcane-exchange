@@ -10,7 +10,6 @@ erDiagram
         character_varying(1) rarity "not null"
         uuid scryfall_id "not null"
         integer cardmarket_id
-        character_varying(64) the_gatherer_id
         character_varying(32) image_source
         boolean image_has_back "not null, default: false"
     }
@@ -69,7 +68,6 @@ erDiagram
         character_varying(255) name
         character_varying(1) rarity
         uuid scryfall_id
-        character_varying(64) the_gatherer_id
         character_varying(50) user_id
         integer quantity
         integer purchase_price

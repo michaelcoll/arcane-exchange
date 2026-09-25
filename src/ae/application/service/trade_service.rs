@@ -1602,7 +1602,7 @@ mod tests {
             quantity: 1,
             price_guide: None,
             scryfall_id: uuid::Uuid::new_v4(),
-            the_gatherer_id: None,
+            image: None,
         }
     }
 

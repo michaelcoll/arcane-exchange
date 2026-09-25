@@ -1,20 +1,18 @@
 import Foundation
 
 enum CardArtwork {
-    /// Artwork for a card, from the same two sources as the web client (`MtgCard.vue`):
-    /// Gatherer's static image when the card carries a Gatherer id, Scryfall's image redirect
-    /// otherwise. The API returns ids, never image URLs.
-    static func url(gathererID: String?, scryfallID: String) -> URL? {
-        if let gathererID, !gathererID.isEmpty {
-            return URL(string: "https://gatherer-static.wizards.com/Cards/medium/\(gathererID).webp")
-        }
-        return URL(string: "https://api.scryfall.com/cards/\(scryfallID)?format=image&version=normal")
+    /// A card image stored by the platform (ADR 0017). The API gives its path relative to the
+    /// frontend (`image_url`, `image_back_url`), which serves `/card-images` from the same origin
+    /// it proxies the API under: the path resolves against the origin of the API base URL.
+    /// `nil` while the card's image is pending.
+    static func url(imagePath: String?, apiBaseURL: URL = AppConfig.apiBaseURL) -> URL? {
+        guard let imagePath else { return nil }
+        return URL(string: imagePath, relativeTo: apiBaseURL)?.absoluteURL
     }
 
-    /// The artwork URLs of a page of cards, in grid order — what the prefetcher warms.
-    /// Cards whose ids yield no usable URL simply drop out; the cell falls back to its
-    /// placeholder either way.
-    static func urls(for cards: [CollectionCard]) -> [URL] {
-        cards.compactMap { url(gathererID: $0.the_gatherer_id, scryfallID: $0.scryfall_id) }
+    /// The front image URLs of a page of cards, in grid order — what the prefetcher warms.
+    /// Cards still pending drop out; their cell shows the card back either way.
+    static func urls(for cards: [CollectionCard], apiBaseURL: URL = AppConfig.apiBaseURL) -> [URL] {
+        cards.compactMap { url(imagePath: $0.image_url, apiBaseURL: apiBaseURL) }
     }
 }

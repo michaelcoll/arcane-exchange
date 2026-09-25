@@ -1,4 +1,4 @@
-use crate::application::caller::{GathererCaller, GathererCard, GathererLookup, GathererMiss};
+use crate::application::caller::{GathererCaller, GathererLookup, GathererMiss};
 use crate::application::error::{AppError, InfraError};
 use crate::domain::card_image::CardImages;
 use crate::domain::language_code::LanguageCode;
@@ -49,18 +49,6 @@ fn slugify(name: &str) -> String {
         }
     }
     slug.trim_matches('-').to_string()
-}
-
-/// Extracts the Gatherer image id from an `og:image` URL, e.g.
-/// `https://gatherer-static.wizards.com/Cards/medium/<ID>.webp` -> `<ID>`.
-fn extract_image_id(image_url: &str) -> Option<String> {
-    let file_name = image_url.rsplit('/').next()?;
-    let id = file_name.strip_suffix(".webp").unwrap_or(file_name);
-    if id.is_empty() {
-        None
-    } else {
-        Some(id.to_string())
-    }
 }
 
 /// The image URLs a Gatherer card page shows.
@@ -166,22 +154,16 @@ fn find_card<'a>(value: &'a Value, front_url: &str) -> Option<&'a Value> {
     }
 }
 
-/// A card page as read, with the Gatherer id of its front image.
-struct ReadPage {
-    url: String,
-    gatherer_id: String,
-    page: GathererPage,
-}
-
-impl GathererCallerAdapter {
-    /// Reads the card page in `language_code`, or why it has no usable image.
-    async fn read_page(
+#[async_trait]
+impl GathererCaller for GathererCallerAdapter {
+    #[tracing::instrument(name = "gatherer.get_card", skip_all, fields(sentry.op = "http.client"))]
+    async fn get_card(
         &self,
         set_code: SetCode,
         collector_number: String,
         language_code: LanguageCode,
         name: String,
-    ) -> Result<Result<ReadPage, GathererMiss>, AppError> {
+    ) -> Result<GathererLookup, AppError> {
         let url = format!(
             "{}/{}/{}/{}/{}",
             self.gatherer_base_url,
@@ -194,49 +176,13 @@ impl GathererCallerAdapter {
         http::throttle(&self.ratelimiter, "Gatherer").await?;
         let Some(response) = http::get_unless_not_found(&self.client, &url).await? else {
             tracing::debug!("Gatherer page not found for {url}");
-            return Ok(Err(GathererMiss::NoPage));
+            return Ok(GathererLookup::NotFound(GathererMiss::NoPage));
         };
         let html = response.text().await?;
 
         let Some(page) = parse_page(&html) else {
             tracing::warn!("Gatherer page for {url} has no og:image meta tag");
-            return Ok(Err(GathererMiss::NoImageOnPage));
-        };
-        let Some(gatherer_id) = extract_image_id(&page.front_url) else {
-            tracing::warn!(
-                "Gatherer og:image URL for {url} has no extractable id: {}",
-                page.front_url
-            );
-            return Ok(Err(GathererMiss::NoImageOnPage));
-        };
-        Ok(Ok(ReadPage {
-            url,
-            gatherer_id,
-            page,
-        }))
-    }
-}
-
-#[async_trait]
-impl GathererCaller for GathererCallerAdapter {
-    #[tracing::instrument(name = "gatherer.get_card", skip_all, fields(sentry.op = "http.client"))]
-    async fn get_card(
-        &self,
-        set_code: SetCode,
-        collector_number: String,
-        language_code: LanguageCode,
-        name: String,
-    ) -> Result<GathererLookup, AppError> {
-        let ReadPage {
-            url,
-            gatherer_id,
-            page,
-        } = match self
-            .read_page(set_code, collector_number, language_code, name)
-            .await?
-        {
-            Ok(read) => read,
-            Err(miss) => return Ok(GathererLookup::NotFound(miss)),
+            return Ok(GathererLookup::NotFound(GathererMiss::NoImageOnPage));
         };
 
         let back_url = match page.back {
@@ -265,25 +211,7 @@ impl GathererCaller for GathererCallerAdapter {
             },
         };
 
-        Ok(GathererLookup::Found(GathererCard {
-            gatherer_id,
-            images: CardImages { front, back },
-        }))
-    }
-
-    #[tracing::instrument(name = "gatherer.get_gatherer_id", skip_all, fields(sentry.op = "http.client"))]
-    async fn get_gatherer_id(
-        &self,
-        set_code: SetCode,
-        collector_number: String,
-        language_code: LanguageCode,
-        name: String,
-    ) -> Result<Option<String>, AppError> {
-        Ok(self
-            .read_page(set_code, collector_number, language_code, name)
-            .await?
-            .ok()
-            .map(|read| read.gatherer_id))
+        Ok(GathererLookup::Found(CardImages { front, back }))
     }
 }
 
@@ -357,9 +285,9 @@ mod tests {
             .unwrap()
     }
 
-    fn found(lookup: GathererLookup) -> GathererCard {
+    fn found(lookup: GathererLookup) -> CardImages {
         match lookup {
-            GathererLookup::Found(card) => card,
+            GathererLookup::Found(images) => images,
             GathererLookup::NotFound(miss) => panic!("expected a card, Gatherer missed: {miss}"),
         }
     }
@@ -401,20 +329,6 @@ mod tests {
     #[test]
     fn slugify_keeps_only_first_face_without_surrounding_spaces() {
         assert_eq!(slugify("Fire//Ice"), "fire");
-    }
-
-    #[test]
-    fn extract_image_id_strips_path_and_extension() {
-        let url = "https://gatherer-static.wizards.com/Cards/medium/530325A982E8ADA7B336093036D69C306198A8A1B1E36D11DE2F9FAEA7186FE5.webp";
-        assert_eq!(
-            extract_image_id(url),
-            Some("530325A982E8ADA7B336093036D69C306198A8A1B1E36D11DE2F9FAEA7186FE5".to_string())
-        );
-    }
-
-    #[test]
-    fn extract_image_id_returns_none_for_empty_file_name() {
-        assert_eq!(extract_image_id("https://example.com/"), None);
     }
 
     #[test]
@@ -463,24 +377,6 @@ mod tests {
         let payload = format!("no separator\nHL:[\"not an id\"]\n1b:not json\n1c:{card}\n");
 
         assert_eq!(find_back(&payload, "FRONT"), Back::Url("BACK".to_string()));
-    }
-
-    #[tokio::test]
-    async fn get_card_is_not_found_when_the_og_image_has_no_id() {
-        let server = MockServer::start().await;
-        mount(
-            &server,
-            "/ISD/fr-fr/51/delver-of-secrets",
-            ResponseTemplate::new(200).set_body_string(
-                r#"<html><head><meta property="og:image" content="https://g/Cards/"/></head></html>"#,
-            ),
-        )
-        .await;
-
-        assert_eq!(
-            get_card(&server, LanguageCode::FR).await,
-            GathererLookup::NotFound(GathererMiss::NoImageOnPage)
-        );
     }
 
     #[tokio::test]
@@ -534,12 +430,9 @@ mod tests {
 
         assert_eq!(
             card,
-            GathererLookup::Found(GathererCard {
-                gatherer_id: "ABC123".to_string(),
-                images: CardImages {
-                    front: b"front webp".to_vec(),
-                    back: None,
-                },
+            GathererLookup::Found(CardImages {
+                front: b"front webp".to_vec(),
+                back: None,
             })
         );
     }
@@ -569,10 +462,10 @@ mod tests {
         )
         .await;
 
-        let card = found(get_card(&server, LanguageCode::EN).await);
+        let images = found(get_card(&server, LanguageCode::EN).await);
 
         assert_eq!(
-            card.images,
+            images,
             CardImages {
                 front: b"front".to_vec(),
                 back: Some(b"back".to_vec()),
@@ -599,9 +492,9 @@ mod tests {
         )
         .await;
 
-        let card = found(get_card(&server, LanguageCode::FR).await);
+        let images = found(get_card(&server, LanguageCode::FR).await);
 
-        assert_eq!(webp_width(&card.images.front), Some(200));
+        assert_eq!(webp_width(&images.front), Some(200));
     }
 
     #[tokio::test]
@@ -679,54 +572,6 @@ mod tests {
             get_card(&server, LanguageCode::FR).await,
             GathererLookup::NotFound(GathererMiss::NoImage)
         );
-    }
-
-    #[tokio::test]
-    async fn get_gatherer_id_reads_only_the_page() {
-        let server = MockServer::start().await;
-        let front_url = format!("{}/Cards/medium/ABC123.webp", server.uri());
-        mount(
-            &server,
-            "/ISD/en-us/51/delver-of-secrets",
-            ResponseTemplate::new(200).set_body_string(page_html(&front_url, None)),
-        )
-        .await;
-        // No image is mounted (404): the id must not depend on downloading it.
-
-        let gatherer_id = GathererCallerAdapter::new(server.uri())
-            .get_gatherer_id(
-                SetCode::new("ISD"),
-                "51".to_string(),
-                LanguageCode::EN,
-                "Delver of Secrets".to_string(),
-            )
-            .await
-            .unwrap();
-
-        assert_eq!(gatherer_id, Some("ABC123".to_string()));
-    }
-
-    #[tokio::test]
-    async fn get_gatherer_id_is_none_on_a_404_page() {
-        let server = MockServer::start().await;
-        mount(
-            &server,
-            "/ISD/en-us/51/delver-of-secrets",
-            ResponseTemplate::new(404),
-        )
-        .await;
-
-        let gatherer_id = GathererCallerAdapter::new(server.uri())
-            .get_gatherer_id(
-                SetCode::new("ISD"),
-                "51".to_string(),
-                LanguageCode::EN,
-                "Delver of Secrets".to_string(),
-            )
-            .await
-            .unwrap();
-
-        assert_eq!(gatherer_id, None);
     }
 
     #[tokio::test]

@@ -568,8 +568,7 @@ const onDragLeave = () => {
             <CardCell
               v-for="c in allCards"
               :key="c.scryfall_id"
-              :scryfall-id="c.scryfall_id"
-              :the-gatherer-id="c.the_gatherer_id ?? undefined"
+              :image-url="c.image_url"
               :name="c.name"
               :qty="c.collection_entry?.quantity ?? 0"
               :purchased="c.collection_entry?.purchase_price ?? 0"

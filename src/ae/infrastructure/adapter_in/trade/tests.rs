@@ -10,6 +10,7 @@ use crate::application::use_case::{
     MockRateTradeUseCase, MockRemoveTradeCardUseCase,
 };
 use crate::domain::card::CopyId;
+use crate::domain::card_image::{CardImage, CardImageSource};
 use crate::domain::error::FunctionalError;
 use crate::domain::language_code::LanguageCode;
 use crate::domain::pagination::{PageRequest, Paginated, Pagination};
@@ -966,7 +967,10 @@ async fn get_trade_response_maps_card_details() {
         quantity: 3,
         price_guide: Some(PriceGuide::new(150u32, 220u32, 200u32)),
         scryfall_id: uuid::Uuid::new_v4(),
-        the_gatherer_id: Some("12345".to_string()),
+        image: Some(CardImage {
+            source: CardImageSource::GathererEn,
+            has_back: true,
+        }),
     };
     let mut mock_use_case = MockGetTradeUseCase::new();
     mock_use_case
@@ -997,7 +1001,14 @@ async fn get_trade_response_maps_card_details() {
     assert_eq!(card.collector_number, "87");
     assert_eq!(card.name, "Goblin Boarders");
     assert_eq!(card.quantity, 3);
-    assert_eq!(card.the_gatherer_id, Some("12345".to_string()));
+    assert_eq!(
+        card.image_url.as_deref(),
+        Some("/card-images/FDN_87_EN.webp?v=gatherer")
+    );
+    assert_eq!(
+        card.image_back_url.as_deref(),
+        Some("/card-images/FDN_87_EN_back.webp?v=gatherer")
+    );
     let price_guide = card.price_guide.as_ref().unwrap();
     assert_eq!(price_guide.low, Some(150));
     assert_eq!(price_guide.avg, Some(200));

@@ -46,11 +46,6 @@ pub trait CardRepository: Send + Sync {
         id: CardId,
         cardmarket_id: Option<u32>,
     ) -> Result<(), AppError>;
-    async fn update_gatherer_id(
-        &self,
-        id: CardId,
-        gatherer_id: Option<String>,
-    ) -> Result<(), AppError>;
     /// Records that the card uses its own image, in its language.
     async fn update_image_source(
         &self,

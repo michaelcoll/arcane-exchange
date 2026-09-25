@@ -203,7 +203,6 @@ fn parse_line(
         rarity_code,
         scryfall_id,
         None,
-        None,
         CollectionEntry::Mine {
             quantity,
             purchase_price,
@@ -591,7 +590,6 @@ mod tests {
             "Felothar, Dawn of the Abzan",
             RarityCode::R,
             Uuid::parse_str("09478378-c28b-4334-a0a1-157325ed8e5b").unwrap(),
-            None,
             None,
             CollectionEntry::Mine {
                 quantity: 1,

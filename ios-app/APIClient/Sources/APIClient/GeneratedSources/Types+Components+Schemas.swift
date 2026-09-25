@@ -280,6 +280,15 @@ extension Components {
             public var collector_number: Swift.String
             /// - Remark: Generated from `#/components/schemas/CollectionCardResponse/foil`.
             public var foil: Swift.Bool
+            /// Back image of a double-faced card, like `image_url`; `null` for a single-faced card.
+            ///
+            /// - Remark: Generated from `#/components/schemas/CollectionCardResponse/image_back_url`.
+            public var image_back_url: Swift.String?
+            /// Front image, relative to the frontend (e.g. `/card-images/FDN_1_EN.webp?v=gatherer`);
+            /// `null` while the card's image is pending.
+            ///
+            /// - Remark: Generated from `#/components/schemas/CollectionCardResponse/image_url`.
+            public var image_url: Swift.String?
             /// - Remark: Generated from `#/components/schemas/CollectionCardResponse/language_code`.
             public var language_code: Swift.String
             /// - Remark: Generated from `#/components/schemas/CollectionCardResponse/name`.
@@ -305,14 +314,14 @@ extension Components {
             public var scryfall_id: Swift.String
             /// - Remark: Generated from `#/components/schemas/CollectionCardResponse/set_code`.
             public var set_code: Swift.String
-            /// - Remark: Generated from `#/components/schemas/CollectionCardResponse/the_gatherer_id`.
-            public var the_gatherer_id: Swift.String?
             /// Creates a new `CollectionCardResponse`.
             ///
             /// - Parameters:
             ///   - collection_entry: Present only when the card is owned by the authenticated user.
             ///   - collector_number:
             ///   - foil:
+            ///   - image_back_url: Back image of a double-faced card, like `image_url`; `null` for a single-faced card.
+            ///   - image_url: Front image, relative to the frontend (e.g. `/card-images/FDN_1_EN.webp?v=gatherer`);
             ///   - language_code:
             ///   - name:
             ///   - owner_count: Number of distinct users actually offering this card to trade (search mode only) —
@@ -321,11 +330,12 @@ extension Components {
             ///   - reserved: `true` if this card is engaged in an `ONE_ACCEPTED` or `FULLY_ACCEPTED` trade of its
             ///   - scryfall_id:
             ///   - set_code:
-            ///   - the_gatherer_id:
             public init(
                 collection_entry: Components.Schemas.CollectionEntryResponse? = nil,
                 collector_number: Swift.String,
                 foil: Swift.Bool,
+                image_back_url: Swift.String? = nil,
+                image_url: Swift.String? = nil,
                 language_code: Swift.String,
                 name: Swift.String,
                 owner_count: Swift.Int64? = nil,
@@ -333,12 +343,13 @@ extension Components {
                 rarity_code: Swift.String,
                 reserved: Swift.Bool,
                 scryfall_id: Swift.String,
-                set_code: Swift.String,
-                the_gatherer_id: Swift.String? = nil
+                set_code: Swift.String
             ) {
                 self.collection_entry = collection_entry
                 self.collector_number = collector_number
                 self.foil = foil
+                self.image_back_url = image_back_url
+                self.image_url = image_url
                 self.language_code = language_code
                 self.name = name
                 self.owner_count = owner_count
@@ -347,12 +358,13 @@ extension Components {
                 self.reserved = reserved
                 self.scryfall_id = scryfall_id
                 self.set_code = set_code
-                self.the_gatherer_id = the_gatherer_id
             }
             public enum CodingKeys: String, CodingKey {
                 case collection_entry
                 case collector_number
                 case foil
+                case image_back_url
+                case image_url
                 case language_code
                 case name
                 case owner_count
@@ -361,7 +373,6 @@ extension Components {
                 case reserved
                 case scryfall_id
                 case set_code
-                case the_gatherer_id
             }
         }
         /// - Remark: Generated from `#/components/schemas/CollectionEntryResponse`.
@@ -937,6 +948,14 @@ extension Components {
             public var collector_number: Swift.String
             /// - Remark: Generated from `#/components/schemas/TradeCardResponse/foil`.
             public var foil: Swift.Bool
+            /// Back image of a double-faced card; `null` for a single-faced card.
+            ///
+            /// - Remark: Generated from `#/components/schemas/TradeCardResponse/image_back_url`.
+            public var image_back_url: Swift.String?
+            /// Front image, relative to the frontend; `null` while the card's image is pending.
+            ///
+            /// - Remark: Generated from `#/components/schemas/TradeCardResponse/image_url`.
+            public var image_url: Swift.String?
             /// - Remark: Generated from `#/components/schemas/TradeCardResponse/language_code`.
             public var language_code: Swift.String
             /// - Remark: Generated from `#/components/schemas/TradeCardResponse/name`.
@@ -949,51 +968,53 @@ extension Components {
             public var scryfall_id: Swift.String
             /// - Remark: Generated from `#/components/schemas/TradeCardResponse/set_code`.
             public var set_code: Swift.String
-            /// - Remark: Generated from `#/components/schemas/TradeCardResponse/the_gatherer_id`.
-            public var the_gatherer_id: Swift.String?
             /// Creates a new `TradeCardResponse`.
             ///
             /// - Parameters:
             ///   - collector_number:
             ///   - foil:
+            ///   - image_back_url: Back image of a double-faced card; `null` for a single-faced card.
+            ///   - image_url: Front image, relative to the frontend; `null` while the card's image is pending.
             ///   - language_code:
             ///   - name:
             ///   - price_guide:
             ///   - quantity:
             ///   - scryfall_id:
             ///   - set_code:
-            ///   - the_gatherer_id:
             public init(
                 collector_number: Swift.String,
                 foil: Swift.Bool,
+                image_back_url: Swift.String? = nil,
+                image_url: Swift.String? = nil,
                 language_code: Swift.String,
                 name: Swift.String,
                 price_guide: Components.Schemas.PriceGuideResponse? = nil,
                 quantity: Swift.Int32,
                 scryfall_id: Swift.String,
-                set_code: Swift.String,
-                the_gatherer_id: Swift.String? = nil
+                set_code: Swift.String
             ) {
                 self.collector_number = collector_number
                 self.foil = foil
+                self.image_back_url = image_back_url
+                self.image_url = image_url
                 self.language_code = language_code
                 self.name = name
                 self.price_guide = price_guide
                 self.quantity = quantity
                 self.scryfall_id = scryfall_id
                 self.set_code = set_code
-                self.the_gatherer_id = the_gatherer_id
             }
             public enum CodingKeys: String, CodingKey {
                 case collector_number
                 case foil
+                case image_back_url
+                case image_url
                 case language_code
                 case name
                 case price_guide
                 case quantity
                 case scryfall_id
                 case set_code
-                case the_gatherer_id
             }
         }
         /// - Remark: Generated from `#/components/schemas/TradeDetailResponse`.

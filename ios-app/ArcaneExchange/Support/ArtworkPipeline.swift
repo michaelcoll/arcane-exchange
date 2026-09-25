@@ -5,16 +5,15 @@ import Nuke
 enum ArtworkPipeline {
     private static let diskSizeLimit = 512 * 1024 * 1024
 
-    /// Card images never change behind their URL — Scryfall serves them with a one-year
-    /// `max-age` under a version-stamped URL, Gatherer with thirty days — so the aggressive
-    /// `DataCache` is the right trade over the HTTP cache: it keys on the URL and keeps the
-    /// bytes until the size limit evicts them, ignoring `Cache-Control` entirely.
+    /// Card images never change behind their URL — the platform serves them `immutable` for a
+    /// year, under a URL versioned by the origin of the file, which changes whenever the file
+    /// is replaced (ADR 0017) — so the aggressive `DataCache` is the right trade over the HTTP
+    /// cache: it keys on the URL and keeps the bytes until the size limit evicts them, ignoring
+    /// `Cache-Control` entirely.
     ///
     /// What it replaces is `URLCache.shared`, whose defaults (500 KB in memory, 20 MB on
     /// disk) hold about three artworks in RAM — every scroll back up the collection grid
-    /// re-downloaded the tiles it had just shown. A cache hit now also skips Scryfall's
-    /// `/cards/{id}?format=image` 302, which `URLCache` stored as its own entry and
-    /// revalidated every two days.
+    /// re-downloaded the tiles it had just shown.
     ///
     /// On top of that, `ImageCache.shared` keeps *decoded* images — the thing `AsyncImage`
     /// has no layer for, and why a cached tile still flashed its placeholder on reappearing.

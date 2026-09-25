@@ -20,7 +20,8 @@ const card = (overrides: Partial<TradeCard> = {}): TradeCard => ({
   quantity: 1,
   price_guide: { low: 100, avg: 150, trend: 200 },
   scryfall_id: 'abc',
-  the_gatherer_id: null,
+  image_url: null,
+  image_back_url: null,
   ...overrides,
 });
 

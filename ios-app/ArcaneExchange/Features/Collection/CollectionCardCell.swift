@@ -1,4 +1,3 @@
-import NukeUI
 import SwiftUI
 
 /// One tile of the collection grid: artwork first, figures second — the mockup's
@@ -56,32 +55,8 @@ struct CollectionCardCell: View {
             )
     }
 
-    /// `LazyImage` rather than `AsyncImage`: the grid re-creates cells as it scrolls, and
-    /// `AsyncImage` has no decoded-image cache, so every reappearance meant a fresh decode
-    /// and a placeholder flash. Nuke serves those from memory. See `ArtworkPipeline`.
     private var image: some View {
-        let url = CardArtwork.url(gathererID: card.the_gatherer_id, scryfallID: card.scryfall_id)
-        return LazyImage(url: url) { state in
-            if let image = state.image {
-                image.resizable().scaledToFill().foil(card.foil)
-            } else if state.error != nil {
-                placeholder
-            } else {
-                placeholder.overlay { ProgressView().controlSize(.small) }
-            }
-        }
-    }
-
-    private var placeholder: some View {
-        Rectangle()
-            .fill(.quaternary)
-            .overlay {
-                Text(card.name)
-                    .font(.caption2)
-                    .multilineTextAlignment(.center)
-                    .foregroundStyle(.secondary)
-                    .padding(6)
-            }
+        CardImageView(url: CardArtwork.url(imagePath: card.image_url), foil: card.foil)
     }
 
     private var border: some View {

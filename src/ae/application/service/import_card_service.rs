@@ -257,7 +257,6 @@ mod tests {
                 RarityCode::C,
                 Uuid::parse_str("4409a063-bf2a-4a49-803e-3ce6bd474353").unwrap(),
                 None,
-                None,
                 CollectionEntry::Mine {
                     quantity: 3,
                     purchase_price: 8,

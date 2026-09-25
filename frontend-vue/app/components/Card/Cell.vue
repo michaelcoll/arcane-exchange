@@ -1,8 +1,7 @@
 <script setup lang="ts">
 const props = withDefaults(
   defineProps<{
-    scryfallId?: string;
-    theGathererId?: string;
+    imageUrl?: string | null;
     name: string;
     qty?: number;
     price?: number;
@@ -47,8 +46,7 @@ const dealTagClass = computed(() => {
   <div class="flex flex-col gap-2">
     <MtgCard
       :qty="qty"
-      :scryfall-id="scryfallId"
-      :the-gatherer-id="theGathererId"
+      :image-url="imageUrl"
       :name="name"
       :clickable="clickable ?? true"
       :foil="foil"

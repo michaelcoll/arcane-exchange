@@ -268,7 +268,8 @@ impl TradeRepository for TradeRepositoryAdapter {
             r#"SELECT tc.set_code AS "set_code!", tc.collector_number AS "collector_number!",
                        tc.language_code AS "language_code!", tc.foil AS "foil!",
                        tc.owner_user_id AS "owner_user_id!", tc.quantity AS "quantity!",
-                       c.name AS "name!", c.scryfall_id AS "scryfall_id!", c.the_gatherer_id,
+                       c.name AS "name!", c.scryfall_id AS "scryfall_id!",
+                       c.image_source, c.image_has_back,
                        lcp.low, lcp.trend, lcp.avg
                 FROM trade_card tc
                 JOIN card c ON c.set_code = tc.set_code AND c.collector_number = tc.collector_number
@@ -511,6 +512,7 @@ impl TradeRepository for TradeRepositoryAdapter {
 mod tests {
     use super::*;
     use crate::application::service::trade_service::TRADES_MAX_OFFSET;
+    use crate::domain::card_image::{CardImage, CardImageSource};
     use crate::domain::language_code::LanguageCode;
     use crate::domain::pagination::Pagination;
     use crate::domain::trade::{Party, TradeStatus};
@@ -2238,6 +2240,34 @@ mod tests {
         assert_eq!(
             cards[0].price_guide.as_ref().and_then(|p| p.avg.value),
             Some(200)
+        );
+        assert_eq!(cards[0].image, None, "the card's image is still pending");
+    }
+
+    #[sqlx::test]
+    async fn find_trade_cards_with_details_returns_the_image_of_each_card(pool: PgPool) {
+        insert_user(&pool, "user_a", "alice").await;
+        insert_user(&pool, "user_b", "bob").await;
+        insert_card(&pool, "FDN", "87", "FR", "Goblin Boarders", 1).await;
+        sqlx::query("UPDATE card SET image_source = 'scryfall'")
+            .execute(&pool)
+            .await
+            .unwrap();
+        let trade_id = uuid::Uuid::new_v4();
+        insert_trade(&pool, trade_id, "user_a", "user_b", "PENDING").await;
+        insert_trade_card(&pool, trade_id, "FDN", "87", "FR", false, "user_b", 3).await;
+
+        let cards = TradeRepositoryAdapter::new(pool)
+            .find_trade_cards_with_details(TradeId(trade_id))
+            .await
+            .unwrap();
+
+        assert_eq!(
+            cards[0].image,
+            Some(CardImage {
+                source: CardImageSource::Scryfall,
+                has_back: false,
+            })
         );
     }
 

@@ -1,4 +1,3 @@
-import NukeUI
 import SwiftUI
 
 /// Rechercher tab (`ScrSearch` in the iOS mockup): a mode switch — carte / decklist / joueur —
@@ -276,15 +275,9 @@ private struct CardPreviewRow: View {
 
     var body: some View {
         HStack(spacing: 12) {
-            LazyImage(url: CardArtwork.url(gathererID: card.the_gatherer_id, scryfallID: card.scryfall_id)) { state in
-                if let image = state.image {
-                    image.resizable().scaledToFill()
-                } else {
-                    Rectangle().fill(.quaternary)
-                }
-            }
-            .frame(width: 34, height: 47)
-            .clipShape(RoundedRectangle(cornerRadius: 4, style: .continuous))
+            CardImageView(url: CardArtwork.url(imagePath: card.image_url))
+                .frame(width: 34, height: 47)
+                .clipShape(RoundedRectangle(cornerRadius: 4, style: .continuous))
 
             VStack(alignment: .leading, spacing: 2) {
                 Text(card.name)

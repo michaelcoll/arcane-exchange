@@ -59,13 +59,7 @@ const totalClasses = computed(() =>
             : 'border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50 dark:border-white/10 dark:bg-zinc-900 dark:hover:border-white/15 dark:hover:bg-zinc-800',
         ]"
       >
-        <MtgCard
-          :name="c.name"
-          :scryfall-id="c.scryfall_id"
-          :the-gatherer-id="c.the_gatherer_id ?? undefined"
-          :mini="true"
-          class="w-7 flex-none"
-        />
+        <MtgCard :name="c.name" :image-url="c.image_url" :mini="true" class="w-7 flex-none" />
         <div class="min-w-0 flex-1">
           <div
             class="overflow-hidden text-sm font-semibold text-ellipsis whitespace-nowrap text-slate-800 dark:text-slate-100"

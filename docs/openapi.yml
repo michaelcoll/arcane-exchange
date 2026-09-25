@@ -1128,6 +1128,18 @@ components:
           type: string
         foil:
           type: boolean
+        image_back_url:
+          type:
+          - string
+          - 'null'
+          description: Back image of a double-faced card, like `image_url`; `null` for a single-faced card.
+        image_url:
+          type:
+          - string
+          - 'null'
+          description: |-
+            Front image, relative to the frontend (e.g. `/card-images/FDN_1_EN.webp?v=gatherer`);
+            `null` while the card's image is pending.
         language_code:
           type: string
         name:
@@ -1157,10 +1169,6 @@ components:
           type: string
         set_code:
           type: string
-        the_gatherer_id:
-          type:
-          - string
-          - 'null'
     CollectionEntryResponse:
       type: object
       required:
@@ -1527,6 +1535,16 @@ components:
           type: string
         foil:
           type: boolean
+        image_back_url:
+          type:
+          - string
+          - 'null'
+          description: Back image of a double-faced card; `null` for a single-faced card.
+        image_url:
+          type:
+          - string
+          - 'null'
+          description: Front image, relative to the frontend; `null` while the card's image is pending.
         language_code:
           type: string
         name:
@@ -1541,10 +1559,6 @@ components:
           type: string
         set_code:
           type: string
-        the_gatherer_id:
-          type:
-          - string
-          - 'null'
     TradeDetailResponse:
       type: object
       required:

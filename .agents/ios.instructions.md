@@ -39,7 +39,8 @@ Commandes : [mise.instructions.md](mise.instructions.md) · CI : [ci.instruction
 `AppConfig` reads `API_BASE_URL` and `CLERK_PUBLISHABLE_KEY` from `Info.plist` (fed by the xcconfigs at build time).
 The base URL is overridable at runtime from Settings ▸ Arcane Exchange — `UserDefaults` key `api_base_url`, declared
 in `Settings.bundle/Root.plist`: **keep both in sync, they share no symbol**. Debug builds point at
-`http://localhost:8080/api/v1`, and `Local.xcconfig`'s Clerk key must be the instance the backend validates against.
+`http://localhost:3000/api/v1` — the Nuxt dev server, which proxies the API and serves `/card-images` — and
+`Local.xcconfig`'s Clerk key must be the instance the backend validates against.
 
 `Config/Local.xcconfig` is git-ignored and holds the two per-developer values (`DEVELOPMENT_TEAM`,
 `CLERK_PUBLISHABLE_KEY`) — copy `Local.xcconfig.example` on a fresh checkout. It is pulled in with `#include?`, so

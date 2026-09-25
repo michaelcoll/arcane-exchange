@@ -136,8 +136,9 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
           class="relative flex items-center justify-center border-r border-slate-200/60 bg-white/40 p-7 backdrop-blur-md max-[720px]:border-r-0 max-[720px]:border-b max-[720px]:p-6 dark:border-white/10 dark:bg-zinc-900/40"
         >
           <MtgCard
-            :scryfall-id="card.scryfall_id"
-            :the-gatherer-id="card.the_gatherer_id ?? undefined"
+            :image-url="card.image_url"
+            :image-back-url="card.image_back_url"
+            flippable
             :name="card.name"
             class="w-full max-w-[300px] drop-shadow-2xl max-[720px]:max-w-[260px]"
           />

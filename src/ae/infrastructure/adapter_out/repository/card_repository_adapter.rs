@@ -199,27 +199,6 @@ impl CardRepository for CardRepositoryAdapter {
         Ok(())
     }
 
-    #[tracing::instrument(name = "card_repo.update_gatherer_id", skip_all, fields(sentry.op = "db"))]
-    async fn update_gatherer_id(
-        &self,
-        id: CardId,
-        gatherer_id: Option<String>,
-    ) -> Result<(), AppError> {
-        sqlx::query!(
-            r#"UPDATE card
-                SET the_gatherer_id = $1
-                WHERE set_code = $2 AND collector_number = $3 AND language_code = $4;"#,
-            gatherer_id,
-            id.set_code.to_string(),
-            id.collector_number,
-            id.language_code.to_string()
-        )
-        .execute(&self.pool)
-        .await?;
-
-        Ok(())
-    }
-
     #[tracing::instrument(name = "card_repo.update_image_source", skip_all, fields(sentry.op = "db"))]
     async fn update_image_source(
         &self,
@@ -864,24 +843,6 @@ mod tests {
                 ("SP".to_string(), None, false),
             ]
         );
-    }
-
-    #[sqlx::test]
-    async fn update_gatherer_id_sets_the_value(pool: PgPool) {
-        insert_card_without_cardmarket_id(&pool, "FDN", "87", "FR", "Goblin Boarders").await;
-
-        let repository = CardRepositoryAdapter::new(pool.clone());
-        let card_id = CardId::new("FDN", "87", LanguageCode::FR);
-        repository
-            .update_gatherer_id(card_id.clone(), Some("ABC123".to_string()))
-            .await
-            .unwrap();
-
-        let row = sqlx::query!("SELECT the_gatherer_id FROM card")
-            .fetch_one(&pool)
-            .await
-            .unwrap();
-        assert_eq!(row.the_gatherer_id.as_deref(), Some("ABC123"));
     }
 
     #[sqlx::test]
