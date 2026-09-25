@@ -152,10 +152,7 @@ export default defineNuxtConfig({
         'img-src': [
           "'self'",
           'data:',
-          // Card artwork: api.scryfall.com redirects to the cards.scryfall.io image CDN.
-          'https://api.scryfall.com',
-          'https://cards.scryfall.io',
-          'https://gatherer-static.wizards.com',
+          // Card images are served by the frontend itself (/card-images, ADR 0017).
           // Clerk-hosted avatars and OAuth provider icons on the sign-in/profile UI.
           'https://img.clerk.com',
         ],

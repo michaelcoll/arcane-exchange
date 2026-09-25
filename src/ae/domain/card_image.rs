@@ -73,6 +73,40 @@ pub enum ImageOrigin {
     Scryfall,
 }
 
+impl ImageOrigin {
+    /// The version of the URLs of an image file (ADR 0017): a file is only ever replaced by one
+    /// from another origin, so its URL changes with it.
+    pub fn url_version(&self) -> &'static str {
+        match self {
+            ImageOrigin::Gatherer => "gatherer",
+            ImageOrigin::Scryfall => "scryfall",
+        }
+    }
+}
+
+/// The image stored for a card: where it comes from, and whether it has a back.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct CardImage {
+    pub source: CardImageSource,
+    pub has_back: bool,
+}
+
+impl CardImage {
+    /// The file `face` of the image of `card_id` is stored under: its own for an image in its
+    /// language, the English card's for a card in fallback. `None` for the back of a
+    /// single-faced card.
+    pub fn file_name(&self, card_id: &CardId, face: CardFace) -> Option<String> {
+        if face == CardFace::Back && !self.has_back {
+            return None;
+        }
+        let image_card_id = match self.source {
+            CardImageSource::GathererLocalized => card_id.clone(),
+            CardImageSource::GathererEn | CardImageSource::Scryfall => english_card_id(card_id),
+        };
+        Some(card_image_file_name(&image_card_id, face))
+    }
+}
+
 /// The English image shared by the cards of a set and number in fallback and the English card.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct EnglishImage {
@@ -380,6 +414,56 @@ mod tests {
             card_image_file_name(&card_id, CardFace::Back),
             "FDN_87_FR_back.webp"
         );
+    }
+
+    #[test]
+    fn a_card_with_its_own_image_uses_its_own_file() {
+        let card_id = CardId::new("FDN", "87", LanguageCode::FR);
+        let image = CardImage {
+            source: CardImageSource::GathererLocalized,
+            has_back: true,
+        };
+        assert_eq!(
+            image.file_name(&card_id, CardFace::Front),
+            Some("FDN_87_FR.webp".to_string())
+        );
+        assert_eq!(
+            image.file_name(&card_id, CardFace::Back),
+            Some("FDN_87_FR_back.webp".to_string())
+        );
+    }
+
+    #[test]
+    fn a_card_in_fallback_uses_the_file_of_the_english_image() {
+        let card_id = CardId::new("FDN", "87", LanguageCode::FR);
+        for source in [CardImageSource::GathererEn, CardImageSource::Scryfall] {
+            let image = CardImage {
+                source,
+                has_back: false,
+            };
+            assert_eq!(
+                image.file_name(&card_id, CardFace::Front),
+                Some("FDN_87_EN.webp".to_string())
+            );
+        }
+    }
+
+    #[test]
+    fn a_single_faced_card_has_no_back_file() {
+        let image = CardImage {
+            source: CardImageSource::Scryfall,
+            has_back: false,
+        };
+        assert_eq!(
+            image.file_name(&CardId::new("FDN", "87", LanguageCode::EN), CardFace::Back),
+            None
+        );
+    }
+
+    #[test]
+    fn an_origin_versions_the_urls_of_its_file() {
+        assert_eq!(ImageOrigin::Gatherer.url_version(), "gatherer");
+        assert_eq!(ImageOrigin::Scryfall.url_version(), "scryfall");
     }
 
     #[test]

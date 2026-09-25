@@ -1,6 +1,7 @@
 use crate::application::error::InfraError;
 use crate::application::repository::CardImageLookup;
 use crate::domain::card::{Card, CardId, CollectionEntry, CopyId};
+use crate::domain::card_image::{CardImage, CardImageSource};
 use crate::domain::language_code::LanguageCode;
 use crate::domain::price::{FullPriceGuide, Price, PriceGuide, PriceHistoryEntry};
 use crate::domain::rarity_code::RarityCode;
@@ -72,6 +73,24 @@ fn card_id_from_db(
         language_code: LanguageCode::try_new(language_code)
             .map_err(|_| invalid_db_value("language code", language_code))?,
     })
+}
+
+/// The image of a card from its `image_source` and `image_has_back` columns, `None` while it is
+/// pending.
+fn card_image_from_db(
+    image_source: Option<&str>,
+    image_has_back: bool,
+) -> Result<Option<CardImage>, InfraError> {
+    image_source
+        .map(|stored| {
+            let source = CardImageSource::from_stored(stored)
+                .ok_or_else(|| invalid_db_value("image source", stored))?;
+            Ok(CardImage {
+                source,
+                has_back: image_has_back,
+            })
+        })
+        .transpose()
 }
 
 fn rating_from_db(rating: Option<i16>) -> Result<Option<u8>, InfraError> {
@@ -234,7 +253,8 @@ pub struct TradeCardDetailEntity {
     pub quantity: i32,
     pub name: String,
     pub scryfall_id: Uuid,
-    pub the_gatherer_id: Option<String>,
+    pub image_source: Option<String>,
+    pub image_has_back: bool,
     pub low: Option<i32>,
     pub avg: Option<i32>,
     pub trend: Option<i32>,
@@ -269,7 +289,7 @@ impl TryFrom<TradeCardDetailEntity> for TradeCardDetail {
             quantity: entity.quantity as u32,
             price_guide,
             scryfall_id: entity.scryfall_id,
-            the_gatherer_id: entity.the_gatherer_id,
+            image: card_image_from_db(entity.image_source.as_deref(), entity.image_has_back)?,
         })
     }
 }
@@ -458,7 +478,8 @@ pub struct CardWithPriceEntity {
     pub name: String,
     pub rarity: String,
     pub scryfall_id: Uuid,
-    pub the_gatherer_id: Option<String>,
+    pub image_source: Option<String>,
+    pub image_has_back: bool,
     /// Always present: no longer masked for other users' rows.
     pub quantity: i32,
     /// `NULL` when the row belongs to another user (masked in SQL).
@@ -525,7 +546,7 @@ impl TryFrom<CardWithPriceEntity> for Card {
             rarity_code: from_db_rarity(&e.rarity)?,
             scryfall_id: e.scryfall_id,
             cardmarket_id: None,
-            the_gatherer_id: e.the_gatherer_id,
+            image: card_image_from_db(e.image_source.as_deref(), e.image_has_back)?,
             collection_entry,
             price_guide,
         })
@@ -926,6 +947,24 @@ mod tests {
     }
 
     #[test]
+    fn card_image_from_db_reads_the_source_and_the_back() {
+        assert_eq!(card_image_from_db(None, false), Ok(None));
+        assert_eq!(
+            card_image_from_db(Some("gatherer_en"), true),
+            Ok(Some(CardImage {
+                source: CardImageSource::GathererEn,
+                has_back: true,
+            }))
+        );
+        assert_eq!(
+            card_image_from_db(Some("cardmarket"), false),
+            Err(InfraError::RepositoryError(
+                "invalid image source from database: cardmarket".to_string()
+            ))
+        );
+    }
+
+    #[test]
     fn rating_from_db_returns_repository_error_on_out_of_range_value() {
         assert_eq!(rating_from_db(Some(4)), Ok(Some(4)));
         assert_eq!(rating_from_db(None), Ok(None));
@@ -950,7 +989,8 @@ mod tests {
             name: "Sol Ring".to_string(),
             rarity: "C".to_string(),
             scryfall_id: Uuid::new_v4(),
-            the_gatherer_id: None,
+            image_source: None,
+            image_has_back: false,
             quantity: 2,
             purchase_price: Some(350),
             added_at: Some(chrono::Utc::now()),
@@ -984,7 +1024,8 @@ mod tests {
             name: "Sol Ring".to_string(),
             rarity: "C".to_string(),
             scryfall_id: Uuid::new_v4(),
-            the_gatherer_id: None,
+            image_source: None,
+            image_has_back: false,
             quantity: 0,
             purchase_price: None,
             added_at: None,
@@ -1018,7 +1059,8 @@ mod tests {
             name: "Sol Ring".to_string(),
             rarity: "C".to_string(),
             scryfall_id: Uuid::new_v4(),
-            the_gatherer_id: None,
+            image_source: None,
+            image_has_back: false,
             quantity: 0,
             purchase_price: Some(350),
             added_at: None,
@@ -1052,7 +1094,8 @@ mod tests {
             name: "Sol Ring".to_string(),
             rarity: "C".to_string(),
             scryfall_id: Uuid::new_v4(),
-            the_gatherer_id: None,
+            image_source: None,
+            image_has_back: false,
             quantity: 1,
             purchase_price: Some(100),
             added_at: Some(chrono::Utc::now()),

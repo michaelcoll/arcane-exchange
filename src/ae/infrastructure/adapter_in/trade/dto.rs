@@ -1,7 +1,9 @@
 use crate::domain::trade::{
     TradeCardDetail, TradeDetail, TradePartyState, TradeStatus, TradeSummary,
 };
-use crate::infrastructure::adapter_in::collection::dto::{PriceGuideResponse, default_page_size};
+use crate::infrastructure::adapter_in::collection::dto::{
+    PriceGuideResponse, card_image_urls, default_page_size,
+};
 use serde::{Deserialize, Serialize};
 use ts_rs::TS;
 use utoipa::ToSchema;
@@ -62,11 +64,15 @@ pub struct TradeCardResponse {
     #[schema(value_type = PriceGuideResponse, required = false)]
     pub price_guide: Option<PriceGuideResponse>,
     pub scryfall_id: String,
-    pub the_gatherer_id: Option<String>,
+    /// Front image, relative to the frontend; `null` while the card's image is pending.
+    pub image_url: Option<String>,
+    /// Back image of a double-faced card; `null` for a single-faced card.
+    pub image_back_url: Option<String>,
 }
 
 impl From<TradeCardDetail> for TradeCardResponse {
     fn from(c: TradeCardDetail) -> Self {
+        let (image_url, image_back_url) = card_image_urls(&c.card_id.card_id, c.image);
         Self {
             set_code: c.card_id.card_id.set_code.to_string(),
             collector_number: c.card_id.card_id.collector_number,
@@ -76,7 +82,8 @@ impl From<TradeCardDetail> for TradeCardResponse {
             quantity: c.quantity,
             price_guide: c.price_guide.map(PriceGuideResponse::from),
             scryfall_id: c.scryfall_id.to_string(),
-            the_gatherer_id: c.the_gatherer_id,
+            image_url,
+            image_back_url,
         }
     }
 }

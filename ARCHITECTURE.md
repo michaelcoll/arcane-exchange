@@ -87,6 +87,13 @@ régénération. Modifier un modèle côté client est toujours une erreur.
   la carte anglaise, partagé. La base ne retient que la source retenue (`card.image_source`,
   `NULL` = en attente). Le dossier est une donnée à sauvegarder au même titre que la base
   (ADR 0017).
+- **Images de cartes dans l'API** : `image_url` et `image_back_url`, des chemins relatifs au front
+  (`/card-images/FDN_1_EN.webp?v=gatherer`), `null` pour une carte en attente ou sans verso. Ils se
+  déduisent de `card.image_source`, lue sur `card` plutôt que dans `mv_card_prices` pour qu'une image
+  apparaisse dès son téléchargement. La version est l'origine du fichier (`gatherer` | `scryfall`) :
+  les cartes qui partagent une image partagent son URL. Les clients ne contactent jamais Gatherer ni
+  Scryfall ; une carte sans image, ou dont l'image ne charge pas, montre un dos de carte générique
+  embarqué (`public/card-back.webp` côté web, asset catalog côté iOS).
 - **SQLx en mode vérifié à la compilation** : les requêtes sont validées contre une base réelle, et
   la métadonnée `.sqlx/` est commitée pour que les builds release/CI se fassent hors ligne.
 
@@ -110,9 +117,7 @@ Tout tourne dans le même processus que l'API, sans ordonnanceur externe :
   l'image anglaise partagée : réutilisée si elle vient déjà de Gatherer, remplacée seulement par une
   meilleure, et toutes les cartes qui la partagent sont alors alignées. Une image enregistrée n'est
   jamais retéléchargée automatiquement : `POST /maintenance/update-card-images` remet en file les
-  cartes en fallback et celles en attente. L'enricher alimente aussi `the_gatherer_id`, encore lu
-  par les clients : une carte anglaise qui réutilise l'image partagée lit sa seule page Gatherer
-  pour l'obtenir, sans retélécharger l'image.
+  cartes en fallback et celles en attente.
 - **Import des prix** : tâche planifiée (cron in-process) toutes les 12 heures.
 
 Corollaire : le backend est **stateful en mémoire** (files, dédup). Il n'est pas conçu pour tourner
@@ -141,7 +146,8 @@ ses idiomes plutôt que de la transposer littéralement.
   design en variables CSS.
 - **iOS** — SwiftUI + `@Observable`, un dossier par écran (`Features/<Feature>/` avec sa vue et son
   view model), pas de Combine. Le projet Xcode est **généré** (XcodeGen) et non versionné : la source
-  de vérité est `ios-app/project.yml` et les `.xcconfig`.
+  de vérité est `ios-app/project.yml` et les `.xcconfig`. Les chemins d'images se résolvent contre
+  l'origine de l'URL de l'API, puisque le front sert `/card-images` là où il relaie `/api/v1`.
 
 ## Outillage et déploiement
 
@@ -154,6 +160,5 @@ ses idiomes plutôt que de la transposer littéralement.
   `docker-compose.yml` avec Postgres. Sentry est branché côté backend et côté frontend. Le volume
   `card-images` est monté en écriture sur le backend et en lecture seule sur le frontend. Nitro
   sert les images en `immutable` sur un an pour que Cloudflare les mette en cache ; l'URL exposée
-  aux clients doit donc être versionnée par l'origine du fichier (contrat d'API porté par #425), ce
-  qui suppose que la clé de cache Cloudflare inclue la query string (niveau de cache « Standard »,
+  aux clients est donc versionnée par l'origine du fichier, ce qui suppose que la clé de cache Cloudflare inclue la query string (niveau de cache « Standard »,
   par défaut). Une image absente répond 404 sans cache.

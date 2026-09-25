@@ -1,4 +1,3 @@
-import NukeUI
 import SwiftUI
 
 /// "Possesseurs" (`ScrOffers` in the mockup): the other players offering this card to trade,
@@ -85,16 +84,9 @@ struct CardOffersView: View {
 
     private var cardRow: some View {
         HStack(spacing: 12) {
-            let url = CardArtwork.url(gathererID: card.the_gatherer_id, scryfallID: card.scryfall_id)
-            LazyImage(url: url) { state in
-                if let image = state.image {
-                    image.resizable().scaledToFill()
-                } else {
-                    Rectangle().fill(.quaternary)
-                }
-            }
-            .frame(width: 40, height: 56)
-            .clipShape(RoundedRectangle(cornerRadius: 4, style: .continuous))
+            CardImageView(url: CardArtwork.url(imagePath: card.image_url))
+                .frame(width: 40, height: 56)
+                .clipShape(RoundedRectangle(cornerRadius: 4, style: .continuous))
 
             VStack(alignment: .leading, spacing: 3) {
                 Text(card.name)

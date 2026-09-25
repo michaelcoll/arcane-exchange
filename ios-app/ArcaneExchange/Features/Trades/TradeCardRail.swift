@@ -1,4 +1,3 @@
-import NukeUI
 import SwiftUI
 
 /// One side of the trade, as the mockup's "table de jeu" rail (`tr-sh` + `tr-rail`): a header
@@ -141,14 +140,7 @@ private struct TradeCardTile: View {
     }
 
     private var artwork: some View {
-        let url = CardArtwork.url(gathererID: card.the_gatherer_id, scryfallID: card.scryfall_id)
-        return LazyImage(url: url) { state in
-            if let image = state.image {
-                image.resizable().scaledToFill().foil(card.foil)
-            } else {
-                Rectangle().fill(.quaternary)
-            }
-        }
+        CardImageView(url: CardArtwork.url(imagePath: card.image_url), foil: card.foil)
     }
 
     /// Overhangs the corner (`top:-7;left:-7`), ringed in the page colour so it reads as a

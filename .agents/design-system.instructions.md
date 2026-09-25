@@ -131,9 +131,10 @@ to consult, **not classes to recreate as-is** in `frontend-vue`.
 
 **Fields** `.field` (+ `.big`), glowing cyan focus; `.search-hero` for the search bar with a halo.
 
-**MTG cards** `.mtg` — realistic monochrome frame (title bar, art, type bar, text box), quantity badge `.qty`, color
-accents `.c-w/-u/-b/-r/-g/-m`, variants `.mini`, `.has-img` (real scan), `.foil` (holographic, scroll-driven),
-`.clickable`. Grid cell `.card-cell` + deal indicators (`.deal-tag.good/.bad/.par`) — already implemented in
+**MTG cards** `.mtg` — the mockup's monochrome frame (title bar, art, type bar, text box) is **not** reproduced: the app
+always shows the stored card image, or the generic card back `public/card-back.webp` for a card without one (pending,
+or failed to load). Quantity badge `.qty`, variants `.mini`, `.foil` (holographic, scroll-driven), `.clickable`, plus
+a flip button to the back of a double-faced card (`flippable`, detail modal only). Grid cell `.card-cell` + deal indicators (`.deal-tag.good/.bad/.par`) — already implemented in
 `app/components/MtgCard.vue` and `app/components/CardCell.vue` respectively.
 
 **Official symbols**: mana (`.msym`, `@font-face` ManaSym, WUBRG badges) and set symbols (Keyrune, classes `ss`/

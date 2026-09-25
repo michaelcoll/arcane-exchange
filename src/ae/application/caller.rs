@@ -34,19 +34,11 @@ pub trait ScryfallCaller: Send + Sync {
     async fn get_card_images(&self, id: Uuid) -> Result<Option<CardImages>, AppError>;
 }
 
-/// A card as Gatherer shows it in one language.
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct GathererCard {
-    /// Id of the front image, the card's `the_gatherer_id`.
-    pub gatherer_id: String,
-    /// The images as served by Gatherer (WebP), whatever their size.
-    pub images: CardImages,
-}
-
 /// What Gatherer answered for a card in one language.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum GathererLookup {
-    Found(GathererCard),
+    /// The images as served by Gatherer (WebP), whatever their size.
+    Found(CardImages),
     /// Gatherer does not have the card, or not all its faces: the next source is tried.
     NotFound(GathererMiss),
 }
@@ -81,7 +73,7 @@ impl Display for GathererMiss {
 #[async_trait]
 #[cfg_attr(test, automock)]
 pub trait GathererCaller: Send + Sync {
-    /// The card's page and images in `language_code`, or why Gatherer does not have them. A
+    /// The card's images in `language_code`, or why Gatherer does not have them. A
     /// technical failure (timeout, 5xx, rate limit) is an error.
     async fn get_card(
         &self,
@@ -90,16 +82,6 @@ pub trait GathererCaller: Send + Sync {
         language_code: LanguageCode,
         name: String,
     ) -> Result<GathererLookup, AppError>;
-
-    /// Only the Gatherer id of the card in `language_code` (its page, no image download), or
-    /// `None` when Gatherer has no page or no image for it.
-    async fn get_gatherer_id(
-        &self,
-        set_code: SetCode,
-        collector_number: String,
-        language_code: LanguageCode,
-        name: String,
-    ) -> Result<Option<String>, AppError>;
 }
 
 #[cfg(test)]

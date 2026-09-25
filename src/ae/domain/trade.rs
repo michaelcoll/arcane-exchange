@@ -1,4 +1,5 @@
 use crate::domain::card::CopyId;
+use crate::domain::card_image::CardImage;
 use crate::domain::error::FunctionalError;
 use crate::domain::pagination::{PageRequest, Pagination};
 use crate::domain::price::PriceGuide;
@@ -301,7 +302,8 @@ pub struct TradeCardDetail {
     pub quantity: u32,
     pub price_guide: Option<PriceGuide>,
     pub scryfall_id: uuid::Uuid,
-    pub the_gatherer_id: Option<String>,
+    /// `None` while the card's image is pending.
+    pub image: Option<CardImage>,
 }
 
 /// One party's acceptance/confirmation/rating state on a trade.

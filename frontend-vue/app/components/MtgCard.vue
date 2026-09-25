@@ -1,7 +1,11 @@
 <script setup lang="ts">
 const props = defineProps<{
-  scryfallId?: string;
-  theGathererId?: string;
+  /** The card's stored image (`image_url`), `null` while it is pending. */
+  imageUrl?: string | null;
+  /** The back of a double-faced card (`image_back_url`). */
+  imageBackUrl?: string | null;
+  /** Offers to flip a double-faced card to its back. */
+  flippable?: boolean;
   qty?: number;
   clickable?: boolean;
   mini?: boolean;
@@ -13,14 +17,25 @@ const props = defineProps<{
 
 const emit = defineEmits(['click']);
 
-const src = computed(
-  () =>
-    (props.theGathererId &&
-      `https://gatherer-static.wizards.com/Cards/medium/${props.theGathererId}.webp`) ||
-    (props.scryfallId &&
-      `https://api.scryfall.com/cards/${props.scryfallId}?format=image&version=normal`) ||
-    '',
+/** Generic card back, shown for a card without an image or whose image fails to load. */
+const CARD_BACK = '/card-back.webp';
+
+const frontFailed = ref(false);
+const backFailed = ref(false);
+const flipped = ref(false);
+
+watch(
+  () => [props.imageUrl, props.imageBackUrl],
+  () => {
+    frontFailed.value = false;
+    backFailed.value = false;
+    flipped.value = false;
+  },
 );
+
+const frontSrc = computed(() => (!frontFailed.value && props.imageUrl) || CARD_BACK);
+const backSrc = computed(() => (!backFailed.value && props.imageBackUrl) || CARD_BACK);
+const canFlip = computed(() => !!props.flippable && !!props.imageBackUrl);
 
 const cardRef = ref<HTMLElement | null>(null);
 
@@ -61,19 +76,10 @@ onUnmounted(() => {
   <div
     ref="cardRef"
     :class="[
-      'relative flex aspect-[5/7] flex-col gap-0 overflow-hidden',
-      'ease transition-[transform,box-shadow,border-color] duration-200',
-      'border',
+      'relative aspect-[5/7] [perspective:1200px]',
+      'ease transition-[transform,box-shadow] duration-200',
       'rounded-[4%]',
-      src
-        ? 'border-black/55 bg-zinc-950 p-0'
-        : [
-            mini ? 'p-0.5' : 'p-[5%]',
-            'border-slate-300 bg-slate-100 shadow-lg dark:border-white/15 dark:bg-zinc-800',
-          ],
-      clickable
-        ? 'cursor-pointer hover:-translate-y-1 hover:border-cyan-500/30 hover:shadow-xl dark:hover:border-cyan-400/30'
-        : '',
+      clickable ? 'cursor-pointer hover:-translate-y-1 hover:shadow-xl' : '',
       foil ? 'foil' : '',
       reserved ? 'ring-2 ring-violet-500 dark:ring-violet-400' : '',
     ]"
@@ -96,88 +102,45 @@ onUnmounted(() => {
       Réservée
     </span>
 
-    <!-- inner vignette overlay — replaces ::after pseudo-element -->
+    <!-- faces: the back is only mounted for a card that can be flipped to it -->
     <div
-      v-if="!src"
       :class="[
-        'pointer-events-none absolute inset-0 z-[1]',
-        mini
-          ? 'rounded shadow-[inset_0_0_0_2px_rgba(0,0,0,0.55)]'
-          : 'rounded-md shadow-[inset_0_0_0_4px_rgba(0,0,0,0.55)]',
+        'relative h-full w-full transition-transform duration-500 [transform-style:preserve-3d] motion-reduce:transition-none',
+        flipped ? '[transform:rotateY(180deg)]' : '',
       ]"
-    />
-
-    <!-- real card scan -->
-    <template v-if="src">
+    >
       <img
-        class="absolute inset-0 z-0 block h-full w-full object-cover select-none"
-        style="border-radius: inherit"
-        :src="src"
+        class="absolute inset-0 block h-full w-full rounded-[4%] object-cover select-none [backface-visibility:hidden]"
+        :src="frontSrc"
         :alt="name ?? ''"
         loading="lazy"
         draggable="false"
+        @error="frontFailed = true"
       />
-    </template>
+      <img
+        v-if="canFlip"
+        class="absolute inset-0 block h-full w-full [transform:rotateY(180deg)] rounded-[4%] object-cover select-none [backface-visibility:hidden]"
+        :src="backSrc"
+        :alt="name ? `${name} (verso)` : ''"
+        loading="lazy"
+        draggable="false"
+        @error="backFailed = true"
+      />
+    </div>
 
-    <!-- mini placeholder -->
-    <template v-else-if="mini">
-      <div
-        class="relative z-[2] grid flex-1 place-items-center overflow-hidden rounded border border-slate-200 bg-slate-100 dark:border-white/10 dark:bg-zinc-800"
-      >
-        <AppIcon
-          name="mountain"
-          class="text-slate-300 opacity-50 dark:text-slate-600"
-          style="width: 46%; height: 46%"
-        />
-      </div>
-    </template>
-
-    <!-- full placeholder -->
-    <template v-else>
-      <!-- title bar -->
-      <div
-        class="relative z-[2] flex items-center justify-between gap-1.5 rounded border border-slate-200 bg-slate-200 px-[6%] py-[5%] dark:border-white/10 dark:bg-zinc-800"
-      >
-        <span class="h-1.5 w-[60%] rounded-sm bg-slate-300 dark:bg-slate-600" />
-        <span
-          class="h-3 w-3 shrink-0 rounded-full bg-zinc-700 shadow-[inset_0_1px_1px_rgba(255,255,255,0.25)]"
-        />
-      </div>
-      <!-- art -->
-      <div
-        class="relative z-[2] mt-[5%] grid flex-1 place-items-center overflow-hidden rounded border border-slate-200 bg-slate-100 dark:border-white/10 dark:bg-zinc-800"
-      >
-        <AppIcon
-          name="mountain"
-          :size="28"
-          class="text-slate-300 opacity-50 dark:text-slate-600"
-          style="width: 34%; height: 34%"
-        />
-      </div>
-      <!-- type bar -->
-      <div
-        class="relative z-[2] mt-[5%] flex items-center gap-1.5 rounded border border-slate-200 bg-slate-200 px-[6%] py-[5%] dark:border-white/10 dark:bg-zinc-800"
-      >
-        <span class="h-1.5 w-[50%] rounded-sm bg-slate-300 opacity-70 dark:bg-slate-600" />
-        <span
-          class="h-2 w-2 shrink-0 rounded-full bg-zinc-700 shadow-[inset_0_1px_1px_rgba(255,255,255,0.25)]"
-        />
-      </div>
-      <!-- text box -->
-      <div
-        class="relative z-[2] mt-[5%] flex shrink-0 basis-[22%] flex-col gap-[14%] rounded border border-slate-200 bg-slate-100 p-[6%] dark:border-white/10 dark:bg-zinc-800"
-      >
-        <span
-          class="block h-[3.5px] w-[92%] rounded-sm bg-slate-300 opacity-50 dark:bg-slate-600"
-        />
-        <span
-          class="block h-[3.5px] w-[78%] rounded-sm bg-slate-300 opacity-50 dark:bg-slate-600"
-        />
-        <span
-          class="block h-[3.5px] w-[85%] rounded-sm bg-slate-300 opacity-50 dark:bg-slate-600"
-        />
-      </div>
-    </template>
+    <!-- flip a double-faced card -->
+    <button
+      v-if="canFlip"
+      type="button"
+      data-testid="flip"
+      :aria-pressed="flipped"
+      :aria-label="flipped ? 'Voir le recto' : 'Voir le verso'"
+      :title="flipped ? 'Voir le recto' : 'Voir le verso'"
+      class="absolute right-2.5 bottom-2.5 z-[5] grid h-9 w-9 place-items-center rounded-full bg-black/60 text-zinc-100 backdrop-blur-sm transition-colors duration-150 hover:bg-cyan-500/80 focus-visible:ring-2 focus-visible:ring-cyan-400 focus-visible:outline-none"
+      @click.stop="flipped = !flipped"
+    >
+      <Icon name="lucide:refresh-cw" :size="16" />
+    </button>
 
     <!-- foil holographic overlay -->
     <span v-if="foil" class="foil-fx" aria-hidden="true" />

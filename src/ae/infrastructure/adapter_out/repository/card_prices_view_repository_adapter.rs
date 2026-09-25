@@ -146,8 +146,8 @@ impl CardPricesViewRepositoryAdapter {
                  {reserved_column}"#
                 ),
                 r#"GROUP BY cp.set_code, sn.name, cp.collector_number, cp.language_code,
-                            cp.foil, cp.name, cp.rarity, cp.scryfall_id, cp.the_gatherer_id,
-                            cp.avg, cp.low, cp.trend"#,
+                            cp.foil, cp.name, cp.rarity, cp.scryfall_id, c.image_source,
+                            c.image_has_back, cp.avg, cp.low, cp.trend"#,
             )
         };
 
@@ -181,13 +181,18 @@ impl CardPricesViewRepositoryAdapter {
                  cp.name,
                  cp.rarity,
                  cp.scryfall_id,
-                 cp.the_gatherer_id,
+                 c.image_source,
+                 c.image_has_back,
                  {owned_columns},
                  cp.avg,
                  cp.low,
                  cp.trend
                FROM mv_card_prices cp
                JOIN set_name sn ON sn.set_code = cp.set_code
+               -- Read from `card` rather than the view, which is only refreshed with the prices:
+               -- an image shows up as soon as it is downloaded.
+               JOIN card c ON (c.set_code, c.collector_number, c.language_code) =
+                              (cp.set_code, cp.collector_number, cp.language_code)
                {tradable_join}
                {where_clause}
                {filter_clause}
@@ -435,6 +440,7 @@ mod tests {
     use crate::application::service::card_offer_service::CARD_OFFERS_MAX_OFFSET;
     use crate::application::service::collection_service::COLLECTION_MAX_OFFSET;
     use crate::application::service::search_service::SEARCH_MAX_OFFSET;
+    use crate::domain::card_image::{CardImage, CardImageSource};
     use crate::domain::collection::{CollectionSortField, SortDirection};
     use crate::domain::rarity_code::RarityCode;
     use crate::infrastructure::adapter_out::repository::common_repository_tests::{
@@ -1334,6 +1340,56 @@ mod tests {
 
         assert_eq!(result.total, 2);
         assert_eq!(result.items.len(), 2);
+    }
+
+    /// Records an image for every card after the view was refreshed, as the image enricher does.
+    async fn record_image_after_refresh(pool: &PgPool) {
+        sqlx::query("UPDATE card SET image_source = 'gatherer_en', image_has_back = TRUE")
+            .execute(pool)
+            .await
+            .unwrap();
+    }
+
+    const DOWNLOADED_IMAGE: Option<CardImage> = Some(CardImage {
+        source: CardImageSource::GathererEn,
+        has_back: true,
+    });
+
+    #[sqlx::test]
+    async fn get_paginated_reads_an_image_downloaded_since_the_last_refresh(pool: PgPool) {
+        insert_set(&pool, "TST").await;
+        insert_card(&pool, "TST", "1", "FR", "Test Card", 1).await;
+        insert_user(&pool, "user1", "User1").await;
+        insert_collection_entry(&pool, "TST", "1", "FR", false, "user1", 1, 100, Utc::now()).await;
+        refresh_view(&pool).await;
+        record_image_after_refresh(&pool).await;
+
+        let result = CardPricesViewRepositoryAdapter::new(pool)
+            .get_paginated(&UserId::new("user1"), CollectionQuery::default())
+            .await
+            .unwrap();
+
+        assert_eq!(result.items[0].image, DOWNLOADED_IMAGE);
+    }
+
+    #[sqlx::test]
+    async fn search_paginated_reads_an_image_downloaded_since_the_last_refresh(pool: PgPool) {
+        insert_set(&pool, "TST").await;
+        insert_card(&pool, "TST", "1", "FR", "Test Card", 1).await;
+        insert_user_with_visibility(&pool, "userA", "Alice", "public").await;
+        insert_user_with_visibility(&pool, "userB", "Bob", "public").await;
+        insert_collection_entry(&pool, "TST", "1", "FR", false, "userA", 1, 100, Utc::now()).await;
+        insert_collection_entry(&pool, "TST", "1", "FR", false, "userB", 1, 100, Utc::now()).await;
+        refresh_view(&pool).await;
+        record_image_after_refresh(&pool).await;
+
+        let result = CardPricesViewRepositoryAdapter::new(pool)
+            .search_paginated(CollectionQuery::default().into())
+            .await
+            .unwrap();
+
+        assert_eq!(result.items.len(), 1);
+        assert_eq!(result.items[0].image, DOWNLOADED_IMAGE);
     }
 
     #[sqlx::test]

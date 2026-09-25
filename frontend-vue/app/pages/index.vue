@@ -27,29 +27,6 @@ watch(
 
 const { recents, addRecentSearch } = useRecentSearches(CARD_RECENT_SEARCHES_KEY);
 
-const trends = [
-  {
-    name: 'Sire of Seven Deaths',
-    color: 'm',
-    price: 3100,
-    id: '8d8432a7-1c8a-4cfb-947c-ecf9791063eb',
-  },
-  { name: 'Vampiric Tutor', color: 'b', price: 2800, id: '7a79190f-de60-4eb6-b925-594eb76ca8c3' },
-  {
-    name: 'Chronicle of Victory',
-    color: 'w',
-    price: 2400,
-    id: 'b3c2d68d-690b-41e7-99ed-2d20c7e0a9b4',
-  },
-  { name: 'The Soul Stone', color: 'b', price: 900, id: '1982f910-a9bd-4e94-a187-84381b22aacc' },
-  {
-    name: 'Black Market Connections',
-    color: 'b',
-    price: 1300,
-    id: '318f8ec3-0613-448d-87d2-0bcc9e95da64',
-  },
-];
-
 const { getCollectionStats, getPriceHistory } = useCollectionService();
 const { data: collectionStatsData } = await getCollectionStats();
 
@@ -279,40 +256,6 @@ const handleDecklistSearch = () => {
             {{ r }}
           </button>
         </div>
-      </div>
-    </div>
-
-    <!-- ── TRENDS ── -->
-    <div class="mt-6">
-      <div class="mb-3.5 flex items-center justify-between gap-3">
-        <div class="flex items-center gap-2">
-          <span class="text-cyan-600 dark:text-cyan-400"
-            ><Icon name="lucide:trending-up" size="18"
-          /></span>
-          <h2 class="font-display m-0 text-base font-semibold tracking-tight">
-            Tendances cette semaine
-          </h2>
-        </div>
-        <a
-          class="inline-flex items-center gap-1 text-sm text-slate-600 transition-colors duration-150 hover:text-cyan-600 dark:text-slate-300 dark:hover:text-cyan-400"
-          href="#"
-        >
-          voir tout
-          <Icon name="lucide:chevron-right" size="14" />
-        </a>
-      </div>
-
-      <div
-        class="grid [grid-template-columns:repeat(auto-fill,minmax(118px,1fr))] gap-4 max-md:[grid-template-columns:repeat(auto-fill,minmax(96px,1fr))] max-md:gap-3.5"
-      >
-        <CardCell
-          v-for="t in trends"
-          :key="t.name"
-          :scryfall-id="t.id"
-          :name="t.name"
-          :price="t.price"
-          @click="navigateTo('/search')"
-        />
       </div>
     </div>
 

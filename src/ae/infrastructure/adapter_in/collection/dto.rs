@@ -1,4 +1,5 @@
-use crate::domain::card::{Card, CollectionEntry};
+use crate::domain::card::{Card, CardId, CollectionEntry};
+use crate::domain::card_image::{CardFace, CardImage};
 use crate::domain::card_import::{CardImport, CardImportLineError};
 use crate::domain::collection::{CollectionSortField, SortDirection};
 use crate::domain::collection_stats::{BinderInfo, CollectionStats};
@@ -258,6 +259,26 @@ impl From<RarityCodeParam> for RarityCode {
     }
 }
 
+/// The URLs of the front and back images of `card_id`, served by the frontend under
+/// `/card-images`, both `None` while the image is pending and the back `None` for a single-faced
+/// card. They are versioned by the origin of the file, which changes whenever the file is
+/// replaced, so they can be cached as immutable; the cards sharing an image share its URLs
+/// (ADR 0017).
+pub(crate) fn card_image_urls(
+    card_id: &CardId,
+    image: Option<CardImage>,
+) -> (Option<String>, Option<String>) {
+    let url = |face| {
+        let image = image?;
+        let file_name = image.file_name(card_id, face)?;
+        Some(format!(
+            "/card-images/{file_name}?v={}",
+            image.source.origin().url_version()
+        ))
+    };
+    (url(CardFace::Front), url(CardFace::Back))
+}
+
 pub(crate) fn default_page_size() -> u32 {
     crate::domain::pagination::DEFAULT_PAGE_SIZE
 }
@@ -346,7 +367,11 @@ pub struct CollectionCardResponse {
     pub name: String,
     pub rarity_code: String,
     pub scryfall_id: String,
-    pub the_gatherer_id: Option<String>,
+    /// Front image, relative to the frontend (e.g. `/card-images/FDN_1_EN.webp?v=gatherer`);
+    /// `null` while the card's image is pending.
+    pub image_url: Option<String>,
+    /// Back image of a double-faced card, like `image_url`; `null` for a single-faced card.
+    pub image_back_url: Option<String>,
     /// Present only when the card is owned by the authenticated user.
     #[schema(value_type = CollectionEntryResponse, required = false)]
     pub collection_entry: Option<CollectionEntryResponse>,
@@ -399,6 +424,7 @@ impl From<Card> for CollectionCardResponse {
             ),
         };
 
+        let (image_url, image_back_url) = card_image_urls(&c.id.card_id, c.image);
         Self {
             set_code: c.id.card_id.set_code.to_string(),
             collector_number: c.id.card_id.collector_number,
@@ -407,7 +433,8 @@ impl From<Card> for CollectionCardResponse {
             name: c.name,
             rarity_code: c.rarity_code.to_string(),
             scryfall_id: c.scryfall_id.to_string(),
-            the_gatherer_id: c.the_gatherer_id,
+            image_url,
+            image_back_url,
             collection_entry,
             owner_count,
             reserved,
