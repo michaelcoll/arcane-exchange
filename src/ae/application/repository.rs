@@ -1,6 +1,7 @@
 use crate::application::error::AppError;
 use crate::application::imported_card::ImportedCard;
 use crate::domain::card::{Card, CardId, CollectionEntry, CopyId};
+use crate::domain::card_image::{CardImageSource, CardImages, EnglishImage};
 use crate::domain::card_import::{CardImport, CardImportId, CardImportStatus};
 use crate::domain::card_offer::CardOfferSortField;
 use crate::domain::collection::{CollectionQuery, SearchQuery};
@@ -22,7 +23,15 @@ use mockall::automock;
 #[cfg_attr(test, automock)]
 pub trait CardRepository: Send + Sync {
     async fn get_all_without_cardmarket_id(&self) -> Result<Vec<(CardId, uuid::Uuid)>, AppError>;
-    async fn get_all_without_gatherer_id(&self) -> Result<Vec<(CardId, String)>, AppError>;
+    /// Cards whose image source is still unknown (pending), with what finding their images needs.
+    async fn get_all_without_image_source(
+        &self,
+    ) -> Result<Vec<(CardId, CardImageLookup)>, AppError>;
+    /// Cards in fallback (image source other than Gatherer in the card's language), and pending
+    /// cards.
+    async fn get_all_in_fallback_or_pending(
+        &self,
+    ) -> Result<Vec<(CardId, CardImageLookup)>, AppError>;
     /// Returns `cardmarket_id` for the card matching `scryfall_id`, if any.
     async fn find_by_scryfall_id(
         &self,
@@ -42,7 +51,37 @@ pub trait CardRepository: Send + Sync {
         id: CardId,
         gatherer_id: Option<String>,
     ) -> Result<(), AppError>;
+    /// Records that the card uses its own image, in its language.
+    async fn update_image_source(
+        &self,
+        id: CardId,
+        source: CardImageSource,
+        has_back: bool,
+    ) -> Result<(), AppError>;
+    /// The English image of the card's set and number, as recorded on the cards already using it
+    /// (the English card, or cards in fallback), or `None` if no card uses it yet.
+    async fn find_english_image(&self, id: &CardId) -> Result<Option<EnglishImage>, AppError>;
+    /// Records that the card uses the English image of its set and number, and aligns every card
+    /// already using that image on it: they share one file.
+    async fn record_english_image(&self, id: CardId, image: EnglishImage) -> Result<(), AppError>;
     async fn delete_all(&self, user: User) -> Result<(), AppError>;
+}
+
+/// What finding a card's images needs besides its id.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct CardImageLookup {
+    /// The card's name, which Gatherer URLs contain.
+    pub name: String,
+    pub scryfall_id: uuid::Uuid,
+}
+
+/// Stored card image files, one per face, named after the card id.
+#[async_trait]
+#[cfg_attr(test, automock)]
+pub trait CardImageRepository: Send + Sync {
+    /// Writes every face atomically, replacing any previous file. A back left over from a
+    /// previous source is removed when `images` has none.
+    async fn save(&self, card_id: &CardId, images: &CardImages) -> Result<(), AppError>;
 }
 
 #[async_trait]

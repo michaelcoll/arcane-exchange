@@ -123,8 +123,11 @@ pub trait EnqueueCardMarketIdUpdateUseCase: Send + Sync {
 
 #[async_trait]
 #[cfg_attr(test, automock)]
-pub trait EnqueueGathererIdUpdateUseCase: Send + Sync {
+pub trait EnqueueCardImageUpdateUseCase: Send + Sync {
+    /// Queues the cards whose images are still pending.
     async fn enqueue_pending_updates(&self) -> Result<usize, AppError>;
+    /// Queues again the cards in fallback, and the pending ones (maintenance).
+    async fn enqueue_fallback_and_pending_updates(&self) -> Result<usize, AppError>;
 }
 
 #[async_trait]

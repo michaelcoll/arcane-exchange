@@ -23,6 +23,7 @@ chrono = { version = "0.4", features = ["serde"] }
 cron_tab = { version = "0.2", features = ["async"] }
 csv = "1"
 dotenv = "0.15"
+image = { version = "0.25", default-features = false, features = ["jpeg"] }
 jsonwebtoken = { version = "11", features = ["rust_crypto"] }
 ratelimit = "2.0"
 reqwest = { version = "0.13", features = ["json"] }
@@ -37,6 +38,8 @@ tracing-subscriber = { version = "0.3", features = ["env-filter", "tracing"] }
 ts-rs = "12.0"
 utoipa = { version = "5", features = ["axum_extras", "yaml", "uuid"] }
 uuid = { version = "1.23", features = ["serde", "v4"] }
+# Lossy WebP encoding (libwebp, built from source): `image` only encodes lossless WebP.
+webp = { version = "0.3", default-features = false }
 
 [dev-dependencies]
 mockall = "0.15"

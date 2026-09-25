@@ -1,4 +1,5 @@
 use crate::application::error::InfraError;
+use crate::application::repository::CardImageLookup;
 use crate::domain::card::{Card, CardId, CollectionEntry, CopyId};
 use crate::domain::language_code::LanguageCode;
 use crate::domain::price::{FullPriceGuide, Price, PriceGuide, PriceHistoryEntry};
@@ -19,22 +20,28 @@ pub struct CardIdEntity {
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct CardNameEntity {
+pub struct CardImageLookupEntity {
     pub set_code: String,
     pub collector_number: String,
     pub language_code: String,
     pub name: String,
+    pub scryfall_id: Uuid,
 }
 
-impl TryFrom<CardNameEntity> for CardId {
+impl TryFrom<CardImageLookupEntity> for (CardId, CardImageLookup) {
     type Error = InfraError;
 
-    fn try_from(entity: CardNameEntity) -> Result<CardId, InfraError> {
-        card_id_from_db(
+    fn try_from(entity: CardImageLookupEntity) -> Result<Self, InfraError> {
+        let card_id = card_id_from_db(
             &entity.set_code,
             entity.collector_number,
             &entity.language_code,
-        )
+        )?;
+        let lookup = CardImageLookup {
+            name: entity.name,
+            scryfall_id: entity.scryfall_id,
+        };
+        Ok((card_id, lookup))
     }
 }
 
@@ -734,22 +741,42 @@ mod tests {
         assert_eq!(entity.foil.avg, Some(200));
     }
 
-    // --- CardNameEntity ---
+    // --- CardImageLookupEntity ---
 
     #[test]
-    fn card_name_entity_converts_to_card_id() {
-        let entity = CardNameEntity {
+    fn card_image_lookup_entity_converts_to_card_id_and_lookup() {
+        let scryfall_id = Uuid::new_v4();
+        let entity = CardImageLookupEntity {
             set_code: "FDN".to_string(),
             collector_number: "42".to_string(),
             language_code: "EN".to_string(),
             name: "Sol Ring".to_string(),
+            scryfall_id,
         };
 
-        let card_id = CardId::try_from(entity).unwrap();
+        let (card_id, lookup) = <(CardId, CardImageLookup)>::try_from(entity).unwrap();
 
-        assert_eq!(card_id.collector_number, "42");
-        assert_eq!(card_id.language_code, LanguageCode::EN);
-        assert_eq!(card_id.set_code.to_string(), "FDN");
+        assert_eq!(card_id, CardId::new("FDN", "42", LanguageCode::EN));
+        assert_eq!(
+            lookup,
+            CardImageLookup {
+                name: "Sol Ring".to_string(),
+                scryfall_id,
+            }
+        );
+    }
+
+    #[test]
+    fn card_image_lookup_entity_with_unknown_language_fails_to_convert() {
+        let entity = CardImageLookupEntity {
+            set_code: "FDN".to_string(),
+            collector_number: "42".to_string(),
+            language_code: "XX".to_string(),
+            name: "Sol Ring".to_string(),
+            scryfall_id: Uuid::new_v4(),
+        };
+
+        assert!(<(CardId, CardImageLookup)>::try_from(entity).is_err());
     }
 
     // --- UserEntity ---

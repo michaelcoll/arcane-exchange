@@ -13,8 +13,8 @@ use crate::application::service::auth_service::MockAuthService;
 use crate::application::use_case::{
     MockAbandonTradeUseCase, MockAcceptTradeUseCase, MockAddTradeBinderUseCase,
     MockAddTradeCardUseCase, MockAutocompleteUsersUseCase, MockConfirmTradeUseCase,
-    MockCreateTradeUseCase, MockEnqueueCardMarketIdUpdateUseCase,
-    MockEnqueueGathererIdUpdateUseCase, MockGetCardImportUseCase, MockGetCardOffersUseCase,
+    MockCreateTradeUseCase, MockEnqueueCardImageUpdateUseCase,
+    MockEnqueueCardMarketIdUpdateUseCase, MockGetCardImportUseCase, MockGetCardOffersUseCase,
     MockGetCardPriceHistoryUseCase, MockGetCollectionPriceHistoryUseCase,
     MockGetCollectionStatsUseCase, MockGetCollectionUseCase, MockGetCollectionVisibilityUseCase,
     MockGetRarityTradeFiltersUseCase, MockGetSetUseCase, MockGetTradeBindersUseCase,
@@ -64,7 +64,7 @@ impl AppState {
             search_cards_use_case: Arc::new(MockSearchCardsUseCase::new()),
             import_price_use_case: Arc::new(mock_import_price),
             enqueue_cardmarket_id_use_case: Arc::new(MockEnqueueCardMarketIdUpdateUseCase::new()),
-            enqueue_gatherer_id_use_case: Arc::new(MockEnqueueGathererIdUpdateUseCase::new()),
+            enqueue_card_image_use_case: Arc::new(MockEnqueueCardImageUpdateUseCase::new()),
             get_collection_price_history_use_case: Arc::new(
                 MockGetCollectionPriceHistoryUseCase::new(),
             ),

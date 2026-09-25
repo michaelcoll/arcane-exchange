@@ -11,7 +11,7 @@ pub fn create_maintenance_router() -> axum::Router<AppState> {
         .route("/stats", get(get_stats))
         .route("/trigger-price-update", post(trigger_price_update))
         .route("/update-cardmarket-ids", post(update_cardmarket_ids))
-        .route("/update-gatherer-ids", post(update_gatherer_ids))
+        .route("/update-card-images", post(update_card_images))
 }
 
 #[utoipa::path(
@@ -69,18 +69,18 @@ pub(crate) async fn update_cardmarket_ids(
 
 #[utoipa::path(
     post,
-    path = "/maintenance/update-gatherer-ids",
+    path = "/maintenance/update-card-images",
     responses(
-        (status = 202, description = "Gatherer IDs enqueued for update", body = EnqueueResponse),
+        (status = 202, description = "Cards in fallback (no Gatherer image in their language) and pending cards enqueued for a new resolution", body = EnqueueResponse),
     ),
     tag = "maintenance",
 )]
-pub(crate) async fn update_gatherer_ids(
+pub(crate) async fn update_card_images(
     State(state): State<AppState>,
 ) -> Result<(StatusCode, Json<EnqueueResponse>), AppError> {
     let enqueued = state
-        .enqueue_gatherer_id_use_case
-        .enqueue_pending_updates()
+        .enqueue_card_image_use_case
+        .enqueue_fallback_and_pending_updates()
         .await?;
 
     Ok((StatusCode::ACCEPTED, Json(EnqueueResponse { enqueued })))

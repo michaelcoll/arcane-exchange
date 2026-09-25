@@ -348,24 +348,25 @@ async fn test_update_cardmarket_ids_can_be_called_multiple_times() {
     assert_eq!(b2.enqueued, 3);
 }
 
-// --- Update Gatherer IDs ---
+// --- Update card images ---
 
 #[tokio::test]
-async fn test_update_gatherer_ids_returns_accepted_with_enqueued_count() {
-    use crate::application::use_case::MockEnqueueGathererIdUpdateUseCase;
+async fn test_update_card_images_enqueues_only_cards_in_fallback_or_pending() {
+    use crate::application::use_case::MockEnqueueCardImageUpdateUseCase;
 
-    let mut mock_enqueue = MockEnqueueGathererIdUpdateUseCase::new();
+    let mut mock_enqueue = MockEnqueueCardImageUpdateUseCase::new();
     mock_enqueue
-        .expect_enqueue_pending_updates()
+        .expect_enqueue_fallback_and_pending_updates()
         .times(1)
         .returning(|| Box::pin(async { Ok(5) }));
+    mock_enqueue.expect_enqueue_pending_updates().times(0);
 
     let app_state = AppState {
-        enqueue_gatherer_id_use_case: Arc::new(mock_enqueue),
+        enqueue_card_image_use_case: Arc::new(mock_enqueue),
         ..AppState::for_testing()
     };
 
-    let result = update_gatherer_ids(State(app_state)).await;
+    let result = update_card_images(State(app_state)).await;
     assert!(result.is_ok());
     let (status, Json(body)) = result.unwrap();
     assert_eq!(status, StatusCode::ACCEPTED);
@@ -373,12 +374,12 @@ async fn test_update_gatherer_ids_returns_accepted_with_enqueued_count() {
 }
 
 #[tokio::test]
-async fn test_update_gatherer_ids_returns_error_on_repository_error() {
-    use crate::application::use_case::MockEnqueueGathererIdUpdateUseCase;
+async fn test_update_card_images_returns_error_on_repository_error() {
+    use crate::application::use_case::MockEnqueueCardImageUpdateUseCase;
 
-    let mut mock_enqueue = MockEnqueueGathererIdUpdateUseCase::new();
+    let mut mock_enqueue = MockEnqueueCardImageUpdateUseCase::new();
     mock_enqueue
-        .expect_enqueue_pending_updates()
+        .expect_enqueue_fallback_and_pending_updates()
         .times(1)
         .returning(|| {
             Box::pin(async {
@@ -389,11 +390,11 @@ async fn test_update_gatherer_ids_returns_error_on_repository_error() {
         });
 
     let app_state = AppState {
-        enqueue_gatherer_id_use_case: Arc::new(mock_enqueue),
+        enqueue_card_image_use_case: Arc::new(mock_enqueue),
         ..AppState::for_testing()
     };
 
-    let result = update_gatherer_ids(State(app_state)).await;
+    let result = update_card_images(State(app_state)).await;
     assert!(result.is_err());
     match result.unwrap_err() {
         AppError::Infra(InfraError::RepositoryError(msg)) => assert_eq!(msg, "DB error"),

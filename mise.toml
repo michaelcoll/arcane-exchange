@@ -10,6 +10,8 @@ DATABASE_URL = "postgresql://postgres:password@localhost:5432/postgres"
 
 # Server
 BACKEND_PORT = "8080"
+# Card images: written by the backend, served by the frontend (Nitro) — same folder for both.
+CARD_IMAGES_DIR = "{{config_root}}/.card-images"
 
 # External APIs
 CARDMARKET_PRICE_GUIDES_URL = "https://downloads.s3.cardmarket.com/productCatalog/priceGuide/price_guide_1.json"

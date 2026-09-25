@@ -11,6 +11,8 @@ erDiagram
         uuid scryfall_id "not null"
         integer cardmarket_id
         character_varying(64) the_gatherer_id
+        character_varying(32) image_source
+        boolean image_has_back "not null, default: false"
     }
     card_import {
         uuid id PK
@@ -151,6 +153,11 @@ erDiagram
 - `v_tradable_entry` (view)
 
 ## Indexes and constraints
+
+### card
+
+- check constraint `card_image_back_needs_source_check`: `CHECK (((image_source IS NOT NULL) OR (NOT image_has_back)))`
+- check constraint `card_image_source_check`: `CHECK (((image_source)::text = ANY ((ARRAY['gatherer_localized'::character varying, 'gatherer_en'::character varying, 'scryfall'::character varying])::text[])))`
 
 ### card_import
 

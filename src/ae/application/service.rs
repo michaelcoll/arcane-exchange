@@ -1,6 +1,7 @@
 pub mod auth_service;
 pub mod autocomplete_user_service;
 pub mod card_collection_service;
+pub mod card_image_enricher;
 pub mod card_import_query_service;
 pub mod card_import_worker;
 pub mod card_offer_service;
@@ -11,7 +12,6 @@ pub mod collection_service;
 pub mod collection_stats_service;
 pub mod collection_visibility_service;
 pub mod enrichment_queue;
-pub mod gatherer_id_enricher;
 pub mod get_user_profile_service;
 pub mod import_card_service;
 pub mod import_price_service;

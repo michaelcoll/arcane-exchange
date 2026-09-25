@@ -4,6 +4,7 @@ use crate::application::repository::CardImportRepository;
 use crate::application::service::auth_service::AuthService;
 use crate::application::service::autocomplete_user_service::AutocompleteUserService;
 use crate::application::service::card_collection_service::CardCollectionService;
+use crate::application::service::card_image_enricher::CardImageEnricher;
 use crate::application::service::card_import_query_service::CardImportQueryService;
 use crate::application::service::card_import_worker::CardImportWorker;
 use crate::application::service::card_offer_service::CardOfferService;
@@ -16,7 +17,6 @@ use crate::application::service::collection_visibility_service::{
     GetCollectionVisibilityService, SetCollectionVisibilityService,
 };
 use crate::application::service::enrichment_queue::EnrichmentQueue;
-use crate::application::service::gatherer_id_enricher::GathererIdEnricher;
 use crate::application::service::get_user_profile_service::GetUserProfileService;
 use crate::application::service::import_card_service::{ImportCardService, RunCardImportService};
 use crate::application::service::import_price_service::ImportPriceService;
@@ -38,7 +38,7 @@ use crate::application::service::trade_service::{
 use crate::application::use_case::{
     AbandonTradeUseCase, AcceptTradeUseCase, AddTradeBinderUseCase, AddTradeCardUseCase,
     AutocompleteUsersUseCase, ConfirmTradeUseCase, CreateTradeUseCase,
-    EnqueueCardMarketIdUpdateUseCase, EnqueueGathererIdUpdateUseCase, GetCardImportUseCase,
+    EnqueueCardImageUpdateUseCase, EnqueueCardMarketIdUpdateUseCase, GetCardImportUseCase,
     GetCardOffersUseCase, GetCardPriceHistoryUseCase, GetCollectionPriceHistoryUseCase,
     GetCollectionStatsUseCase, GetCollectionUseCase, GetCollectionVisibilityUseCase,
     GetRarityTradeFiltersUseCase, GetSetUseCase, GetTradeBindersUseCase, GetTradeUseCase,
@@ -68,6 +68,7 @@ use crate::infrastructure::adapter_out::repository::trading_binders_repository_a
 use adapter_in::maintenance::controller::create_maintenance_router;
 use adapter_out::caller::gatherer_caller_adapter::GathererCallerAdapter;
 use adapter_out::caller::scryfall_caller_adapter::ScryfallCallerAdapter;
+use adapter_out::repository::card_image_file_repository_adapter::CardImageFileRepositoryAdapter;
 use adapter_out::repository::card_import_repository_adapter::CardImportRepositoryAdapter;
 use adapter_out::repository::card_repository_adapter::CardRepositoryAdapter;
 use adapter_out::repository::set_names_repository_adapter::SetNameRepositoryAdapter;
@@ -97,7 +98,7 @@ pub struct AppState {
     pub search_cards_use_case: Arc<dyn SearchCardsUseCase>,
     pub import_price_use_case: Arc<dyn ImportPriceUseCase>,
     pub enqueue_cardmarket_id_use_case: Arc<dyn EnqueueCardMarketIdUpdateUseCase>,
-    pub enqueue_gatherer_id_use_case: Arc<dyn EnqueueGathererIdUpdateUseCase>,
+    pub enqueue_card_image_use_case: Arc<dyn EnqueueCardImageUpdateUseCase>,
     pub get_collection_price_history_use_case: Arc<dyn GetCollectionPriceHistoryUseCase>,
     pub get_card_price_history_use_case: Arc<dyn GetCardPriceHistoryUseCase>,
     pub get_collection_stats_use_case: Arc<dyn GetCollectionStatsUseCase>,
@@ -202,7 +203,7 @@ async fn create_auth_service(config: &Config) -> Arc<dyn AuthService> {
 fn spawn_card_import_worker(
     repos: &Repositories,
     enqueue_cardmarket_id_use_case: Arc<dyn EnqueueCardMarketIdUpdateUseCase>,
-    enqueue_gatherer_id_use_case: Arc<dyn EnqueueGathererIdUpdateUseCase>,
+    enqueue_card_image_use_case: Arc<dyn EnqueueCardImageUpdateUseCase>,
 ) -> tokio::sync::mpsc::UnboundedSender<CardImportJob> {
     let (sender, receiver) = tokio::sync::mpsc::unbounded_channel::<CardImportJob>();
 
@@ -211,7 +212,7 @@ fn spawn_card_import_worker(
         repos.set_name.clone(),
         repos.card_import.clone(),
         enqueue_cardmarket_id_use_case,
-        enqueue_gatherer_id_use_case,
+        enqueue_card_image_use_case,
         repos.card_prices_view.clone(),
         repos.trading_binders.clone(),
     ));
@@ -232,7 +233,7 @@ fn create_app_state(
     auth_service: Arc<dyn AuthService>,
     card_collection_service: Arc<CardCollectionService>,
     enqueue_cardmarket_id_use_case: Arc<dyn EnqueueCardMarketIdUpdateUseCase>,
-    enqueue_gatherer_id_use_case: Arc<dyn EnqueueGathererIdUpdateUseCase>,
+    enqueue_card_image_use_case: Arc<dyn EnqueueCardImageUpdateUseCase>,
     card_import_sender: tokio::sync::mpsc::UnboundedSender<CardImportJob>,
 ) -> AppState {
     let import_card_service = Arc::new(ImportCardService::new(
@@ -320,7 +321,7 @@ fn create_app_state(
         search_cards_use_case: search_service,
         import_price_use_case,
         enqueue_cardmarket_id_use_case,
-        enqueue_gatherer_id_use_case,
+        enqueue_card_image_use_case,
         get_collection_price_history_use_case: collection_price_history_service,
         get_card_price_history_use_case: card_price_history_service,
         get_collection_stats_use_case: collection_stats_service,
@@ -414,15 +415,22 @@ pub async fn create_infra(pool: Pool<Postgres>, config: &Config) -> Router {
             ),
             repos.card_prices_view.clone(),
         );
-    let enqueue_gatherer_id_use_case: Arc<dyn EnqueueGathererIdUpdateUseCase> =
+    let enqueue_card_image_use_case: Arc<dyn EnqueueCardImageUpdateUseCase> =
         EnrichmentQueue::spawn(
-            GathererIdEnricher::new(repos.card.clone(), callers.gatherer.clone()),
+            CardImageEnricher::new(
+                repos.card.clone(),
+                Arc::new(CardImageFileRepositoryAdapter::new(
+                    config.card_images_dir.clone(),
+                )),
+                callers.gatherer.clone(),
+                callers.scryfall.clone(),
+            ),
             repos.card_prices_view.clone(),
         );
     let card_import_sender = spawn_card_import_worker(
         &repos,
         enqueue_cardmarket_id_use_case.clone(),
-        enqueue_gatherer_id_use_case.clone(),
+        enqueue_card_image_use_case.clone(),
     );
 
     let app_state = create_app_state(
@@ -431,7 +439,7 @@ pub async fn create_infra(pool: Pool<Postgres>, config: &Config) -> Router {
         auth_service,
         card_collection_service,
         enqueue_cardmarket_id_use_case,
-        enqueue_gatherer_id_use_case,
+        enqueue_card_image_use_case,
         card_import_sender,
     );
 

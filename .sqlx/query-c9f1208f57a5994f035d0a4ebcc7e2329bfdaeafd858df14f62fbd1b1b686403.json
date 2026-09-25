@@ -1,0 +1,44 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT image_source AS \"image_source!\", image_has_back\n               FROM card\n               WHERE set_code = $1 AND collector_number = $2\n                 AND image_source IS NOT NULL\n                 AND (language_code = $3 OR image_source <> $4)\n               ORDER BY image_source = $5 DESC, language_code\n               LIMIT 1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "image_source!",
+        "type_info": "Varchar",
+        "origin": {
+          "Table": {
+            "table": "card",
+            "name": "image_source"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "image_has_back",
+        "type_info": "Bool",
+        "origin": {
+          "Table": {
+            "table": "card",
+            "name": "image_has_back"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": [
+      true,
+      false
+    ]
+  },
+  "hash": "c9f1208f57a5994f035d0a4ebcc7e2329bfdaeafd858df14f62fbd1b1b686403"
+}

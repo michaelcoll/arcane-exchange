@@ -1,6 +1,7 @@
 use crate::application::error::{AppError, InfraError};
 use sqlx::Error;
 
+pub mod card_image_file_repository_adapter;
 pub mod card_import_repository_adapter;
 pub mod card_prices_view_repository_adapter;
 pub mod card_repository_adapter;

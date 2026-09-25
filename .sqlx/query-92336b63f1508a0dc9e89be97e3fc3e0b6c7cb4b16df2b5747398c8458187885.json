@@ -1,0 +1,21 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE card\n                SET image_source   = CASE WHEN language_code = $1 THEN $2 ELSE $3 END,\n                    image_has_back = $4\n                WHERE set_code = $5 AND collector_number = $6\n                  AND (language_code = $7\n                       OR (image_source IS NOT NULL\n                           AND (language_code = $1 OR image_source <> $8)));",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text",
+        "Text",
+        "Bool",
+        "Text",
+        "Text",
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "92336b63f1508a0dc9e89be97e3fc3e0b6c7cb4b16df2b5747398c8458187885"
+}

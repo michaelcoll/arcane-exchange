@@ -24,6 +24,8 @@ ios-app (SwiftUI)  ────┤  backend Rust (axum)     ├── (SQLx, mig
 - **Backend** : `src/ae/`, binaire `ae`, Axum + SQLx + Postgres.
 - **Web** : `frontend-vue/`, Nuxt 4 en **SPA** (`ssr: false`) ; son serveur Nitro sert les assets
   et **proxifie `/api/v1/**` vers le backend** — le navigateur ne parle jamais au backend en direct.
+  Il sert aussi les images de cartes sous `/card-images/**`, lues dans le dossier que le backend
+  alimente.
 - **iOS** : `ios-app/`, SwiftUI, iOS 18+, Swift 6 strict concurrency, iPhone seulement.
 - **Base** : un seul schéma Postgres, migrations SQLx dans `migrations/`, appliquées au démarrage du
   backend (pas d'étape de déploiement séparée).
@@ -79,6 +81,12 @@ régénération. Modifier un modèle côté client est toujours une erreur.
   l'échange à partir de sa visibilité, de ses binders ouverts et de ses filtres de rareté. C'est la
   seule source de l'exposition d'une carte à un tiers.
 - **Prix en centimes**, entiers, partout — jamais de flottant.
+- **Images de cartes sur disque**, hors de Postgres : des fichiers WebP dans le dossier
+  `CARD_IMAGES_DIR`, nommés d'après le CardId dans la langue de l'image
+  (`{SET}_{numéro}_{LANGUE}.webp`, `_back` pour le verso). Une carte en fallback lit le fichier de
+  la carte anglaise, partagé. La base ne retient que la source retenue (`card.image_source`,
+  `NULL` = en attente). Le dossier est une donnée à sauvegarder au même titre que la base
+  (ADR 0017).
 - **SQLx en mode vérifié à la compilation** : les requêtes sont validées contre une base réelle, et
   la métadonnée `.sqlx/` est commitée pour que les builds release/CI se fassent hors ligne.
 
@@ -90,11 +98,21 @@ Tout tourne dans le même processus que l'API, sans ordonnanceur externe :
   un worker via un canal Tokio et répond immédiatement. Le client suit l'avancement en interrogeant
   l'état de l'import. Au démarrage, les imports restés actifs d'un process précédent sont marqués en
   échec.
-- **Enrichissement des cartes** (identifiants Cardmarket via Scryfall, identifiants Gatherer) : une
+- **Enrichissement des cartes** (identifiants Cardmarket via Scryfall, images de cartes) : une
   `EnrichmentQueue` générique par source (`application/service/enrichment_queue.rs`) possède le
   canal, l'ensemble des cartes en file (une carte n'y est jamais deux fois) et le rafraîchissement
   des vues quand la file se vide. Chaque source n'est qu'un `Enricher` (cartes en attente +
   résolution d'une carte) ; une nouvelle source coûte un `Enricher`.
+- **Images de cartes** : l'`Enricher` d'images essaie Gatherer dans la langue de la carte, Gatherer
+  en anglais, puis Scryfall, et garde la première source qui fournit toutes les faces assez larges.
+  Seul un « introuvable » fait passer à la source suivante ; une erreur technique laisse la carte en
+  attente, reprise au prochain import. Sans image dans sa langue, une carte est en fallback sur
+  l'image anglaise partagée : réutilisée si elle vient déjà de Gatherer, remplacée seulement par une
+  meilleure, et toutes les cartes qui la partagent sont alors alignées. Une image enregistrée n'est
+  jamais retéléchargée automatiquement : `POST /maintenance/update-card-images` remet en file les
+  cartes en fallback et celles en attente. L'enricher alimente aussi `the_gatherer_id`, encore lu
+  par les clients : une carte anglaise qui réutilise l'image partagée lit sa seule page Gatherer
+  pour l'obtenir, sans retélécharger l'image.
 - **Import des prix** : tâche planifiée (cron in-process) toutes les 12 heures.
 
 Corollaire : le backend est **stateful en mémoire** (files, dédup). Il n'est pas conçu pour tourner
@@ -133,4 +151,9 @@ ses idiomes plutôt que de la transposer littéralement.
   d'images. Les tâches iOS sont volontairement hors des tâches globales, pour ne pas déclencher
   l'outillage Xcode à chaque commit.
 - **Déploiement** : deux images Docker (backend distroless, frontend Node/Nitro) orchestrées par
-  `docker-compose.yml` avec Postgres. Sentry est branché côté backend et côté frontend.
+  `docker-compose.yml` avec Postgres. Sentry est branché côté backend et côté frontend. Le volume
+  `card-images` est monté en écriture sur le backend et en lecture seule sur le frontend. Nitro
+  sert les images en `immutable` sur un an pour que Cloudflare les mette en cache ; l'URL exposée
+  aux clients doit donc être versionnée par l'origine du fichier (contrat d'API porté par #425), ce
+  qui suppose que la clé de cache Cloudflare inclue la query string (niveau de cache « Standard »,
+  par défaut). Une image absente répond 404 sans cache.
