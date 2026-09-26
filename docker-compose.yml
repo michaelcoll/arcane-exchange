@@ -37,7 +37,7 @@ services:
       CARD_IMAGES_DIR: /data/card-images
     volumes:
       # Written by the backend only (ADR 0017); back it up with the database.
-      - card-images:/data/card-images
+      - /mnt/ssd/containers/config/ccpt/card-images:/data/card-images
 
   frontend:
     image: ghcr.io/michaelcoll/arcane-exchange-frontend:1.26.0
@@ -52,9 +52,6 @@ services:
       CARD_IMAGES_DIR: /data/card-images
     volumes:
       # Served by Nitro under /card-images/**, read only.
-      - card-images:/data/card-images:ro
+      - /mnt/ssd/containers/config/ccpt/card-images:/data/card-images:ro
     depends_on:
       - backend
-
-volumes:
-  card-images:
