@@ -10,6 +10,6 @@ export default defineNuxtRouteMiddleware(async (to) => {
   await until(isLoaded).toBe(true, { timeout: CLERK_LOAD_TIMEOUT_MS });
 
   if (!isSignedIn.value) {
-    return navigateTo({ path: '/sign-in', query: { redirect_url: to.fullPath } });
+    return navigateTo(signInLocation(to.fullPath));
   }
 });

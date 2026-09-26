@@ -1,8 +1,9 @@
 <script setup lang="ts">
 import type { TradeStatusParam } from '~/bindings/TradeStatusParam';
 import type { UserSuggestion } from '~/bindings/UserSuggestion';
+import type { SearchMode } from '~/utils/search-url';
 
-const mode = ref<'name' | 'decklist' | 'player'>('name');
+const mode = ref<SearchMode>('name');
 const q = ref('');
 
 type Player = UserSuggestion;
@@ -85,17 +86,8 @@ const navigateToSearch = (searchQ: string, searchMode: string) => {
 };
 
 const handleDecklistSearch = () => {
-  if (decklistContent.value.trim()) {
-    try {
-      sessionStorage.setItem('tae_decklist_pending', decklistContent.value);
-    } catch {
-      // Log en cas de contenu trop volumineux (>50 ko)
-      if (decklistContent.value.length > 50_000) {
-        console.warn('Decklist très volumineuse (>50 ko)');
-      }
-    }
-  }
-  // `mode=decklist` : la page de recherche relit la decklist depuis sessionStorage, y compris au F5.
+  // Une decklist vide efface la précédente : `mode=decklist` ne doit pas la réafficher.
+  saveDecklist(decklistContent.value);
   navigateTo('/search?mode=decklist');
 };
 </script>
