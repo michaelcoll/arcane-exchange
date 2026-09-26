@@ -231,13 +231,11 @@ mod tests {
 
         let service = Arc::new(StatsService::new(Arc::new(mock_repository)));
 
-        // First call
         let result1 = service.get_stats().await;
         assert!(result1.is_ok());
         let stats1 = result1.unwrap();
         assert_eq!(stats1.card_number, 10);
 
-        // Second call
         let result2 = service.get_stats().await;
         assert!(result2.is_ok());
         let stats2 = result2.unwrap();

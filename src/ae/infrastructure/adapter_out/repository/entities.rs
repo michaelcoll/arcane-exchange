@@ -480,7 +480,7 @@ pub struct CardWithPriceEntity {
     pub scryfall_id: Uuid,
     pub image_source: Option<String>,
     pub image_has_back: bool,
-    /// Always present: no longer masked for other users' rows.
+    /// Always present, even for other users' rows (not masked).
     pub quantity: i32,
     /// `NULL` when the row belongs to another user (masked in SQL).
     pub purchase_price: Option<i32>,

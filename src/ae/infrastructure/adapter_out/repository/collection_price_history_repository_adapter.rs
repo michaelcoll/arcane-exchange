@@ -279,9 +279,8 @@ mod tests {
     async fn update_for_date_and_user_uses_the_finish_of_each_collection_entry(pool: PgPool) {
         // The catalog carries a single card definition for both finishes; the value computed
         // for each `collection_entry` row must come from its own `foil` column, not from the
-        // (now finish-less) `card` row it joins to. Getting this wrong writes a wrong value to
-        // `collection_price_history`, silently — the point the spec calls out as the most
-        // sensitive of this refactor.
+        // finish-less `card` row it joins to. Getting this wrong writes a wrong value to
+        // `collection_price_history`, silently.
         let adapter = CollectionPriceHistoryRepositoryAdapter::new(pool.clone());
         let user = User::from_id(UserId::new("user1"));
         let date = NaiveDate::from_ymd_opt(2025, 12, 25).unwrap();

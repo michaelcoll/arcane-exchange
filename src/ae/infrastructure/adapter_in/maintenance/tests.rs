@@ -256,7 +256,7 @@ async fn test_trigger_price_update_returns_error_on_failure() {
     }
 }
 
-// --- Update CardMarket IDs (nouveau comportement asynchrone) ---
+// --- Update CardMarket IDs ---
 
 #[tokio::test]
 async fn test_update_cardmarket_ids_returns_accepted_with_enqueued_count() {

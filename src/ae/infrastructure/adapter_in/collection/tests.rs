@@ -757,7 +757,6 @@ async fn import_cards_succeeds_with_special_characters_in_card_name() {
 async fn import_cards_fails_with_invalid_utf8() {
     let app_state = AppState::for_testing();
 
-    // Create invalid UTF-8 bytes
     let invalid_bytes = vec![0xFF, 0xFE, 0xFD];
 
     let test_user = User::for_testing();

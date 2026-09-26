@@ -262,8 +262,7 @@ impl From<RarityCodeParam> for RarityCode {
 /// The URLs of the front and back images of `card_id`, served by the frontend under
 /// `/card-images`, both `None` while the image is pending and the back `None` for a single-faced
 /// card. They are versioned by the origin of the file, which changes whenever the file is
-/// replaced, so they can be cached as immutable; the cards sharing an image share its URLs
-/// (ADR 0017).
+/// replaced, so they can be cached as immutable; the cards sharing an image share its URLs.
 pub(crate) fn card_image_urls(
     card_id: &CardId,
     image: Option<CardImage>,

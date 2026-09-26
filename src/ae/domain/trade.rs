@@ -111,13 +111,13 @@ impl TradeTransition {
     }
 
     /// The very first acceptance: the trade's cards become reserved, so every other active trade
-    /// sharing one of them must be abandoned (ADR-0008).
+    /// sharing one of them must be abandoned.
     pub fn reserves_cards(&self) -> bool {
         self.from.status == TradeStatus::Pending && self.next.status == TradeStatus::OneAccepted
     }
 }
 
-/// One party's paired columns (ADR-0005), borrowed for writing.
+/// One party's paired columns, borrowed for writing.
 struct PartyColumns<'a> {
     accepted_at: &'a mut Option<DateTime<Utc>>,
     confirmed_at: &'a mut Option<DateTime<Utc>>,

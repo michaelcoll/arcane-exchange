@@ -82,8 +82,8 @@ pub trait CardImageRepository: Send + Sync {
 #[async_trait]
 #[cfg_attr(test, automock)]
 pub trait SetNameRepository: Send + Sync {
-    /// Writes `sets` in bulk, `ON CONFLICT DO NOTHING` — matches the existing per-set behaviour
-    /// where an already-known set's name is never overwritten.
+    /// Writes `sets` in bulk, `ON CONFLICT DO NOTHING`: an already-known set's name is never
+    /// overwritten.
     async fn save_all(&self, sets: &[SetName]) -> Result<(), AppError>;
     /// All known sets, ordered by name.
     async fn find_all(&self) -> Result<Vec<SetName>, AppError>;

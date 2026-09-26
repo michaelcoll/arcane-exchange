@@ -426,7 +426,7 @@ async fn card_price_history_params_rejects_missing_foil_with_bad_request() {
     use axum::extract::FromRequestParts;
     use axum::response::IntoResponse;
 
-    // The catalog no longer knows a card's finish, so `foil` is required on this endpoint's
+    // The catalog doesn't know a card's finish, so `foil` is required on this endpoint's
     // params — unlike `PriceHistoryParams`, shared with `/collection/price-history`, which has
     // no notion of finish at all.
     let request = axum::http::Request::builder()
@@ -445,8 +445,8 @@ async fn card_price_history_params_rejects_missing_foil_with_bad_request() {
 
 #[tokio::test]
 async fn price_history_params_accepts_missing_finish_related_param() {
-    // `/collection/price-history` has never had a `foil` param and must not gain one as a
-    // side effect of this endpoint's params requiring it.
+    // `/collection/price-history` has no `foil` param, even though
+    // `/card/{scryfall_id}/price-history` requires one.
     use axum::extract::FromRequestParts;
 
     let request = axum::http::Request::builder()

@@ -1,5 +1,5 @@
 //! Card images: which source they come from, the faces a source provides and the file names they
-//! are stored under. See ADR 0017.
+//! are stored under.
 
 use crate::domain::card::CardId;
 use crate::domain::language_code::LanguageCode;
@@ -74,7 +74,7 @@ pub enum ImageOrigin {
 }
 
 impl ImageOrigin {
-    /// The version of the URLs of an image file (ADR 0017): a file is only ever replaced by one
+    /// The version of the URLs of an image file: a file is only ever replaced by one
     /// from another origin, so its URL changes with it.
     pub fn url_version(&self) -> &'static str {
         match self {

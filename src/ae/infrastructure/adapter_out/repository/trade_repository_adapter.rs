@@ -483,7 +483,7 @@ impl TradeRepository for TradeRepositoryAdapter {
         }
 
         // Reserving this trade's cards means abandoning every other active trade sharing one of
-        // them, in the same transaction (ADR-0008).
+        // them, in the same transaction.
         if transition.reserves_cards() {
             sqlx::query!(
                 r#"UPDATE trade SET status = 'ABANDONED', updated_at = NOW()
@@ -2274,8 +2274,8 @@ mod tests {
     #[sqlx::test]
     async fn find_trade_cards_with_details_uses_the_finish_of_each_trade_card(pool: PgPool) {
         // The catalog carries a single card definition for both finishes; the price shown for
-        // each trade_card must come from its own `foil` column, not from the (now finish-less)
-        // `card` row they both join to.
+        // each trade_card must come from its own `foil` column, not from the finish-less `card`
+        // row they both join to.
         insert_user(&pool, "user_a", "alice").await;
         insert_user(&pool, "user_b", "bob").await;
         insert_card(&pool, "FDN", "87", "FR", "Goblin Boarders", 1).await;
