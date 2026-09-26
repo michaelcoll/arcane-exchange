@@ -27,8 +27,8 @@ jobs:
         working-directory: frontend-vue
         run: pnpm format
 
-  lint:
-    name: Lint (Typecheck + ESLint)
+  typecheck:
+    name: Typecheck
     runs-on: ubuntu-latest
 
     steps:
@@ -47,12 +47,12 @@ jobs:
       - run: pnpm install --frozen-lockfile
         working-directory: frontend-vue
 
-      - name: Typecheck + ESLint
+      - name: Typecheck
         working-directory: frontend-vue
-        run: pnpm lint
+        run: pnpm run typecheck
 
-  build-dev:
-    name: Build Development
+  eslint:
+    name: ESLint
     runs-on: ubuntu-latest
 
     steps:
@@ -68,12 +68,14 @@ jobs:
           cache: pnpm
           cache-dependency-path: frontend-vue/pnpm-lock.yaml
 
+      # The `postinstall` hook (`nuxt prepare`) generates `.nuxt/eslint.config.mjs`, which
+      # `eslint.config.mjs` imports.
       - run: pnpm install --frozen-lockfile
         working-directory: frontend-vue
 
-      - name: Build Development
+      - name: ESLint
         working-directory: frontend-vue
-        run: pnpm build --configuration development
+        run: pnpm run eslint
 
   build-production:
     name: Build Production

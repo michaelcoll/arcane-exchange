@@ -11,7 +11,9 @@
     "postinstall": "nuxt prepare",
     "format": "prettier --check \"../**/*.{ts,mjs,vue,json,css,yml,md}\"",
     "format:fix": "prettier --write --list-different \"../**/*.{ts,mjs,vue,json,css,yml,md}\"",
-    "lint": "nuxi typecheck && eslint --max-warnings 0 .",
+    "typecheck": "nuxi typecheck",
+    "eslint": "eslint --max-warnings 0 .",
+    "lint": "pnpm run typecheck && pnpm run eslint",
     "test": "vitest run"
   },
   "packageManager": "pnpm@12.3.4",
