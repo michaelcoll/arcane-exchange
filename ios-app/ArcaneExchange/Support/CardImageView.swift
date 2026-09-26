@@ -7,8 +7,8 @@ import SwiftUI
 /// bundled in the asset catalog, never a broken image — and never a network call for it.
 ///
 /// `LazyImage` rather than `AsyncImage`: grids re-create cells as they scroll, and `AsyncImage`
-/// has no decoded-image cache, so every reappearance meant a fresh decode and a placeholder
-/// flash. Nuke serves those from memory.
+/// has no decoded-image cache — every reappearance would decode again and flash the
+/// placeholder. Nuke serves those from memory.
 struct CardImageView: View {
     let url: URL?
     var foil = false

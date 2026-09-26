@@ -17,17 +17,14 @@ struct ArtworkPipelineTests {
         #expect(cache?.sizeLimit == 512 * 1024 * 1024)
     }
 
-    /// The HTTP cache is deliberately out of the loop — `URLCache.shared`'s 20 MB disk
-    /// budget held only a fraction of a collection, and its separate entry for Scryfall's
-    /// image redirect expired every two days.
+    /// The HTTP cache is deliberately out of the loop: `DataCache` alone keeps the artwork.
     @Test func bypassesTheHTTPCache() {
         let loader = configuration.dataLoader as? DataLoader
         #expect(loader != nil)
         #expect(loader?.session.configuration.urlCache == nil)
     }
 
-    /// The layer `AsyncImage` never had: decoded images, so a tile scrolled back into view
-    /// does not decode again.
+    /// Decoded images stay in memory, so a tile scrolled back into view does not decode again.
     @Test func keepsDecodedImagesInMemory() {
         #expect(configuration.imageCache != nil)
     }

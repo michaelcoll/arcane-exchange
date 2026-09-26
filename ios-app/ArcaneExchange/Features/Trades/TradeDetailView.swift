@@ -6,8 +6,7 @@ import SwiftUI
 /// pinned to the bottom.
 ///
 /// Hides the tab bar: this is a commitment screen (accept, confirm, rate — money and cards
-/// change hands), not a place to browse from, and a custom action bar stacked on top of the
-/// tab bar read as two unrelated bars glued together. One bottom region, one decision.
+/// change hands), not a place to browse from. One bottom region, one decision.
 struct TradeDetailView: View {
     let route: TradeDetailRoute
 

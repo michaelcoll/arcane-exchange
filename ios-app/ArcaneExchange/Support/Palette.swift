@@ -13,7 +13,7 @@ extension ShapeStyle where Self == Color {
 
     /// `--violet-ink`: the readable violet for text and glyphs sitting *on* a violet-tinted
     /// fill. `.violet` itself is a fill and border colour — used as text on its own tint it
-    /// falls short of 4.5:1, which is what made the reserved badge hard to read in light mode.
+    /// falls short of 4.5:1 in light mode.
     static var violetInk: Color {
         Color("VioletInk")
     }
