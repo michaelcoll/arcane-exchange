@@ -3,7 +3,7 @@ import { flushPromises } from '@vue/test-utils';
 import { mockNuxtImport } from '@nuxt/test-utils/runtime';
 import { ref, type Ref } from 'vue';
 import type { RouteLocationNormalized } from 'vue-router';
-import auth from '~/middleware/auth';
+import auth, { CLERK_LOAD_TIMEOUT_MS } from '~/middleware/auth';
 
 // `useAuth` is also called by app.vue and the register-user plugin while the Nuxt test app
 // boots, so the mocked state must hold refs from the start.
@@ -48,6 +48,25 @@ describe('auth middleware', () => {
 
     expect(await result).toBeUndefined();
     expect(navigateToMock).not.toHaveBeenCalled();
+  });
+
+  it('gives up waiting for Clerk after the timeout and sends the user to /sign-in', async () => {
+    vi.useFakeTimers();
+    try {
+      const result = runMiddleware(route('/trade/42'));
+
+      await vi.advanceTimersByTimeAsync(CLERK_LOAD_TIMEOUT_MS - 1);
+      expect(navigateToMock).not.toHaveBeenCalled();
+
+      await vi.advanceTimersByTimeAsync(1);
+      await result;
+      expect(navigateToMock).toHaveBeenCalledWith({
+        path: '/sign-in',
+        query: { redirect_url: '/trade/42' },
+      });
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it('sends a signed-out user to /sign-in with the original route', async () => {
