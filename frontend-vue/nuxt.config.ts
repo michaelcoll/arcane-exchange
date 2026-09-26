@@ -1,3 +1,17 @@
+/** Tailwind color backed by a main.css token, keeping the opacity modifier (`border-primary/40`). */
+const tokenColor = (token: string) =>
+  `color-mix(in oklch, var(${token}) calc(<alpha-value> * 100%), transparent)`;
+
+const roleColor = (role: 'primary' | 'secondary') => ({
+  DEFAULT: tokenColor(`--${role}`),
+  ...Object.fromEntries(
+    ['soft', 'dim', 'fill', 'fill-2', 'line', 'glow', 'ink'].map((variant) => [
+      variant,
+      tokenColor(`--${role}-${variant}`),
+    ]),
+  ),
+});
+
 export default defineNuxtConfig({
   compatibilityDate: '2025-07-15',
   ssr: false,
@@ -95,6 +109,17 @@ export default defineNuxtConfig({
           fontSize: {
             // micro labels (mono uppercase)
             '2xs': ['0.625rem', { lineHeight: '1rem' }], // 10px
+          },
+          colors: {
+            primary: roleColor('primary'),
+            secondary: roleColor('secondary'),
+            rarity: {
+              common: tokenColor('--rarity-common'),
+              uncommon: tokenColor('--rarity-uncommon'),
+              rare: tokenColor('--rarity-rare'),
+              mythic: tokenColor('--rarity-mythic'),
+              special: tokenColor('--rarity-special'),
+            },
           },
         },
       },

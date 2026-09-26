@@ -24,9 +24,9 @@ const { autocompleteUsers } = useAutocompleteService();
 const mode = ref<SearchMode>('name');
 
 const modeLabels: Record<SearchMode, { label: string; tone: string; kbd: string }> = {
-  name: { label: 'Par nom', tone: 'cyan', kbd: '1' },
-  decklist: { label: 'Par decklist', tone: 'cyan', kbd: '2' },
-  player: { label: 'Par joueur', tone: 'vio', kbd: '3' },
+  name: { label: 'Par nom', tone: 'primary', kbd: '1' },
+  decklist: { label: 'Par decklist', tone: 'primary', kbd: '2' },
+  player: { label: 'Par joueur', tone: 'secondary', kbd: '3' },
 };
 const modeOptions = SEARCH_MODES.map((value) => ({ value, ...modeLabels[value] }));
 
@@ -373,9 +373,9 @@ const { sync: syncQuery } = useQuerySync(() =>
 onMounted(syncQuery);
 
 const sizeOptions = [
-  { value: 'sm', label: '', icon: 'lucide:grid-3x3', title: 'Petites cartes', tone: 'cyan' },
-  { value: 'md', label: '', icon: 'lucide:grid-2x2', title: 'Cartes moyennes', tone: 'cyan' },
-  { value: 'lg', label: '', icon: 'lucide:square', title: 'Grandes cartes', tone: 'cyan' },
+  { value: 'sm', label: '', icon: 'lucide:grid-3x3', title: 'Petites cartes', tone: 'primary' },
+  { value: 'md', label: '', icon: 'lucide:grid-2x2', title: 'Cartes moyennes', tone: 'primary' },
+  { value: 'lg', label: '', icon: 'lucide:square', title: 'Grandes cartes', tone: 'primary' },
 ];
 
 /* ---------- MODE: PAR DECKLIST ---------- */
@@ -403,7 +403,7 @@ const decklist = ref(
     <div v-if="mode === 'name' || (mode === 'player' && player)">
       <div
         v-if="mode === 'player' && player"
-        class="mb-5 flex flex-wrap items-center gap-4 rounded-2xl border border-violet-200 bg-white/60 p-4 shadow-lg backdrop-blur-md dark:border-violet-400/20 dark:bg-violet-600/5"
+        class="border-secondary/30 dark:border-secondary/20 dark:bg-secondary/5 mb-5 flex flex-wrap items-center gap-4 rounded-2xl border bg-white/60 p-4 shadow-lg backdrop-blur-md"
       >
         <PlayerAvatar :username="player.username" size="lg" />
         <div class="flex min-w-0 flex-1 flex-col gap-1">
@@ -414,7 +414,7 @@ const decklist = ref(
             class="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-400 dark:text-slate-500"
           >
             <span>{{ player.card_count }} cartes</span>
-            <span class="inline-flex items-center gap-1 text-violet-600 dark:text-violet-300">
+            <span class="text-secondary inline-flex items-center gap-1">
               <Icon name="lucide:star" :size="13" />{{ player.note.toFixed(1).replace('.', ',') }}
             </span>
           </div>
@@ -434,7 +434,7 @@ const decklist = ref(
         @submit.prevent="submitSearch"
       >
         <div
-          class="flex min-w-[240px] flex-1 items-center gap-2.5 rounded-2xl border border-slate-300 bg-black/20 py-2 pr-2 pl-4 transition-all duration-200 focus-within:border-cyan-500/40 focus-within:bg-black/10 focus-within:ring-4 focus-within:ring-cyan-500/10 dark:border-white/15 dark:focus-within:border-cyan-400/40"
+          class="focus-within:border-primary/40 focus-within:ring-primary/10 flex min-w-[240px] flex-1 items-center gap-2.5 rounded-2xl border border-slate-300 bg-black/20 py-2 pr-2 pl-4 transition-all duration-200 focus-within:bg-black/10 focus-within:ring-4 dark:border-white/15"
         >
           <Icon
             name="lucide:search"
@@ -448,7 +448,7 @@ const decklist = ref(
           />
           <button
             type="submit"
-            class="inline-flex items-center justify-center gap-2 rounded-xl border border-transparent bg-cyan-500 px-4 py-2 text-sm leading-none font-bold whitespace-nowrap text-zinc-950 shadow-lg transition-all duration-150 hover:-translate-y-px hover:bg-cyan-400 active:translate-y-0 dark:bg-cyan-400 dark:hover:bg-cyan-300"
+            class="bg-primary hover:bg-primary-soft inline-flex items-center justify-center gap-2 rounded-xl border border-transparent px-4 py-2 text-sm leading-none font-bold whitespace-nowrap text-[var(--on-primary)] shadow-lg transition-all duration-150 hover:-translate-y-px active:translate-y-0"
           >
             Chercher
           </button>
@@ -466,7 +466,7 @@ const decklist = ref(
       <!-- Filter bar (mode: par joueur) -->
       <div v-else class="mb-5 flex flex-wrap items-center gap-3">
         <div
-          class="0 flex min-w-[240px] flex-1 items-center gap-2.5 rounded-2xl border border-slate-400/50 bg-black/5 py-2 pr-4 pl-4 transition-all duration-200 focus-within:border-cyan-500/40 focus-within:bg-black/5 focus-within:ring-4 focus-within:ring-cyan-500/20 dark:border-white/15 dark:bg-black/30 dark:focus-within:border-cyan-400/40"
+          class="0 focus-within:border-primary/40 focus-within:ring-primary/20 flex min-w-[240px] flex-1 items-center gap-2.5 rounded-2xl border border-slate-400/50 bg-black/5 py-2 pr-4 pl-4 transition-all duration-200 focus-within:bg-black/5 focus-within:ring-4 dark:border-white/15 dark:bg-black/30"
         >
           <Icon
             name="lucide:search"
@@ -634,7 +634,7 @@ const decklist = ref(
             @price-change="onPriceChange"
           />
           <button
-            class="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-xl border border-transparent bg-cyan-500 px-4 py-2.5 text-sm leading-none font-bold whitespace-nowrap text-zinc-950 shadow-lg transition-all duration-150 hover:-translate-y-px hover:bg-cyan-400 active:translate-y-0 dark:bg-cyan-400 dark:hover:bg-cyan-300"
+            class="bg-primary hover:bg-primary-soft mt-4 inline-flex w-full items-center justify-center gap-2 rounded-xl border border-transparent px-4 py-2.5 text-sm leading-none font-bold whitespace-nowrap text-[var(--on-primary)] shadow-lg transition-all duration-150 hover:-translate-y-px active:translate-y-0"
             @click="sheet = false"
           >
             Voir les résultats
@@ -683,11 +683,11 @@ const decklist = ref(
           <span
             class="inline-flex cursor-default items-center gap-1.5 rounded-full border border-slate-200 bg-slate-100 px-3 py-1.5 text-xs font-medium whitespace-nowrap text-slate-600 select-none dark:border-white/10 dark:bg-white/5 dark:text-slate-300"
           >
-            <span class="h-2 w-2 rounded-full bg-violet-500 dark:bg-violet-400" /> 2 non reconnues
+            <span class="bg-secondary h-2 w-2 rounded-full" /> 2 non reconnues
           </span>
         </div>
         <button
-          class="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-transparent bg-cyan-500 px-4 py-2.5 text-sm leading-none font-bold whitespace-nowrap text-zinc-950 shadow-lg transition-all duration-150 hover:-translate-y-px hover:bg-cyan-400 active:translate-y-0 dark:bg-cyan-400 dark:hover:bg-cyan-300"
+          class="bg-primary hover:bg-primary-soft inline-flex w-full items-center justify-center gap-2 rounded-xl border border-transparent px-4 py-2.5 text-sm leading-none font-bold whitespace-nowrap text-[var(--on-primary)] shadow-lg transition-all duration-150 hover:-translate-y-px active:translate-y-0"
           @click="saveDecklist(decklist)"
         >
           <Icon name="lucide:search" size="15" /> Trouver les joueurs
@@ -700,7 +700,7 @@ const decklist = ref(
             12 joueurs couvrent ta liste
           </h3>
           <button
-            class="inline-flex cursor-pointer items-center gap-1.5 rounded-full border border-cyan-500/30 bg-cyan-500/10 px-3 py-1.5 text-xs font-medium whitespace-nowrap text-cyan-700 transition-all duration-150 select-none dark:border-cyan-400/30 dark:bg-cyan-400/10 dark:text-cyan-300"
+            class="border-primary/30 bg-primary/10 text-primary-ink inline-flex cursor-pointer items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium whitespace-nowrap transition-all duration-150 select-none"
           >
             % couverture <Icon name="lucide:chevron-down" size="13" />
           </button>
@@ -712,7 +712,7 @@ const decklist = ref(
           :class="[
             'rounded-2xl p-4 shadow-lg backdrop-blur-md',
             i === 0
-              ? 'border border-cyan-500/30 bg-cyan-500/10 dark:border-cyan-400/30 dark:bg-cyan-400/10'
+              ? 'border-primary/30 bg-primary/10 border'
               : 'border border-slate-200 bg-white/60 dark:border-white/10 dark:bg-zinc-900/60',
           ]"
         >
@@ -726,7 +726,7 @@ const decklist = ref(
             </div>
             <span
               :class="[
-                'font-mono font-bold tracking-tight whitespace-nowrap text-cyan-600 dark:text-cyan-400',
+                'text-primary font-mono font-bold tracking-tight whitespace-nowrap',
                 i === 0 ? 'text-2xl' : 'text-xl',
               ]"
               >{{ c.pct }}%</span
@@ -736,7 +736,7 @@ const decklist = ref(
             class="h-2 overflow-hidden rounded-full border border-slate-200 bg-black/30 dark:border-white/5"
           >
             <i
-              class="block h-full rounded-full bg-cyan-500 transition-[width] duration-700 ease-out dark:bg-cyan-400"
+              class="bg-primary block h-full rounded-full transition-[width] duration-700 ease-out"
               :style="{ width: c.pct + '%' }"
             />
           </div>
@@ -752,7 +752,7 @@ const decklist = ref(
                 Voir les {{ c.n }}
               </button>
               <button
-                class="inline-flex items-center justify-center gap-2 rounded-lg border border-transparent bg-cyan-500 px-3 py-1.5 text-xs leading-none font-bold whitespace-nowrap text-zinc-950 shadow-lg transition-all duration-150 hover:-translate-y-px hover:bg-cyan-400 active:translate-y-0 dark:bg-cyan-400 dark:hover:bg-cyan-300"
+                class="bg-primary hover:bg-primary-soft inline-flex items-center justify-center gap-2 rounded-lg border border-transparent px-3 py-1.5 text-xs leading-none font-bold whitespace-nowrap text-[var(--on-primary)] shadow-lg transition-all duration-150 hover:-translate-y-px active:translate-y-0"
                 @click="goToPlayerCollection(c.u)"
               >
                 Composer l'échange

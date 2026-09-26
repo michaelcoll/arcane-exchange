@@ -80,7 +80,7 @@ const formatRating = (r: TradeRating) => (r == null ? 'non notée' : `${r}/5`);
 const btnBase =
   'inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm leading-none font-semibold whitespace-nowrap transition-all duration-150 hover:-translate-y-px active:translate-y-0 disabled:pointer-events-none disabled:opacity-50';
 const btnDanger = `${btnBase} border border-red-500/40 bg-transparent text-red-600 hover:bg-red-500/10 dark:border-red-400/40 dark:text-red-400 dark:hover:bg-red-400/10`;
-const btnPrimary = `${btnBase} border border-transparent bg-cyan-500 font-bold text-zinc-950 shadow-lg hover:bg-cyan-400 dark:bg-cyan-400 dark:hover:bg-cyan-300`;
+const btnPrimary = `${btnBase} border border-transparent bg-primary font-bold text-[var(--on-primary)] shadow-lg hover:bg-primary-soft`;
 
 const panel =
   'rounded-2xl border border-slate-200 bg-white/60 shadow-lg backdrop-blur-md dark:border-white/10 dark:bg-zinc-900/60';
@@ -107,7 +107,7 @@ const label =
       <p class="text-center font-mono text-base">{{ errorTitle }}</p>
       <NuxtLink
         to="/trade"
-        class="inline-flex items-center justify-center gap-2 rounded-xl border border-transparent bg-cyan-500 px-4 py-2.5 text-sm leading-none font-bold whitespace-nowrap text-zinc-950 shadow-lg transition-all duration-150 hover:-translate-y-px hover:bg-cyan-400 active:translate-y-0 dark:bg-cyan-400 dark:hover:bg-cyan-300"
+        class="bg-primary hover:bg-primary-soft inline-flex items-center justify-center gap-2 rounded-xl border border-transparent px-4 py-2.5 text-sm leading-none font-bold whitespace-nowrap text-[var(--on-primary)] shadow-lg transition-all duration-150 hover:-translate-y-px active:translate-y-0"
         >Retour aux échanges</NuxtLink
       >
     </div>
@@ -126,7 +126,7 @@ const label =
             <PlayerAvatar :username="partner" />
             <h2 class="font-display text-base font-semibold tracking-tight">
               Échange avec
-              <span class="text-cyan-600 dark:text-cyan-400">{{ partner }}</span>
+              <span class="text-primary">{{ partner }}</span>
             </h2>
           </div>
         </div>
@@ -159,7 +159,7 @@ const label =
           <TradeColumn
             label="Je donne"
             :cards="trade.my_cards"
-            accent="neutral"
+            tone="neutral"
             :reserved="reserved"
             :removable="false"
           />
@@ -178,7 +178,7 @@ const label =
         <TradeColumn
           label="Je reçois"
           :cards="trade.partner_cards"
-          accent="cyan"
+          tone="primary"
           :reserved="reserved"
           :removable="editable"
           add-label="Chercher dans sa collection"
@@ -209,7 +209,7 @@ const label =
           class="flex flex-wrap items-center justify-between gap-3.5"
         >
           <span :class="[hint, 'inline-flex items-center gap-1.5']">
-            <Icon name="lucide:lock" size="12" class="text-violet-500 dark:text-violet-300" />
+            <Icon name="lucide:lock" size="12" class="text-secondary" />
             Cartes réservées · modifiable (repasse en négociation)
           </span>
           <div class="flex flex-wrap items-center gap-2.5">
@@ -240,7 +240,7 @@ const label =
             </button>
             <span
               v-if="meConfirmed"
-              class="inline-flex items-center gap-1.5 rounded-full border border-violet-500/30 bg-violet-500/10 px-3 py-1.5 text-xs font-medium whitespace-nowrap text-violet-700 dark:border-violet-400/30 dark:bg-violet-400/10 dark:text-violet-300"
+              class="border-secondary/30 bg-secondary/10 text-secondary-ink inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium whitespace-nowrap"
             >
               <Icon name="lucide:check" size="13" /> Tu as confirmé · en attente de {{ partner }}
             </span>
@@ -259,7 +259,7 @@ const label =
             <TradeRatingStars v-if="meRating == null" :value="null" @rate="rate" />
             <span
               v-else
-              class="inline-flex items-center gap-1.5 rounded-full border border-violet-500/30 bg-violet-500/10 px-3 py-1.5 text-xs font-medium whitespace-nowrap text-violet-700 dark:border-violet-400/30 dark:bg-violet-400/10 dark:text-violet-300"
+              class="border-secondary/30 bg-secondary/10 text-secondary-ink inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium whitespace-nowrap"
             >
               <Icon name="mdi:star" size="13" /> Tu as mis {{ meRating }}/5
             </span>
@@ -282,13 +282,11 @@ const label =
         >
           <span :class="hint"
             >Ta note :
-            <span class="font-semibold text-violet-500 dark:text-violet-300">{{
-              formatRating(meRating)
-            }}</span></span
+            <span class="text-secondary font-semibold">{{ formatRating(meRating) }}</span></span
           >
           <span :class="hint"
             >Note de {{ partner }} :
-            <span class="font-semibold text-violet-500 dark:text-violet-300">{{
+            <span class="text-secondary font-semibold">{{
               formatRating(partnerRating)
             }}</span></span
           >
@@ -305,7 +303,7 @@ const label =
         title="Accepter cet échange ?"
         body="Une fois acceptée, la transaction sera verrouillée et les cartes des deux côtés seront réservées. Si l’autre partie la modifie, elle repassera en attente et devra être acceptée à nouveau."
         confirm-label="Confirmer l’acceptation"
-        tone="cyan"
+        tone="primary"
         @cancel="modal = null"
         @confirm="
           run(() => acceptTrade(tradeId));

@@ -59,9 +59,9 @@ const activeTradesTotal = computed(
 );
 
 const searchOptions = [
-  { value: 'name', label: 'Nom de carte', tone: 'cyan', kbd: '1' },
-  { value: 'decklist', label: 'Decklist', tone: 'cyan', kbd: '2' },
-  { value: 'player', label: 'Joueur', tone: 'vio', kbd: '3' },
+  { value: 'name', label: 'Nom de carte', tone: 'primary', kbd: '1' },
+  { value: 'decklist', label: 'Decklist', tone: 'primary', kbd: '2' },
+  { value: 'player', label: 'Joueur', tone: 'secondary', kbd: '3' },
 ];
 
 const goToPlayer = (p: Player) => {
@@ -117,7 +117,7 @@ const handleDecklistSearch = () => {
                 height="11"
                 rx="3"
                 transform="rotate(45 10.5 14)"
-                stroke="var(--cyan)"
+                stroke="var(--primary)"
               />
               <rect
                 x="12"
@@ -126,12 +126,12 @@ const handleDecklistSearch = () => {
                 height="11"
                 rx="3"
                 transform="rotate(45 17.5 14)"
-                stroke="var(--violet)"
+                stroke="var(--secondary)"
               />
             </svg>
           </span>
           <span
-            class="font-display text-[clamp(30px,5.2vw,46px)] leading-none font-semibold tracking-tight text-cyan-600 dark:text-cyan-400"
+            class="font-display text-primary text-[clamp(30px,5.2vw,46px)] leading-none font-semibold tracking-tight"
             >Exchange</span
           >
         </div>
@@ -156,15 +156,13 @@ const handleDecklistSearch = () => {
           <div
             :class="[
               'pointer-events-none absolute -inset-x-2.5 -inset-y-8 -z-10 rounded-[40px] opacity-50 blur-xl transition-opacity duration-300 group-focus-within:opacity-90',
-              mode === 'player'
-                ? 'bg-violet-500/20 dark:bg-violet-400/20'
-                : 'bg-cyan-500/20 dark:bg-cyan-400/20',
+              mode === 'player' ? 'bg-secondary/20' : 'bg-primary/20',
             ]"
           />
 
           <div
             v-if="mode === 'name'"
-            class="flex min-h-[62px] items-center gap-2.5 rounded-2xl border border-solid border-slate-400/50 bg-slate-200/75 py-2 pr-2 pl-4 transition-all duration-200 focus-within:border-cyan-500/40 focus-within:ring-4 focus-within:ring-cyan-500/10 dark:border-white/15 dark:bg-black/20 dark:focus-within:border-cyan-400/40"
+            class="focus-within:border-primary/40 focus-within:ring-primary/10 flex min-h-[62px] items-center gap-2.5 rounded-2xl border border-solid border-slate-400/50 bg-slate-200/75 py-2 pr-2 pl-4 transition-all duration-200 focus-within:ring-4 dark:border-white/15 dark:bg-black/20"
           >
             <Icon
               name="lucide:search"
@@ -178,7 +176,7 @@ const handleDecklistSearch = () => {
               @keydown.enter="navigateToSearch(q, mode)"
             />
             <button
-              class="inline-flex items-center justify-center gap-2 self-stretch rounded-xl border border-transparent bg-cyan-500 px-6 text-base leading-none font-bold whitespace-nowrap text-zinc-950 shadow-lg transition-all duration-150 hover:-translate-y-px hover:bg-cyan-400 active:translate-y-0 dark:bg-cyan-400 dark:hover:bg-cyan-300"
+              class="bg-primary hover:bg-primary-soft inline-flex items-center justify-center gap-2 self-stretch rounded-xl border border-transparent px-6 text-base leading-none font-bold whitespace-nowrap text-[var(--on-primary)] shadow-lg transition-all duration-150 hover:-translate-y-px active:translate-y-0"
               @click="navigateToSearch(q, mode)"
             >
               Chercher
@@ -190,7 +188,7 @@ const handleDecklistSearch = () => {
           <!-- Decklist search -->
           <div
             v-else
-            class="flex flex-col items-start gap-3 rounded-2xl border border-slate-300 bg-black/20 py-2 pr-2 pl-4 transition-all duration-200 focus-within:border-cyan-500/40 focus-within:bg-black/10 focus-within:ring-4 focus-within:ring-cyan-500/10 dark:border-white/15 dark:focus-within:border-cyan-400/40"
+            class="focus-within:border-primary/40 focus-within:ring-primary/10 flex flex-col items-start gap-3 rounded-2xl border border-slate-300 bg-black/20 py-2 pr-2 pl-4 transition-all duration-200 focus-within:bg-black/10 focus-within:ring-4 dark:border-white/15"
           >
             <div class="flex w-full items-center gap-2.5">
               <Icon
@@ -209,7 +207,7 @@ const handleDecklistSearch = () => {
               placeholder="1x Vampiric Tutor&#10;1x Black Market Connections&#10;1x The Soul Stone…"
             />
             <button
-              class="inline-flex items-center justify-center gap-2 self-end rounded-lg border border-transparent bg-cyan-500 px-3 py-1.5 text-xs leading-none font-bold whitespace-nowrap text-zinc-950 shadow-lg transition-all duration-150 hover:-translate-y-px hover:bg-cyan-400 active:translate-y-0 dark:bg-cyan-400 dark:hover:bg-cyan-300"
+              class="bg-primary hover:bg-primary-soft inline-flex items-center justify-center gap-2 self-end rounded-lg border border-transparent px-3 py-1.5 text-xs leading-none font-bold whitespace-nowrap text-[var(--on-primary)] shadow-lg transition-all duration-150 hover:-translate-y-px active:translate-y-0"
               @click="handleDecklistSearch"
             >
               Trouver les joueurs
@@ -283,9 +281,7 @@ const handleDecklistSearch = () => {
           <span
             :class="[
               'font-mono text-[12.5px]',
-              collectionVariation.positive
-                ? 'text-cyan-600 dark:text-cyan-400'
-                : 'text-red-500 dark:text-red-400',
+              collectionVariation.positive ? 'text-primary' : 'text-red-500 dark:text-red-400',
             ]"
             >{{ collectionVariation.positive ? '▴' : '▾' }}
             {{ formatPrice(Math.abs(collectionVariation.deltaCents)) }} ·
@@ -342,7 +338,7 @@ const handleDecklistSearch = () => {
             }}</span>
           </div>
           <a
-            class="inline-flex items-center gap-1 text-sm text-slate-600 transition-colors duration-150 hover:text-cyan-600 dark:text-slate-300 dark:hover:text-cyan-400"
+            class="hover:text-primary inline-flex items-center gap-1 text-sm text-slate-600 transition-colors duration-150 dark:text-slate-300"
             href="#"
             @click.prevent="navigateTo('/trade')"
           >

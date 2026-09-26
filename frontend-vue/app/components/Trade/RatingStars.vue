@@ -25,7 +25,7 @@ const filledUpTo = computed(
         'inline-flex transition-[transform,color] duration-150',
         readOnly ? 'cursor-default' : 'cursor-pointer hover:scale-[1.15]',
         i <= filledUpTo
-          ? 'text-violet-500 drop-shadow-[0_0_6px_var(--violet-glow)] dark:text-violet-300'
+          ? 'text-secondary drop-shadow-[0_0_6px_var(--secondary-glow)]'
           : 'text-slate-400 dark:text-slate-500',
       ]"
       @mouseenter="!readOnly && (hover = i)"

@@ -18,7 +18,7 @@ const ALL_TRADE_STATUSES: TradeStatus[] = [
 export const toTradeStatus = (raw: string): TradeStatus =>
   (ALL_TRADE_STATUSES as string[]).includes(raw) ? (raw as TradeStatus) : 'PENDING';
 
-export type TradeTone = 'cyan' | 'violet' | 'good' | 'down' | 'muted';
+export type TradeTone = 'primary' | 'secondary' | 'good' | 'down' | 'muted';
 
 /** Note laissée au partenaire : 1 à 5 étoiles, `null` tant que non renseignée. */
 export type TradeRating = number | null;
@@ -32,9 +32,9 @@ export const tradeCardsTotal = (cards: TradeCard[]): number =>
   cards.reduce((s, c) => s + tradeCardValue(c), 0);
 
 export const TRADE_STATUS_META: Record<TradeStatus, { label: string; tone: TradeTone }> = {
-  PENDING: { label: 'En négociation', tone: 'cyan' },
-  ONE_ACCEPTED: { label: '1 acceptation', tone: 'cyan' },
-  FULLY_ACCEPTED: { label: 'Verrouillé', tone: 'violet' },
+  PENDING: { label: 'En négociation', tone: 'primary' },
+  ONE_ACCEPTED: { label: '1 acceptation', tone: 'primary' },
+  FULLY_ACCEPTED: { label: 'Verrouillé', tone: 'secondary' },
   COMPLETED: { label: 'Échange réalisé', tone: 'good' },
   CLOSED: { label: 'Clôturée', tone: 'muted' },
   ABANDONED: { label: 'Abandonnée', tone: 'down' },

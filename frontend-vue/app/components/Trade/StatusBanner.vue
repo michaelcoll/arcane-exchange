@@ -18,20 +18,20 @@ const content = computed<{ tone: TradeTone; icon: string; title: string; text: s
     case 'ONE_ACCEPTED':
       return props.accepted
         ? {
-            tone: 'cyan',
+            tone: 'primary',
             icon: 'lucide:lock',
             title: `En attente de ${them}`,
             text: `Tu as accepté — les cartes sont réservées. ${them} doit accepter à son tour, ou tu peux encore modifier.`,
           }
         : {
-            tone: 'cyan',
+            tone: 'primary',
             icon: 'lucide:lock',
             title: `${them} a accepté — à toi de jouer`,
             text: 'Accepte à ton tour pour verrouiller, ou modifie la transaction pour relancer la négociation.',
           };
     case 'FULLY_ACCEPTED':
       return {
-        tone: 'violet',
+        tone: 'secondary',
         icon: 'lucide:lock',
         title: 'Transaction verrouillée',
         text: props.confirmed
@@ -61,7 +61,7 @@ const content = computed<{ tone: TradeTone; icon: string; title: string; text: s
       };
     default:
       return {
-        tone: 'cyan',
+        tone: 'primary',
         icon: 'lucide:arrow-left-right',
         title: 'Négociation ouverte',
         text: `Ajoute ou retire des cartes des deux côtés en composant avec ${them}.`,
@@ -70,17 +70,16 @@ const content = computed<{ tone: TradeTone; icon: string; title: string; text: s
 });
 
 const bannerClasses: Record<TradeTone, string> = {
-  cyan: 'border-slate-200 bg-slate-100 dark:border-white/15 dark:bg-white/5',
-  violet: 'border-violet-500/30 bg-violet-500/10 dark:border-violet-400/30 dark:bg-violet-400/10',
+  primary: 'border-slate-200 bg-slate-100 dark:border-white/15 dark:bg-white/5',
+  secondary: 'border-secondary/30 bg-secondary/10',
   good: 'border-emerald-500/30 bg-emerald-500/10 dark:border-emerald-400/30 dark:bg-emerald-400/10',
   down: 'border-red-500/30 bg-red-500/10 dark:border-red-400/30 dark:bg-red-400/10',
   muted: 'border-slate-200 bg-slate-100 dark:border-white/15 dark:bg-white/5',
 };
 
 const iconClasses: Record<TradeTone, string> = {
-  cyan: 'border-cyan-500/30 bg-cyan-500/10 text-cyan-600 dark:border-cyan-400/30 dark:bg-cyan-400/10 dark:text-cyan-400',
-  violet:
-    'border-violet-500/40 bg-violet-500/20 text-violet-600 dark:border-violet-400/40 dark:bg-violet-400/20 dark:text-violet-300',
+  primary: 'border-primary/30 bg-primary/10 text-primary',
+  secondary: 'border-secondary/40 bg-secondary/20 text-secondary',
   good: 'border-emerald-500/40 bg-transparent text-emerald-600 dark:border-emerald-400/40 dark:text-emerald-400',
   down: 'border-red-500/40 bg-transparent text-red-600 dark:border-red-400/40 dark:text-red-400',
   muted: 'border-slate-200 bg-slate-100 text-slate-500 dark:border-white/15 dark:bg-white/5',

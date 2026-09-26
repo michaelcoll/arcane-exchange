@@ -62,7 +62,7 @@ const onHiInput = (e: Event) => {
 
 const chipClass = (r: RarityCode) =>
   props.active.rar.includes(r)
-    ? 'text-cyan-700 dark:text-cyan-300 border-cyan-500/30 dark:border-cyan-400/30 bg-cyan-500/10 dark:bg-cyan-400/10'
+    ? 'text-primary-ink border-primary/30 bg-primary/10'
     : 'text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-white/5 border-slate-200 dark:border-white/10 hover:text-slate-800 dark:hover:text-slate-100 hover:border-slate-300 dark:hover:border-white/15 hover:bg-slate-50 dark:hover:bg-zinc-800';
 
 /* ── Combobox set selector ── */
@@ -96,7 +96,7 @@ const clearSets = () => {
   <div class="flex h-full flex-col gap-4">
     <div
       v-if="showSearch"
-      class="flex items-center gap-2.5 rounded-xl border border-slate-400/50 bg-slate-200/50 px-3 py-2 transition-all duration-200 focus-within:border-cyan-500/40 focus-within:bg-slate-200 focus-within:ring-4 focus-within:ring-cyan-500/10 dark:border-white/15 dark:bg-black/20 dark:focus-within:border-cyan-400/40 dark:focus-within:bg-black/30"
+      class="focus-within:border-primary/40 focus-within:ring-primary/10 flex items-center gap-2.5 rounded-xl border border-slate-400/50 bg-slate-200/50 px-3 py-2 transition-all duration-200 focus-within:bg-slate-200 focus-within:ring-4 dark:border-white/15 dark:bg-black/20 dark:focus-within:bg-black/30"
     >
       <Icon
         name="lucide:search"
@@ -143,7 +143,7 @@ const clearSets = () => {
             class="absolute top-1/2 right-0 left-0 h-1 -translate-y-1/2 rounded-full bg-slate-300 dark:bg-zinc-700"
           />
           <div
-            class="absolute top-1/2 h-1 -translate-y-1/2 rounded-full bg-cyan-500 dark:bg-cyan-400"
+            class="bg-primary absolute top-1/2 h-1 -translate-y-1/2 rounded-full"
             :style="{ left: pricePct(lo) + '%', right: 100 - pricePct(hi) + '%' }"
           />
           <input
@@ -168,12 +168,12 @@ const clearSets = () => {
         </div>
         <div class="mt-3 flex justify-between gap-2">
           <span
-            class="rounded-md border border-cyan-500/30 bg-cyan-500/10 px-2.5 py-0.5 text-xs text-cyan-700 dark:border-cyan-400/30 dark:bg-cyan-400/10 dark:text-cyan-300"
+            class="border-primary/30 bg-primary/10 text-primary-ink rounded-md border px-2.5 py-0.5 text-xs"
             >{{ lo }} €</span
           >
           <span class="font-mono text-xs text-slate-400 dark:text-slate-500">—</span>
           <span
-            class="rounded-md border border-cyan-500/30 bg-cyan-500/10 px-2.5 py-0.5 text-xs text-cyan-700 dark:border-cyan-400/30 dark:bg-cyan-400/10 dark:text-cyan-300"
+            class="border-primary/30 bg-primary/10 text-primary-ink rounded-md border px-2.5 py-0.5 text-xs"
             >{{ hi }}{{ hi >= sliderMax ? '+' : '' }} €</span
           >
         </div>
@@ -190,7 +190,7 @@ const clearSets = () => {
           type="button"
           :class="[
             'flex min-h-[42px] w-full cursor-pointer items-center gap-2 rounded-xl border border-solid border-slate-400/50 bg-slate-200/50 py-2 pr-2.5 pl-3 text-left transition-[border-color,box-shadow,background] duration-150 hover:bg-slate-200 dark:border-white/15 dark:bg-black/20 dark:hover:bg-black/30',
-            cbxOpen ? 'border-cyan-500/40 ring-4 ring-cyan-500/10 dark:border-cyan-400/40' : '',
+            cbxOpen ? 'border-primary/40 ring-primary/10 ring-4' : '',
           ]"
           aria-haspopup="listbox"
           :aria-expanded="cbxOpen"
@@ -205,14 +205,14 @@ const clearSets = () => {
             <span
               v-for="code in active.sets"
               :key="code"
-              class="inline-flex max-w-full items-center gap-1.5 rounded-lg border border-cyan-500/30 bg-cyan-500/10 py-0.5 pr-1 pl-2 text-xs font-medium text-cyan-700 dark:border-cyan-400/30 dark:bg-cyan-400/10 dark:text-cyan-300"
+              class="border-primary/30 bg-primary/10 text-primary-ink inline-flex max-w-full items-center gap-1.5 rounded-lg border py-0.5 pr-1 pl-2 text-xs font-medium"
             >
               <i :class="['ss', 'text-sm', `ss-${code.toLowerCase()}`]" />
               <span class="max-w-[120px] overflow-hidden text-ellipsis whitespace-nowrap">{{
                 resolveSetName(props.setList, code)
               }}</span>
               <i
-                class="grid h-4 w-4 flex-none cursor-pointer place-items-center rounded text-cyan-700 opacity-70 hover:bg-cyan-500/20 hover:opacity-100 dark:text-cyan-300"
+                class="text-primary-ink hover:bg-primary/20 grid h-4 w-4 flex-none cursor-pointer place-items-center rounded opacity-70 hover:opacity-100"
                 role="button"
                 :aria-label="`Retirer ${resolveSetName(props.setList, code)}`"
                 @click.stop="emit('toggle', 'sets', code)"
@@ -269,7 +269,7 @@ const clearSets = () => {
                 :class="[
                   'group grid w-full cursor-pointer grid-cols-[24px_1fr] items-center gap-2.5 rounded-lg px-2.5 py-2 text-left transition-colors duration-100',
                   active.sets.includes(set.code)
-                    ? 'on bg-cyan-500/10 dark:bg-cyan-400/10'
+                    ? 'on bg-primary/10'
                     : 'hover:bg-slate-100 dark:hover:bg-zinc-700',
                 ]"
                 role="option"
@@ -277,12 +277,12 @@ const clearSets = () => {
                 @click="emit('toggle', 'sets', set.code)"
               >
                 <span
-                  class="grid place-items-center text-slate-600 group-[.on]:text-cyan-700 dark:text-slate-300 dark:group-[.on]:text-cyan-300"
+                  class="group-[.on]:text-primary-ink grid place-items-center text-slate-600 dark:text-slate-300"
                 >
                   <i :class="['ss', 'text-lg', `ss-${set.code.toLowerCase()}`]" />
                 </span>
                 <span
-                  class="min-w-0 overflow-hidden text-sm text-ellipsis whitespace-nowrap text-slate-800 group-[.on]:font-medium group-[.on]:text-cyan-700 dark:text-slate-100 dark:group-[.on]:text-cyan-300"
+                  class="group-[.on]:text-primary-ink min-w-0 overflow-hidden text-sm text-ellipsis whitespace-nowrap text-slate-800 group-[.on]:font-medium dark:text-slate-100"
                   >{{ set.name }}</span
                 >
               </button>
@@ -291,7 +291,7 @@ const clearSets = () => {
             <button
               v-if="active.sets.length > 0"
               type="button"
-              class="mt-2 w-full cursor-pointer rounded-lg border border-slate-200 bg-black/10 p-2 font-mono text-xs font-semibold tracking-wide text-slate-400 transition-all duration-150 hover:border-cyan-500/30 hover:bg-cyan-500/10 hover:text-cyan-700 dark:border-white/10 dark:text-slate-500 dark:hover:border-cyan-400/30 dark:hover:bg-cyan-400/10 dark:hover:text-cyan-300"
+              class="hover:border-primary/30 hover:bg-primary/10 hover:text-primary-ink mt-2 w-full cursor-pointer rounded-lg border border-slate-200 bg-black/10 p-2 font-mono text-xs font-semibold tracking-wide text-slate-400 transition-all duration-150 dark:border-white/10 dark:text-slate-500"
               @click="clearSets"
             >
               Tout effacer ({{ active.sets.length }})
@@ -326,10 +326,10 @@ input[type='range']::-webkit-slider-thumb {
   height: 16px;
   border-radius: 50%;
   cursor: grab;
-  background: radial-gradient(circle at 35% 30%, #fff, var(--cyan));
-  border: 1px solid var(--cyan);
+  background: radial-gradient(circle at 35% 30%, #fff, var(--primary));
+  border: 1px solid var(--primary);
   box-shadow:
-    0 0 0 3px rgba(34, 211, 238, 0.18),
+    0 0 0 3px var(--primary-fill),
     0 2px 6px rgba(0, 0, 0, 0.5);
   transition: box-shadow 0.15s;
 }
@@ -337,7 +337,7 @@ input[type='range']::-webkit-slider-thumb {
 input[type='range']::-webkit-slider-thumb:active {
   cursor: grabbing;
   box-shadow:
-    0 0 0 5px rgba(34, 211, 238, 0.18),
+    0 0 0 5px var(--primary-fill),
     0 2px 6px rgba(0, 0, 0, 0.5);
 }
 
@@ -347,10 +347,10 @@ input[type='range']::-moz-range-thumb {
   height: 16px;
   border-radius: 50%;
   cursor: grab;
-  background: radial-gradient(circle at 35% 30%, #fff, var(--cyan));
-  border: 1px solid var(--cyan);
+  background: radial-gradient(circle at 35% 30%, #fff, var(--primary));
+  border: 1px solid var(--primary);
   box-shadow:
-    0 0 0 3px rgba(34, 211, 238, 0.18),
+    0 0 0 3px var(--primary-fill),
     0 2px 6px rgba(0, 0, 0, 0.5);
 }
 

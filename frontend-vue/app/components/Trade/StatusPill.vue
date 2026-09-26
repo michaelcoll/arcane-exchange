@@ -8,9 +8,8 @@ const props = withDefaults(defineProps<{ status: TradeStatus; size?: 'sm' | 'md'
 const meta = computed(() => TRADE_STATUS_META[props.status]);
 
 const toneClasses: Record<TradeTone, string> = {
-  cyan: 'border-cyan-500/30 bg-cyan-500/10 text-cyan-700 dark:border-cyan-400/30 dark:bg-cyan-400/10 dark:text-cyan-300',
-  violet:
-    'border-violet-500/30 bg-violet-500/10 text-violet-700 dark:border-violet-400/30 dark:bg-violet-400/10 dark:text-violet-300',
+  primary: 'border-primary/30 bg-primary/10 text-primary-ink',
+  secondary: 'border-secondary/30 bg-secondary/10 text-secondary-ink',
   good: 'border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:border-emerald-400/30 dark:bg-emerald-400/10 dark:text-emerald-300',
   down: 'border-red-500/30 bg-red-500/10 text-red-600 dark:border-red-400/30 dark:bg-red-400/10 dark:text-red-400',
   muted:

@@ -1,16 +1,17 @@
 # The Arcane Exchange — Design System
 
-Hi-fi design system for a Magic: The Gathering card trading platform. Aesthetic: **dark, frosted glass, cyan / violet
-neon**, shades derived in `oklch`.
+Hi-fi design system for a Magic: The Gathering card trading platform. Aesthetic: **dark, frosted glass, neon primary
+(cyan) / secondary (violet)**, shades derived in `oklch`.
 
 **Architecture**: tokens (colors, spacing, radius, shadows, typography) are CSS custom properties defined in
 `frontend-vue/app/assets/css/main.css` (`:root`) — never invent a token, use the real names. Visual composition is done
 with **Tailwind classes directly in the Vue template** (utility-first), not with dedicated global CSS classes (`.btn`,
 `.panel`, `.chip`…). That class system exists in the mockup (`maquette/styles.css`) but has no equivalent in
-`frontend-vue` — that's not the goal, don't recreate it. To apply a token in a Tailwind class, use the arbitrary-value
-syntax (`bg-[var(--surface-2)]`, `text-[var(--ink-2)]`, `border-[var(--line)]`,
-`rounded-[var(--r-lg)]`…), or Tailwind's default palette (`slate`, `zinc`, `cyan`, `violet`, `emerald`, `red`…)
-already used by existing components (`app/components/*.vue`) when the mockup doesn't prescribe an exact hue.
+`frontend-vue` — that's not the goal, don't recreate it. Accent colors go through the **semantic Tailwind colors**
+`primary`, `secondary` and `rarity` (§1). Other tokens are applied with the arbitrary-value syntax
+(`bg-[var(--surface-2)]`, `text-[var(--ink-2)]`, `border-[var(--line)]`, `rounded-[var(--r-lg)]`…). Tailwind's default
+palette is only for neutrals (`slate`, `zinc`) and the semantic red/green (`red`, `emerald`) — **never `cyan` /
+`violet`**: an ESLint rule fails `mise run lint-frontend` on any `*-cyan-*` / `*-violet-*` class in `frontend-vue/app`.
 
 ---
 
@@ -18,30 +19,66 @@ already used by existing components (`app/components/*.vue`) when the mockup doe
 
 ### Colors — locked palette
 
-| Role               | Token                     | Value     | Usage                                           |
-| ------------------ | ------------------------- | --------- | ----------------------------------------------- |
-| App background     | `--bg`                    | `#131313` | global background (+ radial cyan/violet aurora) |
-| Surface            | `--surface`               | `#1c1b1b` | cards, panels, modals                           |
-| Cyan (accent)      | `--cyan` / `--accent`     | `#00daf3` | action, interactive, rising values              |
-| Violet (secondary) | `--violet` / `--accent-2` | `#cdbdff` | EDHREC, balances, reserved                      |
+| Role           | Token         | Dark      | Light                      | Usage                                               |
+| -------------- | ------------- | --------- | -------------------------- | --------------------------------------------------- |
+| App background | `--bg`        | `#131313` | `#eef0f2`                  | global background (+ radial primary/secondary aura) |
+| Surface        | `--surface`   | `#1c1b1b` | `#ffffff`                  | cards, panels, modals                               |
+| Primary        | `--primary`   | `#00daf3` | `oklch(0.488 0.084 209.4)` | see roles below                                     |
+| Secondary      | `--secondary` | `#cdbdff` | `oklch(0.535 0.16 295)`    | see roles below                                     |
+
+Colors are named by **role**, not by hue:
+
+- **primary** — my actions, rising values, a trade's progress.
+- **secondary** — what concerns another player or the exchange (reserved card, cash delta, player mode, partner,
+  « Je reçois »), plus secondary data series.
+
+Two accents max: never introduce a third hue, and never pick an accent by its look — pick it by its role.
 
 ### Derived neutrals (oklch off the background)
 
 `--surface-2` (raised) · `--surface-3` (hover) · `--ink` (primary text) · `--ink-2` (secondary) · `--ink-3`
 (tertiary / labels) · `--ink-4` (faint)
 
-### Derived accents (states from the two neon hues)
+### Role variants
 
-For each hue: `-soft` (light), `-dim` (dark), `-fill` / `-fill-2` (translucent tinted background), `-line`
-(border), `-glow` (glowing shadow), `-ink` (readable text on `-fill`). E.g. cyan: `--cyan-soft`, `--cyan-dim`,
-`--cyan-fill`, `--cyan-fill-2`, `--cyan-line`, `--cyan-glow`,
-`--cyan-ink`. Same for violet.
+For `primary` and `secondary`: `-soft`, `-dim`, `-ink` (readable text on `-fill`) are explicit values per theme;
+`-fill` / `-fill-2` (translucent tinted background), `-line` (border), `-glow` (glowing shadow) are translucent
+`color-mix` derivatives of the base color. E.g. `--primary-soft`, `--primary-fill`, `--secondary-ink`.
+`--on-primary` / `--on-secondary` are the text colors to put on a solid `primary` / `secondary` background.
+
+Rarity (MTG convention): `--rarity-common`, `--rarity-uncommon`, `--rarity-rare`, `--rarity-mythic`,
+`--rarity-special`, explicit per theme.
+
+### Tailwind semantic colors
+
+Declared in `nuxt.config.ts` (`theme.extend.colors`), backed by the tokens above — they follow the light/dark theme on
+their own, so **no `dark:` pair** is needed:
+
+| Color       | Classes                                                                                         |
+| ----------- | ----------------------------------------------------------------------------------------------- |
+| `primary`   | `text-primary`, `bg-primary-soft`, `text-primary-ink`, `bg-primary-fill`, `border-primary-line` |
+| `secondary` | same keys: `DEFAULT`, `soft`, `dim`, `fill`, `fill-2`, `line`, `glow`, `ink`                    |
+| `rarity`    | `text-rarity-common`, `-uncommon`, `-rare`, `-mythic`, `-special`                               |
+
+The opacity modifier works (`bg-primary/10`, `border-secondary/40`) — there is no numeric scale (`primary-500`).
+Usual mappings: text → `text-primary` / `text-secondary`; text on a tinted pill → `text-primary-ink`; solid button →
+`bg-primary hover:bg-primary-soft text-[var(--on-primary)]`; tinted box → `border-primary/30 bg-primary/10`. The
+`fill` / `line` / `glow` keys are already translucent: don't stack an opacity modifier on them. `soft` / `dim` are
+lightness steps tuned per theme for contrast, not a fixed "lighter / darker" order — in light mode `soft` is darker
+than the base (so `hover:bg-primary-soft` darkens a button in light and lightens it in dark).
+
+### Contrast
+
+Every role color that carries text (`primary`, `secondary`, their `-soft` / `-dim` / `-ink`, and the five
+`--rarity-*`) reaches **WCAG AA 4.5:1** on `--bg`, `--surface` and `--surface-2`, in light **and** dark. Changing one
+of these values means re-checking the ratio on the three backgrounds, in both themes. These values are the reference
+for iOS.
 
 ### Semantic colors
 
 - `--down` — value decrease (muted warm red) + `--down-fill`
 - `--good` — discount / savings (green) + `--good-fill`
-- rising values: reuse the cyan directly (`--cyan`)
+- rising values: `primary`
 
 ### Lines & glass
 
@@ -57,13 +94,9 @@ For each hue: `-soft` (light), `-dim` (dark), `-fill` / `-fill-2` (translucent t
 
 The theme is driven by the `.dark` class on `<html>` (Tailwind `darkMode: 'class'`, see `nuxt.config.ts`) — not a
 `data-theme` attribute (that's the mockup's mechanism, not `frontend-vue`'s). In the absence of `.dark`,
-`:root:not(.dark)` reassigns the same set of tokens for light mode (background `#eef0f2`, white surfaces, deepened neons
-to stay readable, subtle black borders). Always code with `var(--*)` — never a hardcoded color — so both themes work.
-
-### Tweakable accent
-
-`--accent` drives the cyan; it's overridable (theme/accent picker in preferences). Roles point at it, so changing
-`--accent` retints the whole app.
+`:root:not(.dark)` reassigns the same set of tokens for light mode (background `#eef0f2`, white surfaces, deepened
+role colors to stay readable, subtle black borders). Always code with the tokens or the semantic colors — never a
+hardcoded color — so both themes work. There is no user-tweakable accent: `--primary` is a fixed token.
 
 ---
 
@@ -108,7 +141,7 @@ Visual patterns to compose in Tailwind (no dedicated `.panel`/`.card-surface`/`.
 | Frosted-glass panel | `bg-[var(--glass-bg)] backdrop-blur-[length:var(--glass-blur)] border border-[var(--line)] rounded-[var(--r-lg)] shadow-[var(--shadow)]` | main container (cards, panels, modals) |
 | Flat surface        | `bg-[var(--surface)] rounded-[var(--r-md)]`                                                                                              | plain surface, no glass effect         |
 | Inset area          | background darker than the parent surface + `rounded-[var(--r-md)]`                                                                      | recessed sub-area                      |
-| Tinted accent box   | `bg-[var(--cyan-fill)]` / `bg-[var(--violet-fill)]`                                                                                      | accent highlight                       |
+| Tinted accent box   | `border-primary/30 bg-primary/10` / `border-secondary/30 bg-secondary/10`                                                                | accent highlight                       |
 
 ---
 
@@ -118,18 +151,20 @@ Inventory of the mockup's UI patterns to reimplement as Vue components styled wi
 `.panel`…) are the ones from the mockup's CSS (`maquette/styles.css`) — useful for finding the reference style/behavior
 to consult, **not classes to recreate as-is** in `frontend-vue`.
 
-**Buttons** `.btn` + variants `.primary` (cyan), `.violet`, `.ghost`, `.danger`; sizes `.sm` / `.lg` / `.block`.
+**Buttons** `.btn` + variants `.primary`, `.violet` (→ `secondary`), `.ghost`, `.danger`; sizes `.sm` / `.lg` /
+`.block`.
 
 **Selection / filters**
 
-- `.chip` (togglable pill, `.on` state, `.vio` variant)
-- `.seg` — segmented control with an animated `.thumb` (`.on.cyan` / `.on.vio`) — already implemented in Tailwind in
-  `app/components/SegToggle.vue`; use it as a composition reference for the other patterns in this list.
+- `.chip` (togglable pill, `.on` state, `.vio` variant → `secondary`)
+- `.seg` — segmented control with an animated `.thumb` (`.on.cyan` / `.on.vio` in the mockup; `tone: 'primary'` /
+  `'secondary'` in `frontend-vue`) — already implemented in Tailwind in `app/components/SegToggle.vue`; use it as a
+  composition reference for the other patterns in this list.
 - `.set-pip` — set pip (Keyrune symbols), count badge `.set-ct`
 - `.cbx` — multi-select set combobox (control, chips, popover, options)
 - `.dual-range` — two-handle price-range slider
 
-**Fields** `.field` (+ `.big`), glowing cyan focus; `.search-hero` for the search bar with a halo.
+**Fields** `.field` (+ `.big`), glowing primary focus; `.search-hero` for the search bar with a halo.
 
 **MTG cards** `.mtg` — the mockup's monochrome frame (title bar, art, type bar, text box) is **not** reproduced: the app
 always shows the stored card image, or the generic card back `public/card-back.webp` for a card without one (pending,
@@ -161,8 +196,6 @@ sheet).
 
 **Errors**: `.api-toast` (failed-action snackbar with retry), `.spin` (spinner).
 
-**Preferences**: `.theme-grid` / `.theme-tile` (theme & accent picker).
-
 ---
 
 ## 6. Motion
@@ -177,9 +210,10 @@ Short, lively transitions (~.15–.3s, `cubic-bezier` curves with a slight overs
 
 ## 7. Golden Rules
 
-1. **Always** go through the real `var(--*)` tokens; never a hardcoded color/font (otherwise the light theme breaks).
-2. Two accent colors max: cyan (action/increase) + violet (secondary/balance). Red/green are reserved for semantic use
-   (decrease/discount).
+1. **Always** go through the real `var(--*)` tokens or the semantic Tailwind colors; never a hardcoded color/font
+   (otherwise the light theme breaks), never the default `cyan` / `violet` palette.
+2. Two accent colors max, chosen by role: `primary` (my actions, increase, trade progress) + `secondary` (other player,
+   exchange, secondary series). Red/green are reserved for semantic use (decrease/discount).
 3. Numbers, prices, and labels in `--font-mono` (`font-mono`); titles in `--font-display` (`font-display`); everything
    else in `--font-body` (`font-sans`).
 4. Glass surfaces (§4) for main containers, inset area for sub-zones — composed in Tailwind, not via global CSS classes.

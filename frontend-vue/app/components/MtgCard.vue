@@ -81,7 +81,7 @@ onUnmounted(() => {
       'rounded-[4%]',
       clickable ? 'cursor-pointer hover:-translate-y-1 hover:shadow-xl' : '',
       foil ? 'foil' : '',
-      reserved ? 'ring-2 ring-violet-500 dark:ring-violet-400' : '',
+      reserved ? 'ring-secondary ring-2' : '',
     ]"
     :title="name"
     @click="emit('click')"
@@ -94,7 +94,7 @@ onUnmounted(() => {
 
     <span
       v-if="reserved && !mini"
-      class="text-2xs absolute top-1.5 left-1.5 z-[5] inline-flex items-center gap-1 rounded-full border border-violet-400/40 bg-violet-500/20 px-1.5 py-0.5 font-mono font-bold text-violet-100 backdrop-blur-sm"
+      class="text-2xs border-secondary/40 bg-secondary/20 absolute top-1.5 left-1.5 z-[5] inline-flex items-center gap-1 rounded-full border px-1.5 py-0.5 font-mono font-bold text-white backdrop-blur-sm"
     >
       <Icon name="lucide:lock" :size="10" />
       Réservée
@@ -133,7 +133,7 @@ onUnmounted(() => {
       :aria-pressed="flipped"
       :aria-label="flipped ? 'Voir le recto' : 'Voir le verso'"
       :title="flipped ? 'Voir le recto' : 'Voir le verso'"
-      class="absolute right-2.5 bottom-2.5 z-[5] grid h-9 w-9 place-items-center rounded-full bg-black/60 text-zinc-100 backdrop-blur-sm transition-colors duration-150 hover:bg-cyan-500/80 focus-visible:ring-2 focus-visible:ring-cyan-400 focus-visible:outline-none"
+      class="hover:bg-primary/80 focus-visible:ring-primary absolute right-2.5 bottom-2.5 z-[5] grid h-9 w-9 place-items-center rounded-full bg-black/60 text-zinc-100 backdrop-blur-sm transition-colors duration-150 focus-visible:ring-2 focus-visible:outline-none"
       @click.stop="flipped = !flipped"
     >
       <Icon name="lucide:refresh-cw" :size="16" />

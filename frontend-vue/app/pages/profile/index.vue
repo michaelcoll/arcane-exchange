@@ -64,9 +64,9 @@ watch(manageOpen, (open) => {
 });
 
 const visOptions = [
-  { value: 'public', label: 'Publique', tone: 'cyan' },
-  { value: 'trade', label: 'Pour échange', tone: 'cyan' },
-  { value: 'private', label: 'Privée', tone: 'cyan' },
+  { value: 'public', label: 'Publique', tone: 'primary' },
+  { value: 'trade', label: 'Pour échange', tone: 'primary' },
+  { value: 'private', label: 'Privée', tone: 'primary' },
 ];
 
 const visHelp = [
@@ -116,7 +116,7 @@ const visHelp = [
             >
             <span class="flex items-center gap-1.5 text-xs text-slate-400 dark:text-slate-500">
               {{ contact }} ·
-              <span class="inline-flex items-center gap-1 text-violet-500 dark:text-violet-300">
+              <span class="text-secondary inline-flex items-center gap-1">
                 <Icon name="lucide:shield" size="12" /> géré par Clerk
               </span>
             </span>
@@ -187,7 +187,7 @@ const visHelp = [
               :class="[
                 'block h-[5px] w-[5px] -translate-y-0.5 rounded-full transition-all duration-200',
                 vis === o.value
-                  ? 'bg-cyan-500 shadow-[0_0_8px_-1px_var(--cyan-glow)] dark:bg-cyan-400'
+                  ? 'bg-primary shadow-[0_0_8px_-1px_var(--primary-glow)]'
                   : 'bg-slate-300 dark:bg-zinc-600',
               ]"
             />
@@ -195,9 +195,7 @@ const visHelp = [
               <b
                 :class="[
                   'font-semibold transition-colors duration-200',
-                  vis === o.value
-                    ? 'text-cyan-600 dark:text-cyan-400'
-                    : 'text-slate-500 dark:text-slate-400',
+                  vis === o.value ? 'text-primary' : 'text-slate-500 dark:text-slate-400',
                 ]"
                 >{{ o.label }}</b
               >
