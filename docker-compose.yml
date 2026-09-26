@@ -20,6 +20,7 @@ services:
 
   backend:
     image: ghcr.io/michaelcoll/arcane-exchange:1.27.0
+    user: "${PUID:-65532}:${PGID:-65532}"
     pull_policy: always
     restart: unless-stopped
     depends_on:
