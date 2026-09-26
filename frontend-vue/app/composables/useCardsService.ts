@@ -8,7 +8,7 @@ export const useCardsService = () => {
 
   const getCardInfo = () => apiCall('/card/card-info', { method: 'POST' });
 
-  // `foil` is required: the catalog no longer knows a card's finish, so the caller must always
+  // `foil` is required: the catalog doesn't know a card's finish, so the caller must always
   // say which price series it wants.
   const getCardPriceHistory = (scryfallId: string, params: CardPriceHistoryParams) =>
     apiCall<PriceHistoryEntry[]>(`/card/${scryfallId}/price-history`, { query: params });

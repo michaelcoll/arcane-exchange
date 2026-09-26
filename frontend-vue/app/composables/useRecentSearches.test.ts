@@ -7,7 +7,6 @@ import {
 
 const TEST_KEY = 'test-recent-key';
 
-// Mock localStorage
 const mockLocalStorage = new Map<string, string>();
 vi.stubGlobal('localStorage', {
   get length(): number {

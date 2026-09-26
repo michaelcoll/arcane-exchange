@@ -15,7 +15,7 @@ const imageFailed = ref(false);
 const showImage = computed(() => Boolean(avatar.value) && !imageFailed.value);
 
 // Changement de joueur : on retente l'image, sinon l'échec du joueur
-// précédent restait figé sur les initiales pour tous les suivants.
+// précédent resterait figé sur les initiales pour tous les suivants.
 watch(
   () => props.username,
   () => {

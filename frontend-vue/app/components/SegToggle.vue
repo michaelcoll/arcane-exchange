@@ -67,12 +67,10 @@ const btnActiveColor = (o: Option) => {
 
 const kbdClasses = (o: Option) =>
   o.value === props.modelValue
-    ? // actif : light bordure/texte plus clairs (bg inchangé) ; dark idem sur fond noir 22%
-      'border-[var(--line-2)] bg-[var(--surface)] text-[var(--ink)] dark:border-[color-mix(in_oklch,white_9%,transparent)] dark:bg-[color-mix(in_srgb,black_22%,transparent)] dark:text-[oklch(0.55_0.006_250)]'
-    : // inactif : light sur fond blanc, bordure line, texte ink-2 ; dark bg noir 22%, bordure line-2, texte ink-4
-      'border-[var(--line)] bg-[var(--surface)] text-[var(--ink-2)] dark:border-[color-mix(in_oklch,white_14%,transparent)] dark:bg-[color-mix(in_srgb,black_22%,transparent)] dark:text-[oklch(0.42_0.006_250)]';
+    ? 'border-[var(--line-2)] bg-[var(--surface)] text-[var(--ink)] dark:border-[color-mix(in_oklch,white_9%,transparent)] dark:bg-[color-mix(in_srgb,black_22%,transparent)] dark:text-[oklch(0.55_0.006_250)]'
+    : 'border-[var(--line)] bg-[var(--surface)] text-[var(--ink-2)] dark:border-[color-mix(in_oklch,white_14%,transparent)] dark:bg-[color-mix(in_srgb,black_22%,transparent)] dark:text-[oklch(0.42_0.006_250)]';
 
-/* ---------- Keyboard shortcuts (port de useModeShortcut) ----------
+/* ---------- Keyboard shortcuts ----------
  * Alt+1..9 → sélectionne l'option n°N  (⌥ sur Mac)
  * Alt+K    → cycle vers l'option suivante
  * alt seul comme modérateur (Cmd/Ctrl+chiffre = onglets navigateur)

@@ -48,7 +48,6 @@ const formatUpdatedAt = (iso: string) =>
   <div class="mx-auto max-w-[760px] px-5 pt-7 pb-10 max-md:px-4 max-md:pt-5 max-md:pb-8">
     <h2 class="font-display mb-4 text-xl font-semibold tracking-tight">Mes échanges</h2>
 
-    <!-- LOADING -->
     <div
       v-if="pending && items.length === 0"
       class="flex items-center justify-center py-16 font-mono text-sm text-slate-400 dark:text-slate-500"
@@ -57,7 +56,6 @@ const formatUpdatedAt = (iso: string) =>
       Chargement…
     </div>
 
-    <!-- EMPTY -->
     <div
       v-else-if="!pending && items.length === 0"
       class="flex flex-col items-center justify-center gap-4 py-20 text-slate-400 dark:text-slate-500"
@@ -71,7 +69,6 @@ const formatUpdatedAt = (iso: string) =>
       >
     </div>
 
-    <!-- LIST -->
     <template v-else>
       <div class="flex flex-col gap-2">
         <NuxtLink

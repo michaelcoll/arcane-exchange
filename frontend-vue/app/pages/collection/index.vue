@@ -488,7 +488,6 @@ const onDragLeave = () => {
       </div>
     </div>
 
-    <!-- ── CONTROLS ── -->
     <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
       <button
         class="inline-flex items-center justify-center gap-2 rounded-xl border border-transparent bg-cyan-500 px-4 py-2.5 text-sm leading-none font-bold whitespace-nowrap text-zinc-950 shadow-lg transition-all duration-150 hover:-translate-y-px hover:bg-cyan-400 active:translate-y-0 md:hidden dark:bg-cyan-400 dark:hover:bg-cyan-300"
@@ -506,9 +505,7 @@ const onDragLeave = () => {
       </button>
     </div>
 
-    <!-- ── BODY ── -->
     <div class="flex items-start gap-6">
-      <!-- Sidebar filters (desktop) -->
       <div class="sticky top-[86px] flex w-[210px] flex-none flex-col gap-3.5 max-md:hidden">
         <button
           class="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-transparent bg-cyan-500 px-4 py-2.5 text-sm leading-none font-bold whitespace-nowrap text-zinc-950 shadow-lg transition-all duration-150 hover:-translate-y-px hover:bg-cyan-400 active:translate-y-0 dark:bg-cyan-400 dark:hover:bg-cyan-300"
@@ -534,9 +531,7 @@ const onDragLeave = () => {
         </aside>
       </div>
 
-      <!-- Main content -->
       <div class="min-w-0 flex-1">
-        <!-- Header row -->
         <div class="mb-3.5 flex min-h-[22px] items-center justify-between">
           <span v-if="statsData" class="text-sm text-slate-400 dark:text-slate-500" />
           <div class="flex items-center gap-2.5">
@@ -551,7 +546,6 @@ const onDragLeave = () => {
           </div>
         </div>
 
-        <!-- Loading state (initial) -->
         <div
           v-if="pending && allCards.length === 0"
           class="flex items-center justify-center py-16 font-mono text-sm text-slate-400 dark:text-slate-500"
@@ -560,7 +554,6 @@ const onDragLeave = () => {
           Chargement…
         </div>
 
-        <!-- Empty state -->
         <div
           v-else-if="!pending && allCards.length === 0"
           class="flex flex-col items-center justify-center gap-4 py-20 text-slate-400 dark:text-slate-500"
@@ -576,7 +569,6 @@ const onDragLeave = () => {
           </button>
         </div>
 
-        <!-- Grid view -->
         <template v-else-if="view === 'grid'">
           <div
             :class="[
@@ -628,7 +620,6 @@ const onDragLeave = () => {
       </div>
     </div>
 
-    <!-- ── MOBILE FILTER SHEET ── -->
     <div
       v-if="sheet"
       class="fixed inset-0 z-[80] animate-[fade_0.2s_ease] bg-black/60 backdrop-blur-sm"
@@ -666,10 +657,8 @@ const onDragLeave = () => {
       </div>
     </div>
 
-    <!-- ── CARD DETAIL MODAL ── -->
     <CardDetailModal v-if="detail" :card="detail" @close="detail = null" />
 
-    <!-- ── IMPORT MODAL ── -->
     <div
       v-if="importOpen"
       class="fixed inset-0 z-[80] grid animate-[fade_0.2s_ease] place-items-center bg-black/60 p-5 backdrop-blur-sm"
@@ -689,7 +678,6 @@ const onDragLeave = () => {
           </button>
         </div>
 
-        <!-- Step: drop zone -->
         <template v-if="importStep === 'idle'">
           <p class="mt-0 text-sm text-slate-600 dark:text-slate-300">
             Exporte ta collection en
@@ -735,7 +723,6 @@ const onDragLeave = () => {
           </p>
         </template>
 
-        <!-- Step: progress -->
         <template v-else-if="importStep === 'progress'">
           <p v-if="importWasAlreadyRunning" class="mt-0 text-sm text-amber-500">
             Un import est déjà en cours pour ton compte — voici sa progression :
@@ -764,7 +751,6 @@ const onDragLeave = () => {
           </div>
         </template>
 
-        <!-- Step: done -->
         <template v-else-if="importStep === 'done' && importStatus?.status === 'completed'">
           <p class="mt-0 text-sm text-slate-600 dark:text-slate-300">
             <strong>{{ importStatus.total_lines }}</strong> carte(s) importée(s)

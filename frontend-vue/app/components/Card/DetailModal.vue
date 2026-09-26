@@ -119,7 +119,6 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
       class="relative max-h-[calc(100dvh-40px-env(safe-area-inset-top))] w-full max-w-[840px] animate-[pop_0.26s_cubic-bezier(0.3,1.2,0.4,1)] overflow-hidden rounded-3xl border border-slate-300 p-0 shadow-2xl max-[720px]:max-w-[440px] dark:border-white/15"
       @click.stop
     >
-      <!-- close -->
       <button
         class="absolute top-3.5 right-3.5 z-[5] grid h-9 w-9 place-items-center rounded-lg border border-slate-200 bg-slate-100 text-slate-600 transition-all duration-150 hover:border-slate-300 hover:bg-slate-50 hover:text-slate-800 dark:border-white/10 dark:bg-white/5 dark:text-slate-300 dark:hover:border-white/15 dark:hover:bg-zinc-800 dark:hover:text-slate-100"
         @click="emit('close')"
@@ -127,11 +126,9 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
         <Icon name="lucide:x" :size="16" />
       </button>
 
-      <!-- body grid -->
       <div
         class="grid max-h-[calc(100dvh-40px-env(safe-area-inset-top))] [grid-template-columns:minmax(300px,360px)_1fr] overflow-y-auto max-[720px]:[grid-template-columns:1fr]"
       >
-        <!-- art -->
         <div
           class="relative flex items-center justify-center border-r border-slate-200/60 bg-white/40 p-7 backdrop-blur-md max-[720px]:border-r-0 max-[720px]:border-b max-[720px]:p-6 dark:border-white/10 dark:bg-zinc-900/40"
         >
@@ -144,9 +141,7 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
           />
         </div>
 
-        <!-- info -->
         <div class="flex min-w-0 flex-col gap-4 bg-white px-6 py-7 dark:bg-zinc-800">
-          <!-- header -->
           <div>
             <h3 class="font-display mb-1.5 text-xl font-semibold tracking-tight">
               {{ card.name }}
@@ -169,7 +164,6 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
             </span>
           </div>
 
-          <!-- market -->
           <div
             class="rounded-xl border border-slate-300 bg-black/5 px-3.5 py-3 dark:border-white/10 dark:bg-zinc-900/60"
           >

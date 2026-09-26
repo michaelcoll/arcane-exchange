@@ -20,7 +20,6 @@ const errorTitle = computed(() => {
   return 'Impossible de charger cet échange';
 });
 
-/* ---------- dérivés (aucun recalcul, tout vient du backend) ---------- */
 const status = computed(() => toTradeStatus(trade.value?.status ?? 'PENDING'));
 const partner = computed(() => trade.value?.partner_username ?? '');
 const editable = computed(() => isTradeEditable(status.value));
@@ -35,7 +34,6 @@ const meConfirmed = computed(() => trade.value?.me.confirmed ?? false);
 const meRating = computed<TradeRating>(() => trade.value?.me.rating ?? null);
 const partnerRating = computed<TradeRating>(() => trade.value?.partner.rating ?? null);
 
-/* ---------- actions ---------- */
 const busy = ref(false);
 
 const run = async (action: () => Promise<unknown>) => {
@@ -79,7 +77,6 @@ const rate = (value: number) => run(() => rateTrade(tradeId.value, value));
 
 const formatRating = (r: TradeRating) => (r == null ? 'non notée' : `${r}/5`);
 
-/* ---------- styles de boutons partagés ---------- */
 const btnBase =
   'inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm leading-none font-semibold whitespace-nowrap transition-all duration-150 hover:-translate-y-px active:translate-y-0 disabled:pointer-events-none disabled:opacity-50';
 const btnDanger = `${btnBase} border border-red-500/40 bg-transparent text-red-600 hover:bg-red-500/10 dark:border-red-400/40 dark:text-red-400 dark:hover:bg-red-400/10`;
@@ -94,7 +91,6 @@ const label =
 
 <template>
   <div class="mx-auto max-w-[1180px] px-5 pt-7 pb-10 max-md:px-4 max-md:pt-5 max-md:pb-8">
-    <!-- LOADING -->
     <div
       v-if="pending && !trade"
       class="flex items-center justify-center py-20 font-mono text-sm text-slate-400 dark:text-slate-500"
@@ -103,7 +99,6 @@ const label =
       Chargement…
     </div>
 
-    <!-- ERROR -->
     <div
       v-else-if="error"
       class="flex flex-col items-center justify-center gap-4 py-20 text-slate-400 dark:text-slate-500"
@@ -117,9 +112,7 @@ const label =
       >
     </div>
 
-    <!-- CONTENT -->
     <template v-else-if="trade">
-      <!-- HEADER -->
       <div class="mb-4 flex flex-wrap items-center justify-between gap-3.5">
         <div class="flex items-center gap-3">
           <button
@@ -140,7 +133,6 @@ const label =
         <TradeStatusPill :status="status" />
       </div>
 
-      <!-- CYCLE DE VIE -->
       <div :class="[panel, 'mb-4 px-4 pt-5 pb-4']">
         <div
           v-if="status === 'ABANDONED'"
@@ -152,7 +144,6 @@ const label =
         <TradeLifecycle v-else :status="status" />
       </div>
 
-      <!-- BANNIÈRE CONTEXTUELLE -->
       <TradeStatusBanner
         class="mb-4"
         :status="status"
@@ -161,7 +152,6 @@ const label =
         :confirmed="meConfirmed"
       />
 
-      <!-- COLONNES + BALANCE -->
       <div
         class="grid [grid-template-columns:1fr_auto_1fr] items-stretch gap-4 max-md:[grid-template-columns:1fr]"
       >
@@ -199,7 +189,6 @@ const label =
 
       <!-- ACTIONS SELON LE STATUT -->
       <div :class="[panel, 'mt-[18px] p-4']">
-        <!-- PENDING -->
         <div
           v-if="status === 'PENDING'"
           class="flex flex-wrap items-center justify-between gap-3.5"
@@ -215,7 +204,6 @@ const label =
           </div>
         </div>
 
-        <!-- ONE_ACCEPTED -->
         <div
           v-else-if="status === 'ONE_ACCEPTED'"
           class="flex flex-wrap items-center justify-between gap-3.5"
@@ -239,7 +227,6 @@ const label =
           </div>
         </div>
 
-        <!-- FULLY_ACCEPTED -->
         <div
           v-else-if="status === 'FULLY_ACCEPTED'"
           class="flex flex-wrap items-center justify-between gap-3.5"
@@ -263,7 +250,6 @@ const label =
           </div>
         </div>
 
-        <!-- COMPLETED -->
         <div v-else-if="status === 'COMPLETED'" class="flex flex-col gap-3.5">
           <div class="flex flex-wrap items-center justify-between gap-3.5">
             <div class="flex flex-col gap-0.5">
@@ -290,7 +276,6 @@ const label =
           </div>
         </div>
 
-        <!-- CLOSED -->
         <div
           v-else-if="status === 'CLOSED'"
           class="flex flex-wrap items-center gap-x-[18px] gap-y-2"
@@ -315,7 +300,6 @@ const label =
         </div>
       </div>
 
-      <!-- MODALES -->
       <TradeConfirmModal
         v-if="modal?.kind === 'accept'"
         title="Accepter cet échange ?"

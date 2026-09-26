@@ -96,7 +96,6 @@ const handleDecklistSearch = () => {
   <div class="mx-auto max-w-[1180px] px-5 pt-7 pb-10 max-md:px-4 max-md:pt-5 max-md:pb-8">
     <!-- ── HERO ── -->
     <div class="flex flex-col items-center gap-6 pt-10 pb-8 text-center">
-      <!-- Hero logo lockup -->
       <div class="flex flex-col items-center gap-2.5">
         <div class="flex items-center gap-[clamp(12px,2.4vw,20px)]">
           <span
@@ -142,7 +141,6 @@ const handleDecklistSearch = () => {
         >
       </div>
 
-      <!-- Subtitle -->
       <p
         class="-mt-2 mb-4 max-w-[460px] text-base leading-relaxed text-slate-600 dark:text-slate-300"
       >
@@ -150,7 +148,6 @@ const handleDecklistSearch = () => {
         On te montre qui possède quoi, à quel prix, et tu composes l'échange.
       </p>
 
-      <!-- Search area -->
       <div ref="searchAreaRef" class="flex w-full max-w-[540px] flex-col items-center gap-3.5">
         <SegToggle v-model="mode" :options="searchOptions" shortcuts />
 
@@ -165,7 +162,6 @@ const handleDecklistSearch = () => {
             ]"
           />
 
-          <!-- Name search -->
           <div
             v-if="mode === 'name'"
             class="flex min-h-[62px] items-center gap-2.5 rounded-2xl border border-solid border-slate-400/50 bg-slate-200/75 py-2 pr-2 pl-4 transition-all duration-200 focus-within:border-cyan-500/40 focus-within:ring-4 focus-within:ring-cyan-500/10 dark:border-white/15 dark:bg-black/20 dark:focus-within:border-cyan-400/40"
@@ -189,7 +185,6 @@ const handleDecklistSearch = () => {
             </button>
           </div>
 
-          <!-- Player search -->
           <PlayerPicker v-else-if="mode === 'player'" v-model="player" @submit="goToPlayer" />
 
           <!-- Decklist search -->
@@ -222,7 +217,6 @@ const handleDecklistSearch = () => {
           </div>
         </div>
 
-        <!-- Player mode helper -->
         <p
           v-if="mode === 'player' && !player"
           class="max-w-[420px] text-center text-xs text-slate-400 dark:text-slate-500"
@@ -230,7 +224,6 @@ const handleDecklistSearch = () => {
           Choisis un joueur : tu arrives sur sa collection, filtrable comme la tienne.
         </p>
 
-        <!-- Recent searches -->
         <div
           v-if="mode === 'name' && recents.length > 0"
           class="flex flex-wrap items-center justify-center gap-2"
@@ -254,7 +247,7 @@ const handleDecklistSearch = () => {
 
     <!-- ── SECONDARY DISCOVERY ── -->
     <div class="mt-7 flex flex-wrap gap-4">
-      <!-- Collection panel — immersive tile, derived from the collection page's value bar -->
+      <!-- Collection panel — immersive tile -->
       <div
         class="relative min-h-[206px] min-w-[260px] flex-1 overflow-hidden rounded-2xl border border-slate-200 bg-white/60 shadow-lg backdrop-blur-md dark:border-white/10 dark:bg-zinc-900/60"
       >
@@ -307,7 +300,6 @@ const handleDecklistSearch = () => {
           >
         </div>
 
-        <!-- meta: card counts -->
         <div
           v-if="collectionStatsData"
           class="absolute bottom-[62px] left-[18px] z-[3] flex items-center gap-2.5 font-mono text-[11.5px] whitespace-nowrap text-slate-500 [text-shadow:0_1px_4px_rgba(0,0,0,0.35)] dark:text-slate-300 dark:[text-shadow:0_1px_4px_rgba(0,0,0,0.6)]"
@@ -327,7 +319,6 @@ const handleDecklistSearch = () => {
           >
         </div>
 
-        <!-- CTA -->
         <button
           class="absolute right-[18px] bottom-4 left-[18px] z-[3] inline-flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-transparent px-4 py-2.5 text-sm leading-none font-semibold whitespace-nowrap text-slate-600 transition-all duration-150 hover:-translate-y-px hover:border-slate-300 hover:bg-slate-100 hover:text-slate-800 active:translate-y-0 dark:border-white/10 dark:text-slate-300 dark:hover:border-white/15 dark:hover:bg-white/5 dark:hover:text-slate-100"
           @click="navigateTo('/collection')"
@@ -337,7 +328,6 @@ const handleDecklistSearch = () => {
         </button>
       </div>
 
-      <!-- Trades panel -->
       <div
         class="min-w-[260px] flex-1 rounded-2xl border border-slate-200 bg-white/60 p-5 shadow-lg backdrop-blur-md dark:border-white/10 dark:bg-zinc-900/60"
       >

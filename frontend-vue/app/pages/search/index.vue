@@ -125,7 +125,7 @@ const pageTitle = computed(() =>
     : 'Cartes chez les autres joueurs',
 );
 
-// `added_at` n'a de sens que scopé à un joueur unique (cf. spec 024) : hors de ce cas, seul
+// `added_at` n'a de sens que scopé à un joueur unique : hors de ce cas, seul
 // le tri prix est proposé.
 const playerScoped = computed(() => mode.value === 'player' && !!player.value);
 
@@ -167,8 +167,7 @@ const resolvePlayer = async (username: string) => {
   }
 };
 
-// Depuis la section decklist (mockée) : bascule directement en mode « par joueur »
-// plutôt que de rediriger vers /trade, qui n'a plus de point d'entrée générique.
+// Depuis la section decklist (mockée) : bascule directement en mode « par joueur ».
 const goToPlayerCollection = (username: string) => {
   mode.value = 'player';
   resolvePlayer(username.replace(/^@/, ''));
@@ -186,10 +185,10 @@ watch(player, (p) => {
     params.value.sort_dir = sort.sort_dir;
     resetAndRefresh();
   } else {
-    // Pas de resetAndRefresh ici : cohérent avec le comportement existant où clearPlayer()
-    // seul ne déclenche pas de requête immédiate. Le tri repasse quand même sur le prix par
-    // défaut dès maintenant, pour que la prochaine requête (quel que soit ce qui la déclenche)
-    // n'envoie jamais sort_by=added_at sans player_username.
+    // Pas de resetAndRefresh ici : retirer le joueur ne déclenche pas de requête immédiate.
+    // Le tri repasse quand même sur le prix par défaut dès maintenant, pour que la prochaine
+    // requête (quel que soit ce qui la déclenche) n'envoie jamais sort_by=added_at sans
+    // player_username.
     params.value.sort_by = 'trend';
     params.value.sort_dir = 'desc';
   }
@@ -279,7 +278,6 @@ onMounted(() => {
     if (saved !== null) decklist.value = saved;
   }
 
-  // ── Infinite scroll ──
   io = new IntersectionObserver(
     ([entry]) => {
       if (entry?.isIntersecting && hasMore.value && !pending.value) {
@@ -395,7 +393,6 @@ const decklist = ref(
 
 <template>
   <div class="mx-auto max-w-[1180px] px-5 pt-7 pb-10 max-md:px-4 max-md:pt-5 max-md:pb-8">
-    <!-- HEADER -->
     <div class="mb-4 flex flex-wrap items-center justify-between gap-3.5">
       <h2 class="font-display text-xl font-semibold tracking-tight">
         {{ pageTitle }}
@@ -403,9 +400,7 @@ const decklist = ref(
       <SegToggle v-model="mode" :options="modeOptions" shortcuts />
     </div>
 
-    <!-- MODE: PAR NOM / PAR JOUEUR (collection d'un joueur choisi) -->
     <div v-if="mode === 'name' || (mode === 'player' && player)">
-      <!-- Player header -->
       <div
         v-if="mode === 'player' && player"
         class="mb-5 flex flex-wrap items-center gap-4 rounded-2xl border border-violet-200 bg-white/60 p-4 shadow-lg backdrop-blur-md dark:border-violet-400/20 dark:bg-violet-600/5"
@@ -432,7 +427,6 @@ const decklist = ref(
         </button>
       </div>
 
-      <!-- Search bar (mode: par nom) -->
       <form
         v-if="mode === 'name'"
         ref="searchAreaRef"
@@ -496,9 +490,7 @@ const decklist = ref(
         </button>
       </div>
 
-      <!-- BODY -->
       <div class="flex items-start gap-6">
-        <!-- Sidebar filters (desktop) -->
         <aside
           class="sticky top-[86px] w-[210px] flex-none rounded-2xl border border-slate-200 bg-white/60 p-4 shadow-lg backdrop-blur-md max-md:hidden dark:border-white/10 dark:bg-zinc-900/60"
         >
@@ -515,7 +507,6 @@ const decklist = ref(
           />
         </aside>
 
-        <!-- Main content -->
         <div class="min-w-0 flex-1">
           <div class="mb-3.5 flex min-h-[22px] items-center justify-between gap-2.5">
             <span
@@ -546,7 +537,6 @@ const decklist = ref(
             <SegToggle v-model="size" :options="sizeOptions" size="sm" />
           </div>
 
-          <!-- Loading state (initial) -->
           <div
             v-if="pending && allCards.length === 0"
             class="flex items-center justify-center py-16 font-mono text-sm text-slate-400 dark:text-slate-500"
@@ -555,7 +545,6 @@ const decklist = ref(
             Chargement…
           </div>
 
-          <!-- Empty state -->
           <div
             v-else-if="!pending && allCards.length === 0"
             class="flex flex-col items-center justify-center gap-4 py-20 text-slate-400 dark:text-slate-500"
@@ -566,7 +555,6 @@ const decklist = ref(
             </p>
           </div>
 
-          <!-- Grid -->
           <template v-else>
             <div
               :class="[
@@ -616,7 +604,6 @@ const decklist = ref(
         </div>
       </div>
 
-      <!-- MOBILE FILTER SHEET -->
       <div
         v-if="sheet"
         class="fixed inset-0 z-[80] animate-[fade_0.2s_ease] bg-black/60 backdrop-blur-sm"
@@ -655,7 +642,6 @@ const decklist = ref(
         </div>
       </div>
 
-      <!-- CARD DETAIL MODAL -->
       <CardDetailModal v-if="detail" :card="detail" @close="detail = null" />
     </div>
 
@@ -680,7 +666,6 @@ const decklist = ref(
       v-else
       class="grid [grid-template-columns:minmax(240px,320px)_1fr] items-start gap-6 max-md:[grid-template-columns:1fr]"
     >
-      <!-- Left: paste zone -->
       <div
         class="flex flex-col gap-3 self-start rounded-2xl border border-slate-200 bg-white/60 p-4 shadow-lg backdrop-blur-md dark:border-white/10 dark:bg-zinc-900/60"
       >
@@ -709,7 +694,6 @@ const decklist = ref(
         </button>
       </div>
 
-      <!-- Right: coverage results -->
       <div class="flex min-w-0 flex-1 flex-col gap-3.5">
         <div class="flex items-center justify-between">
           <h3 class="font-display text-base font-semibold tracking-tight">

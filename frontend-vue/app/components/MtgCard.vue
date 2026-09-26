@@ -86,14 +86,12 @@ onUnmounted(() => {
     :title="name"
     @click="emit('click')"
   >
-    <!-- qty badge -->
     <span
       v-if="qty != null"
       class="absolute top-1.5 right-1.5 z-[5] rounded-full border border-white/20 bg-black/60 px-1.5 py-0.5 font-mono text-xs font-semibold text-zinc-100 backdrop-blur-sm"
       >×{{ qty }}</span
     >
 
-    <!-- reserved badge -->
     <span
       v-if="reserved && !mini"
       class="text-2xs absolute top-1.5 left-1.5 z-[5] inline-flex items-center gap-1 rounded-full border border-violet-400/40 bg-violet-500/20 px-1.5 py-0.5 font-mono font-bold text-violet-100 backdrop-blur-sm"
@@ -128,7 +126,6 @@ onUnmounted(() => {
       />
     </div>
 
-    <!-- flip a double-faced card -->
     <button
       v-if="canFlip"
       type="button"

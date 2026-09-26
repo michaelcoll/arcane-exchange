@@ -53,7 +53,6 @@ const bottomNavLinkClass = (path: string) => [
   <div class="min-h-screen pb-24">
     <NuxtRouteAnnouncer />
 
-    <!-- HEADER -->
     <header
       class="sticky top-0 z-40 border-b border-slate-200 bg-slate-100/60 pt-[env(safe-area-inset-top)] backdrop-blur-md dark:border-white/10 dark:bg-zinc-950/60"
     >
@@ -135,14 +134,12 @@ const bottomNavLinkClass = (path: string) => [
       </div>
     </header>
 
-    <!-- PAGE CONTENT -->
     <main>
       <NuxtPage />
     </main>
 
     <AppToast />
 
-    <!-- MOBILE BOTTOM NAV -->
     <nav
       v-if="isLoaded && isSignedIn"
       class="hidden max-md:fixed max-md:right-0 max-md:bottom-0 max-md:left-0 max-md:z-50 max-md:flex max-md:border-t max-md:border-slate-200 max-md:bg-slate-100/80 max-md:px-2 max-md:pt-2 max-md:pb-[calc(0.5rem+env(safe-area-inset-bottom))] max-md:backdrop-blur-md dark:max-md:border-white/10 dark:max-md:bg-zinc-950/80"

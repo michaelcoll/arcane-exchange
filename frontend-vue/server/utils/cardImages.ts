@@ -3,7 +3,7 @@ import { join } from 'node:path';
 
 /**
  * Card images never change under a given URL: the URL exposed to clients is versioned by the
- * image source (ADR 0017), so Cloudflare and browsers may keep them for a year.
+ * image source, so Cloudflare and browsers may keep them for a year.
  */
 export const CARD_IMAGE_CACHE_CONTROL = 'public, max-age=31536000, immutable';
 

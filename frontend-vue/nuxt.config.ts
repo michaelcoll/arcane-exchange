@@ -1,4 +1,3 @@
-// https://nuxt.com/docs/api/configuration/nuxt-config
 export default defineNuxtConfig({
   compatibilityDate: '2025-07-15',
   ssr: false,
@@ -94,7 +93,7 @@ export default defineNuxtConfig({
             mono: ['JetBrains Mono', 'ui-monospace', 'monospace'],
           },
           fontSize: {
-            // micro labels (mono uppercase) — single non-standard token kept on purpose
+            // micro labels (mono uppercase)
             '2xs': ['0.625rem', { lineHeight: '1rem' }], // 10px
           },
         },
@@ -107,8 +106,6 @@ export default defineNuxtConfig({
     authToken: process.env.SENTRY_AUTH_TOKEN,
     telemetry: false,
     sourcemaps: {
-      // As you're enabling client source maps, you probably want to delete them after they're uploaded to Sentry.
-      // Set the appropriate glob pattern for your output folder - some glob examples below:
       filesToDeleteAfterUpload: [
         './**/*.map',
         '.*/**/public/**/*.map',
@@ -152,7 +149,7 @@ export default defineNuxtConfig({
         'img-src': [
           "'self'",
           'data:',
-          // Card images are served by the frontend itself (/card-images, ADR 0017).
+          // Card images are served by the frontend itself (/card-images).
           // Clerk-hosted avatars and OAuth provider icons on the sign-in/profile UI.
           'https://img.clerk.com',
         ],
