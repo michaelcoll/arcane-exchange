@@ -7,6 +7,9 @@
    TOKENS
    ============================================================ */
 :root {
+  /* Also drives Clerk's default theme (and native controls) into dark mode. */
+  color-scheme: dark;
+
   --bg: #131313;
   --surface: #1c1b1b;
   --cyan: var(--accent, #00daf3);
@@ -81,6 +84,8 @@
 
 /* ---- Light theme (Tailwind dark-mode: applies when <html> has no .dark class) ---- */
 :root:not(.dark) {
+  color-scheme: light;
+
   --bg: #eef0f2;
   --surface: #ffffff;
   --surface-2: oklch(0.975 0.003 250);
