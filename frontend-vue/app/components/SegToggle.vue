@@ -60,8 +60,8 @@ watch(
 
 const btnActiveColor = (o: Option) => {
   if (o.value !== props.modelValue) return 'text-slate-600 dark:text-slate-300';
-  if (o.tone === 'cyan') return 'text-cyan-600 dark:text-cyan-400';
-  if (o.tone === 'vio') return 'text-violet-500 dark:text-violet-300';
+  if (o.tone === 'primary') return 'text-primary';
+  if (o.tone === 'secondary') return 'text-secondary';
   return 'text-slate-800 dark:text-slate-100';
 };
 

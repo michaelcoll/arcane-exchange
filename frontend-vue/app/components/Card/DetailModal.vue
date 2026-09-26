@@ -175,9 +175,7 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
               <span
                 :class="[
                   'font-mono text-xs',
-                  cardVariation.positive
-                    ? 'text-cyan-600 dark:text-cyan-400'
-                    : 'text-red-500 dark:text-red-400',
+                  cardVariation.positive ? 'text-primary' : 'text-red-500 dark:text-red-400',
                 ]"
               >
                 {{ cardVariation.positive ? '▴' : '▾' }}
@@ -223,13 +221,13 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
                 :class="[
                   'relative flex flex-col gap-2.5 rounded-xl border px-3.5 py-3',
                   i === 0
-                    ? 'border-cyan-500/30 bg-cyan-500/5 dark:border-cyan-400/30 dark:bg-cyan-400/5'
+                    ? 'border-primary/30 bg-primary/5'
                     : 'border-slate-200 bg-white dark:border-white/10 dark:bg-zinc-900',
                 ]"
               >
                 <span
                   v-if="i === 0"
-                  class="text-2xs absolute -top-2.5 left-3 rounded-full bg-cyan-500 px-2 py-0.5 font-semibold tracking-wide whitespace-nowrap text-zinc-950 dark:bg-cyan-400"
+                  class="text-2xs bg-primary absolute -top-2.5 left-3 rounded-full px-2 py-0.5 font-semibold tracking-wide whitespace-nowrap text-[var(--on-primary)]"
                 >
                   Meilleure offre
                 </span>
@@ -252,14 +250,14 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
                   }}</span>
                   <span
                     v-if="offer.reserved"
-                    class="text-2xs inline-flex items-center gap-1 rounded-lg border border-violet-400/40 bg-violet-500/10 px-3 py-1.5 font-mono font-bold whitespace-nowrap text-violet-600 dark:text-violet-300"
+                    class="text-2xs border-secondary/40 bg-secondary/10 text-secondary inline-flex items-center gap-1 rounded-lg border px-3 py-1.5 font-mono font-bold whitespace-nowrap"
                   >
                     <Icon name="lucide:lock" size="12" />
                     Réservée
                   </span>
                   <button
                     v-else
-                    class="inline-flex items-center justify-center gap-2 rounded-lg border border-transparent bg-cyan-500 px-3 py-1.5 text-xs leading-none font-bold whitespace-nowrap text-zinc-950 shadow-lg transition-all duration-150 hover:-translate-y-px hover:bg-cyan-400 active:translate-y-0 disabled:pointer-events-none disabled:opacity-60 dark:bg-cyan-400 dark:hover:bg-cyan-300"
+                    class="bg-primary hover:bg-primary-soft inline-flex items-center justify-center gap-2 rounded-lg border border-transparent px-3 py-1.5 text-xs leading-none font-bold whitespace-nowrap text-[var(--on-primary)] shadow-lg transition-all duration-150 hover:-translate-y-px active:translate-y-0 disabled:pointer-events-none disabled:opacity-60"
                     :disabled="startingWith !== null"
                     @click="startTrade(offer)"
                   >

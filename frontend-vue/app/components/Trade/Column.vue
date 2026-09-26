@@ -4,8 +4,8 @@ import type { TradeCard } from '~/bindings/TradeCard';
 const props = defineProps<{
   label: string;
   cards: TradeCard[];
-  /** `cyan` pour la colonne « Je reçois », `neutral` pour « Je donne ». */
-  accent: 'cyan' | 'neutral';
+  /** `primary` pour la colonne « Je reçois », `neutral` pour « Je donne ». */
+  tone: 'primary' | 'neutral';
   /** Les cartes de l'échange sont réservées. */
   reserved: boolean;
   /** Cette colonne autorise le retrait d'une carte (uniquement « Je reçois »). */
@@ -24,14 +24,10 @@ const totalQuantity = computed(() => props.cards.reduce((s, c) => s + c.quantity
 const total = computed(() => tradeCardsTotal(props.cards));
 
 const valueClasses = computed(() =>
-  props.accent === 'cyan'
-    ? 'text-cyan-600 dark:text-cyan-400'
-    : 'text-slate-600 dark:text-slate-300',
+  props.tone === 'primary' ? 'text-primary' : 'text-slate-600 dark:text-slate-300',
 );
 
-const totalClasses = computed(() =>
-  props.accent === 'cyan' ? 'text-cyan-600 dark:text-cyan-400' : '',
-);
+const totalClasses = computed(() => (props.tone === 'primary' ? 'text-primary' : ''));
 </script>
 
 <template>
@@ -55,7 +51,7 @@ const totalClasses = computed(() =>
         :class="[
           'flex items-center gap-3 rounded-xl border px-3 py-2 transition-all duration-150',
           reserved
-            ? 'border-violet-500/30 bg-violet-500/[0.07] dark:border-violet-400/40 dark:bg-violet-400/[0.07]'
+            ? 'border-secondary/30 bg-secondary/[0.07] dark:border-secondary/40'
             : 'border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50 dark:border-white/10 dark:bg-zinc-900 dark:hover:border-white/15 dark:hover:bg-zinc-800',
         ]"
       >
@@ -69,10 +65,7 @@ const totalClasses = computed(() =>
               >×{{ c.quantity }}</span
             >
           </div>
-          <div
-            v-if="reserved"
-            class="flex items-center gap-1 text-[11px] text-violet-500 dark:text-violet-300"
-          >
+          <div v-if="reserved" class="text-secondary flex items-center gap-1 text-[11px]">
             <Icon name="lucide:lock" size="10" /> Réservée
           </div>
         </div>
@@ -89,7 +82,7 @@ const totalClasses = computed(() =>
         </button>
         <span
           v-else-if="reserved"
-          class="grid h-[26px] w-[26px] flex-none place-items-center rounded-lg border border-slate-200 bg-slate-100 text-violet-500 opacity-50 dark:border-white/10 dark:bg-white/5 dark:text-violet-300"
+          class="text-secondary grid h-[26px] w-[26px] flex-none place-items-center rounded-lg border border-slate-200 bg-slate-100 opacity-50 dark:border-white/10 dark:bg-white/5"
           aria-hidden="true"
         >
           <Icon name="lucide:lock" size="12" />
@@ -103,7 +96,7 @@ const totalClasses = computed(() =>
 
     <button
       v-if="addLabel"
-      class="flex items-center justify-center gap-2 rounded-xl border-[1.5px] border-dashed border-slate-300 bg-black/10 p-3 text-sm font-semibold text-slate-600 transition-all duration-200 hover:border-cyan-500/40 hover:bg-cyan-500/10 dark:border-white/15 dark:text-slate-300 dark:hover:border-cyan-400/40 dark:hover:bg-cyan-400/10"
+      class="hover:border-primary/40 hover:bg-primary/10 flex items-center justify-center gap-2 rounded-xl border-[1.5px] border-dashed border-slate-300 bg-black/10 p-3 text-sm font-semibold text-slate-600 transition-all duration-200 dark:border-white/15 dark:text-slate-300"
       @click="emit('add')"
     >
       <Icon name="lucide:plus" size="16" /> {{ addLabel }}

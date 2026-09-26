@@ -15,14 +15,14 @@ const stateOf = (i: number): NodeState => {
 };
 
 const dotClasses: Record<NodeState, string> = {
-  done: 'border-cyan-500/40 bg-cyan-500/15 text-cyan-600 dark:border-cyan-400/40 dark:bg-cyan-400/15 dark:text-cyan-400',
-  cur: 'border-transparent bg-cyan-500 text-zinc-950 shadow-[0_0_0_4px_var(--cyan-fill),0_0_22px_-6px_var(--cyan-glow)] dark:bg-cyan-400',
+  done: 'border-primary/40 bg-primary/15 text-primary',
+  cur: 'border-transparent bg-primary text-[var(--on-primary)] shadow-[0_0_0_4px_var(--primary-fill),0_0_22px_-6px_var(--primary-glow)]',
   todo: 'border-slate-300 bg-slate-100 text-slate-400 dark:border-white/15 dark:bg-white/5 dark:text-slate-500',
 };
 
 const labelClasses: Record<NodeState, string> = {
   done: 'text-slate-600 dark:text-slate-300',
-  cur: 'text-cyan-600 dark:text-cyan-400',
+  cur: 'text-primary',
   todo: 'text-slate-400 dark:text-slate-500',
 };
 </script>
@@ -38,9 +38,7 @@ const labelClasses: Record<NodeState, string> = {
         v-if="i < TRADE_LIFECYCLE.length - 1"
         :class="[
           'absolute top-[15px] left-[calc(50%+15px)] z-[1] h-0.5 w-[calc(100%-30px)] max-[620px]:top-[13px] max-[620px]:left-[calc(50%+13px)] max-[620px]:w-[calc(100%-26px)]',
-          stateOf(i) === 'done'
-            ? 'bg-cyan-500/40 dark:bg-cyan-400/40'
-            : 'bg-slate-200 dark:bg-white/10',
+          stateOf(i) === 'done' ? 'bg-primary/40' : 'bg-slate-200 dark:bg-white/10',
         ]"
       />
       <span

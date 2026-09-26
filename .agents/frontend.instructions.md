@@ -8,13 +8,13 @@
 - **`<style scoped>` exceptions**: only for effects Tailwind utilities can't express cleanly — complex `@keyframes`,
   layered gradients/pseudo-elements (e.g. the foil card effect in `app/components/MtgCard.vue`).
 - **Tokens**: colors/spacing/radius/shadow/typography are CSS custom properties defined in
-  `app/assets/css/main.css` (`:root`), not Tailwind theme colors — there is no `bg-surface`/`text-on-surface`
-  utility. Apply a token via Tailwind's arbitrary-value syntax (`bg-[var(--surface)]`,
-  `text-[var(--ink-2)]`, `rounded-[var(--r-lg)]`), or fall back to Tailwind's default palette
-  (`slate`/`zinc`/`cyan`/`violet`/`emerald`/`red` + `dark:` variants) as already used across
-  `app/components/*.vue` when the design system doesn't prescribe an exact token.
+  `app/assets/css/main.css` (`:root`). Accents are exposed as semantic Tailwind colors (`primary`, `secondary`,
+  `rarity` — e.g. `text-primary`, `bg-secondary/10`, `text-rarity-rare`) that follow the theme without `dark:` pairs.
+  Other tokens have no Tailwind utility (no `bg-surface`): apply them via the arbitrary-value syntax
+  (`bg-[var(--surface)]`, `text-[var(--ink-2)]`, `rounded-[var(--r-lg)]`). Tailwind's default palette is only for
+  neutrals (`slate`/`zinc`) and semantic red/green (`red`/`emerald`); `cyan` / `violet` classes are rejected by ESLint.
   - **Key rules (see `design-system.instructions.md` for the full token reference and component inventory):**
-    - **Palette**: dark, glass, neon cyan/violet theme (`--bg`/`--surface` as base, `--cyan`, `--violet`).
+    - **Palette**: dark, glass, neon theme (`--bg`/`--surface` as base, `primary` and `secondary` picked by role).
     - **No borders**: prefer background-color shifts and spacing over `border` to define boundaries.
     - **Typography**: `font-display` (Space Grotesk) for titles, `font-mono` (JetBrains Mono) for
       numbers/prices/labels, `font-sans` (Hanken Grotesk) for everything else.

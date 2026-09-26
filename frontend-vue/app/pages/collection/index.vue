@@ -278,20 +278,20 @@ const graphOptions = [
     label: '',
     icon: 'lucide:bar-chart-2',
     title: 'Graphe compact',
-    tone: 'cyan',
+    tone: 'primary',
   },
   {
     value: 'expanded',
     label: '',
     icon: 'lucide:trending-up',
     title: 'Graphe étendu',
-    tone: 'cyan',
+    tone: 'primary',
   },
 ];
 const sizeOptions = [
-  { value: 'sm', label: '', icon: 'lucide:grid-3x3', title: 'Petites cartes', tone: 'cyan' },
-  { value: 'md', label: '', icon: 'lucide:grid-2x2', title: 'Cartes moyennes', tone: 'cyan' },
-  { value: 'lg', label: '', icon: 'lucide:square', title: 'Grandes cartes', tone: 'cyan' },
+  { value: 'sm', label: '', icon: 'lucide:grid-3x3', title: 'Petites cartes', tone: 'primary' },
+  { value: 'md', label: '', icon: 'lucide:grid-2x2', title: 'Cartes moyennes', tone: 'primary' },
+  { value: 'lg', label: '', icon: 'lucide:square', title: 'Grandes cartes', tone: 'primary' },
 ];
 
 onBeforeUnmount(stopImportPolling);
@@ -401,9 +401,7 @@ const onDragLeave = () => {
             <span
               :class="[
                 'font-mono text-lg font-semibold',
-                variation.positive
-                  ? 'text-cyan-600 dark:text-cyan-400'
-                  : 'text-red-500 dark:text-red-400',
+                variation.positive ? 'text-primary' : 'text-red-500 dark:text-red-400',
               ]"
               >{{ variation.positive ? '▴' : '▾' }} {{ variation.positive ? '+' : '−'
               }}{{
@@ -447,7 +445,7 @@ const onDragLeave = () => {
               :class="[
                 'inline-flex cursor-pointer items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium whitespace-nowrap transition-all duration-150 select-none',
                 graphRange === r
-                  ? 'border-cyan-500/30 bg-cyan-500/10 text-cyan-700 dark:border-cyan-400/30 dark:bg-cyan-400/10 dark:text-cyan-300'
+                  ? 'border-primary/30 bg-primary/10 text-primary-ink'
                   : 'border-slate-200 bg-slate-100 text-slate-600 hover:border-slate-300 hover:bg-slate-50 hover:text-slate-800 dark:border-white/10 dark:bg-white/5 dark:text-slate-300 dark:hover:border-white/15 dark:hover:bg-zinc-800 dark:hover:text-slate-100',
               ]"
               @click="graphRange = r"
@@ -474,15 +472,13 @@ const onDragLeave = () => {
         <span
           class="text-2xs flex items-center gap-1.5 font-mono whitespace-nowrap text-slate-500 dark:text-slate-300"
         >
-          <span
-            class="h-2.5 w-[15px] rounded-[3px] border border-cyan-500/40 bg-cyan-500/25 dark:border-cyan-400/40 dark:bg-cyan-400/25"
-          />
+          <span class="border-primary/40 bg-primary/25 h-2.5 w-[15px] rounded-[3px] border" />
           low → avg
         </span>
         <span
           class="text-2xs flex items-center gap-1.5 font-mono whitespace-nowrap text-slate-500 dark:text-slate-300"
         >
-          <span class="h-0 w-[17px] border-t-[2.5px] border-cyan-500 dark:border-cyan-400" />
+          <span class="border-primary h-0 w-[17px] border-t-[2.5px]" />
           trend
         </span>
       </div>
@@ -490,7 +486,7 @@ const onDragLeave = () => {
 
     <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
       <button
-        class="inline-flex items-center justify-center gap-2 rounded-xl border border-transparent bg-cyan-500 px-4 py-2.5 text-sm leading-none font-bold whitespace-nowrap text-zinc-950 shadow-lg transition-all duration-150 hover:-translate-y-px hover:bg-cyan-400 active:translate-y-0 md:hidden dark:bg-cyan-400 dark:hover:bg-cyan-300"
+        class="bg-primary hover:bg-primary-soft inline-flex items-center justify-center gap-2 rounded-xl border border-transparent px-4 py-2.5 text-sm leading-none font-bold whitespace-nowrap text-[var(--on-primary)] shadow-lg transition-all duration-150 hover:-translate-y-px active:translate-y-0 md:hidden"
         @click="openImport"
       >
         <Icon name="lucide:upload" :size="16" />
@@ -508,7 +504,7 @@ const onDragLeave = () => {
     <div class="flex items-start gap-6">
       <div class="sticky top-[86px] flex w-[210px] flex-none flex-col gap-3.5 max-md:hidden">
         <button
-          class="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-transparent bg-cyan-500 px-4 py-2.5 text-sm leading-none font-bold whitespace-nowrap text-zinc-950 shadow-lg transition-all duration-150 hover:-translate-y-px hover:bg-cyan-400 active:translate-y-0 dark:bg-cyan-400 dark:hover:bg-cyan-300"
+          class="bg-primary hover:bg-primary-soft inline-flex w-full items-center justify-center gap-2 rounded-xl border border-transparent px-4 py-2.5 text-sm leading-none font-bold whitespace-nowrap text-[var(--on-primary)] shadow-lg transition-all duration-150 hover:-translate-y-px active:translate-y-0"
           @click="openImport"
         >
           <Icon name="lucide:upload" :size="16" />
@@ -649,7 +645,7 @@ const onDragLeave = () => {
           @price-change="onPriceChange"
         />
         <button
-          class="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-xl border border-transparent bg-cyan-500 px-4 py-2.5 text-sm leading-none font-bold whitespace-nowrap text-zinc-950 shadow-lg transition-all duration-150 hover:-translate-y-px hover:bg-cyan-400 active:translate-y-0 dark:bg-cyan-400 dark:hover:bg-cyan-300"
+          class="bg-primary hover:bg-primary-soft mt-4 inline-flex w-full items-center justify-center gap-2 rounded-xl border border-transparent px-4 py-2.5 text-sm leading-none font-bold whitespace-nowrap text-[var(--on-primary)] shadow-lg transition-all duration-150 hover:-translate-y-px active:translate-y-0"
           @click="sheet = false"
         >
           Voir les résultats
@@ -671,7 +667,7 @@ const onDragLeave = () => {
         <div class="mb-1 flex items-center justify-between">
           <h3 class="font-display text-xl font-semibold tracking-tight">Importer depuis Manabox</h3>
           <button
-            class="grid h-9 w-9 place-items-center rounded-lg border border-slate-200 bg-slate-100 text-slate-600 transition-all duration-150 hover:border-slate-300 hover:bg-slate-50 hover:text-slate-800 hover:ring-4 hover:ring-cyan-500/10 dark:border-white/10 dark:bg-white/5 dark:text-slate-300 dark:hover:border-white/15 dark:hover:bg-zinc-800 dark:hover:text-slate-100"
+            class="hover:ring-primary/10 grid h-9 w-9 place-items-center rounded-lg border border-slate-200 bg-slate-100 text-slate-600 transition-all duration-150 hover:border-slate-300 hover:bg-slate-50 hover:text-slate-800 hover:ring-4 dark:border-white/10 dark:bg-white/5 dark:text-slate-300 dark:hover:border-white/15 dark:hover:bg-zinc-800 dark:hover:text-slate-100"
             @click="closeImport"
           >
             <Icon name="lucide:x" :size="16" />
@@ -695,8 +691,8 @@ const onDragLeave = () => {
             class="mt-2 flex cursor-pointer flex-col items-center gap-3 rounded-xl border-[1.5px] border-dashed p-8 transition-all duration-200"
             :class="
               isDragging
-                ? 'border-cyan-500/40 bg-cyan-500/10 dark:border-cyan-400/40 dark:bg-cyan-400/10'
-                : 'border-slate-300 bg-black/10 hover:border-cyan-500/40 hover:bg-cyan-500/10 dark:border-white/15 dark:hover:border-cyan-400/40 dark:hover:bg-cyan-400/10'
+                ? 'border-primary/40 bg-primary/10'
+                : 'hover:border-primary/40 hover:bg-primary/10 border-slate-300 bg-black/10 dark:border-white/15'
             "
             @click="fileInputRef?.click()"
             @drop="onDrop"
@@ -706,7 +702,7 @@ const onDragLeave = () => {
             <Icon
               :name="importLoading ? 'lucide:loader-2' : 'lucide:upload'"
               :size="30"
-              class="text-cyan-600 dark:text-cyan-400"
+              class="text-primary"
               :class="{ 'animate-spin': importLoading }"
             />
             <div class="flex flex-col items-center gap-1">
@@ -745,7 +741,7 @@ const onDragLeave = () => {
             aria-valuemax="100"
           >
             <div
-              class="h-full rounded-full bg-cyan-500 transition-[width] duration-300 dark:bg-cyan-400"
+              class="bg-primary h-full rounded-full transition-[width] duration-300"
               :style="{ width: importProgressPercent + '%' }"
             />
           </div>
@@ -767,7 +763,7 @@ const onDragLeave = () => {
             </li>
           </ul>
           <button
-            class="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-xl border border-transparent bg-cyan-500 px-4 py-2.5 text-sm leading-none font-bold whitespace-nowrap text-zinc-950 shadow-lg transition-all duration-150 hover:-translate-y-px hover:bg-cyan-400 active:translate-y-0 dark:bg-cyan-400 dark:hover:bg-cyan-300"
+            class="bg-primary hover:bg-primary-soft mt-4 inline-flex w-full items-center justify-center gap-2 rounded-xl border border-transparent px-4 py-2.5 text-sm leading-none font-bold whitespace-nowrap text-[var(--on-primary)] shadow-lg transition-all duration-150 hover:-translate-y-px active:translate-y-0"
             @click="closeImport"
           >
             Fermer
@@ -780,7 +776,7 @@ const onDragLeave = () => {
             {{ importStatus?.error_message ?? "L'import a échoué." }}
           </p>
           <button
-            class="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-xl border border-transparent bg-cyan-500 px-4 py-2.5 text-sm leading-none font-bold whitespace-nowrap text-zinc-950 shadow-lg transition-all duration-150 hover:-translate-y-px hover:bg-cyan-400 active:translate-y-0 dark:bg-cyan-400 dark:hover:bg-cyan-300"
+            class="bg-primary hover:bg-primary-soft mt-4 inline-flex w-full items-center justify-center gap-2 rounded-xl border border-transparent px-4 py-2.5 text-sm leading-none font-bold whitespace-nowrap text-[var(--on-primary)] shadow-lg transition-all duration-150 hover:-translate-y-px active:translate-y-0"
             @click="openImport"
           >
             Réessayer

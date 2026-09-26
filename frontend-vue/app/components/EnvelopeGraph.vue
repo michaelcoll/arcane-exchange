@@ -132,17 +132,11 @@ const tooltipStyle = computed(() => {
         :x2="dim.w - padR"
         :y2="padT + ih * f"
       />
-      <path class="fill-cyan-500/30 stroke-none dark:fill-cyan-400/30" :d="areaD" />
+      <path class="fill-primary/30 stroke-none" :d="areaD" />
+      <path class="stroke-primary/40 fill-none [stroke-width:1.4]" :d="topD" />
+      <path class="stroke-primary/40 fill-none [stroke-width:1.4]" :d="botD" />
       <path
-        class="fill-none stroke-cyan-500/40 [stroke-width:1.4] dark:stroke-cyan-400/40"
-        :d="topD"
-      />
-      <path
-        class="fill-none stroke-cyan-500/40 [stroke-width:1.4] dark:stroke-cyan-400/40"
-        :d="botD"
-      />
-      <path
-        class="fill-none stroke-cyan-500 [stroke-width:2.6] drop-shadow-[0_0_5px_rgba(34,211,238,0.45)] dark:stroke-cyan-400"
+        class="stroke-primary fill-none [stroke-width:2.6] drop-shadow-[0_0_5px_var(--primary-glow)]"
         :d="midD"
       />
       <line
@@ -188,19 +182,19 @@ const tooltipStyle = computed(() => {
       </div>
       <div class="flex items-center justify-between gap-3.5 text-xs leading-relaxed">
         <span class="flex items-center gap-1.5 text-slate-500 dark:text-slate-400"
-          ><i class="inline-block h-2 w-2 rounded-sm bg-cyan-300" />avg</span
+          ><i class="bg-primary-soft inline-block h-2 w-2 rounded-sm" />avg</span
         >
         <b class="font-mono font-semibold">{{ fmt(hoverPoint.avg) }}</b>
       </div>
       <div class="flex items-center justify-between gap-3.5 text-xs leading-relaxed">
         <span class="flex items-center gap-1.5 text-slate-500 dark:text-slate-400"
-          ><i class="inline-block h-2 w-2 rounded-sm bg-cyan-500 dark:bg-cyan-400" />trend</span
+          ><i class="bg-primary inline-block h-2 w-2 rounded-sm" />trend</span
         >
         <b class="font-mono font-semibold">{{ fmt(hoverPoint.trend) }}</b>
       </div>
       <div class="flex items-center justify-between gap-3.5 text-xs leading-relaxed">
         <span class="flex items-center gap-1.5 text-slate-500 dark:text-slate-400"
-          ><i class="inline-block h-2 w-2 rounded-sm bg-cyan-700 dark:bg-cyan-600" />low</span
+          ><i class="bg-primary-dim inline-block h-2 w-2 rounded-sm" />low</span
         >
         <b class="font-mono font-semibold">{{ fmt(hoverPoint.low) }}</b>
       </div>

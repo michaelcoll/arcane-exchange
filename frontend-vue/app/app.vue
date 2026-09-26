@@ -39,13 +39,13 @@ const isActive = (path: string) => route.path === path;
 const navLinkClass = (path: string) => [
   'relative flex items-center px-4 text-sm font-medium transition-[color,background] duration-200 whitespace-nowrap',
   isActive(path)
-    ? 'text-cyan-600 dark:text-cyan-400 bg-cyan-500/10 dark:bg-cyan-400/10 shadow-[inset_0_-2px_0_currentColor]'
+    ? 'text-primary bg-primary/10 shadow-[inset_0_-2px_0_currentColor]'
     : 'text-slate-600 dark:text-slate-300 hover:text-slate-800 dark:hover:text-slate-100 hover:bg-slate-100 dark:hover:bg-white/5',
 ];
 
 const bottomNavLinkClass = (path: string) => [
   'flex-1 flex flex-col items-center gap-1 text-2xs p-1 font-semibold font-mono tracking-wide transition-colors duration-150',
-  isActive(path) ? 'text-cyan-600 dark:text-cyan-400' : 'text-slate-400 dark:text-slate-500',
+  isActive(path) ? 'text-primary' : 'text-slate-400 dark:text-slate-500',
 ];
 </script>
 
@@ -59,7 +59,7 @@ const bottomNavLinkClass = (path: string) => [
       <div class="mx-auto flex h-16 max-w-[1180px] items-center gap-4 px-5 max-md:h-14 max-md:px-4">
         <NuxtLink to="/" class="font-display flex cursor-pointer items-center gap-2.5">
           <span
-            class="grid h-8 w-8 shrink-0 place-items-center overflow-hidden rounded-lg border border-cyan-500/30 bg-cyan-500/15 dark:border-cyan-400/30 dark:bg-cyan-400/15"
+            class="border-primary/30 bg-primary/15 grid h-8 w-8 shrink-0 place-items-center overflow-hidden rounded-lg border"
           >
             <svg
               viewBox="0 0 28 28"
@@ -76,7 +76,7 @@ const bottomNavLinkClass = (path: string) => [
                 height="11"
                 rx="3"
                 transform="rotate(45 10.5 14)"
-                stroke="var(--cyan)"
+                stroke="var(--primary)"
               />
               <rect
                 x="12"
@@ -85,12 +85,12 @@ const bottomNavLinkClass = (path: string) => [
                 height="11"
                 rx="3"
                 transform="rotate(45 17.5 14)"
-                stroke="var(--violet)"
+                stroke="var(--secondary)"
               />
             </svg>
           </span>
           <span class="text-base font-semibold tracking-tight"
-            >Arcane <b class="font-semibold text-cyan-600 dark:text-cyan-400">Exchange</b></span
+            >Arcane <b class="text-primary font-semibold">Exchange</b></span
           >
         </NuxtLink>
 
@@ -184,6 +184,6 @@ const bottomNavLinkClass = (path: string) => [
 .cl-userButtonTrigger:focus-visible {
   box-shadow:
     0 0 0 2px var(--bg),
-    0 0 0 4px var(--cyan) !important;
+    0 0 0 4px var(--primary) !important;
 }
 </style>

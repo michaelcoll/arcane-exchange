@@ -157,7 +157,7 @@ const stepperBtnClass =
             :class="[
               'inline-flex cursor-pointer items-center gap-1.5 rounded-full border border-solid px-3 py-1.5 text-xs font-medium whitespace-nowrap transition-all duration-150 select-none disabled:cursor-default disabled:opacity-60',
               selectedBinders.includes(b.name)
-                ? 'border-cyan-500/40 bg-cyan-500/10 text-cyan-700 dark:border-cyan-400/40 dark:bg-cyan-400/10 dark:text-cyan-300'
+                ? 'border-primary/40 bg-primary/10 text-primary-ink'
                 : 'border-slate-200 bg-slate-100 text-slate-600 hover:border-slate-300 hover:bg-slate-200 hover:text-slate-800 dark:border-white/10 dark:bg-white/5 dark:text-slate-300 dark:hover:border-white/15 dark:hover:bg-zinc-800 dark:hover:text-slate-100',
             ]"
             @click="toggleBinder(b.name)"
@@ -239,7 +239,7 @@ const stepperBtnClass =
             :class="[
               'relative h-7 w-12 shrink-0 cursor-pointer rounded-full transition-all duration-200 disabled:cursor-default disabled:opacity-60',
               row.is_open
-                ? 'border border-transparent bg-cyan-500 dark:bg-cyan-400'
+                ? 'bg-primary border border-transparent'
                 : 'border border-slate-300 bg-slate-200 dark:border-white/15 dark:bg-zinc-800',
             ]"
             @click="toggleRarity(row.rarity, row.is_open, row.kept_copies)"
@@ -247,7 +247,9 @@ const stepperBtnClass =
             <span
               :class="[
                 'absolute top-1 h-5 w-5 rounded-full transition-[left] duration-200 ease-out',
-                row.is_open ? 'left-6 bg-zinc-950' : 'left-1 bg-slate-500 dark:bg-slate-400',
+                row.is_open
+                  ? 'left-6 bg-[var(--on-primary)]'
+                  : 'left-1 bg-slate-500 dark:bg-slate-400',
               ]"
             />
           </button>
@@ -296,9 +298,7 @@ const stepperBtnClass =
           <span
             :class="[
               'font-mono text-sm font-bold tracking-tight whitespace-nowrap',
-              row.proposed
-                ? 'text-cyan-600 dark:text-cyan-400'
-                : 'text-slate-400 dark:text-slate-500',
+              row.proposed ? 'text-primary' : 'text-slate-400 dark:text-slate-500',
             ]"
             >{{ fmtInt(row.proposed) }}</span
           >
@@ -313,7 +313,7 @@ const stepperBtnClass =
           class="flex h-2.5 overflow-hidden rounded-full border border-slate-200 bg-slate-200/70 dark:border-white/5 dark:bg-zinc-800"
         >
           <i
-            class="block bg-cyan-500 transition-[width] duration-300 dark:bg-cyan-400"
+            class="bg-primary block transition-[width] duration-300"
             :style="{ width: pct(totals.proposed) + '%' }"
           />
           <i
@@ -327,7 +327,7 @@ const stepperBtnClass =
         </div>
         <div class="flex flex-wrap gap-x-4 gap-y-2 text-xs text-slate-400 dark:text-slate-500">
           <span class="inline-flex items-center gap-1.5">
-            <i class="block h-2 w-2 rounded-[2px] bg-cyan-500 dark:bg-cyan-400" />
+            <i class="bg-primary block h-2 w-2 rounded-[2px]" />
             <span>Proposés {{ fmtInt(totals.proposed) }}</span>
           </span>
           <span class="inline-flex items-center gap-1.5">

@@ -152,7 +152,7 @@ watch([highlighted, open, navActive], () => {
     <!-- Selected state -->
     <div
       v-if="props.modelValue"
-      class="flex min-h-[62px] items-center gap-2.5 rounded-2xl border border-violet-500/40 bg-violet-500/10 py-2 pr-2 pl-3 dark:border-violet-400/40 dark:bg-violet-400/10"
+      class="border-secondary/40 bg-secondary/10 flex min-h-[62px] items-center gap-2.5 rounded-2xl border py-2 pr-2 pl-3"
     >
       <PlayerAvatar :username="props.modelValue.username" />
       <span class="flex min-w-0 flex-1 flex-col">
@@ -160,7 +160,7 @@ watch([highlighted, open, navActive], () => {
           ><span class="text-slate-400 dark:text-slate-500">@</span
           >{{ props.modelValue.username }}</span
         >
-        <span class="font-mono text-xs text-violet-600 dark:text-violet-300"
+        <span class="text-secondary font-mono text-xs"
           >{{ props.modelValue.card_count }} cartes</span
         >
       </span>
@@ -172,7 +172,7 @@ watch([highlighted, open, navActive], () => {
         <Icon name="lucide:x" :size="14" />
       </button>
       <button
-        class="inline-flex items-center justify-center gap-2 self-stretch rounded-xl border border-transparent bg-violet-500 px-6 text-base leading-none font-bold whitespace-nowrap text-zinc-950 shadow-lg transition-all duration-150 hover:-translate-y-px hover:bg-violet-400 active:translate-y-0 dark:bg-violet-400 dark:hover:bg-violet-300"
+        class="bg-secondary hover:bg-secondary-soft inline-flex items-center justify-center gap-2 self-stretch rounded-xl border border-transparent px-6 text-base leading-none font-bold whitespace-nowrap text-[var(--on-secondary)] shadow-lg transition-all duration-150 hover:-translate-y-px active:translate-y-0"
         @click="emit('submit', props.modelValue)"
       >
         {{ cta ?? 'Voir ses cartes' }}
@@ -182,13 +182,9 @@ watch([highlighted, open, navActive], () => {
     <!-- Search state -->
     <div
       v-else
-      class="flex min-h-[62px] items-center gap-2.5 rounded-2xl border border-solid border-violet-400/40 bg-slate-200/75 py-2 pr-3 pl-4 transition-all duration-200 focus-within:border-violet-500/50 focus-within:ring-4 focus-within:ring-violet-500/10 dark:border-violet-400/25 dark:bg-black/20 dark:focus-within:border-violet-400/50"
+      class="border-secondary/40 focus-within:border-secondary/50 focus-within:ring-secondary/10 dark:border-secondary/25 dark:focus-within:border-secondary/50 flex min-h-[62px] items-center gap-2.5 rounded-2xl border border-solid bg-slate-200/75 py-2 pr-3 pl-4 transition-all duration-200 focus-within:ring-4 dark:bg-black/20"
     >
-      <Icon
-        name="lucide:user"
-        :size="16"
-        class="shrink-0 text-violet-500/80 dark:text-violet-300/80"
-      />
+      <Icon name="lucide:user" :size="16" class="text-secondary/80 shrink-0" />
       <input
         v-model="query"
         class="min-w-0 flex-1 border-0 bg-transparent text-base text-slate-800 outline-none placeholder:text-slate-400 dark:text-slate-100 dark:placeholder:text-slate-500"
@@ -222,7 +218,7 @@ watch([highlighted, open, navActive], () => {
             class="flex w-full items-center gap-2.5 rounded-xl px-2.5 py-2 text-left transition-colors duration-100"
             :class="
               navActive && i === highlighted
-                ? 'bg-violet-500/10 dark:bg-violet-400/10'
+                ? 'bg-secondary/10'
                 : 'hover:bg-slate-100 dark:hover:bg-white/5'
             "
             @mousedown.prevent
@@ -273,7 +269,7 @@ watch([highlighted, open, navActive], () => {
               class="flex w-full items-center gap-2.5 rounded-xl px-2.5 py-2 text-left transition-colors duration-100"
               :class="
                 navActive && ordered[highlighted] === p
-                  ? 'bg-violet-500/10 dark:bg-violet-400/10'
+                  ? 'bg-secondary/10'
                   : 'hover:bg-slate-100 dark:hover:bg-white/5'
               "
               @mousedown.prevent
@@ -308,7 +304,7 @@ watch([highlighted, open, navActive], () => {
               class="flex w-full items-center gap-2.5 rounded-xl px-2.5 py-2 text-left transition-colors duration-100"
               :class="
                 navActive && ordered[highlighted] === p
-                  ? 'bg-violet-500/10 dark:bg-violet-400/10'
+                  ? 'bg-secondary/10'
                   : 'hover:bg-slate-100 dark:hover:bg-white/5'
               "
               @mousedown.prevent
@@ -350,7 +346,7 @@ watch([highlighted, open, navActive], () => {
           <span class="rounded border border-slate-300 px-1 dark:border-white/15">⏎</span> ouvrir sa
           collection
         </span>
-        <span v-if="!isEmptyQuery" class="font-mono text-xs text-violet-600 dark:text-violet-300"
+        <span v-if="!isEmptyQuery" class="text-secondary font-mono text-xs"
           >{{ results.length }} joueurs</span
         >
       </div>

@@ -36,7 +36,7 @@ const cards: TradeCard[] = [
 const baseProps = {
   label: 'Je donne',
   cards,
-  accent: 'neutral' as const,
+  tone: 'neutral' as const,
   reserved: false,
   removable: true,
   addLabel: 'Ajouter une carte',

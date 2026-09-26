@@ -1,6 +1,6 @@
 /* ============================================================
    THE ARCANE EXCHANGE — hi-fi design tokens & components
-   Dark, glass, neon-cyan / neon-violet.
+   Dark, glass, neon primary (cyan) / secondary (violet).
    ============================================================ */
 
 /* ============================================================
@@ -12,8 +12,6 @@
 
   --bg: #131313;
   --surface: #1c1b1b;
-  --cyan: var(--accent, #00daf3);
-  --violet: #cdbdff;
 
   --surface-2: oklch(0.225 0.004 250);
   --surface-3: oklch(0.275 0.006 250);
@@ -22,20 +20,29 @@
   --ink-3: oklch(0.55 0.006 250);
   --ink-4: oklch(0.42 0.006 250);
 
-  --cyan-soft: oklch(0.82 0.12 207);
-  --cyan-dim: oklch(0.62 0.1 207);
-  --cyan-fill: color-mix(in oklch, var(--cyan) 14%, transparent);
-  --cyan-fill-2: color-mix(in oklch, var(--cyan) 22%, transparent);
-  --cyan-line: color-mix(in oklch, var(--cyan) 38%, transparent);
-  --cyan-glow: color-mix(in oklch, var(--cyan) 30%, transparent);
-  --cyan-ink: oklch(0.88 0.11 207);
+  /* Role colors. Every text-bearing one (primary, secondary, -soft, -dim, -ink, rarity) reaches
+     WCAG AA 4.5:1 on --bg, --surface and --surface-2, in both themes. */
+  --primary: #00daf3;
+  --primary-soft: oklch(0.82 0.12 207);
+  --primary-dim: oklch(0.62 0.1 207);
+  --primary-ink: oklch(0.88 0.11 207);
+  --primary-fill: color-mix(in oklch, var(--primary) 14%, transparent);
+  --primary-fill-2: color-mix(in oklch, var(--primary) 22%, transparent);
+  --primary-line: color-mix(in oklch, var(--primary) 38%, transparent);
+  --primary-glow: color-mix(in oklch, var(--primary) 30%, transparent);
 
-  --violet-soft: oklch(0.88 0.06 295);
-  --violet-dim: oklch(0.7 0.07 295);
-  --violet-fill: color-mix(in oklch, var(--violet) 16%, transparent);
-  --violet-line: color-mix(in oklch, var(--violet) 40%, transparent);
-  --violet-glow: color-mix(in oklch, var(--violet) 26%, transparent);
-  --violet-ink: oklch(0.9 0.06 295);
+  --secondary: #cdbdff;
+  --secondary-soft: oklch(0.88 0.06 295);
+  --secondary-dim: oklch(0.7 0.07 295);
+  --secondary-ink: oklch(0.9 0.06 295);
+  --secondary-fill: color-mix(in oklch, var(--secondary) 16%, transparent);
+  --secondary-fill-2: color-mix(in oklch, var(--secondary) 24%, transparent);
+  --secondary-line: color-mix(in oklch, var(--secondary) 40%, transparent);
+  --secondary-glow: color-mix(in oklch, var(--secondary) 26%, transparent);
+
+  /* Text on a solid primary / secondary background. */
+  --on-primary: #04181b;
+  --on-secondary: #16121f;
 
   --down: oklch(0.7 0.12 28);
   --down-fill: color-mix(in oklch, var(--down) 16%, transparent);
@@ -62,12 +69,6 @@
   --font-display: 'Space Grotesk', system-ui, sans-serif;
   --font-body: 'Hanken Grotesk', system-ui, sans-serif;
   --font-mono: 'JetBrains Mono', ui-monospace, monospace;
-
-  --accent: #00daf3;
-  --accent-2: #cdbdff;
-
-  --on-accent: #04181b;
-  --on-violet: #16121f;
 
   --d-gap: 16px;
   --d-pad: 16px;
@@ -96,27 +97,27 @@
   --ink-3: oklch(0.56 0.008 250);
   --ink-4: oklch(0.68 0.006 250);
 
-  --cyan: color-mix(in oklch, var(--accent, #00daf3) 60%, black);
-  --cyan-soft: color-mix(in oklch, var(--accent, #00daf3) 52%, black);
-  --cyan-dim: color-mix(in oklch, var(--accent, #00daf3) 70%, black);
+  /* #00daf3 mixed 60% with black (in oklch), as in the mockup. */
+  --primary: oklch(0.488 0.084 209.4);
+  --primary-soft: oklch(0.423 0.073 209.4);
+  --primary-dim: oklch(0.515 0.09 209.4);
+  --primary-ink: oklch(0.374 0.065 209.4);
 
-  --violet: oklch(0.56 0.16 295);
-  --violet-soft: oklch(0.48 0.17 295);
-  --violet-dim: oklch(0.66 0.12 295);
+  --secondary: oklch(0.535 0.16 295);
+  --secondary-soft: oklch(0.48 0.17 295);
+  --secondary-dim: oklch(0.54 0.11 295);
+  --secondary-ink: oklch(0.46 0.17 295);
 
-  --cyan-ink: color-mix(in oklch, var(--accent, #00daf3) 46%, black);
-  --violet-ink: oklch(0.46 0.17 295);
-
-  --on-accent: oklch(0.99 0.01 207);
-  --on-violet: oklch(0.99 0.012 295);
+  --on-primary: oklch(0.99 0.01 207);
+  --on-secondary: oklch(0.99 0.012 295);
 
   --down: oklch(0.56 0.18 28);
   --good: oklch(0.5 0.15 158);
   --good-fill: color-mix(in oklch, var(--good) 14%, transparent);
 
   --rarity-common: oklch(0.32 0 0);
-  --rarity-uncommon: oklch(0.55 0.015 240);
-  --rarity-rare: oklch(0.55 0.14 85);
+  --rarity-uncommon: oklch(0.525 0.015 240);
+  --rarity-rare: oklch(0.525 0.13 85);
   --rarity-mythic: oklch(0.52 0.19 40);
   --rarity-special: oklch(0.55 0.19 340);
 
@@ -157,7 +158,7 @@ body {
 }
 
 ::selection {
-  background: var(--cyan-fill-2);
+  background: var(--primary-fill-2);
   color: var(--ink);
 }
 
@@ -169,17 +170,17 @@ body[data-bg='aurora'] {
   background-image:
     radial-gradient(
       1200px 440px at 28% -14%,
-      color-mix(in oklch, var(--cyan) 10%, transparent),
+      color-mix(in oklch, var(--primary) 10%, transparent),
       transparent 62%
     ),
     radial-gradient(
       1040px 400px at 76% -8%,
-      color-mix(in oklch, var(--violet) 9%, transparent),
+      color-mix(in oklch, var(--secondary) 9%, transparent),
       transparent 60%
     ),
     radial-gradient(
       720px 320px at 55% 10%,
-      color-mix(in oklch, var(--cyan) 5%, transparent),
+      color-mix(in oklch, var(--primary) 5%, transparent),
       transparent 62%
     );
 }
@@ -232,7 +233,7 @@ textarea::placeholder {
 }
 
 input[type='range'] {
-  accent-color: var(--cyan);
+  accent-color: var(--primary);
 }
 
 /* ============================================================
