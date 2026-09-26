@@ -13,7 +13,15 @@ const { getCollectionStats } = useCollectionService();
 const { getSearch } = useSearchService();
 const { autocompleteUsers } = useAutocompleteService();
 
-const mode = ref<'name' | 'decklist' | 'player'>('name');
+type SearchMode = 'name' | 'decklist' | 'player';
+const SEARCH_MODES: readonly SearchMode[] = ['name', 'decklist', 'player'];
+const isSearchMode = (v: unknown): v is SearchMode => SEARCH_MODES.includes(v as SearchMode);
+
+// The decklist text is too long for the URL: it lives in sessionStorage, and `mode=decklist`
+// in the URL tells a reload to read it back.
+const DECKLIST_STORAGE_KEY = 'tae_decklist_pending';
+
+const mode = ref<SearchMode>('name');
 
 const modeOptions = [
   { value: 'name', label: 'Par nom', tone: 'cyan', kbd: '1' },
@@ -124,9 +132,14 @@ const clearPlayer = () => {
   player.value = null;
 };
 
+// Pseudo en cours de résolution : tant que `player` n'est pas renseigné, l'URL le garde pour
+// qu'un F5 pendant la résolution ne perde pas le joueur.
+const resolvingPlayer = ref<string | null>(null);
+
 // Réception depuis /?player=username : l'URL ne porte que le pseudo, on
 // reconstitue le reste (nb de cartes, note) via l'autocomplete.
 const resolvePlayer = async (username: string) => {
+  resolvingPlayer.value = username;
   try {
     const suggestions = await autocompleteUsers(username);
     player.value = suggestions.find((u) => u.username.toLowerCase() === username.toLowerCase()) ?? {
@@ -136,6 +149,8 @@ const resolvePlayer = async (username: string) => {
     };
   } catch {
     player.value = { username, note: 5, card_count: 0 };
+  } finally {
+    resolvingPlayer.value = null;
   }
 };
 
@@ -225,46 +240,70 @@ const router = useRouter();
 const sentinel = ref<HTMLElement | null>(null);
 let io: IntersectionObserver | null = null;
 
-onMounted(() => {
-  // ── Réception depuis la home : mode nom (query params) ──
-  const qParam = route.query.q as string | undefined;
-  const modeParam = route.query.mode as string | undefined;
-  const playerParam = route.query.player as string | undefined;
+const queryParam = (v: unknown): string | undefined =>
+  typeof v === 'string' && v.trim() ? v : undefined;
 
-  if (qParam && qParam.trim()) {
-    if (modeParam === 'name' || modeParam === 'decklist') {
-      mode.value = modeParam;
-    }
+// L'URL reflète la recherche en cours (mode, recherche soumise, joueur choisi) pour qu'un F5 la
+// relance. Tri, filtres et taille d'affichage restent hors URL.
+const searchQuery = computed(() => {
+  const query: Record<string, string> = { mode: mode.value };
+  if (mode.value === 'name' && submittedQ.value.trim()) {
+    query.q = submittedQ.value;
+  }
+  if (mode.value === 'player') {
+    const username = player.value?.username ?? resolvingPlayer.value;
+    if (username) query.player = username;
+  }
+  return query;
+});
+
+watch(searchQuery, (query) => {
+  const current = route.query;
+  const unchanged =
+    Object.keys(current).length === Object.keys(query).length &&
+    Object.entries(query).every(([k, v]) => current[k] === v);
+  // `replace` : pas d'entrée d'historique par recherche.
+  if (!unchanged) router.replace({ query });
+});
+
+const saveDecklist = () => {
+  try {
+    sessionStorage.setItem(DECKLIST_STORAGE_KEY, decklist.value);
+  } catch {
+    // sessionStorage plein ou indisponible : la decklist ne survivra pas à un F5.
+  }
+};
+
+onMounted(() => {
+  // ── Restauration depuis l'URL (home, PlayerPicker, F5) ──
+  const qParam = queryParam(route.query.q);
+  const modeParam = route.query.mode;
+  const playerParam = queryParam(route.query.player);
+
+  if (isSearchMode(modeParam)) {
+    mode.value = modeParam;
+  }
+
+  if (qParam && mode.value === 'name') {
     q.value = qParam;
     submittedQ.value = qParam;
     params.value.q = qParam;
     resetAndRefresh();
   }
 
-  // ── Réception depuis un PlayerPicker : filtre par joueur ──
-  if (playerParam && playerParam.trim()) {
+  if (playerParam && (mode.value === 'player' || !modeParam)) {
     mode.value = 'player';
     resolvePlayer(playerParam);
   }
 
-  // ── Réception depuis la home : mode decklist (sessionStorage) ──
-  try {
-    const pending = sessionStorage.getItem('tae_decklist_pending');
-    if (pending !== null) {
-      // Priorité : si on vient d'un mode nom (q param déjà consommé), ne pas écraser
-      if (!qParam || !qParam.trim()) {
-        mode.value = 'decklist';
-        decklist.value = pending;
-      }
-      sessionStorage.removeItem('tae_decklist_pending');
+  // ── Mode decklist : le texte est relu depuis sessionStorage, sans l'y effacer ──
+  if (mode.value === 'decklist') {
+    try {
+      const saved = sessionStorage.getItem(DECKLIST_STORAGE_KEY);
+      if (saved !== null) decklist.value = saved;
+    } catch {
+      // sessionStorage indisponible
     }
-  } catch {
-    // sessionStorage corrompu
-  }
-
-  // ── Nettoyer l'URL ──
-  if (qParam || modeParam || playerParam) {
-    router.replace({ query: {} });
   }
 
   // ── Infinite scroll ──
@@ -655,6 +694,7 @@ const decklist = ref(
         </div>
         <button
           class="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-transparent bg-cyan-500 px-4 py-2.5 text-sm leading-none font-bold whitespace-nowrap text-zinc-950 shadow-lg transition-all duration-150 hover:-translate-y-px hover:bg-cyan-400 active:translate-y-0 dark:bg-cyan-400 dark:hover:bg-cyan-300"
+          @click="saveDecklist"
         >
           <Icon name="lucide:search" size="15" /> Trouver les joueurs
         </button>

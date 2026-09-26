@@ -95,7 +95,8 @@ const handleDecklistSearch = () => {
       }
     }
   }
-  navigateTo('/search');
+  // `mode=decklist` : la page de recherche relit la decklist depuis sessionStorage, y compris au F5.
+  navigateTo('/search?mode=decklist');
 };
 </script>
 
