@@ -23,6 +23,8 @@
       `data-theme` attribute.
     - **Text color**: always `--ink` (never pure white on dark surfaces).
     - **Interactions**: card hover = subtle scale + surface-tint background shift.
+- **Icons**: only `<Icon name="lucide:…" :size="…" />` (`@nuxt/icon`). No hand-rolled SVG icon components or
+  inline icon paths.
 
 **For the full token reference and component inventory, refer to
 [design-system.instructions.md](design-system.instructions.md).**

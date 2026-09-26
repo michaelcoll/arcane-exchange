@@ -169,7 +169,7 @@ watch([highlighted, open, navActive], () => {
         aria-label="Changer de joueur"
         @click="clear"
       >
-        <AppIcon name="x" :size="14" />
+        <Icon name="lucide:x" :size="14" />
       </button>
       <button
         class="inline-flex items-center justify-center gap-2 self-stretch rounded-xl border border-transparent bg-violet-500 px-6 text-base leading-none font-bold whitespace-nowrap text-zinc-950 shadow-lg transition-all duration-150 hover:-translate-y-px hover:bg-violet-400 active:translate-y-0 dark:bg-violet-400 dark:hover:bg-violet-300"
@@ -184,7 +184,11 @@ watch([highlighted, open, navActive], () => {
       v-else
       class="flex min-h-[62px] items-center gap-2.5 rounded-2xl border border-solid border-violet-400/40 bg-slate-200/75 py-2 pr-3 pl-4 transition-all duration-200 focus-within:border-violet-500/50 focus-within:ring-4 focus-within:ring-violet-500/10 dark:border-violet-400/25 dark:bg-black/20 dark:focus-within:border-violet-400/50"
     >
-      <AppIcon name="user" :size="16" class="shrink-0 text-violet-500/80 dark:text-violet-300/80" />
+      <Icon
+        name="lucide:user"
+        :size="16"
+        class="shrink-0 text-violet-500/80 dark:text-violet-300/80"
+      />
       <input
         v-model="query"
         class="min-w-0 flex-1 border-0 bg-transparent text-base text-slate-800 outline-none placeholder:text-slate-400 dark:text-slate-100 dark:placeholder:text-slate-500"
@@ -236,7 +240,7 @@ watch([highlighted, open, navActive], () => {
             <span
               class="inline-flex flex-none items-center gap-1 font-mono text-xs text-slate-400 dark:text-slate-500"
             >
-              <AppIcon name="star" :size="12" />{{ ratingLabel(p.note) }}
+              <Icon name="lucide:star" :size="12" />{{ ratingLabel(p.note) }}
             </span>
           </button>
           <div
@@ -287,7 +291,7 @@ watch([highlighted, open, navActive], () => {
               <span
                 class="inline-flex flex-none items-center gap-1 font-mono text-xs text-slate-400 dark:text-slate-500"
               >
-                <AppIcon name="star" :size="12" />{{ ratingLabel(p.note) }}
+                <Icon name="lucide:star" :size="12" />{{ ratingLabel(p.note) }}
               </span>
             </button>
 
@@ -322,7 +326,7 @@ watch([highlighted, open, navActive], () => {
               <span
                 class="inline-flex flex-none items-center gap-1 font-mono text-xs text-slate-400 dark:text-slate-500"
               >
-                <AppIcon name="star" :size="12" />{{ ratingLabel(p.note) }}
+                <Icon name="lucide:star" :size="12" />{{ ratingLabel(p.note) }}
               </span>
             </button>
 
