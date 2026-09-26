@@ -1,4 +1,13 @@
 import type { LocationQuery } from 'vue-router';
+import {
+  NAME_SEARCH_CRITERIA,
+  PLAYER_SEARCH_CRITERIA,
+  defaultCardCriteria,
+  parseCardCriteria,
+  toCardCriteriaQuery,
+  type CardCriteria,
+  type CriteriaContext,
+} from './card-criteria-url';
 
 export const SEARCH_MODES = ['name', 'decklist', 'player'] as const;
 export type SearchMode = (typeof SEARCH_MODES)[number];
@@ -6,8 +15,9 @@ export type SearchMode = (typeof SEARCH_MODES)[number];
 export const isSearchMode = (v: unknown): v is SearchMode => SEARCH_MODES.includes(v as SearchMode);
 
 /**
- * The search as the URL of `/search` carries it, so that a reload replays it. Sort, rarity, set,
- * price and display size stay out of the URL.
+ * The search as the URL of `/search` carries it, so that a reload replays it. Its criteria (sort,
+ * rarity, set, price) sit next to it (see `toSearchPageQuery`); the card size is a display
+ * preference, kept in localStorage.
  *
  * - `q`: the submitted card name (`name` mode);
  * - `player`: the browsed player (`player` mode), and `filter` the text filter on their collection.
@@ -58,6 +68,33 @@ export const toSearchQuery = (state: SearchUrlState): Record<string, string> => 
   }
   return query;
 };
+
+/**
+ * The criteria context of a search: a player's collection also sorts by date added (the default
+ * there); the name search across players only by price.
+ */
+export const searchCriteriaContext = (state: SearchUrlState): CriteriaContext =>
+  state.mode === 'player' && state.player ? PLAYER_SEARCH_CRITERIA : NAME_SEARCH_CRITERIA;
+
+/** Whether the search shows the criteria: by name, or in a player's collection. */
+const showsCriteria = (state: SearchUrlState) =>
+  state.mode === 'name' || (state.mode === 'player' && !!state.player);
+
+/** Reads the criteria of the search from the URL; the defaults where the search shows none. */
+export const parseSearchCriteria = (query: LocationQuery): CardCriteria => {
+  const state = parseSearchQuery(query);
+  const context = searchCriteriaContext(state);
+  return showsCriteria(state) ? parseCardCriteria(query, context) : defaultCardCriteria(context);
+};
+
+/** The full URL query of `/search`: the search, and its criteria where it shows them. */
+export const toSearchPageQuery = (
+  state: SearchUrlState,
+  criteria: CardCriteria,
+): Record<string, string> => ({
+  ...toSearchQuery(state),
+  ...(showsCriteria(state) ? toCardCriteriaQuery(criteria, searchCriteriaContext(state)) : {}),
+});
 
 /** Whether the current route query already holds exactly `expected`. */
 export const isSameQuery = (current: LocationQuery, expected: Record<string, string>) =>

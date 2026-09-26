@@ -4,6 +4,8 @@ import type { RarityCode } from '~/bindings/RarityCode';
 import type { SortBy } from '~/bindings/SortBy';
 import type { SortDir } from '~/bindings/SortDir';
 
+import { useRoute } from 'nuxt/app';
+
 definePageMeta({ middleware: 'auth' });
 
 const {
@@ -15,24 +17,29 @@ const {
   getPriceHistory,
 } = useCollectionService();
 
-const q = ref('');
+// Critères relus depuis l'URL (F5, favori) avant la première requête ; les valeurs invalides
+// sont remplacées par leur défaut puis retirées de l'URL par `useQuerySync`.
+const route = useRoute();
+const restored = parseCollectionQuery(route.query);
+
+const q = ref(restored.q);
 const qDebounced = refDebounced(q, 200);
 
-const size = ref<'sm' | 'md' | 'lg'>('md');
+const size = usePreference(CARD_SIZE_PREF);
 // Detail view is desktop-only — the extra KPIs/axis/range chips don't fit a small screen.
 const isDesktop = useMediaQuery('(min-width: 768px)');
 const pageSize = useCardPageSize(size, isDesktop);
 
 const params = ref({
-  sort_by: 'added_at' as SortBy,
-  sort_dir: 'desc' as SortDir,
+  sort_by: restored.sort_by,
+  sort_dir: restored.sort_dir,
   page: 0,
   page_size: pageSize.value,
-  q: '',
-  rarity: [] as RarityCode[],
-  sets: undefined as string | undefined,
-  price_min: undefined as number | undefined,
-  price_max: undefined as number | undefined,
+  q: restored.q,
+  rarity: restored.rarity,
+  sets: restored.sets.length ? restored.sets.join(',') : undefined,
+  price_min: restored.price_min,
+  price_max: restored.price_max,
 });
 
 const collectionSortOptions: {
@@ -134,10 +141,10 @@ watch(sentinel, (el, oldEl) => {
   if (el) io?.observe(el);
 });
 
-const view = ref<'grid' | 'list'>('grid');
-const graph = ref<'compact' | 'expanded'>('compact');
+const view = usePreference(COLLECTION_VIEW_PREF);
+const graph = usePreference(COLLECTION_GRAPH_PREF);
 const showDetail = computed(() => graph.value === 'expanded' && isDesktop.value);
-const graphRange = ref('30 j');
+const graphRange = usePreference(COLLECTION_GRAPH_RANGE_PREF);
 
 const toIsoDate = (d: Date) =>
   `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
@@ -198,7 +205,7 @@ const {
     },
   },
 );
-const active = ref({ rar: [] as RarityCode[], sets: [] as string[] });
+const active = ref({ rar: [...restored.rarity], sets: [...restored.sets] });
 const detail = ref<CollectionCard | null>(null);
 
 const bodyScrollLocked = useScrollLock(document.body);
@@ -246,6 +253,24 @@ const priceMin = computed(() =>
 const priceMax = computed(() =>
   statsData.value?.price_trend_max != null ? Math.ceil(statsData.value.price_trend_max / 100) : 150,
 );
+// Bornes choisies (€), pour que le curseur affiche une plage relue depuis l'URL.
+const priceLo = computed(() => centsToEuros(params.value.price_min));
+const priceHi = computed(() => centsToEuros(params.value.price_max));
+
+// L'URL reflète les critères affichés (texte sur sa valeur debouncée) pour qu'un F5 les rejoue.
+const collectionQuery = computed(() =>
+  toCollectionQuery({
+    q: params.value.q,
+    sort_by: params.value.sort_by,
+    sort_dir: params.value.sort_dir,
+    rarity: active.value.rar,
+    sets: active.value.sets,
+    price_min: params.value.price_min,
+    price_max: params.value.price_max,
+  }),
+);
+const { sync: syncQuery } = useQuerySync(collectionQuery);
+onMounted(syncQuery);
 
 const graphOptions = [
   {
@@ -417,7 +442,7 @@ const onDragLeave = () => {
         <div class="hidden items-center gap-2.5 md:flex">
           <div v-if="showDetail" class="flex gap-1.5">
             <button
-              v-for="r in ['30 j', '3 m', '1 an', 'Max']"
+              v-for="r in GRAPH_RANGES"
               :key="r"
               :class="[
                 'inline-flex cursor-pointer items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium whitespace-nowrap transition-all duration-150 select-none',
@@ -501,6 +526,8 @@ const onDragLeave = () => {
             :set-list="setList"
             :price-min="priceMin"
             :price-max="priceMax"
+            :price-lo="priceLo"
+            :price-hi="priceHi"
             @toggle="toggle"
             @price-change="onPriceChange"
           />
@@ -625,6 +652,8 @@ const onDragLeave = () => {
           :set-list="setList"
           :price-min="priceMin"
           :price-max="priceMax"
+          :price-lo="priceLo"
+          :price-hi="priceHi"
           @toggle="toggle"
           @price-change="onPriceChange"
         />

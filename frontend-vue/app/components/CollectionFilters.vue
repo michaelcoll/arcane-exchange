@@ -10,6 +10,9 @@ const props = withDefaults(
     setList: SetInfo[];
     priceMin?: number;
     priceMax?: number;
+    /** Selected bounds (€), when the page restores them; the slider bounds otherwise. */
+    priceLo?: number;
+    priceHi?: number;
     showSearch?: boolean;
   }>(),
   {
@@ -30,14 +33,14 @@ const lo = ref(props.priceMin ?? 0);
 const hi = ref(props.priceMax ?? 150);
 
 watch(
-  () => props.priceMin,
+  () => props.priceLo ?? props.priceMin,
   (v) => {
     if (v != null) lo.value = v;
   },
   { immediate: true },
 );
 watch(
-  () => props.priceMax,
+  () => props.priceHi ?? props.priceMax,
   (v) => {
     if (v != null) hi.value = v;
   },

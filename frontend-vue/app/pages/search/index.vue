@@ -4,11 +4,18 @@ import type { RarityCode } from '~/bindings/RarityCode';
 import type { SortBy } from '~/bindings/SortBy';
 import type { SortDir } from '~/bindings/SortDir';
 import type { UserSuggestion } from '~/bindings/UserSuggestion';
+import type { CardCriteria } from '~/utils/card-criteria-url';
 import type { SearchMode, SearchUrlState } from '~/utils/search-url';
 
-import { useRoute, useRouter } from 'nuxt/app';
+import { useRoute } from 'nuxt/app';
 
 definePageMeta({ middleware: 'auth' });
+
+const route = useRoute();
+// Critères (tri, rareté, sets, prix) relus depuis l'URL avant la première requête ; les valeurs
+// invalides sont remplacées par leur défaut puis retirées de l'URL par `useQuerySync`.
+const restoredSearch = parseSearchQuery(route.query);
+const restoredCriteria = parseSearchCriteria(route.query);
 
 const { getCollectionStats } = useCollectionService();
 const { getSearch } = useSearchService();
@@ -38,20 +45,30 @@ const focusSearchField = () => {
   el?.focus({ preventScroll: true });
 };
 
-const size = ref<'sm' | 'md' | 'lg'>('md');
+const size = usePreference(CARD_SIZE_PREF);
 const isDesktop = useMediaQuery('(min-width: 768px)');
 const pageSize = useCardPageSize(size, isDesktop);
 
+// Le tri d'une collection de joueur relue depuis l'URL : il ne s'applique qu'une fois le joueur
+// résolu (cf. `watch(player)`), l'URL le garde d'ici là.
+const pendingPlayerSort = ref<{ sort_by: SortBy; sort_dir: SortDir } | null>(
+  restoredSearch.player
+    ? { sort_by: restoredCriteria.sort_by, sort_dir: restoredCriteria.sort_dir }
+    : null,
+);
+const initialSort = pendingPlayerSort.value
+  ? NAME_SEARCH_CRITERIA.defaultSort
+  : { sort_by: restoredCriteria.sort_by, sort_dir: restoredCriteria.sort_dir };
+
 const params = ref({
-  sort_by: 'trend' as SortBy,
-  sort_dir: 'desc' as SortDir,
+  ...initialSort,
   page: 0,
   page_size: pageSize.value,
   q: '',
-  rarity: [] as RarityCode[],
-  sets: undefined as string | undefined,
-  price_min: undefined as number | undefined,
-  price_max: undefined as number | undefined,
+  rarity: restoredCriteria.rarity,
+  sets: restoredCriteria.sets.length ? restoredCriteria.sets.join(',') : undefined,
+  price_min: restoredCriteria.price_min,
+  price_max: restoredCriteria.price_max,
   player_username: undefined as string | undefined,
 });
 
@@ -163,8 +180,10 @@ watch(player, (p) => {
     playerFilterQ.value = restoredPlayerFilter.value;
     params.value.q = restoredPlayerFilter.value;
     restoredPlayerFilter.value = '';
-    params.value.sort_by = 'added_at';
-    params.value.sort_dir = 'desc';
+    const sort = pendingPlayerSort.value ?? PLAYER_SEARCH_CRITERIA.defaultSort;
+    pendingPlayerSort.value = null;
+    params.value.sort_by = sort.sort_by;
+    params.value.sort_dir = sort.sort_dir;
     resetAndRefresh();
   } else {
     // Pas de resetAndRefresh ici : cohérent avec le comportement existant où clearPlayer()
@@ -194,6 +213,7 @@ watch(mode, (m, prevM) => {
     // added_at` sans `player_username`, quel que soit l'ordre d'exécution des deux watchers.
     params.value.sort_by = 'trend';
     params.value.sort_dir = 'desc';
+    pendingPlayerSort.value = null;
     player.value = null;
     q.value = '';
     submittedQ.value = '';
@@ -233,34 +253,12 @@ const hasMore = computed(() => moreResultsExist.value && withinOffsetLimit.value
 // backend's offset limit. Surfaced so the stop doesn't read as an empty/bugged list.
 const offsetLimitReached = computed(() => moreResultsExist.value && !withinOffsetLimit.value);
 
-const route = useRoute();
-const router = useRouter();
 const sentinel = ref<HTMLElement | null>(null);
 let io: IntersectionObserver | null = null;
 
-// L'URL reflète la recherche en cours pour qu'un F5 la relance (cf. `SearchUrlState`).
-const searchUrlState = computed<SearchUrlState>(() => ({
-  mode: mode.value,
-  q: submittedQ.value,
-  player: player.value?.username ?? resolvingPlayer.value ?? undefined,
-  filter: player.value ? params.value.q : restoredPlayerFilter.value,
-}));
-const searchQuery = computed(() => toSearchQuery(searchUrlState.value));
-
-// La route est aussi surveillée : le lien « Rechercher » de la navigation mène à `/search` sans
-// paramètre sans remonter la page, l'URL doit alors être réalignée sur la recherche affichée.
-// Limite : une navigation vers `/search` avec d'autres paramètres depuis `/search` même serait
-// réalignée de la même façon (la recherche n'est relue qu'au montage) ; aucun lien ne le fait.
-watch([searchQuery, () => route.query], ([query, current]) => {
-  // Page en train d'être quittée : ne pas poser les paramètres de recherche sur la suivante.
-  if (router.currentRoute.value.path !== route.path) return;
-  // `replace` : pas d'entrée d'historique par recherche.
-  if (!isSameQuery(current, query)) router.replace({ path: route.path, query });
-});
-
 onMounted(() => {
   // ── Restauration depuis l'URL (home, PlayerPicker, trade, F5) ──
-  const restored = parseSearchQuery(route.query);
+  const restored = restoredSearch;
   mode.value = restored.mode;
 
   if (restored.q) {
@@ -299,7 +297,7 @@ watch(sentinel, (el, oldEl) => {
 });
 
 const sheet = ref(false);
-const active = ref({ rar: [] as RarityCode[], sets: [] as string[] });
+const active = ref({ rar: [...restoredCriteria.rarity], sets: [...restoredCriteria.sets] });
 const detail = ref<CollectionCard | null>(null);
 
 const bodyScrollLocked = useScrollLock(document.body);
@@ -343,6 +341,38 @@ const onPriceChange = useDebounceFn((lo: number, hi: number) => {
   params.value.price_max = hi < priceMax.value ? hi * 100 : undefined;
   resetAndRefresh();
 }, 300);
+// Bornes choisies (€), pour que le curseur affiche une plage relue depuis l'URL.
+const priceLo = computed(() => centsToEuros(params.value.price_min));
+const priceHi = computed(() => centsToEuros(params.value.price_max));
+
+// L'URL reflète la recherche en cours et ses critères pour qu'un F5 la relance
+// (cf. `SearchUrlState`, `toSearchPageQuery`).
+const searchUrlState = computed<SearchUrlState>(() => ({
+  mode: mode.value,
+  q: submittedQ.value,
+  player: player.value?.username ?? resolvingPlayer.value ?? undefined,
+  filter: player.value ? params.value.q : restoredPlayerFilter.value,
+}));
+const searchCriteria = computed<CardCriteria>(() => ({
+  // Joueur en cours de résolution : l'URL garde le tri relu, pas encore appliqué.
+  ...(pendingPlayerSort.value ?? {
+    sort_by: params.value.sort_by,
+    sort_dir: params.value.sort_dir,
+  }),
+  rarity: active.value.rar,
+  sets: active.value.sets,
+  price_min: params.value.price_min,
+  price_max: params.value.price_max,
+}));
+// Le lien « Rechercher » de la navigation mène à `/search` sans paramètre sans remonter la page :
+// `useQuerySync` réaligne alors l'URL sur la recherche affichée. Limite : une navigation vers
+// `/search` avec d'autres paramètres depuis `/search` même serait réalignée de la même façon (la
+// recherche n'est relue qu'au montage) ; aucun lien ne le fait.
+const { sync: syncQuery } = useQuerySync(() =>
+  toSearchPageQuery(searchUrlState.value, searchCriteria.value),
+);
+// Après la restauration (hook précédent) : retire de l'URL les valeurs invalides ou par défaut.
+onMounted(syncQuery);
 
 const sizeOptions = [
   { value: 'sm', label: '', icon: 'lucide:grid-3x3', title: 'Petites cartes', tone: 'cyan' },
@@ -477,6 +507,8 @@ const decklist = ref(
             :set-list="setList"
             :price-min="priceMin"
             :price-max="priceMax"
+            :price-lo="priceLo"
+            :price-hi="priceHi"
             :show-search="false"
             @toggle="toggle"
             @price-change="onPriceChange"
@@ -608,6 +640,8 @@ const decklist = ref(
             :set-list="setList"
             :price-min="priceMin"
             :price-max="priceMax"
+            :price-lo="priceLo"
+            :price-hi="priceHi"
             :show-search="false"
             @toggle="toggle"
             @price-change="onPriceChange"
