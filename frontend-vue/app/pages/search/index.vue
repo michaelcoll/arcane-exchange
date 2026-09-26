@@ -257,8 +257,9 @@ const searchQuery = computed(() => {
   return query;
 });
 
-watch(searchQuery, (query) => {
-  const current = route.query;
+// La route est aussi surveillée : le lien « Rechercher » de la navigation mène à `/search` sans
+// paramètre sans remonter la page, l'URL doit alors être réalignée sur la recherche affichée.
+watch([searchQuery, () => route.query], ([query, current]) => {
   const unchanged =
     Object.keys(current).length === Object.keys(query).length &&
     Object.entries(query).every(([k, v]) => current[k] === v);
