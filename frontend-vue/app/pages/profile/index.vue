@@ -131,7 +131,6 @@ const visHelp = [
       </div>
     </div>
 
-    <!-- MODAL CLERK USER PROFILE -->
     <div
       v-if="manageOpen"
       class="fixed inset-0 z-[80] grid animate-[fade_0.2s_ease] place-items-center bg-black/60 p-5 backdrop-blur-sm"
@@ -142,7 +141,6 @@ const visHelp = [
       </div>
     </div>
 
-    <!-- CONFIDENTIALITÉ -->
     <section class="mb-6">
       <span
         class="text-2xs mb-3 block font-mono font-medium tracking-widest whitespace-nowrap text-slate-400 uppercase dark:text-slate-500"
@@ -210,7 +208,6 @@ const visHelp = [
       </div>
     </section>
 
-    <!-- RÈGLES DE MISE À L'ÉCHANGE -->
     <ProfileTradeRules v-if="vis === 'trade'" />
   </div>
 </template>

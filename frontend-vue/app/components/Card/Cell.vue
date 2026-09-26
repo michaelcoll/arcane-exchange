@@ -61,7 +61,6 @@ const dealTagClass = computed(() => {
       >
 
       <div class="flex items-center justify-between gap-2">
-        <!-- no deal -->
         <span
           v-if="!deal || deal === 'none'"
           class="font-mono text-xs font-semibold text-slate-800 dark:text-slate-100"

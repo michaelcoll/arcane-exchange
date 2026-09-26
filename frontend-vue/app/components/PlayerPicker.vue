@@ -198,7 +198,6 @@ watch([highlighted, open, navActive], () => {
       >
     </div>
 
-    <!-- Dropdown -->
     <div
       v-if="open && !props.modelValue"
       class="absolute inset-x-0 top-[calc(100%+8px)] z-20 overflow-hidden rounded-2xl border border-slate-200 bg-white/95 shadow-xl backdrop-blur-md dark:border-white/10 dark:bg-zinc-900/95"

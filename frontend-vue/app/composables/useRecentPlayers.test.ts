@@ -14,7 +14,6 @@ const player = (username: string, card_count = 10, note = 5): UserSuggestion => 
   note,
 });
 
-// Mock localStorage
 const mockLocalStorage = new Map<string, string>();
 vi.stubGlobal('localStorage', {
   get length(): number {

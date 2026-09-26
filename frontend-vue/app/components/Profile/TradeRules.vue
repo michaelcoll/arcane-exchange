@@ -127,7 +127,6 @@ const stepperBtnClass =
       </span>
     </div>
 
-    <!-- PÉRIMÈTRE · BINDERS -->
     <div
       class="mb-3 rounded-2xl border border-slate-200 bg-white/60 px-4 py-3.5 shadow-lg backdrop-blur-md dark:border-white/10 dark:bg-zinc-900/60"
     >
@@ -177,7 +176,6 @@ const stepperBtnClass =
       </div>
     </div>
 
-    <!-- ÉTAT VIDE -->
     <div
       v-if="!filtersPending && rows.length === 0"
       class="rounded-2xl border border-slate-200 bg-white/60 px-4 py-6 text-center text-xs text-slate-400 shadow-lg backdrop-blur-md dark:border-white/10 dark:bg-zinc-900/60 dark:text-slate-500"

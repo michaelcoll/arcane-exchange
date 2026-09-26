@@ -94,7 +94,6 @@ const clearSets = () => {
 
 <template>
   <div class="flex h-full flex-col gap-4">
-    <!-- Search -->
     <div
       v-if="showSearch"
       class="flex items-center gap-2.5 rounded-xl border border-slate-400/50 bg-slate-200/50 px-3 py-2 transition-all duration-200 focus-within:border-cyan-500/40 focus-within:bg-slate-200 focus-within:ring-4 focus-within:ring-cyan-500/10 dark:border-white/15 dark:bg-black/20 dark:focus-within:border-cyan-400/40 dark:focus-within:bg-black/30"
@@ -111,7 +110,6 @@ const clearSets = () => {
       />
     </div>
 
-    <!-- Rarity -->
     <div class="flex flex-col gap-2">
       <span
         class="text-2xs font-mono font-medium tracking-widest whitespace-nowrap text-slate-400 uppercase dark:text-slate-500"
@@ -132,7 +130,6 @@ const clearSets = () => {
       </div>
     </div>
 
-    <!-- Price range -->
     <div class="flex flex-col gap-2">
       <span
         class="text-2xs font-mono font-medium tracking-widest whitespace-nowrap text-slate-400 uppercase dark:text-slate-500"
@@ -183,14 +180,12 @@ const clearSets = () => {
       </div>
     </div>
 
-    <!-- Set / Extension — combobox -->
     <div class="flex flex-col gap-2">
       <span
         class="text-2xs font-mono font-medium tracking-widest whitespace-nowrap text-slate-400 uppercase dark:text-slate-500"
         >Set / Extension</span
       >
       <div ref="cbxEl" class="relative">
-        <!-- Trigger -->
         <button
           type="button"
           :class="[
@@ -236,7 +231,6 @@ const clearSets = () => {
           </span>
         </button>
 
-        <!-- Popover -->
         <Transition name="cbx-pop">
           <div
             v-if="cbxOpen"
@@ -244,7 +238,6 @@ const clearSets = () => {
             role="listbox"
             aria-multiselectable="true"
           >
-            <!-- Search inside popup -->
             <div
               class="flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-100 px-3 py-2 dark:border-white/10 dark:bg-black/20"
             >
@@ -260,7 +253,6 @@ const clearSets = () => {
               />
             </div>
 
-            <!-- Options list -->
             <div
               class="mt-2 flex max-h-60 flex-col gap-0.5 overflow-x-hidden overflow-y-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
             >
@@ -296,7 +288,6 @@ const clearSets = () => {
               </button>
             </div>
 
-            <!-- Clear all -->
             <button
               v-if="active.sets.length > 0"
               type="button"
@@ -313,7 +304,6 @@ const clearSets = () => {
 </template>
 
 <style scoped>
-/* Range inputs */
 input[type='range'] {
   position: absolute;
   left: 0;
@@ -364,7 +354,6 @@ input[type='range']::-moz-range-thumb {
     0 2px 6px rgba(0, 0, 0, 0.5);
 }
 
-/* Popover transition */
 .cbx-pop-enter-active,
 .cbx-pop-leave-active {
   transition:
