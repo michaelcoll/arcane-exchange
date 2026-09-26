@@ -153,14 +153,15 @@ description = "Lints the backend of project"
 depends = ["lint-clippy", "lint-sqlx"]
 
 [tasks.lint-frontend]
-description = "Lints the frontend of project"
+description = "Lints the frontend of project (nuxi typecheck + ESLint, warnings included)"
 dir = "frontend-vue"
-# `nuxi typecheck` covers the whole project, so does this list. Globs are relative to `dir`.
+# `nuxi typecheck` and `eslint .` cover the whole project, so does this list. Globs are relative
+# to `dir`.
 sources = [
     "app/**/*.{ts,vue}",
     "server/**/*.ts",
     "test/**/*.ts",
-    "nuxt.config.ts",
+    "*.{ts,mjs}",
     "tsconfig.json",
     "server/tsconfig.json",
     "package.json",

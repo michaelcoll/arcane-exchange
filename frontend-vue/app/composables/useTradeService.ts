@@ -28,22 +28,22 @@ export const useTradeService = () => {
     });
 
   const addCard = (tradeId: string, body: AddTradeCardRequest) =>
-    apiCall<void>(`/trades/${tradeId}/cards`, { method: 'POST', body });
+    apiCall<undefined>(`/trades/${tradeId}/cards`, { method: 'POST', body });
 
   const removeCard = (tradeId: string, body: RemoveTradeCardRequest) =>
-    apiCall<void>(`/trades/${tradeId}/cards/remove`, { method: 'POST', body });
+    apiCall<undefined>(`/trades/${tradeId}/cards/remove`, { method: 'POST', body });
 
   const acceptTrade = (tradeId: string) =>
-    apiCall<void>(`/trades/${tradeId}/accept`, { method: 'POST' });
+    apiCall<undefined>(`/trades/${tradeId}/accept`, { method: 'POST' });
 
   const abandonTrade = (tradeId: string) =>
-    apiCall<void>(`/trades/${tradeId}/abandon`, { method: 'POST' });
+    apiCall<undefined>(`/trades/${tradeId}/abandon`, { method: 'POST' });
 
   const confirmTrade = (tradeId: string) =>
-    apiCall<void>(`/trades/${tradeId}/confirm`, { method: 'POST' });
+    apiCall<undefined>(`/trades/${tradeId}/confirm`, { method: 'POST' });
 
   const rateTrade = (tradeId: string, rating: number) =>
-    apiCall<void>(`/trades/${tradeId}/rate`, {
+    apiCall<undefined>(`/trades/${tradeId}/rate`, {
       method: 'POST',
       body: { rating } satisfies RateTradeRequest,
     });

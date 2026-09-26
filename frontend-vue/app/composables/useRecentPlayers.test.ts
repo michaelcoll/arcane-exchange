@@ -15,33 +15,33 @@ const player = (username: string, card_count = 10, note = 5): UserSuggestion => 
 });
 
 // Mock localStorage
-const mockLocalStorage: Record<string, string> = {};
+const mockLocalStorage = new Map<string, string>();
 vi.stubGlobal('localStorage', {
   get length(): number {
-    return Object.keys(mockLocalStorage).length;
+    return mockLocalStorage.size;
   },
-  getItem: vi.fn((key: string) => mockLocalStorage[key] ?? null),
+  getItem: vi.fn((key: string) => mockLocalStorage.get(key) ?? null),
   setItem: vi.fn((key: string, value: string) => {
-    mockLocalStorage[key] = value;
+    mockLocalStorage.set(key, value);
   }),
   removeItem: vi.fn((key: string) => {
-    delete mockLocalStorage[key];
+    mockLocalStorage.delete(key);
   }),
   clear: vi.fn(() => {
-    Object.keys(mockLocalStorage).forEach((k) => delete mockLocalStorage[k]);
+    mockLocalStorage.clear();
   }),
-  key: vi.fn((n: number) => Object.keys(mockLocalStorage)[n] ?? null),
+  key: vi.fn((n: number) => [...mockLocalStorage.keys()][n] ?? null),
 } satisfies Storage);
 
 function clearStorage(): void {
-  Object.keys(mockLocalStorage).forEach((k) => delete mockLocalStorage[k]);
+  mockLocalStorage.clear();
   vi.mocked(localStorage.getItem).mockReset();
   vi.mocked(localStorage.getItem).mockImplementation(
-    (key: string) => mockLocalStorage[key] ?? null,
+    (key: string) => mockLocalStorage.get(key) ?? null,
   );
   vi.mocked(localStorage.setItem).mockReset();
   vi.mocked(localStorage.setItem).mockImplementation((key: string, value: string) => {
-    mockLocalStorage[key] = value;
+    mockLocalStorage.set(key, value);
   });
 }
 
@@ -57,22 +57,25 @@ describe('useRecentPlayers', () => {
 
     it('returns parsed array of full player objects from localStorage', () => {
       const players = [player('alice'), player('bob')];
-      mockLocalStorage[TEST_KEY] = JSON.stringify(players);
+      mockLocalStorage.set(TEST_KEY, JSON.stringify(players));
       expect(getRecentPlayers(TEST_KEY)).toEqual(players);
     });
 
     it('returns empty array for non-array JSON value', () => {
-      mockLocalStorage[TEST_KEY] = JSON.stringify('not-an-array');
+      mockLocalStorage.set(TEST_KEY, JSON.stringify('not-an-array'));
       expect(getRecentPlayers(TEST_KEY)).toEqual([]);
     });
 
     it('returns empty array for corrupted JSON', () => {
-      mockLocalStorage[TEST_KEY] = '{invalid json';
+      mockLocalStorage.set(TEST_KEY, '{invalid json');
       expect(getRecentPlayers(TEST_KEY)).toEqual([]);
     });
 
     it('filters out entries not matching the UserSuggestion shape', () => {
-      mockLocalStorage[TEST_KEY] = JSON.stringify([player('alice'), { username: 'bob' }, 'oops']);
+      mockLocalStorage.set(
+        TEST_KEY,
+        JSON.stringify([player('alice'), { username: 'bob' }, 'oops']),
+      );
       expect(getRecentPlayers(TEST_KEY)).toEqual([player('alice')]);
     });
 

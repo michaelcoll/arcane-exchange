@@ -115,9 +115,9 @@ const bottomNavLinkClass = (path: string) => [
 
         <button
           class="grid h-9 w-9 place-items-center rounded-lg border border-slate-200 bg-slate-100 text-slate-600 transition-all duration-150 hover:border-slate-300 hover:bg-slate-50 hover:text-slate-800 dark:border-white/10 dark:bg-white/5 dark:text-slate-300 dark:hover:border-white/15 dark:hover:bg-zinc-800 dark:hover:text-slate-100"
-          @click="cycleThemePreference"
           :aria-label="themeToggleLabel"
           :title="themeToggleLabel"
+          @click="cycleThemePreference"
         >
           <Icon :name="themeToggleIcon" size="17" />
         </button>

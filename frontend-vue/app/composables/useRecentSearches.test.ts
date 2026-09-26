@@ -8,33 +8,33 @@ import {
 const TEST_KEY = 'test-recent-key';
 
 // Mock localStorage
-const mockLocalStorage: Record<string, string> = {};
+const mockLocalStorage = new Map<string, string>();
 vi.stubGlobal('localStorage', {
   get length(): number {
-    return Object.keys(mockLocalStorage).length;
+    return mockLocalStorage.size;
   },
-  getItem: vi.fn((key: string) => mockLocalStorage[key] ?? null),
+  getItem: vi.fn((key: string) => mockLocalStorage.get(key) ?? null),
   setItem: vi.fn((key: string, value: string) => {
-    mockLocalStorage[key] = value;
+    mockLocalStorage.set(key, value);
   }),
   removeItem: vi.fn((key: string) => {
-    delete mockLocalStorage[key];
+    mockLocalStorage.delete(key);
   }),
   clear: vi.fn(() => {
-    Object.keys(mockLocalStorage).forEach((k) => delete mockLocalStorage[k]);
+    mockLocalStorage.clear();
   }),
-  key: vi.fn((n: number) => Object.keys(mockLocalStorage)[n] ?? null),
+  key: vi.fn((n: number) => [...mockLocalStorage.keys()][n] ?? null),
 } satisfies Storage);
 
 function clearStorage(): void {
-  Object.keys(mockLocalStorage).forEach((k) => delete mockLocalStorage[k]);
+  mockLocalStorage.clear();
   vi.mocked(localStorage.getItem).mockReset();
   vi.mocked(localStorage.getItem).mockImplementation(
-    (key: string) => mockLocalStorage[key] ?? null,
+    (key: string) => mockLocalStorage.get(key) ?? null,
   );
   vi.mocked(localStorage.setItem).mockReset();
   vi.mocked(localStorage.setItem).mockImplementation((key: string, value: string) => {
-    mockLocalStorage[key] = value;
+    mockLocalStorage.set(key, value);
   });
 }
 
@@ -49,17 +49,17 @@ describe('useRecentSearches', () => {
     });
 
     it('returns parsed array from localStorage', () => {
-      mockLocalStorage[TEST_KEY] = JSON.stringify(['A', 'B', 'C']);
+      mockLocalStorage.set(TEST_KEY, JSON.stringify(['A', 'B', 'C']));
       expect(getRecentSearches(TEST_KEY)).toEqual(['A', 'B', 'C']);
     });
 
     it('returns empty array for non-array JSON value', () => {
-      mockLocalStorage[TEST_KEY] = JSON.stringify('not-an-array');
+      mockLocalStorage.set(TEST_KEY, JSON.stringify('not-an-array'));
       expect(getRecentSearches(TEST_KEY)).toEqual([]);
     });
 
     it('returns empty array for corrupted JSON', () => {
-      mockLocalStorage[TEST_KEY] = '{invalid json';
+      mockLocalStorage.set(TEST_KEY, '{invalid json');
       expect(getRecentSearches(TEST_KEY)).toEqual([]);
     });
 

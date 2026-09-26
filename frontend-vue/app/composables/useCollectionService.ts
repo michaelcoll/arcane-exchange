@@ -48,7 +48,7 @@ export const useCollectionService = () => {
     );
 
   const setRarityFilter = (rarity: string, isOpen: boolean, keptCopies: number) =>
-    apiCall<void>('/collection/visibility/rarities', {
+    apiCall<undefined>('/collection/visibility/rarities', {
       method: 'POST',
       body: { rarity, is_open: isOpen, kept_copies: keptCopies },
     });

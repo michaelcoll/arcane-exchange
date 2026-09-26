@@ -27,8 +27,8 @@ jobs:
         working-directory: frontend-vue
         run: pnpm format
 
-  typecheck:
-    name: Typecheck
+  lint:
+    name: Lint (Typecheck + ESLint)
     runs-on: ubuntu-latest
 
     steps:
@@ -47,7 +47,7 @@ jobs:
       - run: pnpm install --frozen-lockfile
         working-directory: frontend-vue
 
-      - name: Typecheck
+      - name: Typecheck + ESLint
         working-directory: frontend-vue
         run: pnpm lint
 

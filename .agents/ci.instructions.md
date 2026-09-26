@@ -3,15 +3,15 @@
 Sept workflows dans `.github/workflows/`. Déploiement et images : [ARCHITECTURE.md](../ARCHITECTURE.md) ·
 équivalents locaux : [mise.instructions.md](mise.instructions.md).
 
-| Workflow                 | Déclencheur                | Jobs                                                     |
-| ------------------------ | -------------------------- | -------------------------------------------------------- |
-| `lint-test-backend.yml`  | chaque push                | lint · test (+ Codecov) · build-offline · check-openapi  |
-| `lint-test-frontend.yml` | chaque push                | format · typecheck · build-production · build-dev        |
-| `lint-test-ios.yml`      | push touchant `ios-app/**` | lint (SwiftFormat + SwiftLint `--strict`) · build & test |
-| `build-push.yml`         | push sur `main`, release   | images backend + frontend vers GHCR ; release → Sentry   |
-| `automerge.yml`          | pull_request               | auto-merge des PR dependabot patch/minor                 |
-| `pr-label.yml`           | PR ouverte/éditée          | labels conventionnels depuis le titre                    |
-| `clean-cache.yml`        | PR fermée                  | purge du cache runner                                    |
+| Workflow                 | Déclencheur                | Jobs                                                              |
+| ------------------------ | -------------------------- | ----------------------------------------------------------------- |
+| `lint-test-backend.yml`  | chaque push                | lint · test (+ Codecov) · build-offline · check-openapi           |
+| `lint-test-frontend.yml` | chaque push                | format · lint (typecheck + ESLint) · build-production · build-dev |
+| `lint-test-ios.yml`      | push touchant `ios-app/**` | lint (SwiftFormat + SwiftLint `--strict`) · build & test          |
+| `build-push.yml`         | push sur `main`, release   | images backend + frontend vers GHCR ; release → Sentry            |
+| `automerge.yml`          | pull_request               | auto-merge des PR dependabot patch/minor                          |
+| `pr-label.yml`           | PR ouverte/éditée          | labels conventionnels depuis le titre                             |
+| `clean-cache.yml`        | PR fermée                  | purge du cache runner                                             |
 
 Points qui ne se lisent pas dans les YAML :
 
