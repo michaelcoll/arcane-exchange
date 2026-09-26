@@ -1,7 +1,7 @@
 import Foundation
 
 enum CardArtwork {
-    /// A card image stored by the platform (ADR 0017). The API gives its path relative to the
+    /// A card image stored by the platform. The API gives its path relative to the
     /// frontend (`image_url`, `image_back_url`), which serves `/card-images` from the same origin
     /// it proxies the API under: the path resolves against the origin of the API base URL.
     /// `nil` while the card's image is pending.

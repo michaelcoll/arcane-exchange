@@ -7,16 +7,12 @@ enum ArtworkPipeline {
 
     /// Card images never change behind their URL — the platform serves them `immutable` for a
     /// year, under a URL versioned by the origin of the file, which changes whenever the file
-    /// is replaced (ADR 0017) — so the aggressive `DataCache` is the right trade over the HTTP
+    /// is replaced — so the aggressive `DataCache` is the right trade over the HTTP
     /// cache: it keys on the URL and keeps the bytes until the size limit evicts them, ignoring
     /// `Cache-Control` entirely.
     ///
-    /// What it replaces is `URLCache.shared`, whose defaults (500 KB in memory, 20 MB on
-    /// disk) hold about three artworks in RAM — every scroll back up the collection grid
-    /// re-downloaded the tiles it had just shown.
-    ///
-    /// On top of that, `ImageCache.shared` keeps *decoded* images — the thing `AsyncImage`
-    /// has no layer for, and why a cached tile still flashed its placeholder on reappearing.
+    /// On top of that, `ImageCache.shared` keeps *decoded* images, so a tile reappearing on
+    /// scroll does not flash its placeholder.
     static func install() {
         ImagePipeline.shared = ImagePipeline(
             configuration: .withDataCache(

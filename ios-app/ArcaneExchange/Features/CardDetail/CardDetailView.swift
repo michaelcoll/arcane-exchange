@@ -2,7 +2,6 @@ import SwiftUI
 
 /// Pushed card screen (`ScrCard` in the iOS mockup): artwork, the price guide with its
 /// 30-day chart, and — when the card is in the user's collection — their own copies.
-/// Reused as-is by any card list; today only Collection pushes it.
 struct CardDetailView: View {
     let card: CollectionCard
 

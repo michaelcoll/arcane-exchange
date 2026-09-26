@@ -103,8 +103,8 @@ private struct SearchResultsGrid: View {
         }
     }
 
-    /// No card count here: the route only carries the handle now, and the line right below
-    /// already states how many tradable cards came back.
+    /// No card count here: the line right below already states how many tradable cards came
+    /// back.
     private func playerHeader(_ username: String) -> some View {
         HStack(spacing: 12) {
             PlayerAvatar(username: username)

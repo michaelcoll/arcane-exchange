@@ -1,8 +1,8 @@
 import CoreMotion
 import SwiftUI
 
-/// Pure maths for the foil effect. Kept off any `View` type so it stays testable — see the
-/// note in [[ios-view-static-func-maactor-test-crash]].
+/// Pure maths for the foil effect. Kept off any `View` type: `View` is `@MainActor`, and the
+/// tests call this from off-main contexts.
 enum FoilMath {
     /// Maps a raw gravity component (roughly −1…1, ~0 with the device held upright) to a
     /// tilt scalar. The gain is high so a small, comfortable tilt already swings the foil.
