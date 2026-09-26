@@ -13,7 +13,7 @@ use async_trait::async_trait;
 use std::fmt::{Display, Formatter};
 use std::sync::Arc;
 
-/// Downloads a card's images from the best source available and stores them (ADR 0017).
+/// Downloads a card's images from the best source available and stores them.
 ///
 /// Sources are tried in order — Gatherer in the card's language, Gatherer in English, Scryfall —
 /// and the first one providing every face is kept. Only a "not found" moves on to the next

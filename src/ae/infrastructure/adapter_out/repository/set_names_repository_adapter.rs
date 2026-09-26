@@ -29,8 +29,8 @@ impl SetNameRepository for SetNameRepositoryAdapter {
             b.push_bind(set.code.to_string())
                 .push_bind(set.name.clone());
         });
-        // DO NOTHING, not DO UPDATE: matches `save()`'s existing exists_by_code + save guard —
-        // an already-known set's name is never overwritten by a later import.
+        // DO NOTHING, not DO UPDATE: an already-known set's name is never overwritten by a later
+        // import.
         qb.push("ON CONFLICT (set_code) DO NOTHING");
         qb.build().execute(&self.pool).await?;
 

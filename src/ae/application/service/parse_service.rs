@@ -432,9 +432,8 @@ mod tests {
 
     #[test]
     fn parse_cards_does_not_merge_normal_and_foil_copies_in_the_same_binder() {
-        // Regression test for the dedup key losing the finish once `CardId` no longer carries
-        // `foil`: a normal and a foil copy of the same card, in the same binder, must remain
-        // two distinct entries — not be silently summed into a single entry of quantity 2.
+        // `CardId` doesn't carry `foil`, so the dedup key must: a normal and a foil copy of the
+        // same card, in the same binder, must remain two distinct entries — not be silently summed into a single entry of quantity 2.
         let csv = "Binder Name,Binder Type,Name,Set code,Set name,Collector number,Foil,Rarity,Quantity,ManaBox ID,Scryfall ID,Purchase price,Misprint,Altered,Condition,Language,Purchase price currency,Added\n\
                    bulk,binder,Goblin Boarders,FDN,Foundations,87,normal,common,3,101506,4409a063-bf2a-4a49-803e-3ce6bd474353,0.08,false,false,near_mint,fr,EUR,2026-02-05T20:44:45.815Z\n\
                    bulk,binder,Goblin Boarders,FDN,Foundations,87,foil,common,1,101506,4409a063-bf2a-4a49-803e-3ce6bd474353,0.50,false,false,near_mint,fr,EUR,2026-02-05T20:44:45.815Z";

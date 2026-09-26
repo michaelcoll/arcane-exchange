@@ -221,8 +221,7 @@ impl AcceptTradeUseCase for AcceptTradeService {
     async fn accept(&self, trade_id: TradeId, caller_id: UserId) -> Result<(), AppError> {
         // Cards are read on every attempt, once the caller is known to be a party. The guard
         // covers the trade row only: the last card removed from a `PENDING` trade between this
-        // read and the write leaves the trade accepted though empty (same as before the domain
-        // held these rules).
+        // read and the write leaves the trade accepted though empty.
         let trade_repository = &self.trade_repository;
         decide_and_apply(
             trade_repository,

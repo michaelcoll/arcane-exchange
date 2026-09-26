@@ -654,7 +654,7 @@ async fn search_cards_passes_sort_by_added_at_to_use_case() {
 
 #[tokio::test]
 async fn search_cards_with_added_at_sort_and_unknown_player_username_still_reaches_use_case() {
-    // Whether the username matches a real user is a repository concern (cf. spec 013); the
+    // Whether the username matches a real user is a repository concern; the
     // controller-level validation only cares that `player_username` is present.
     let mut mock = MockSearchCardsUseCase::new();
     mock.expect_search_cards()

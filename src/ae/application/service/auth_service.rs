@@ -485,12 +485,10 @@ mod tests {
         }
     }
 
-    /// Clerk emits a non-standard `oiat` (original issued at) header as a JSON **integer**.
-    /// jsonwebtoken <= 10.x typed `Header.extras` as `HashMap<String, String>`, so such a header
-    /// failed to deserialize and every Clerk token was rejected at `decode_header` — the reason a
-    /// patched fork of the crate was used. Since 11.0.0 `extras` holds `serde_json::Value`, which
-    /// accepts it. Reaching "Unknown key ID" (and not "Invalid token header") proves the header was
-    /// parsed and the `kid` read, so this test guards against reintroducing that regression.
+    /// Clerk emits a non-standard `oiat` (original issued at) header as a JSON **integer**, which
+    /// `Header.extras` must accept (jsonwebtoken >= 11, where it holds `serde_json::Value`).
+    /// Reaching "Unknown key ID" (and not "Invalid token header") proves the header was parsed
+    /// and the `kid` read.
     #[tokio::test]
     async fn accepts_token_header_with_integer_oiat_field() {
         let jwks_json = r#"{ "keys": [] }"#;
@@ -586,9 +584,7 @@ mod tests {
         assert!(result.is_err());
 
         match result {
-            Err(AppError::Authentication(AuthenticationError::InvalidToken(_msg))) => {
-                // Error is expected for wrong algorithm
-            }
+            Err(AppError::Authentication(AuthenticationError::InvalidToken(_msg))) => {}
             _ => panic!("Expected AuthenticationError for wrong algorithm"),
         }
     }
@@ -651,9 +647,7 @@ mod tests {
         assert!(result.is_err());
 
         match result {
-            Err(AppError::Authentication(AuthenticationError::InvalidToken(_msg))) => {
-                // Error is expected for corrupted payload
-            }
+            Err(AppError::Authentication(AuthenticationError::InvalidToken(_msg))) => {}
             _ => panic!("Expected AuthenticationError for corrupted payload"),
         }
     }
@@ -800,9 +794,7 @@ mod tests {
         assert!(result.is_err());
 
         match result {
-            Err(AppError::Authentication(AuthenticationError::InvalidToken(_msg))) => {
-                // Error is expected for special characters
-            }
+            Err(AppError::Authentication(AuthenticationError::InvalidToken(_msg))) => {}
             _ => panic!("Expected AuthenticationError for special characters"),
         }
     }

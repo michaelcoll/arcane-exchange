@@ -21,8 +21,8 @@ pub(crate) struct PriceHistoryParams {
 }
 
 /// Params for `/card/{scryfall_id}/price-history`. Unlike [`PriceHistoryParams`], `foil` is
-/// required: the catalog no longer knows a card's finish, so the caller must say which series
-/// (normal or foil) it wants — there is no way left to derive it from the card itself.
+/// required: the catalog doesn't know a card's finish, so the caller must say which series
+/// (normal or foil) it wants.
 #[derive(Deserialize, TS)]
 #[ts(export, export_to = "CardPriceHistoryParams.ts")]
 pub(crate) struct CardPriceHistoryParams {

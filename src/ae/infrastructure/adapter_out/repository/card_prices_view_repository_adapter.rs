@@ -608,7 +608,7 @@ mod tests {
         insert_card_without_cardmarket_id(&pool, "TST", "1", "EN", "Test Card").await;
         refresh_view(&pool).await;
 
-        // The catalog no longer carries a finish: both rows must exist, and both must have
+        // The catalog does not carry a finish: both rows must exist, and both must have
         // absent prices, never zero.
         for foil in [false, true] {
             let row = fetch_last_cardmarket_price(&pool, "TST", "1", foil)
@@ -623,7 +623,7 @@ mod tests {
 
     #[sqlx::test]
     async fn last_cardmarket_prices_contains_both_finishes_for_every_catalog_card(pool: PgPool) {
-        // The catalog has no notion of finish any more, so the view can't derive which finishes
+        // The catalog has no notion of finish, so the view can't derive which finishes
         // exist for a card — it must expose both, for every card, regardless of what anyone owns.
         insert_set(&pool, "TST").await;
         insert_card(&pool, "TST", "1", "EN", "Test Card", 1).await;
@@ -806,7 +806,7 @@ mod tests {
     #[sqlx::test]
     async fn get_paginated_exposes_distinct_prices_for_foil_and_non_foil_copies(pool: PgPool) {
         // The catalog carries a single definition for both finishes; the finish (and therefore
-        // the price) must come from `collection_entry`, not from the (now finish-less) card.
+        // the price) must come from `collection_entry`, not from the finish-less card.
         insert_set(&pool, "TST").await;
         insert_card(&pool, "TST", "1", "EN", "Test Card", 1).await;
         insert_user(&pool, "user1", "User1").await;

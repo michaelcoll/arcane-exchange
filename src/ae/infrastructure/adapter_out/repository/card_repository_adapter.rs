@@ -118,7 +118,7 @@ impl CardRepository for CardRepositoryAdapter {
         // several times here. `INSERT ... ON CONFLICT DO UPDATE` cannot affect the same row
         // twice in one statement, so the `card` table only gets the first occurrence of each
         // catalog id — the following are identical game data anyway (only the finish differs,
-        // and the catalog no longer tracks it).
+        // which the catalog does not track).
         let mut seen_card_ids = HashSet::with_capacity(cards.len());
         let distinct_cards: Vec<&ImportedCard> = cards
             .iter()

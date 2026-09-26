@@ -49,7 +49,6 @@ mod tests {
 
     #[tokio::test]
     async fn should_fetch_and_deserialize_price_guides() {
-        // Arrange
         let mock_server = MockServer::start().await;
 
         let json_body = r#"
@@ -90,19 +89,15 @@ mod tests {
         let adapter =
             CardMarketCallerAdapter::new(format!("{}/price_guide.json", mock_server.uri()));
 
-        // Act
         let result = adapter.get_price_guides().await;
 
-        // Assert
         assert!(result.is_ok());
 
         let (date, price_guides) = result.unwrap();
-        // Assertions racine
         assert_eq!(date, NaiveDate::from_ymd_opt(2025, 12, 23).unwrap(),);
 
         let actual: Vec<FullPriceGuide> = price_guides;
 
-        // Assertions collection
         assert_eq!(actual.len(), 2);
 
         let first = &actual[0];
