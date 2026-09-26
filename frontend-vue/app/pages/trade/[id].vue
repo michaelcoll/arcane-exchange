@@ -82,7 +82,6 @@ const formatRating = (r: TradeRating) => (r == null ? 'non notée' : `${r}/5`);
 /* ---------- styles de boutons partagés ---------- */
 const btnBase =
   'inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm leading-none font-semibold whitespace-nowrap transition-all duration-150 hover:-translate-y-px active:translate-y-0 disabled:pointer-events-none disabled:opacity-50';
-const btnGhost = `${btnBase} border border-slate-200 bg-transparent text-slate-600 hover:border-slate-300 hover:bg-slate-100 hover:text-slate-800 dark:border-white/10 dark:text-slate-300 dark:hover:border-white/15 dark:hover:bg-white/5 dark:hover:text-slate-100`;
 const btnDanger = `${btnBase} border border-red-500/40 bg-transparent text-red-600 hover:bg-red-500/10 dark:border-red-400/40 dark:text-red-400 dark:hover:bg-red-400/10`;
 const btnPrimary = `${btnBase} border border-transparent bg-cyan-500 font-bold text-zinc-950 shadow-lg hover:bg-cyan-400 dark:bg-cyan-400 dark:hover:bg-cyan-300`;
 

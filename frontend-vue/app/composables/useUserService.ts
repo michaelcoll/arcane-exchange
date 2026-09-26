@@ -14,15 +14,20 @@ export const useUserService = () => {
   const getVisibility = () => apiCall<VisibilityResponse>('/user/visibility');
 
   const setVisibility = (visibility: CollectionVisibility) =>
-    apiCall<void>('/user/visibility', { method: 'PUT', body: { visibility } });
+    apiCall<undefined>('/user/visibility', { method: 'PUT', body: { visibility } });
 
   const getTradeBinders = () => apiCall<TradeBindersResponse>('/user/trade-binders');
 
   const addTradeBinder = (binderName: string) =>
-    apiCall<void>('/user/trade-binders', { method: 'POST', body: { binder_name: binderName } });
+    apiCall<undefined>('/user/trade-binders', {
+      method: 'POST',
+      body: { binder_name: binderName },
+    });
 
   const removeTradeBinder = (binderName: string) =>
-    apiCall<void>(`/user/trade-binders/${encodeURIComponent(binderName)}`, { method: 'DELETE' });
+    apiCall<undefined>(`/user/trade-binders/${encodeURIComponent(binderName)}`, {
+      method: 'DELETE',
+    });
 
   return {
     register,
