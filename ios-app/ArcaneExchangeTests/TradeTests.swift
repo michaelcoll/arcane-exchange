@@ -1,4 +1,5 @@
 import Foundation
+import SwiftUI
 import Testing
 
 @testable import ArcaneExchange
@@ -64,7 +65,8 @@ struct TradeStatusTests {
 
 struct TradeSideTests {
     @Test func whatIGiveIsNeutral() {
-        #expect(TradeSide.give.valueTint == .primary)
+        // SwiftUI's label color, not the `Palette.primary` accent.
+        #expect(TradeSide.give.valueTint == Color.primary)
         #expect(TradeSide.give.ownerTint == nil)
     }
 

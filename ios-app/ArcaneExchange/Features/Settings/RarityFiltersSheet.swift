@@ -43,16 +43,17 @@ struct RarityFiltersSheet: View {
 
     @ViewBuilder private func rarityRow(_ row: RarityFilter) -> some View {
         let isBusy = model.busyRarity == row.rarity
+        let rarity = RarityCode(rawValue: row.rarity)
 
         VStack(alignment: .leading, spacing: 10) {
             Toggle(isOn: openBinding(row)) {
                 // Same leading symbol as the collection's `CollectionRaritiesSheet`.
                 HStack(spacing: 12) {
-                    if let rarity = RarityCode(rawValue: row.rarity) {
+                    if let rarity {
                         RaritySymbol(rarity: rarity)
                     }
                     VStack(alignment: .leading, spacing: 2) {
-                        Text(rarityLabel(row.rarity))
+                        Text(rarity?.label ?? row.rarity)
                         HStack(spacing: 6) {
                             Text(AccountCopy.copies(Int(row.copies)))
                             Text("·")
@@ -107,9 +108,5 @@ struct RarityFiltersSheet: View {
                     .foregroundStyle(.secondary)
             }
         }
-    }
-
-    private func rarityLabel(_ code: String) -> String {
-        RarityCode(rawValue: code)?.label ?? code
     }
 }
