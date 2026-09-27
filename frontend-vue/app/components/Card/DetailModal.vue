@@ -17,7 +17,7 @@ const setName = ref(props.card.set_code.toUpperCase());
 const isSetKnown = ref(false);
 const setIconColorClass = computed(() =>
   isSetKnown.value
-    ? (RARITY_COLOR_CLASS[props.card.rarity_code as RarityCode]?.text ?? NEUTRAL_ICON_COLOR_CLASS)
+    ? (RARITY_COLOR_CLASS[props.card.rarity_code as RarityCode] ?? NEUTRAL_ICON_COLOR_CLASS)
     : NEUTRAL_ICON_COLOR_CLASS,
 );
 
