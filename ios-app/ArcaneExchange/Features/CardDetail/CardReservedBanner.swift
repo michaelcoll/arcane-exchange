@@ -5,7 +5,7 @@ struct CardReservedBanner: View {
     var body: some View {
         HStack(alignment: .top, spacing: 10) {
             Image(systemName: "lock.fill")
-                .foregroundStyle(.violetInk)
+                .foregroundStyle(Palette.secondaryInk)
             VStack(alignment: .leading, spacing: 2) {
                 Text("Carte réservée")
                     .fontWeight(.semibold)
@@ -21,7 +21,7 @@ struct CardReservedBanner: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(12)
-        .tintViolet(in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+        .tintSecondary(in: RoundedRectangle(cornerRadius: 12, style: .continuous))
     }
 }
 

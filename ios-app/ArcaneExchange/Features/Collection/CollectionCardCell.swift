@@ -62,7 +62,7 @@ struct CollectionCardCell: View {
     private var border: some View {
         RoundedRectangle(cornerRadius: Self.cornerRadius, style: .continuous)
             .strokeBorder(
-                card.reserved ? AnyShapeStyle(Color.violet) : AnyShapeStyle(.black.opacity(0.4)),
+                card.reserved ? AnyShapeStyle(Palette.secondary) : AnyShapeStyle(.black.opacity(0.4)),
                 lineWidth: card.reserved ? 2 : 1
             )
     }

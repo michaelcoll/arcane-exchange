@@ -9,7 +9,7 @@ struct TradeRatioBand: View {
         VStack(alignment: .leading, spacing: 10) {
             GeometryReader { proxy in
                 HStack(spacing: 0) {
-                    Color.accentColor
+                    Palette.primary
                         .frame(width: proxy.size.width * ratio.share(ratio.proposed))
                     Color.secondary
                         .frame(width: proxy.size.width * ratio.share(ratio.kept))
@@ -27,7 +27,7 @@ struct TradeRatioBand: View {
                 .fontWeight(.semibold)
 
             VStack(alignment: .leading, spacing: 4) {
-                legend(color: .accentColor, text: "\(ratio.proposed) proposés")
+                legend(color: Palette.primary, text: "\(ratio.proposed) proposés")
                 legend(color: .secondary, text: "\(ratio.kept) gardés par tes règles")
                 legend(color: Color(.tertiaryLabel), text: "\(ratio.excluded) en raretés fermées")
                 // No swatch, unlike the three above: it isn't a slice of the band, just the sum.

@@ -1,40 +1,62 @@
 import SwiftUI
 
-extension ShapeStyle where Self == Color {
-    /// The design system's secondary accent (`--violet` / `--accent-2`, `#cdbdff`) — EDHREC,
-    /// balances, reserved cards. SwiftUI's own `.purple` is a different hue entirely, so every
-    /// violet in the app goes through this token.
-    ///
-    /// The asset carries the palette value in dark mode and the mockup's light-theme violet
-    /// (`oklch(0.56 0.16 295)` → `#7d5cc7`) in light mode, where `#cdbdff` is too pale to read.
-    static var violet: Color {
-        Color("Violet")
+/// The design system's two accents, named by role like the web's `--primary*` / `--secondary*`
+/// tokens (`frontend-vue/app/assets/css/main.css`) — same light and dark values, pinned by
+/// `PaletteTests`. Pick one by what it means, never by its look:
+///
+/// - **primary**: my actions, rising values, a trade's progress;
+/// - **secondary**: another player or the exchange — reserved cards, what I receive, the partner.
+///
+/// A namespace rather than `ShapeStyle` members: SwiftUI's `.primary` / `.secondary` are the
+/// label hierarchy, and a same-named accent would silently shadow or be shadowed by them.
+enum Palette {
+    /// Also the system accent (`ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME`), so default
+    /// tints, prominent buttons and toggles already use it.
+    static var primary: Color {
+        Color("Primary")
     }
 
-    /// `--violet-ink`: the readable violet for text and glyphs sitting *on* a violet-tinted
-    /// fill. `.violet` itself is a fill and border colour — used as text on its own tint it
-    /// falls short of 4.5:1 in light mode.
-    static var violetInk: Color {
-        Color("VioletInk")
+    /// `--primary-ink`: text and glyphs sitting on a primary-tinted fill.
+    static var primaryInk: Color {
+        Color("PrimaryInk")
+    }
+
+    /// `--on-primary`: text and glyphs on a solid primary background.
+    static var onPrimary: Color {
+        Color("OnPrimary")
+    }
+
+    static var secondary: Color {
+        Color("Secondary")
+    }
+
+    /// `--secondary-ink`: text and glyphs sitting on a secondary-tinted fill.
+    static var secondaryInk: Color {
+        Color("SecondaryInk")
+    }
+
+    /// `--on-secondary`: text and glyphs on a solid secondary background.
+    static var onSecondary: Color {
+        Color("OnSecondary")
     }
 }
 
 extension View {
-    /// The mockup's `.tint-violet` box: a violet fill always carries a violet line.
-    func tintViolet(in shape: some InsettableShape) -> some View {
-        background(Color.violet.opacity(0.12), in: shape)
-            .overlay { shape.strokeBorder(Color.violet.opacity(0.4)) }
+    /// The mockup's tinted accent box: a secondary fill always carries a secondary line.
+    func tintSecondary(in shape: some InsettableShape) -> some View {
+        background(Palette.secondary.opacity(0.12), in: shape)
+            .overlay { shape.strokeBorder(Palette.secondary.opacity(0.4)) }
     }
 
-    /// The mockup's `.reserved-flag` chip (`styles.css`): an opaque violet-tinted surface so
-    /// the badge never has to fight the artwork behind it, `--violet-ink` text, and a
-    /// `--violet-line` border.
+    /// The mockup's `.reserved-flag` chip (`styles.css`): an opaque secondary-tinted surface so
+    /// the badge never has to fight the artwork behind it, `--secondary-ink` text, and a
+    /// `--secondary-line` border.
     func reservedBadgeChip(in shape: some InsettableShape) -> some View {
-        // The violet layer sits on an opaque surface, not on the artwork: `.background`
+        // The tint layer sits on an opaque surface, not on the artwork: `.background`
         // stacks backwards, so the tint is applied first and the surface behind it.
-        foregroundStyle(.violetInk)
-            .background(Color.violet.opacity(0.36), in: shape)
+        foregroundStyle(Palette.secondaryInk)
+            .background(Palette.secondary.opacity(0.36), in: shape)
             .background(Color(.systemBackground), in: shape)
-            .overlay { shape.strokeBorder(Color.violet.opacity(0.4)) }
+            .overlay { shape.strokeBorder(Palette.secondary.opacity(0.4)) }
     }
 }

@@ -3,7 +3,8 @@ import NukeUI
 import SwiftUI
 
 /// A player's avatar: their `GET /user/{username}` image once it resolves, initials before
-/// that and whenever they have none — mirrors the web client's `PlayerAvatar.vue`.
+/// that and whenever they have none — mirrors the web client's `PlayerAvatar.vue`. Always
+/// another player (the user's own is `AccountAvatar`), hence the secondary role.
 struct PlayerAvatar: View {
     let username: String
     var size: CGFloat = 36
@@ -12,7 +13,7 @@ struct PlayerAvatar: View {
 
     var body: some View {
         Circle()
-            .fill(Color.accentColor.opacity(0.15))
+            .fill(Palette.secondary.opacity(0.15))
             .frame(width: size, height: size)
             .overlay { content }
             .clipShape(Circle())
@@ -44,7 +45,7 @@ struct PlayerAvatar: View {
     private var initials: some View {
         Text(PlayerMonogram.initials(from: username))
             .font(.system(size: size * 0.4, weight: .bold))
-            .foregroundStyle(Color.accentColor)
+            .foregroundStyle(Palette.secondary)
     }
 }
 

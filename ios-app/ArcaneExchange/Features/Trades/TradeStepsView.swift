@@ -88,7 +88,7 @@ struct TradeStepsView: View {
                     .opacity(state == .upcoming ? 0.7 : 1)
                     .fixedSize(horizontal: false, vertical: true)
                 if state == .current {
-                    TradeCurrentStepBadge(tint: route.status.tint)
+                    TradeCurrentStepBadge(status: route.status)
                         .padding(.top, 3)
                 }
             }
@@ -178,18 +178,18 @@ struct TradeStepNode: View {
 
 /// "ÉTAPE EN COURS" — the small monospaced capsule the mockup pins under the live step.
 struct TradeCurrentStepBadge: View {
-    let tint: Color
+    let status: TradeStatus
 
     var body: some View {
         Label("étape en cours", systemImage: "clock")
             .font(.system(size: 10, weight: .semibold, design: .monospaced))
             .textCase(.uppercase)
             .tracking(1)
-            .foregroundStyle(tint)
+            .foregroundStyle(status.ink)
             .padding(.horizontal, 9)
             .padding(.vertical, 4)
-            .background(tint.opacity(0.12), in: .capsule)
-            .overlay { Capsule().strokeBorder(tint.opacity(0.3), lineWidth: 1) }
+            .background(status.tint.opacity(0.12), in: .capsule)
+            .overlay { Capsule().strokeBorder(status.tint.opacity(0.3), lineWidth: 1) }
     }
 }
 

@@ -23,7 +23,7 @@ struct CardOwnedCopies: View {
                 Divider()
                 CardDetailRow("Écart depuis l'achat") {
                     Text(spread(to: trendCents, deal: deal))
-                        .foregroundStyle(deal.kind == .bad ? Color.red : Color.accentColor)
+                        .foregroundStyle(deal.kind == .bad ? Color.red : Palette.primary)
                 }
             }
         }

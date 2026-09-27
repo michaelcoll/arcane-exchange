@@ -35,21 +35,34 @@ enum TradeStatus: String, CaseIterable, Hashable {
         }
     }
 
+    /// Same roles as the web's `TRADE_STATUS_META`: a trade moving forward is primary, a locked
+    /// one — cards reserved for the other player — secondary.
     var tint: Color {
         switch self {
-        case .pending, .oneAccepted: .accentColor
-        case .fullyAccepted: .violet
+        case .pending, .oneAccepted: Palette.primary
+        case .fullyAccepted: Palette.secondary
         case .completed, .closed: .green
         case .abandoned: .red
         }
     }
 
-    /// Glyph colour for a disc filled with `tint`. The mockup puts near-black on the bright
-    /// cyan and green and white on the darker violet and red — white on cyan is unreadable.
+    /// Text and glyphs sitting on a `tint`-tinted fill (the status pill).
+    var ink: Color {
+        switch self {
+        case .pending, .oneAccepted: Palette.primaryInk
+        case .fullyAccepted: Palette.secondaryInk
+        case .completed, .closed, .abandoned: tint
+        }
+    }
+
+    /// Glyph colour for a disc filled with `tint`: the role's `on-*` color, near-black on the
+    /// bright green and white on the red.
     var onTint: Color {
         switch self {
-        case .pending, .oneAccepted, .completed, .closed: Color(red: 0.02, green: 0.1, blue: 0.11)
-        case .fullyAccepted, .abandoned: .white
+        case .pending, .oneAccepted: Palette.onPrimary
+        case .fullyAccepted: Palette.onSecondary
+        case .completed, .closed: Color(red: 0.02, green: 0.1, blue: 0.11)
+        case .abandoned: .white
         }
     }
 
@@ -83,6 +96,31 @@ enum TradeStatus: String, CaseIterable, Hashable {
     /// Position in `lifecycle`, `nil` for `.abandoned`.
     var lifecycleIndex: Int? {
         Self.lifecycle.firstIndex(of: self)
+    }
+}
+
+/// Which half of the trade a rail shows, from the user's point of view — it decides the rail's
+/// colors: « Je donne » stays neutral, « Je reçois » and the partner's name are secondary.
+enum TradeSide {
+    /// My own cards, leaving.
+    case give
+    /// The partner's cards, coming to me.
+    case receive
+
+    /// The rail's total and each card's value.
+    var valueTint: Color {
+        switch self {
+        case .give: .primary
+        case .receive: Palette.secondary
+        }
+    }
+
+    /// The owner's handle in the rail header; `nil` keeps the header's neutral style.
+    var ownerTint: Color? {
+        switch self {
+        case .give: nil
+        case .receive: Palette.secondary
+        }
     }
 }
 

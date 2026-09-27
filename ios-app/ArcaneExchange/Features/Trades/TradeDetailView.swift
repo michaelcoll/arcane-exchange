@@ -125,6 +125,7 @@ struct TradeDetailView: View {
         VStack(alignment: .leading, spacing: 18) {
             TradeCardRail(
                 owner: model.partnerUsername,
+                side: .receive,
                 cards: model.partnerCards,
                 isReserved: model.status.isReserved,
                 emptyMessage: "Tu n'as demandé aucune carte pour l'instant.",
@@ -136,6 +137,7 @@ struct TradeDetailView: View {
 
             TradeCardRail(
                 owner: clerk.user?.username,
+                side: .give,
                 cards: model.myCards,
                 isReserved: model.status.isReserved,
                 emptyMessage: "@\(model.partnerUsername) n'a demandé aucune de tes cartes."
@@ -161,7 +163,7 @@ struct TradeDetailView: View {
 
     private var ratingSection: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text("Noter @\(model.partnerUsername)")
+            (Text("Noter ") + Text("@\(model.partnerUsername)").foregroundStyle(Palette.secondary))
                 .font(.subheadline.weight(.semibold))
 
             if let rating = model.myRating {
@@ -170,7 +172,7 @@ struct TradeDetailView: View {
                     systemImage: rating == 0 ? "minus.circle" : "star.fill"
                 )
                 .font(.footnote.weight(.medium))
-                .foregroundStyle(.violet)
+                .foregroundStyle(Palette.secondary)
             } else {
                 TradeRatingStars { rating in Task { await model.rate(rating) } }
                 Button("Passer la notation") { Task { await model.rate(0) } }

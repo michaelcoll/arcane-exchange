@@ -42,12 +42,12 @@ struct TradeStatusIndicator: View {
         .accessibilityAddTraits(stepsRoute == nil ? [] : .isButton)
     }
 
-    /// Steps already behind the trade stay the accent colour whatever the current tone is —
-    /// the path travelled does not change colour when the trade turns violet or green.
+    /// Steps already behind the trade stay primary — the trade's progress — whatever the
+    /// current tone is: the path travelled does not change colour when the trade locks or ends.
     private func dots(count: Int, isDone: Bool) -> some View {
         ForEach(0 ..< max(count, 0), id: \.self) { _ in
             Circle()
-                .fill(isDone ? Color.accentColor.opacity(0.38) : Color.secondary.opacity(0.3))
+                .fill(isDone ? Palette.primary.opacity(0.38) : Color.secondary.opacity(0.3))
                 .frame(width: Self.dotSize, height: Self.dotSize)
         }
     }
@@ -56,7 +56,7 @@ struct TradeStatusIndicator: View {
         Text(label)
             .font(.system(size: 10, weight: .medium, design: .monospaced))
             .tracking(1)
-            .foregroundStyle(status.tint)
+            .foregroundStyle(status.ink)
             .lineLimit(1)
             .padding(.horizontal, 11)
             .padding(.vertical, 4)

@@ -13,7 +13,7 @@ struct AccountAvatar: View {
 
     var body: some View {
         Circle()
-            .fill(Color.accentColor.opacity(0.15))
+            .fill(Palette.primary.opacity(0.15))
             .frame(width: size, height: size)
             .overlay { content }
             .clipShape(Circle())
@@ -36,7 +36,7 @@ struct AccountAvatar: View {
     private var initials: some View {
         Text(monogram)
             .font(.system(size: size * 0.4, weight: .bold))
-            .foregroundStyle(Color.accentColor)
+            .foregroundStyle(Palette.primary)
     }
 
     /// The name Clerk knows first, then the handle, then the e-mail — whichever exists.
