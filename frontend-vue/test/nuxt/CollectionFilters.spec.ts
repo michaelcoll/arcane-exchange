@@ -13,15 +13,16 @@ const rarityChip = (wrapper: ReturnType<typeof mountFilters>, r: RarityCode) =>
   wrapper.findAll('button').find((b) => b.text() === RARITY_LABELS[r])!;
 
 describe('CollectionFilters rarity chips', () => {
-  it.each(RARITY_ORDER)('shows a symbol tinted by rarity %s when inactive', (r) => {
+  it.each(RARITY_ORDER)('tints the border of the inactive %s chip with its rarity', (r) => {
     const chip = rarityChip(mountFilters(), r);
-    expect(chip.find(`[data-rarity-symbol].${RARITY_COLOR_CLASS[r]}`).exists()).toBe(true);
+    expect(chip.classes()).toContain(RARITY_COLOR_CLASS[r].border);
+    expect(chip.find('svg, .iconify').exists()).toBe(false);
   });
 
-  it.each(RARITY_ORDER)('keeps the tinted symbol of rarity %s when active', (r) => {
+  it.each(RARITY_ORDER)('keeps the usual chip style when %s is active', (r) => {
     const chip = rarityChip(mountFilters([r]), r);
-    expect(chip.find(`[data-rarity-symbol].${RARITY_COLOR_CLASS[r]}`).exists()).toBe(true);
-    expect(chip.classes()).toContain('bg-primary/10');
+    expect(chip.classes()).toContain('border-primary/30');
+    expect(chip.classes()).not.toContain(RARITY_COLOR_CLASS[r].border);
   });
 
   it('emits a toggle with the rarity code on click', async () => {

@@ -63,7 +63,7 @@ const onHiInput = (e: Event) => {
 const chipClass = (r: RarityCode) =>
   props.active.rar.includes(r)
     ? 'text-primary-ink border-primary/30 bg-primary/10'
-    : 'text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-white/5 border-slate-200 dark:border-white/10 hover:text-slate-800 dark:hover:text-slate-100 hover:border-slate-300 dark:hover:border-white/15 hover:bg-slate-50 dark:hover:bg-zinc-800';
+    : `${RARITY_COLOR_CLASS[r].border} text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-white/5 hover:text-slate-800 dark:hover:text-slate-100 hover:bg-slate-50 dark:hover:bg-zinc-800`;
 
 /* ── Combobox set selector ── */
 const cbxOpen = ref(false);
@@ -125,13 +125,6 @@ const clearSets = () => {
           ]"
           @click="emit('toggle', 'rar', r)"
         >
-          <Icon
-            name="lucide:gem"
-            :size="13"
-            data-rarity-symbol
-            :class="['shrink-0', RARITY_COLOR_CLASS[r]]"
-            aria-hidden="true"
-          />
           {{ RARITY_LABELS[r] }}
         </button>
       </div>
