@@ -126,7 +126,7 @@ const label =
             <PlayerAvatar :username="partner" />
             <h2 class="font-display text-base font-semibold tracking-tight">
               Échange avec
-              <span class="text-primary">{{ partner }}</span>
+              <span class="text-secondary">{{ partner }}</span>
             </h2>
           </div>
         </div>
@@ -178,7 +178,7 @@ const label =
         <TradeColumn
           label="Je reçois"
           :cards="trade.partner_cards"
-          tone="primary"
+          tone="secondary"
           :reserved="reserved"
           :removable="editable"
           add-label="Chercher dans sa collection"

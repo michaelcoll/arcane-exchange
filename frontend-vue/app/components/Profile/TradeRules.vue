@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { RarityCode } from '~/bindings/RarityCode';
 import { MAX_KEPT_COPIES, fmtInt } from '~/utils/trade-rules';
-import { RARITY_LABELS } from '~/utils/rarity';
+import { RARITY_COLOR_CLASS, RARITY_LABELS } from '~/utils/rarity';
 
 const { getCollectionStats, getRarityFilters, setRarityFilter } = useCollectionService();
 const { getTradeBinders, addTradeBinder, removeTradeBinder } = useUserService();
@@ -103,14 +103,6 @@ const totalCopies = computed(() => rows.value.reduce((s, r) => s + r.copies, 0))
 
 const pct = (n: number) => (totalCopies.value === 0 ? 0 : (n / totalCopies.value) * 100);
 
-const RARITY_INK: Record<RarityCode, string> = {
-  M: 'text-slate-800 dark:text-slate-100',
-  R: 'text-slate-600 dark:text-slate-300',
-  U: 'text-slate-500 dark:text-slate-400',
-  C: 'text-slate-400 dark:text-slate-500',
-  S: 'text-slate-400 dark:text-slate-500',
-};
-
 const labelClass =
   'text-2xs font-mono font-medium tracking-widest whitespace-nowrap text-slate-400 uppercase dark:text-slate-500';
 const stepperBtnClass =
@@ -211,7 +203,7 @@ const stepperBtnClass =
           <span
             :class="[
               'grid h-7 w-7 shrink-0 place-items-center rounded-lg border border-slate-300 bg-slate-100 font-mono text-xs font-bold dark:border-white/15 dark:bg-zinc-800',
-              RARITY_INK[row.rarity as RarityCode],
+              RARITY_COLOR_CLASS[row.rarity as RarityCode],
             ]"
             >{{ row.rarity }}</span
           >

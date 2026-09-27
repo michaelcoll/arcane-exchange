@@ -4,8 +4,8 @@ import type { TradeCard } from '~/bindings/TradeCard';
 const props = defineProps<{
   label: string;
   cards: TradeCard[];
-  /** `primary` pour la colonne « Je reçois », `neutral` pour « Je donne ». */
-  tone: 'primary' | 'neutral';
+  /** `secondary` pour la colonne « Je reçois » (l'autre joueur), `neutral` pour « Je donne ». */
+  tone: 'secondary' | 'neutral';
   /** Les cartes de l'échange sont réservées. */
   reserved: boolean;
   /** Cette colonne autorise le retrait d'une carte (uniquement « Je reçois »). */
@@ -24,10 +24,10 @@ const totalQuantity = computed(() => props.cards.reduce((s, c) => s + c.quantity
 const total = computed(() => tradeCardsTotal(props.cards));
 
 const valueClasses = computed(() =>
-  props.tone === 'primary' ? 'text-primary' : 'text-slate-600 dark:text-slate-300',
+  props.tone === 'secondary' ? 'text-secondary' : 'text-slate-600 dark:text-slate-300',
 );
 
-const totalClasses = computed(() => (props.tone === 'primary' ? 'text-primary' : ''));
+const totalClasses = computed(() => (props.tone === 'secondary' ? 'text-secondary' : ''));
 </script>
 
 <template>

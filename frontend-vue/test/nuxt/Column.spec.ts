@@ -105,6 +105,20 @@ describe('Column', () => {
     expect(wrapper.find('button[aria-label="Retirer la carte de l’échange"]').exists()).toBe(false);
   });
 
+  it('renders the secondary tone (« Je reçois ») with secondary values and total', async () => {
+    const wrapper = mount(Column, { props: { ...baseProps, tone: 'secondary' as const } });
+    const total = wrapper.findAll('span').find((s) => s.text() === formatPrice(5200))!;
+    expect(total.classes()).toContain('text-secondary');
+    const value = wrapper.findAll('span').find((s) => s.text() === formatPrice(1200))!;
+    expect(value.classes()).toContain('text-secondary');
+  });
+
+  it('renders the neutral tone (« Je donne ») without any role color', async () => {
+    const wrapper = mount(Column, { props: baseProps });
+    const total = wrapper.findAll('span').find((s) => s.text() === formatPrice(5200))!;
+    expect(total.attributes('class')).not.toMatch(/\btext-(?:primary|secondary)\b/);
+  });
+
   it('shows a "Réservée" tag per card when reserved', async () => {
     const wrapper = mount(Column, {
       props: { ...baseProps, removable: false, reserved: true },

@@ -39,6 +39,36 @@ describe('Balance', () => {
     expect(wrapper.text()).toContain(formatPrice(5000));
   });
 
+  describe('roles', () => {
+    const ROLE_CLASS = /\b(?:text|bg)-(?:primary|secondary)\b/;
+    const mountBalance = () =>
+      mount(Balance, { props: { diff: 1000, giveTotal: 4000, getTotal: 5000 } });
+
+    it('keeps the « give » side neutral (label, bar segment, total)', async () => {
+      const wrapper = mountBalance();
+      for (const part of ['label', 'bar', 'total']) {
+        const el = wrapper.get(`[data-side="give"][data-part="${part}"]`);
+        expect(el.attributes('class')).not.toMatch(ROLE_CLASS);
+      }
+    });
+
+    it('shows the « get » side in secondary (label, bar segment, total)', async () => {
+      const wrapper = mountBalance();
+      expect(wrapper.get('[data-side="get"][data-part="label"]').classes()).toContain(
+        'text-secondary',
+      );
+      expect(wrapper.get('[data-side="get"][data-part="bar"]').classes()).toContain('bg-secondary');
+      expect(wrapper.get('[data-side="get"][data-part="total"]').classes()).toContain(
+        'text-secondary',
+      );
+    });
+
+    it('keeps the verdict in secondary when there is a cash delta', async () => {
+      const wrapper = mountBalance();
+      expect(wrapper.get('[data-part="verdict"]').classes()).toContain('text-secondary-ink');
+    });
+  });
+
   it('does not divide by zero when both totals are 0', async () => {
     const wrapper = mount(Balance, {
       props: { diff: 0, giveTotal: 0, getTotal: 0 },

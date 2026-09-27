@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { RarityCode } from '~/bindings/RarityCode';
 import type { SetInfo } from '~/bindings/SetInfo';
-import { RARITY_LABELS, RARITY_ORDER } from '~/utils/rarity';
+import { RARITY_COLOR_CLASS, RARITY_LABELS, RARITY_ORDER } from '~/utils/rarity';
 import { resolveSetName } from '~/utils/set';
 
 const props = withDefaults(
@@ -125,6 +125,13 @@ const clearSets = () => {
           ]"
           @click="emit('toggle', 'rar', r)"
         >
+          <Icon
+            name="lucide:gem"
+            :size="13"
+            data-rarity-symbol
+            :class="['shrink-0', RARITY_COLOR_CLASS[r]]"
+            aria-hidden="true"
+          />
           {{ RARITY_LABELS[r] }}
         </button>
       </div>
