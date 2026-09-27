@@ -25,11 +25,15 @@ const getShare = computed(() => {
   <div class="flex w-full max-w-[200px] flex-col items-center gap-2">
     <div class="flex w-full items-baseline justify-between">
       <span
+        data-side="give"
+        data-part="label"
         class="text-2xs tracking-wide whitespace-nowrap text-slate-400 uppercase dark:text-slate-500"
         >Donne</span
       >
       <span
-        class="text-2xs tracking-wide whitespace-nowrap text-slate-400 uppercase dark:text-slate-500"
+        data-side="get"
+        data-part="label"
+        class="text-2xs text-secondary tracking-wide whitespace-nowrap uppercase"
         >Reçois</span
       >
     </div>
@@ -37,11 +41,15 @@ const getShare = computed(() => {
       class="relative flex h-3 w-full overflow-hidden rounded-full border border-slate-200 bg-slate-100 dark:border-white/10 dark:bg-zinc-800"
     >
       <span
-        class="bg-secondary h-full transition-[width] duration-500 ease-out"
+        data-side="give"
+        data-part="bar"
+        class="h-full bg-slate-400 transition-[width] duration-500 ease-out dark:bg-slate-500"
         :style="{ width: 100 - getShare + '%' }"
       />
       <span
-        class="bg-primary h-full transition-[width] duration-500 ease-out"
+        data-side="get"
+        data-part="bar"
+        class="bg-secondary h-full transition-[width] duration-500 ease-out"
         :style="{ width: getShare + '%' }"
       />
       <span
@@ -49,12 +57,21 @@ const getShare = computed(() => {
       />
     </div>
     <div class="flex w-full items-baseline justify-between">
-      <span class="text-secondary font-mono text-sm font-semibold">{{
-        formatPrice(giveTotal)
-      }}</span>
-      <span class="text-primary font-mono text-sm font-semibold">{{ formatPrice(getTotal) }}</span>
+      <span
+        data-side="give"
+        data-part="total"
+        class="font-mono text-sm font-semibold text-slate-600 dark:text-slate-300"
+        >{{ formatPrice(giveTotal) }}</span
+      >
+      <span
+        data-side="get"
+        data-part="total"
+        class="text-secondary font-mono text-sm font-semibold"
+        >{{ formatPrice(getTotal) }}</span
+      >
     </div>
     <div
+      data-part="verdict"
       :class="[
         'rounded-xl border px-3 py-2 text-center font-mono text-sm font-semibold',
         even

@@ -3,7 +3,7 @@ import type { CardOffer } from '~/bindings/CardOffer';
 import type { CollectionCard } from '~/bindings/CollectionCard';
 import type { PriceHistoryEntry } from '~/bindings/PriceHistoryEntry';
 import type { RarityCode } from '~/bindings/RarityCode';
-import { RARITY_ICON_COLOR_CLASS } from '~/utils/rarity';
+import { RARITY_COLOR_CLASS } from '~/utils/rarity';
 
 const NEUTRAL_ICON_COLOR_CLASS = 'text-[var(--ink-2)]';
 
@@ -17,7 +17,7 @@ const setName = ref(props.card.set_code.toUpperCase());
 const isSetKnown = ref(false);
 const setIconColorClass = computed(() =>
   isSetKnown.value
-    ? (RARITY_ICON_COLOR_CLASS[props.card.rarity_code as RarityCode] ?? NEUTRAL_ICON_COLOR_CLASS)
+    ? (RARITY_COLOR_CLASS[props.card.rarity_code as RarityCode] ?? NEUTRAL_ICON_COLOR_CLASS)
     : NEUTRAL_ICON_COLOR_CLASS,
 );
 

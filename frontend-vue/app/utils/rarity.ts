@@ -11,8 +11,11 @@ export const RARITY_LABELS: Record<RarityCode, string> = {
 /** Ordre d'affichage des raretés, du plus au moins précieux. */
 export const RARITY_ORDER: RarityCode[] = ['M', 'R', 'U', 'C', 'S'];
 
-/** Classe Tailwind (couleur de texte) de l'icône de set selon la rareté de la carte, convention MTG classique. */
-export const RARITY_ICON_COLOR_CLASS: Record<RarityCode, string> = {
+/**
+ * Classe Tailwind (couleur de texte) d'une rareté, convention MTG classique : icône de set du détail
+ * de carte, symbole des chips de filtre, lettre des règles d'échange.
+ */
+export const RARITY_COLOR_CLASS: Record<RarityCode, string> = {
   C: 'text-rarity-common',
   U: 'text-rarity-uncommon',
   R: 'text-rarity-rare',
