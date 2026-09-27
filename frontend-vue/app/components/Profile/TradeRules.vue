@@ -203,7 +203,7 @@ const stepperBtnClass =
           <span
             :class="[
               'grid h-7 w-7 shrink-0 place-items-center rounded-lg border border-slate-300 bg-slate-100 font-mono text-xs font-bold dark:border-white/15 dark:bg-zinc-800',
-              RARITY_COLOR_CLASS[row.rarity as RarityCode]?.text,
+              RARITY_COLOR_CLASS[row.rarity as RarityCode],
             ]"
             >{{ row.rarity }}</span
           >

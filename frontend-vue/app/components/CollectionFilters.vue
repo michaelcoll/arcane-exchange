@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { RarityCode } from '~/bindings/RarityCode';
 import type { SetInfo } from '~/bindings/SetInfo';
-import { RARITY_COLOR_CLASS, RARITY_LABELS, RARITY_ORDER } from '~/utils/rarity';
+import { RARITY_LABELS, RARITY_ORDER } from '~/utils/rarity';
 import { resolveSetName } from '~/utils/set';
 
 const props = withDefaults(
@@ -63,7 +63,7 @@ const onHiInput = (e: Event) => {
 const chipClass = (r: RarityCode) =>
   props.active.rar.includes(r)
     ? 'text-primary-ink border-primary/30 bg-primary/10'
-    : `${RARITY_COLOR_CLASS[r].border} text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-white/5 hover:text-slate-800 dark:hover:text-slate-100 hover:bg-slate-50 dark:hover:bg-zinc-800`;
+    : 'text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-white/5 border-slate-200 dark:border-white/10 hover:text-slate-800 dark:hover:text-slate-100 hover:border-slate-300 dark:hover:border-white/15 hover:bg-slate-50 dark:hover:bg-zinc-800';
 
 /* ── Combobox set selector ── */
 const cbxOpen = ref(false);
