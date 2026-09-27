@@ -47,12 +47,12 @@ struct CardOfferRow: View {
                 separator
                 Text(Price.euros(cents: Int(price)))
                     .fontWeight(.semibold)
-                    .foregroundStyle(offer.reserved ? Color.secondary : Color.accentColor)
+                    .foregroundStyle(offer.reserved ? Color.secondary : Palette.primary)
             }
             if offer.reserved {
                 separator
                 Text("réservée")
-                    .foregroundStyle(.violet)
+                    .foregroundStyle(Palette.secondary)
             }
         }
         .font(.caption.monospacedDigit())
@@ -71,14 +71,14 @@ struct CardOfferRow: View {
             // Decoration: the row itself carries the tap, so this must not be a `Button`.
             Text("Échanger")
                 .font(.footnote.weight(.semibold))
-                .foregroundStyle(Color.accentColor)
+                .foregroundStyle(Palette.primaryInk)
                 .padding(.horizontal, 12)
                 .padding(.vertical, 6)
-                .background(Color.accentColor.opacity(0.12), in: Capsule())
+                .background(Palette.primary.opacity(0.12), in: Capsule())
         } else if offer.reserved {
             Image(systemName: "lock.fill")
                 .font(.footnote)
-                .foregroundStyle(.violet)
+                .foregroundStyle(Palette.secondary)
         }
     }
 }

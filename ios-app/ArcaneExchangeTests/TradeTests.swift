@@ -49,6 +49,29 @@ struct TradeStatusTests {
         #expect(TradeStatus.closed.lifecycleIndex == 4)
         #expect(TradeStatus.lifecycle.count == TradeSteps.all.count)
     }
+
+    @Test func aTradeInProgressIsPrimaryAndALockedOneSecondary() {
+        #expect(TradeStatus.pending.tint == Palette.primary)
+        #expect(TradeStatus.oneAccepted.tint == Palette.primary)
+        #expect(TradeStatus.pending.ink == Palette.primaryInk)
+        #expect(TradeStatus.pending.onTint == Palette.onPrimary)
+        // Both sides committed: the cards are reserved for the other player, the exchange's role.
+        #expect(TradeStatus.fullyAccepted.tint == Palette.secondary)
+        #expect(TradeStatus.fullyAccepted.ink == Palette.secondaryInk)
+        #expect(TradeStatus.fullyAccepted.onTint == Palette.onSecondary)
+    }
+}
+
+struct TradeSideTests {
+    @Test func whatIGiveIsNeutral() {
+        #expect(TradeSide.give.valueTint == .primary)
+        #expect(TradeSide.give.ownerTint == nil)
+    }
+
+    @Test func whatIReceiveAndThePartnerAreSecondary() {
+        #expect(TradeSide.receive.valueTint == Palette.secondary)
+        #expect(TradeSide.receive.ownerTint == Palette.secondary)
+    }
 }
 
 struct TradeBalanceTests {

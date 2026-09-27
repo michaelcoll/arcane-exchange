@@ -8,6 +8,7 @@ import SwiftUI
 struct TradeCardRail: View {
     /// The handle of whoever puts these cards down; `nil` is the user themselves.
     let owner: String?
+    let side: TradeSide
     let cards: [TradeCard]
     /// Cards on both sides are locked into this trade — `tr-tile.locked`.
     let isReserved: Bool
@@ -42,7 +43,7 @@ struct TradeCardRail: View {
 
             Text(Price.euros(cents: TradeBalance.total(of: cards)))
                 .font(.system(size: 11, weight: .medium, design: .monospaced))
-                .foregroundStyle(Color.accentColor)
+                .foregroundStyle(side.valueTint)
                 .layoutPriority(1)
         }
         .padding(.horizontal, 4)
@@ -54,6 +55,7 @@ struct TradeCardRail: View {
                 ForEach(cards, id: \.lineID) { card in
                     TradeCardTile(
                         card: card,
+                        valueTint: side.valueTint,
                         width: Self.tileWidth,
                         isReserved: isReserved,
                         onRemove: onRemove
@@ -85,7 +87,9 @@ struct TradeCardRail: View {
     }
 
     private var ownerText: Text {
-        Text(owner.map { "@\($0)".uppercased() } ?? "JE").tracking(1.4)
+        let text = Text(owner.map { "@\($0)".uppercased() } ?? "JE").tracking(1.4)
+        guard let tint = side.ownerTint else { return text }
+        return text.foregroundStyle(tint)
     }
 }
 
@@ -100,6 +104,7 @@ struct TradeRailAddSlot {
 /// locked down.
 private struct TradeCardTile: View {
     let card: TradeCard
+    let valueTint: Color
     let width: CGFloat
     let isReserved: Bool
     let onRemove: ((TradeCard) -> Void)?
@@ -117,7 +122,7 @@ private struct TradeCardTile: View {
                 .lineLimit(1)
             Text(Price.euros(cents: value))
                 .font(.system(size: 12.5, weight: .semibold, design: .monospaced))
-                .foregroundStyle(Color.accentColor)
+                .foregroundStyle(valueTint)
         }
         .frame(width: width, alignment: .leading)
         .accessibilityElement(children: .combine)
@@ -157,7 +162,7 @@ private struct TradeCardTile: View {
             .buttonStyle(.plain)
             .accessibilityLabel("Retirer \(card.name)")
         } else if isReserved {
-            badgeShape(fill: Color.violet.opacity(0.36), foreground: .violetInk) {
+            badgeShape(fill: Palette.secondary.opacity(0.36), foreground: Palette.secondaryInk) {
                 Image(systemName: "lock.fill")
             }
             .accessibilityLabel("Carte réservée")
@@ -261,12 +266,12 @@ struct TradeRailPivot: View {
             .font(.system(size: 11.5, weight: .semibold, design: .monospaced))
             .lineLimit(1)
             .fixedSize()
-            .foregroundStyle(isReserved ? Color.violetInk : .secondary)
+            .foregroundStyle(isReserved ? Palette.secondaryInk : .secondary)
             .padding(.horizontal, 13)
             .padding(.vertical, 6)
             .background(capsuleFill, in: .capsule)
             .overlay {
-                Capsule().strokeBorder(isReserved ? Color.violet.opacity(0.4) : Color.secondary.opacity(0.25))
+                Capsule().strokeBorder(isReserved ? Palette.secondary.opacity(0.4) : Color.secondary.opacity(0.25))
             }
             line
         }
@@ -274,7 +279,7 @@ struct TradeRailPivot: View {
     }
 
     private var capsuleFill: AnyShapeStyle {
-        isReserved ? AnyShapeStyle(Color.violet.opacity(0.14)) : AnyShapeStyle(.quaternary)
+        isReserved ? AnyShapeStyle(Palette.secondary.opacity(0.14)) : AnyShapeStyle(.quaternary)
     }
 
     private var line: some View {
@@ -304,6 +309,7 @@ struct TradeRailPivot: View {
             VStack(alignment: .leading, spacing: 18) {
                 TradeCardRail(
                     owner: "mizzix_42",
+                    side: .receive,
                     cards: [card("Sire of Seven Deaths", 3100, 1), card("The Soul Stone", 900, 2)],
                     isReserved: false,
                     emptyMessage: "Tu n'as demandé aucune carte pour l'instant.",
@@ -320,6 +326,7 @@ struct TradeRailPivot: View {
                 // pas de tuile fantôme à côté.
                 TradeCardRail(
                     owner: "mizzix_42",
+                    side: .receive,
                     cards: [],
                     isReserved: false,
                     emptyMessage: "Tu n'as demandé aucune carte pour l'instant.",
@@ -334,9 +341,10 @@ struct TradeRailPivot: View {
 
                 TradeCardRail(
                     owner: "tanguy_a",
+                    side: .receive,
                     cards: [card("Black Market Connections", 1300, 1)],
                     isReserved: true,
-                    emptyMessage: "@mizzix_42 n'a demandé aucune de tes cartes."
+                    emptyMessage: "Tu n'as demandé aucune carte pour l'instant."
                 )
 
                 TradeRailPivot(isReserved: true)
@@ -345,6 +353,7 @@ struct TradeRailPivot: View {
                 // créneau d'ajout — la tuile fantôme porte seule l'explication (en VoiceOver).
                 TradeCardRail(
                     owner: nil,
+                    side: .give,
                     cards: [],
                     isReserved: false,
                     emptyMessage: "@mizzix_42 n'a demandé aucune de tes cartes."

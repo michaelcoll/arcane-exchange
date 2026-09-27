@@ -46,16 +46,22 @@ struct RarityFiltersSheet: View {
 
         VStack(alignment: .leading, spacing: 10) {
             Toggle(isOn: openBinding(row)) {
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(rarityLabel(row.rarity))
-                    HStack(spacing: 6) {
-                        Text(AccountCopy.copies(Int(row.copies)))
-                        Text("·")
-                        Text(AccountCopy.proposed(Int(row.proposed), isOpen: row.is_open))
-                            .foregroundStyle(row.is_open ? Color.accentColor : Color.secondary)
+                // Same leading symbol as the collection's `CollectionRaritiesSheet`.
+                HStack(spacing: 12) {
+                    if let rarity = RarityCode(rawValue: row.rarity) {
+                        RaritySymbol(rarity: rarity)
                     }
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(rarityLabel(row.rarity))
+                        HStack(spacing: 6) {
+                            Text(AccountCopy.copies(Int(row.copies)))
+                            Text("·")
+                            Text(AccountCopy.proposed(Int(row.proposed), isOpen: row.is_open))
+                                .foregroundStyle(row.is_open ? Palette.primary : Color.secondary)
+                        }
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    }
                 }
             }
 

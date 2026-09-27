@@ -24,7 +24,7 @@ struct PriceHistoryChart: View {
                 .interpolationMethod(.catmullRom)
                 .foregroundStyle(
                     .linearGradient(
-                        colors: [Color.accentColor.opacity(0.28), Color.accentColor.opacity(0.04)],
+                        colors: [Palette.primary.opacity(0.28), Palette.primary.opacity(0.04)],
                         startPoint: .top,
                         endPoint: .bottom
                     )
@@ -36,7 +36,7 @@ struct PriceHistoryChart: View {
                 )
                 .interpolationMethod(.catmullRom)
                 .lineStyle(StrokeStyle(lineWidth: 2.4, lineCap: .round))
-                .foregroundStyle(Color.accentColor)
+                .foregroundStyle(Palette.primary)
             }
 
             if let selected {
@@ -55,7 +55,7 @@ struct PriceHistoryChart: View {
                     x: .value("Date", selected.date),
                     y: .value("Tendance", selected.trend)
                 )
-                .foregroundStyle(Color.accentColor)
+                .foregroundStyle(Palette.primary)
                 .symbolSize(60)
             }
         }

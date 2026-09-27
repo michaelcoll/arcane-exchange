@@ -13,7 +13,7 @@ struct TradeRatingStars: View {
                 } label: {
                     Image(systemName: "star")
                         .font(.title3)
-                        .foregroundStyle(.violet)
+                        .foregroundStyle(Palette.secondary)
                 }
                 .buttonStyle(.plain)
                 .accessibilityLabel("\(value) étoile\(value > 1 ? "s" : "")")
@@ -58,6 +58,7 @@ struct TradeActionBar: View {
                 Button(acceptLabel, systemImage: "checkmark", action: onAccept)
                     .buttonStyle(.borderedProminent)
                     .controlSize(.large)
+                    .foregroundStyle(Palette.onPrimary)
                     .frame(maxWidth: .infinity)
             }
 
@@ -66,13 +67,14 @@ struct TradeActionBar: View {
                 waitingLabel(
                     "Confirmé, en attente de @\(partnerUsername)",
                     systemImage: "checkmark",
-                    tint: .violet
+                    tint: Palette.secondary
                 )
             } else {
                 Button("Confirmer « échange réalisé »", systemImage: "checkmark", action: onConfirm)
                     .buttonStyle(.borderedProminent)
                     .controlSize(.large)
-                    .tint(.violet)
+                    .tint(Palette.secondary)
+                    .foregroundStyle(Palette.onSecondary)
                     .frame(maxWidth: .infinity)
             }
 

@@ -40,7 +40,7 @@ struct CollectionFilterRail: View {
         })
         .buttonStyle(.bordered)
         .buttonBorderShape(.capsule)
-        .tint(.accentColor)
+        .tint(Palette.primary)
     }
 
     private func chipButton(title: String, systemImage: String, isActive: Bool) -> some View {
@@ -49,7 +49,7 @@ struct CollectionFilterRail: View {
         })
         .buttonStyle(.bordered)
         .buttonBorderShape(.capsule)
-        .tint(isActive ? Color.accentColor : Color.secondary)
+        .tint(isActive ? Palette.primary : Color.secondary)
     }
 
     private func chipLabel(_ title: String, systemImage: String) -> some View {

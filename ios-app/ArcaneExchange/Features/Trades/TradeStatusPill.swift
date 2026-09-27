@@ -16,7 +16,7 @@ struct TradeStatusPill: View {
             .padding(.horizontal, 9)
             .padding(.vertical, 5)
             .background(status.tint.opacity(0.15), in: .capsule)
-            .foregroundStyle(status.tint)
+            .foregroundStyle(status.ink)
     }
 }
 

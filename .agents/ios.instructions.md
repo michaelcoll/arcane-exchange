@@ -28,6 +28,12 @@ Commandes : [mise.instructions.md](mise.instructions.md) · CI : [ci.instruction
 - Tests use **Swift Testing**, never XCTest.
 - **Design**: do not port the mockup's HTML/CSS structure into SwiftUI — reference via the `maquette-ios` skill,
   tokens in [design-system.instructions.md](design-system.instructions.md), adapted to iOS idioms.
+- **Colors**: accents are named by role, as on the web — `Palette.primary` / `.primaryInk` / `.onPrimary` and the
+  `secondary` counterparts (`Support/Palette.swift`), `RarityColor` for the five rarities. The asset values are the
+  web's light/dark tokens from `main.css`, pinned by `PaletteTests`: change both sides together. Never
+  `Color.accentColor`, SwiftUI `.cyan` / `.purple` for an accent, or a `Primary`/`Secondary` `ShapeStyle` member (it
+  collides with SwiftUI's `.primary` / `.secondary` label styles). The system accent is the `Primary` asset through
+  `ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME` in `project.yml` — rename one, rename the other.
 - **Images**: Nuke / NukeUI (`LazyImage`) through `ArtworkPipeline`. Never `AsyncImage` — no decoded-image cache, it
   re-downloads on scroll-back.
 - **Prices**: `Price.euros(cents:)`, pinned to `fr_FR` whatever the device locale; the `CardDeal` thresholds mirror
