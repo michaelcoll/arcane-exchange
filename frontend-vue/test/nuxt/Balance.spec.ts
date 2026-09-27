@@ -4,35 +4,35 @@ import Balance from '~/components/Trade/Balance.vue';
 import formatPrice from '~/utils/format-price';
 
 describe('Balance', () => {
-  it('is balanced within the tolerance (< 300 centimes)', async () => {
+  it('is balanced within the tolerance (< 300 centimes)', () => {
     const wrapper = mount(Balance, {
       props: { diff: 200, giveTotal: 5000, getTotal: 5200 },
     });
     expect(wrapper.text()).toContain('Équilibré');
   });
 
-  it('is unbalanced at the tolerance boundary (300 centimes)', async () => {
+  it('is unbalanced at the tolerance boundary (300 centimes)', () => {
     const wrapper = mount(Balance, {
       props: { diff: 300, giveTotal: 5000, getTotal: 5300 },
     });
     expect(wrapper.text()).toContain(`Tu dois ${formatPrice(300)}`);
   });
 
-  it('shows what the current user owes when diff is positive', async () => {
+  it('shows what the current user owes when diff is positive', () => {
     const wrapper = mount(Balance, {
       props: { diff: 1000, giveTotal: 6000, getTotal: 5000 },
     });
     expect(wrapper.text()).toContain(`Tu dois ${formatPrice(1000)}`);
   });
 
-  it('shows what is owed to the current user when diff is negative', async () => {
+  it('shows what is owed to the current user when diff is negative', () => {
     const wrapper = mount(Balance, {
       props: { diff: -1000, giveTotal: 5000, getTotal: 6000 },
     });
     expect(wrapper.text()).toContain(`On te doit ${formatPrice(1000)}`);
   });
 
-  it('formats give/get totals as prices', async () => {
+  it('formats give/get totals as prices', () => {
     const wrapper = mount(Balance, {
       props: { diff: 0, giveTotal: 5000, getTotal: 5000 },
     });
@@ -44,7 +44,7 @@ describe('Balance', () => {
     const mountBalance = () =>
       mount(Balance, { props: { diff: 1000, giveTotal: 4000, getTotal: 5000 } });
 
-    it('keeps the « give » side neutral (label, bar segment, total)', async () => {
+    it('keeps the « give » side neutral (label, bar segment, total)', () => {
       const wrapper = mountBalance();
       for (const part of ['label', 'bar', 'total']) {
         const el = wrapper.get(`[data-side="give"][data-part="${part}"]`);
@@ -52,7 +52,7 @@ describe('Balance', () => {
       }
     });
 
-    it('shows the « get » side in secondary (label, bar segment, total)', async () => {
+    it('shows the « get » side in secondary (label, bar segment, total)', () => {
       const wrapper = mountBalance();
       expect(wrapper.get('[data-side="get"][data-part="label"]').classes()).toContain(
         'text-secondary',
@@ -63,13 +63,13 @@ describe('Balance', () => {
       );
     });
 
-    it('keeps the verdict in secondary when there is a cash delta', async () => {
+    it('keeps the verdict in secondary when there is a cash delta', () => {
       const wrapper = mountBalance();
       expect(wrapper.get('[data-part="verdict"]').classes()).toContain('text-secondary-ink');
     });
   });
 
-  it('does not divide by zero when both totals are 0', async () => {
+  it('does not divide by zero when both totals are 0', () => {
     const wrapper = mount(Balance, {
       props: { diff: 0, giveTotal: 0, getTotal: 0 },
     });

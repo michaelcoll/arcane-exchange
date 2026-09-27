@@ -28,6 +28,16 @@ const valueClasses = computed(() =>
 );
 
 const totalClasses = computed(() => (props.tone === 'secondary' ? 'text-secondary' : ''));
+
+const labelClasses = computed(() =>
+  props.tone === 'secondary' ? 'text-secondary' : 'text-slate-400 dark:text-slate-500',
+);
+
+const addClasses = computed(() =>
+  props.tone === 'secondary'
+    ? 'hover:border-secondary/40 hover:bg-secondary/10 focus-visible:border-secondary/40 focus-visible:bg-secondary/10'
+    : 'hover:border-primary/40 hover:bg-primary/10 focus-visible:border-primary/40 focus-visible:bg-primary/10',
+);
 </script>
 
 <template>
@@ -36,7 +46,10 @@ const totalClasses = computed(() => (props.tone === 'secondary' ? 'text-secondar
   >
     <div class="flex items-center justify-between gap-4">
       <span
-        class="text-2xs font-mono font-medium tracking-widest whitespace-nowrap text-slate-400 uppercase dark:text-slate-500"
+        :class="[
+          'text-2xs font-mono font-medium tracking-widest whitespace-nowrap uppercase',
+          labelClasses,
+        ]"
         >{{ label }}</span
       >
       <span class="text-xs text-slate-400 dark:text-slate-500"
@@ -96,7 +109,10 @@ const totalClasses = computed(() => (props.tone === 'secondary' ? 'text-secondar
 
     <button
       v-if="addLabel"
-      class="hover:border-primary/40 hover:bg-primary/10 flex items-center justify-center gap-2 rounded-xl border-[1.5px] border-dashed border-slate-300 bg-black/10 p-3 text-sm font-semibold text-slate-600 transition-all duration-200 dark:border-white/15 dark:text-slate-300"
+      :class="[
+        'flex items-center justify-center gap-2 rounded-xl border-[1.5px] border-dashed border-slate-300 bg-black/10 p-3 text-sm font-semibold text-slate-600 transition-all duration-200 dark:border-white/15 dark:text-slate-300',
+        addClasses,
+      ]"
       @click="emit('add')"
     >
       <Icon name="lucide:plus" size="16" /> {{ addLabel }}

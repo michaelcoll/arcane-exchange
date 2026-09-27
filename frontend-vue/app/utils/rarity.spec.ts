@@ -1,25 +1,14 @@
 import { describe, it, expect } from 'vitest';
-import { RARITY_COLOR_CLASS, RARITY_ORDER } from './rarity';
+import { RARITY_COLOR_CLASS } from './rarity';
 
 describe('RARITY_COLOR_CLASS', () => {
-  it('has an entry for every known rarity code', () => {
-    for (const code of RARITY_ORDER) {
-      expect(RARITY_COLOR_CLASS[code]).toBeDefined();
-    }
-  });
-
-  it('assigns a distinct color class to each rarity', () => {
-    const colors = RARITY_ORDER.map((code) => RARITY_COLOR_CLASS[code]);
-    expect(new Set(colors).size).toBe(colors.length);
-  });
-
-  it('maps each rarity to its semantic rarity color, never a neutral scale', () => {
+  it('maps each rarity to its semantic rarity color, for text and border', () => {
     expect(RARITY_COLOR_CLASS).toEqual({
-      C: 'text-rarity-common',
-      U: 'text-rarity-uncommon',
-      R: 'text-rarity-rare',
-      M: 'text-rarity-mythic',
-      S: 'text-rarity-special',
+      C: { text: 'text-rarity-common', border: 'border-rarity-common' },
+      U: { text: 'text-rarity-uncommon', border: 'border-rarity-uncommon' },
+      R: { text: 'text-rarity-rare', border: 'border-rarity-rare' },
+      M: { text: 'text-rarity-mythic', border: 'border-rarity-mythic' },
+      S: { text: 'text-rarity-special', border: 'border-rarity-special' },
     });
   });
 });

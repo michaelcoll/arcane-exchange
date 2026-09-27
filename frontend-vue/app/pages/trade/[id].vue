@@ -163,7 +163,10 @@ const label =
             :reserved="reserved"
             :removable="false"
           />
-          <p :class="hint">Cartes demandées par {{ partner }} · non retirables depuis cet écran.</p>
+          <p :class="hint">
+            Cartes demandées par <span class="text-secondary">{{ partner }}</span> · non retirables
+            depuis cet écran.
+          </p>
         </div>
 
         <div class="flex min-w-[168px] flex-col items-center justify-center gap-3.5">
@@ -242,7 +245,8 @@ const label =
               v-if="meConfirmed"
               class="border-secondary/30 bg-secondary/10 text-secondary-ink inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium whitespace-nowrap"
             >
-              <Icon name="lucide:check" size="13" /> Tu as confirmé · en attente de {{ partner }}
+              <Icon name="lucide:check" size="13" /> Tu as confirmé · en attente de
+              <span class="text-secondary">{{ partner }}</span>
             </span>
             <button v-else :class="btnPrimary" :disabled="busy" @click="confirmExchange">
               <Icon name="lucide:check" size="16" /> Confirmer « échange réalisé »
@@ -253,7 +257,9 @@ const label =
         <div v-else-if="status === 'COMPLETED'" class="flex flex-col gap-3.5">
           <div class="flex flex-wrap items-center justify-between gap-3.5">
             <div class="flex flex-col gap-0.5">
-              <span :class="label">Noter {{ partner }}</span>
+              <span :class="label"
+                >Noter <span class="text-secondary">{{ partner }}</span></span
+              >
               <span :class="hint">Optionnel · 0 à 5 étoiles</span>
             </div>
             <TradeRatingStars v-if="meRating == null" :value="null" @rate="rate" />
@@ -266,12 +272,13 @@ const label =
           </div>
           <div class="h-px bg-slate-200 dark:bg-white/10" />
           <div class="flex flex-wrap items-center justify-between gap-3">
-            <span :class="hint">
-              {{
-                partnerRating != null
-                  ? `${partner} a noté de son côté.`
-                  : `En attente éventuelle de la note de ${partner}.`
-              }}
+            <span v-if="partnerRating != null" :class="hint">
+              <span class="text-secondary">{{ partner }}</span> a noté de son côté.
+            </span>
+            <span v-else :class="hint">
+              En attente éventuelle de la note de
+              <span class="text-secondary">{{ partner }}</span
+              >.
             </span>
           </div>
         </div>
@@ -285,7 +292,7 @@ const label =
             <span class="text-secondary font-semibold">{{ formatRating(meRating) }}</span></span
           >
           <span :class="hint"
-            >Note de {{ partner }} :
+            >Note de <span class="text-secondary">{{ partner }}</span> :
             <span class="text-secondary font-semibold">{{
               formatRating(partnerRating)
             }}</span></span
