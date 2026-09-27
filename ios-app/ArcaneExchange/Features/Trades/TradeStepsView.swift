@@ -25,7 +25,7 @@ struct TradeStepsView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 18) {
-                Text(intro)
+                intro
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
@@ -45,12 +45,16 @@ struct TradeStepsView: View {
         .navigationBarTitleDisplayMode(.inline)
     }
 
-    private var intro: String {
+    /// The partner's handle, when known, carries the secondary role.
+    private var intro: Text {
         guard let currentIndex else {
-            return "Cet échange a été abandonné avant son terme. Voici les cinq étapes qu'il aurait traversées."
+            return Text("Cet échange a été abandonné avant son terme. Voici les cinq étapes qu'il aurait traversées.")
         }
-        let partner = route.partnerUsername.isEmpty ? "un autre joueur" : "@\(route.partnerUsername)"
-        return "Un échange avec \(partner) traverse cinq étapes. Tu es à l'étape \(currentIndex + 1)."
+        let partner = route.partnerUsername.isEmpty
+            ? Text("un autre joueur")
+            : Text("@\(route.partnerUsername)").foregroundStyle(Palette.secondary)
+        return Text("Un échange avec ") + partner
+            + Text(" traverse cinq étapes. Tu es à l'étape \(currentIndex + 1).")
     }
 
     private var timeline: some View {

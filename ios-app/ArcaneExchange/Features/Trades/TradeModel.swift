@@ -110,7 +110,8 @@ enum TradeSide {
     /// The rail's total and each card's value.
     var valueTint: Color {
         switch self {
-        case .give: .primary
+        // SwiftUI's label color, not the `Palette.primary` accent.
+        case .give: Color.primary
         case .receive: Palette.secondary
         }
     }

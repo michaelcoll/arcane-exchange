@@ -22,7 +22,8 @@ struct TradeDetailView: View {
 
     var body: some View {
         content
-            .navigationTitle("@\(model.partnerUsername.isEmpty ? route.partnerUsername : model.partnerUsername)")
+            // Kept for VoiceOver and the back button's label; the principal item draws it.
+            .navigationTitle(partnerHandle)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar { toolbar }
             .toolbar(.hidden, for: .tabBar)
@@ -101,7 +102,18 @@ struct TradeDetailView: View {
         }
     }
 
+    /// The partner, in the trade's other-player role.
+    private var partnerHandle: String {
+        "@\(model.partnerUsername.isEmpty ? route.partnerUsername : model.partnerUsername)"
+    }
+
     @ToolbarContentBuilder private var toolbar: some ToolbarContent {
+        ToolbarItem(placement: .principal) {
+            Text(partnerHandle)
+                .font(.headline)
+                .foregroundStyle(Palette.secondary)
+                .lineLimit(1)
+        }
         ToolbarItem(placement: .topBarTrailing) {
             Menu {
                 NavigationLink(value: TradeStepsRoute(status: model.status, partnerUsername: model.partnerUsername)) {
@@ -180,7 +192,7 @@ struct TradeDetailView: View {
                     .disabled(model.isBusy)
             }
 
-            Text(partnerRatingCaption)
+            partnerRatingCaption
                 .font(.caption)
                 .foregroundStyle(.secondary)
         }
@@ -189,13 +201,12 @@ struct TradeDetailView: View {
         .background(.quaternary.opacity(0.4), in: .rect(cornerRadius: 16))
     }
 
-    private var partnerRatingCaption: String {
-        if let rating = model.partnerRating {
-            return rating == 0
-                ? "@\(model.partnerUsername) a passé la notation."
-                : "@\(model.partnerUsername) t'a mis \(rating)/5."
+    private var partnerRatingCaption: Text {
+        guard let rating = model.partnerRating else {
+            return Text("Optionnel. L'échange se clôture dès que vous avez tous les deux noté ou passé.")
         }
-        return "Optionnel. L'échange se clôture dès que vous avez tous les deux noté ou passé."
+        let partner = Text("@\(model.partnerUsername)").foregroundStyle(Palette.secondary)
+        return partner + Text(rating == 0 ? " a passé la notation." : " t'a mis \(rating)/5.")
     }
 
     /// "Accepter l'échange", or "Accepter et payer 21 €" when a settlement is owed — the

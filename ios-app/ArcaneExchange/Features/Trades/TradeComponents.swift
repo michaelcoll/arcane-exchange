@@ -53,7 +53,7 @@ struct TradeActionBar: View {
         switch status {
         case .pending, .oneAccepted:
             if meAccepted {
-                waitingLabel("En attente de @\(partnerUsername)", systemImage: "clock", tint: .secondary)
+                waitingLabel("En attente de ", systemImage: "clock", tint: .secondary)
             } else {
                 Button(acceptLabel, systemImage: "checkmark", action: onAccept)
                     .buttonStyle(.borderedProminent)
@@ -65,7 +65,7 @@ struct TradeActionBar: View {
         case .fullyAccepted:
             if meConfirmed {
                 waitingLabel(
-                    "Confirmé, en attente de @\(partnerUsername)",
+                    "Confirmé, en attente de ",
                     systemImage: "checkmark",
                     tint: Palette.secondary
                 )
@@ -83,11 +83,16 @@ struct TradeActionBar: View {
         }
     }
 
-    private func waitingLabel(_ title: String, systemImage: String, tint: Color) -> some View {
-        Label(title, systemImage: systemImage)
-            .font(.subheadline.weight(.medium))
-            .foregroundStyle(tint)
-            .frame(maxWidth: .infinity)
+    /// `lead` followed by the partner's handle, which always carries the secondary role.
+    private func waitingLabel(_ lead: String, systemImage: String, tint: Color) -> some View {
+        Label {
+            Text(lead) + Text("@\(partnerUsername)").foregroundStyle(Palette.secondary)
+        } icon: {
+            Image(systemName: systemImage)
+        }
+        .font(.subheadline.weight(.medium))
+        .foregroundStyle(tint)
+        .frame(maxWidth: .infinity)
     }
 }
 
