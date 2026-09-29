@@ -116,8 +116,12 @@ struct ImportView: View {
 
                 if !status.errors.isEmpty {
                     List(status.errors, id: \.line) { lineError in
-                        Text("Ligne \(lineError.line) : champ « \(lineError.field) » invalide (\(lineError.value))")
-                            .font(.footnote)
+                        Text(ImportErrorMessage.lineError(
+                            line: lineError.line,
+                            field: lineError.field,
+                            value: lineError.value
+                        ))
+                        .font(.footnote)
                     }
                     .frame(maxHeight: 200)
                     .listStyle(.plain)
@@ -137,7 +141,7 @@ struct ImportView: View {
                 .font(.system(size: 40))
                 .foregroundStyle(.red)
 
-            Text(model.status?.error_message ?? "L'import a échoué.")
+            Text(model.failureMessage ?? ImportErrorMessage.message(for: nil))
                 .multilineTextAlignment(.center)
                 .foregroundStyle(.secondary)
 

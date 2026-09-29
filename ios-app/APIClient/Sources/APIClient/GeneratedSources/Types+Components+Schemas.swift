@@ -132,8 +132,15 @@ extension Components {
             ///
             /// - Remark: Generated from `#/components/schemas/CardImportResponse/created_at`.
             public var created_at: Swift.String
+            /// Stable code of a failed import's error (`no_valid_line`, `internal`, …), translated by
+            /// the clients. `null` unless the import failed.
+            ///
+            /// - Remark: Generated from `#/components/schemas/CardImportResponse/error_code`.
+            public var error_code: Swift.String?
             /// - Remark: Generated from `#/components/schemas/CardImportResponse/error_count`.
             public var error_count: Swift.Int32
+            /// Technical message of a failed import, for diagnosis only — never shown to the user.
+            ///
             /// - Remark: Generated from `#/components/schemas/CardImportResponse/error_message`.
             public var error_message: Swift.String?
             /// Truncated to at most 100 entries; `error_count` carries the true total.
@@ -164,8 +171,9 @@ extension Components {
             ///
             /// - Parameters:
             ///   - created_at: RFC 3339 timestamp
+            ///   - error_code: Stable code of a failed import's error (`no_valid_line`, `internal`, …), translated by
             ///   - error_count:
-            ///   - error_message:
+            ///   - error_message: Technical message of a failed import, for diagnosis only — never shown to the user.
             ///   - errors: Truncated to at most 100 entries; `error_count` carries the true total.
             ///   - finished_at: RFC 3339 timestamp
             ///   - id:
@@ -175,6 +183,7 @@ extension Components {
             ///   - total_lines: Cards to write, after deduplication — the denominator for `processed_lines`.
             public init(
                 created_at: Swift.String,
+                error_code: Swift.String? = nil,
                 error_count: Swift.Int32,
                 error_message: Swift.String? = nil,
                 errors: [Components.Schemas.CardImportLineErrorResponse],
@@ -186,6 +195,7 @@ extension Components {
                 total_lines: Swift.Int32
             ) {
                 self.created_at = created_at
+                self.error_code = error_code
                 self.error_count = error_count
                 self.error_message = error_message
                 self.errors = errors
@@ -198,6 +208,7 @@ extension Components {
             }
             public enum CodingKeys: String, CodingKey {
                 case created_at
+                case error_code
                 case error_count
                 case error_message
                 case errors
@@ -502,6 +513,36 @@ extension Components {
             }
             public enum CodingKeys: String, CodingKey {
                 case enqueued
+            }
+        }
+        /// Body of every error response. `error` is a technical message, for diagnosis only; clients
+        /// translate `code` into what they show the user (ADR 0018).
+        ///
+        /// - Remark: Generated from `#/components/schemas/ErrorResponse`.
+        public struct ErrorResponse: Codable, Hashable, Sendable {
+            /// Stable snake_case identifier of the error (e.g. `binder_export`, `internal`).
+            ///
+            /// - Remark: Generated from `#/components/schemas/ErrorResponse/code`.
+            public var code: Swift.String
+            /// Technical message, in English — never shown to the user as is.
+            ///
+            /// - Remark: Generated from `#/components/schemas/ErrorResponse/error`.
+            public var error: Swift.String
+            /// Creates a new `ErrorResponse`.
+            ///
+            /// - Parameters:
+            ///   - code: Stable snake_case identifier of the error (e.g. `binder_export`, `internal`).
+            ///   - error: Technical message, in English — never shown to the user as is.
+            public init(
+                code: Swift.String,
+                error: Swift.String
+            ) {
+                self.code = code
+                self.error = error
+            }
+            public enum CodingKeys: String, CodingKey {
+                case code
+                case error
             }
         }
         /// - Remark: Generated from `#/components/schemas/MessageResponse`.

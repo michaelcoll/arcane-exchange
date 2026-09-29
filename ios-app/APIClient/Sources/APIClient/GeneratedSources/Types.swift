@@ -130,8 +130,8 @@ extension APIProtocol {
     }
     /// - Remark: HTTP `POST /card/card-info`.
     /// - Remark: Generated from `#/paths//card/card-info/post(get_card_info)`.
-    public func get_card_info() async throws -> Operations.get_card_info.Output {
-        try await get_card_info(Operations.get_card_info.Input())
+    public func get_card_info(headers: Operations.get_card_info.Input.Headers = .init()) async throws -> Operations.get_card_info.Output {
+        try await get_card_info(Operations.get_card_info.Input(headers: headers))
     }
     /// - Remark: HTTP `GET /card/offers`.
     /// - Remark: Generated from `#/paths//card/offers/get(get_card_offers)`.
@@ -218,8 +218,14 @@ extension APIProtocol {
     }
     /// - Remark: HTTP `POST /collection/visibility/rarities`.
     /// - Remark: Generated from `#/paths//collection/visibility/rarities/post(set_rarity_filter)`.
-    public func set_rarity_filter(body: Operations.set_rarity_filter.Input.Body) async throws -> Operations.set_rarity_filter.Output {
-        try await set_rarity_filter(Operations.set_rarity_filter.Input(body: body))
+    public func set_rarity_filter(
+        headers: Operations.set_rarity_filter.Input.Headers = .init(),
+        body: Operations.set_rarity_filter.Input.Body
+    ) async throws -> Operations.set_rarity_filter.Output {
+        try await set_rarity_filter(Operations.set_rarity_filter.Input(
+            headers: headers,
+            body: body
+        ))
     }
     /// - Remark: HTTP `GET /maintenance/stats`.
     /// - Remark: Generated from `#/paths//maintenance/stats/get(get_stats)`.
@@ -298,22 +304,36 @@ extension APIProtocol {
     }
     /// - Remark: HTTP `POST /trades/{trade_id}/abandon`.
     /// - Remark: Generated from `#/paths//trades/{trade_id}/abandon/post(abandon_trade)`.
-    public func abandon_trade(path: Operations.abandon_trade.Input.Path) async throws -> Operations.abandon_trade.Output {
-        try await abandon_trade(Operations.abandon_trade.Input(path: path))
+    public func abandon_trade(
+        path: Operations.abandon_trade.Input.Path,
+        headers: Operations.abandon_trade.Input.Headers = .init()
+    ) async throws -> Operations.abandon_trade.Output {
+        try await abandon_trade(Operations.abandon_trade.Input(
+            path: path,
+            headers: headers
+        ))
     }
     /// - Remark: HTTP `POST /trades/{trade_id}/accept`.
     /// - Remark: Generated from `#/paths//trades/{trade_id}/accept/post(accept_trade)`.
-    public func accept_trade(path: Operations.accept_trade.Input.Path) async throws -> Operations.accept_trade.Output {
-        try await accept_trade(Operations.accept_trade.Input(path: path))
+    public func accept_trade(
+        path: Operations.accept_trade.Input.Path,
+        headers: Operations.accept_trade.Input.Headers = .init()
+    ) async throws -> Operations.accept_trade.Output {
+        try await accept_trade(Operations.accept_trade.Input(
+            path: path,
+            headers: headers
+        ))
     }
     /// - Remark: HTTP `POST /trades/{trade_id}/cards`.
     /// - Remark: Generated from `#/paths//trades/{trade_id}/cards/post(add_trade_card)`.
     public func add_trade_card(
         path: Operations.add_trade_card.Input.Path,
+        headers: Operations.add_trade_card.Input.Headers = .init(),
         body: Operations.add_trade_card.Input.Body
     ) async throws -> Operations.add_trade_card.Output {
         try await add_trade_card(Operations.add_trade_card.Input(
             path: path,
+            headers: headers,
             body: body
         ))
     }
@@ -321,33 +341,43 @@ extension APIProtocol {
     /// - Remark: Generated from `#/paths//trades/{trade_id}/cards/remove/post(remove_trade_card)`.
     public func remove_trade_card(
         path: Operations.remove_trade_card.Input.Path,
+        headers: Operations.remove_trade_card.Input.Headers = .init(),
         body: Operations.remove_trade_card.Input.Body
     ) async throws -> Operations.remove_trade_card.Output {
         try await remove_trade_card(Operations.remove_trade_card.Input(
             path: path,
+            headers: headers,
             body: body
         ))
     }
     /// - Remark: HTTP `POST /trades/{trade_id}/confirm`.
     /// - Remark: Generated from `#/paths//trades/{trade_id}/confirm/post(confirm_trade)`.
-    public func confirm_trade(path: Operations.confirm_trade.Input.Path) async throws -> Operations.confirm_trade.Output {
-        try await confirm_trade(Operations.confirm_trade.Input(path: path))
+    public func confirm_trade(
+        path: Operations.confirm_trade.Input.Path,
+        headers: Operations.confirm_trade.Input.Headers = .init()
+    ) async throws -> Operations.confirm_trade.Output {
+        try await confirm_trade(Operations.confirm_trade.Input(
+            path: path,
+            headers: headers
+        ))
     }
     /// - Remark: HTTP `POST /trades/{trade_id}/rate`.
     /// - Remark: Generated from `#/paths//trades/{trade_id}/rate/post(rate_trade)`.
     public func rate_trade(
         path: Operations.rate_trade.Input.Path,
+        headers: Operations.rate_trade.Input.Headers = .init(),
         body: Operations.rate_trade.Input.Body
     ) async throws -> Operations.rate_trade.Output {
         try await rate_trade(Operations.rate_trade.Input(
             path: path,
+            headers: headers,
             body: body
         ))
     }
     /// - Remark: HTTP `POST /user`.
     /// - Remark: Generated from `#/paths//user/post(register)`.
-    public func register() async throws -> Operations.register.Output {
-        try await register(Operations.register.Input())
+    public func register(headers: Operations.register.Input.Headers = .init()) async throws -> Operations.register.Output {
+        try await register(Operations.register.Input(headers: headers))
     }
     /// - Remark: HTTP `GET /user/trade-binders`.
     /// - Remark: Generated from `#/paths//user/trade-binders/get(get_trade_binders)`.
@@ -356,13 +386,25 @@ extension APIProtocol {
     }
     /// - Remark: HTTP `POST /user/trade-binders`.
     /// - Remark: Generated from `#/paths//user/trade-binders/post(add_trade_binder)`.
-    public func add_trade_binder(body: Operations.add_trade_binder.Input.Body) async throws -> Operations.add_trade_binder.Output {
-        try await add_trade_binder(Operations.add_trade_binder.Input(body: body))
+    public func add_trade_binder(
+        headers: Operations.add_trade_binder.Input.Headers = .init(),
+        body: Operations.add_trade_binder.Input.Body
+    ) async throws -> Operations.add_trade_binder.Output {
+        try await add_trade_binder(Operations.add_trade_binder.Input(
+            headers: headers,
+            body: body
+        ))
     }
     /// - Remark: HTTP `DELETE /user/trade-binders/{name}`.
     /// - Remark: Generated from `#/paths//user/trade-binders/{name}/delete(remove_trade_binder)`.
-    public func remove_trade_binder(path: Operations.remove_trade_binder.Input.Path) async throws -> Operations.remove_trade_binder.Output {
-        try await remove_trade_binder(Operations.remove_trade_binder.Input(path: path))
+    public func remove_trade_binder(
+        path: Operations.remove_trade_binder.Input.Path,
+        headers: Operations.remove_trade_binder.Input.Headers = .init()
+    ) async throws -> Operations.remove_trade_binder.Output {
+        try await remove_trade_binder(Operations.remove_trade_binder.Input(
+            path: path,
+            headers: headers
+        ))
     }
     /// - Remark: HTTP `GET /user/visibility`.
     /// - Remark: Generated from `#/paths//user/visibility/get(get_visibility)`.
@@ -371,8 +413,14 @@ extension APIProtocol {
     }
     /// - Remark: HTTP `PUT /user/visibility`.
     /// - Remark: Generated from `#/paths//user/visibility/put(set_visibility)`.
-    public func set_visibility(body: Operations.set_visibility.Input.Body) async throws -> Operations.set_visibility.Output {
-        try await set_visibility(Operations.set_visibility.Input(body: body))
+    public func set_visibility(
+        headers: Operations.set_visibility.Input.Headers = .init(),
+        body: Operations.set_visibility.Input.Body
+    ) async throws -> Operations.set_visibility.Output {
+        try await set_visibility(Operations.set_visibility.Input(
+            headers: headers,
+            body: body
+        ))
     }
     /// - Remark: HTTP `GET /user/{username}`.
     /// - Remark: Generated from `#/paths//user/{username}/get(get_user_profile)`.

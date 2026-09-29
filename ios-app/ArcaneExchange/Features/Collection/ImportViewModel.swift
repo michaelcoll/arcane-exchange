@@ -16,6 +16,8 @@ final class ImportViewModel {
         case conflict
         case network
         case http(Int)
+        /// The server refused the file (400); `code` is the API's error code, `nil` if unreadable.
+        case rejected(code: String?)
         case unexpected
 
         var message: String {
@@ -28,6 +30,8 @@ final class ImportViewModel {
                 "Serveur injoignable. Vérifie ta connexion, et l'URL de l'API dans Réglages ▸ Arcane Exchange."
             case let .http(status):
                 "Le serveur a répondu \(status)."
+            case let .rejected(code):
+                ImportErrorMessage.message(for: code)
             case .unexpected:
                 "Réponse inattendue du serveur."
             }
@@ -54,6 +58,12 @@ final class ImportViewModel {
         return Double(status.processed_lines) / Double(status.total_lines)
     }
 
+    /// Why the followed import failed, translated from its `error_code`; `nil` unless it failed.
+    var failureMessage: String? {
+        guard let status, status.status == "failed" else { return nil }
+        return ImportErrorMessage.message(for: status.error_code)
+    }
+
     /// Cancels any in-flight polling and returns to the picker — called when the sheet is
     /// reopened after a previous run, and when the view disappears.
     func reset() {
@@ -76,6 +86,8 @@ final class ImportViewModel {
             case .conflict:
                 wasAlreadyRunning = true
                 await followActiveImport()
+            case let .rejected(code):
+                loadError = .rejected(code: code)
             }
         } catch let error as APIClientError {
             switch error {
@@ -90,6 +102,7 @@ final class ImportViewModel {
     private enum StartOutcome {
         case started(id: String)
         case conflict
+        case rejected(code: String?)
     }
 
     private func followActiveImport() async {
@@ -138,8 +151,8 @@ final class ImportViewModel {
             return try .started(id: response.body.json.id)
         case .conflict:
             return .conflict
-        case .badRequest:
-            throw APIClientError.undocumented(statusCode: 400)
+        case let .badRequest(response):
+            return .rejected(code: try? response.body.json.code)
         case .unauthorized:
             throw APIClientError.unauthorized
         case let .undocumented(statusCode, _):
