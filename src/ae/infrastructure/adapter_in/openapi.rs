@@ -142,8 +142,9 @@ impl utoipa::Modify for SecurityAddon {
     }
 }
 
-/// Every error goes through `AppError::into_response`, so every documented error response has
-/// the same `ErrorResponse` body: attached here once rather than on each `utoipa::path`.
+/// Every error response has the `ErrorResponse` body — built by `AppError::into_response`, or by
+/// `with_error_body` for axum's own rejections — so it is attached here once rather than on
+/// each `utoipa::path`.
 struct ErrorResponseAddon;
 
 impl utoipa::Modify for ErrorResponseAddon {
