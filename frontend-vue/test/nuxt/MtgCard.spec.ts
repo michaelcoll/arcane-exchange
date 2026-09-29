@@ -25,6 +25,14 @@ describe('MtgCard', () => {
     expect(sources(wrapper)).toEqual(['/card-back.webp']);
   });
 
+  it('shows the copy count in the bottom-left corner', () => {
+    const wrapper = mount(MtgCard, { props: { imageUrl: FRONT, qty: 3 } });
+    const badge = wrapper.find('[data-testid="qty"]');
+    expect(badge.text()).toBe('×3');
+    expect(badge.classes()).toEqual(expect.arrayContaining(['bottom-1.5', 'left-1.5']));
+    expect(badge.classes()).not.toEqual(expect.arrayContaining(['top-1.5']));
+  });
+
   it('only offers to flip a double-faced card that is flippable', () => {
     const notFlippable = mount(MtgCard, { props: { imageUrl: FRONT, imageBackUrl: BACK } });
     expect(notFlippable.find('[data-testid="flip"]').exists()).toBe(false);
