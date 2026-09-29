@@ -45,8 +45,6 @@ const envSmooth = (pts: [number, number][]) => {
   return d;
 };
 
-const fmt = (v: number) => Math.round(v).toLocaleString('fr-FR') + ' €';
-
 const n = computed(() => props.data.length);
 const minVal = computed(() => Math.min(...props.data.map((d) => Math.min(d.low, d.avg, d.trend))));
 const maxVal = computed(() => Math.max(...props.data.map((d) => Math.max(d.low, d.avg, d.trend))));
@@ -153,12 +151,12 @@ const tooltipStyle = computed(() => {
       <span
         class="text-2xs absolute top-1 left-1 font-mono text-slate-400 transition-opacity duration-200 dark:text-slate-500"
         :class="detail ? 'opacity-100 delay-100' : 'opacity-0'"
-        >{{ fmt(hi0) }}</span
+        >{{ formatChartPrice(hi0) }}</span
       >
       <span
         class="text-2xs absolute bottom-6 left-1 font-mono text-slate-400 transition-opacity duration-200 dark:text-slate-500"
         :class="detail ? 'opacity-100 delay-100' : 'opacity-0'"
-        >{{ fmt(lo0) }}</span
+        >{{ formatChartPrice(lo0) }}</span
       >
       <span
         v-for="i in tickIndexes"
@@ -184,19 +182,19 @@ const tooltipStyle = computed(() => {
         <span class="flex items-center gap-1.5 text-slate-500 dark:text-slate-400"
           ><i class="bg-primary-soft inline-block h-2 w-2 rounded-sm" />avg</span
         >
-        <b class="font-mono font-semibold">{{ fmt(hoverPoint.avg) }}</b>
+        <b class="font-mono font-semibold">{{ formatChartPrice(hoverPoint.avg) }}</b>
       </div>
       <div class="flex items-center justify-between gap-3.5 text-xs leading-relaxed">
         <span class="flex items-center gap-1.5 text-slate-500 dark:text-slate-400"
           ><i class="bg-primary inline-block h-2 w-2 rounded-sm" />trend</span
         >
-        <b class="font-mono font-semibold">{{ fmt(hoverPoint.trend) }}</b>
+        <b class="font-mono font-semibold">{{ formatChartPrice(hoverPoint.trend) }}</b>
       </div>
       <div class="flex items-center justify-between gap-3.5 text-xs leading-relaxed">
         <span class="flex items-center gap-1.5 text-slate-500 dark:text-slate-400"
           ><i class="bg-primary-dim inline-block h-2 w-2 rounded-sm" />low</span
         >
-        <b class="font-mono font-semibold">{{ fmt(hoverPoint.low) }}</b>
+        <b class="font-mono font-semibold">{{ formatChartPrice(hoverPoint.low) }}</b>
       </div>
     </div>
   </div>
