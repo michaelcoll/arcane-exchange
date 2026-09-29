@@ -61,6 +61,7 @@ struct CardImportRow {
     line_errors: Json<Vec<LineErrorJson>>,
     line_error_count: i32,
     error_message: Option<String>,
+    error_code: Option<String>,
     created_at: DateTime<Utc>,
     finished_at: Option<DateTime<Utc>>,
 }
@@ -80,6 +81,7 @@ impl TryFrom<CardImportRow> for CardImport {
             line_errors: row.line_errors.0.into_iter().map(Into::into).collect(),
             line_error_count: row.line_error_count as u32,
             error_message: row.error_message,
+            error_code: row.error_code,
             created_at: row.created_at,
             finished_at: row.finished_at,
         })
@@ -96,8 +98,8 @@ impl CardImportRepository for CardImportRepositoryAdapter {
             r#"
             INSERT INTO card_import
                 (id, user_id, status, source_lines, total_lines, processed_lines,
-                 line_errors, line_error_count, error_message, created_at, finished_at)
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+                 line_errors, line_error_count, error_message, error_code, created_at, finished_at)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
             "#,
             import.id.0,
             import.user_id.as_str(),
@@ -108,6 +110,7 @@ impl CardImportRepository for CardImportRepositoryAdapter {
             Json(line_errors) as _,
             import.line_error_count as i32,
             import.error_message,
+            import.error_code,
             import.created_at,
             import.finished_at
         )
@@ -132,7 +135,7 @@ impl CardImportRepository for CardImportRepositoryAdapter {
             r#"
             SELECT id, user_id, status, source_lines, total_lines, processed_lines,
                    line_errors as "line_errors: Json<Vec<LineErrorJson>>",
-                   line_error_count, error_message, created_at, finished_at
+                   line_error_count, error_message, error_code, created_at, finished_at
             FROM card_import
             WHERE id = $1
             "#,
@@ -151,7 +154,7 @@ impl CardImportRepository for CardImportRepositoryAdapter {
             r#"
             SELECT id, user_id, status, source_lines, total_lines, processed_lines,
                    line_errors as "line_errors: Json<Vec<LineErrorJson>>",
-                   line_error_count, error_message, created_at, finished_at
+                   line_error_count, error_message, error_code, created_at, finished_at
             FROM card_import
             WHERE user_id = $1
             ORDER BY created_at DESC
@@ -198,17 +201,18 @@ impl CardImportRepository for CardImportRepositoryAdapter {
         &self,
         id: &CardImportId,
         status: CardImportStatus,
-        error_message: Option<&str>,
+        error: Option<&AppError>,
     ) -> Result<(), AppError> {
         sqlx::query!(
             r#"
             UPDATE card_import
-            SET status = $2, error_message = $3, finished_at = now()
+            SET status = $2, error_message = $3, error_code = $4, finished_at = now()
             WHERE id = $1
             "#,
             id.0,
             status.to_string(),
-            error_message
+            error.map(|e| e.to_string()),
+            error.map(AppError::code)
         )
         .execute(&self.pool)
         .await?;
@@ -217,14 +221,15 @@ impl CardImportRepository for CardImportRepositoryAdapter {
     }
 
     #[tracing::instrument(name = "card_import_repo.fail_all_active", skip_all, fields(sentry.op = "db"))]
-    async fn fail_all_active(&self, reason: &str) -> Result<u64, AppError> {
+    async fn fail_all_active(&self, reason: &AppError) -> Result<u64, AppError> {
         let result = sqlx::query!(
             r#"
             UPDATE card_import
-            SET status = 'failed', error_message = $1, finished_at = now()
+            SET status = 'failed', error_message = $1, error_code = $2, finished_at = now()
             WHERE status IN ('pending', 'running')
             "#,
-            reason
+            reason.to_string(),
+            reason.code()
         )
         .execute(&self.pool)
         .await?;
@@ -271,6 +276,7 @@ mod tests {
             line_errors: vec![],
             line_error_count: 0,
             error_message: None,
+            error_code: None,
             created_at: Utc::now(),
             finished_at: None,
         }
@@ -381,15 +387,61 @@ mod tests {
         adapter.create(&import).await.unwrap();
         adapter.mark_running(&import.id).await.unwrap();
 
-        let affected = adapter.fail_all_active("server restarted").await.unwrap();
+        let reason = AppError::Infra(crate::application::error::InfraError::QueueError(
+            "server restarted".to_string(),
+        ));
+        let affected = adapter.fail_all_active(&reason).await.unwrap();
         assert_eq!(affected, 1);
 
         let found = adapter.find_by_id(&import.id).await.unwrap().unwrap();
         assert_eq!(found.status, CardImportStatus::Failed);
         assert_eq!(found.error_message.as_deref(), Some("server restarted"));
+        assert_eq!(found.error_code.as_deref(), Some("internal"));
 
         // The active slot is now free.
         adapter.create(&new_import("u1")).await.unwrap();
+    }
+
+    #[sqlx::test]
+    async fn finish_as_failed_records_the_error_message_and_code(pool: PgPool) {
+        insert_user(&pool, "u1", "user one").await;
+        let adapter = CardImportRepositoryAdapter::new(pool);
+
+        let import = new_import("u1");
+        adapter.create(&import).await.unwrap();
+        adapter
+            .finish(
+                &import.id,
+                CardImportStatus::Failed,
+                Some(&AppError::Functional(FunctionalError::NoValidLine)),
+            )
+            .await
+            .unwrap();
+
+        let found = adapter.find_by_id(&import.id).await.unwrap().unwrap();
+        assert_eq!(found.status, CardImportStatus::Failed);
+        assert_eq!(
+            found.error_message.as_deref(),
+            Some("no valid line in file")
+        );
+        assert_eq!(found.error_code.as_deref(), Some("no_valid_line"));
+    }
+
+    #[sqlx::test]
+    async fn finish_as_completed_records_no_error(pool: PgPool) {
+        insert_user(&pool, "u1", "user one").await;
+        let adapter = CardImportRepositoryAdapter::new(pool);
+
+        let import = new_import("u1");
+        adapter.create(&import).await.unwrap();
+        adapter
+            .finish(&import.id, CardImportStatus::Completed, None)
+            .await
+            .unwrap();
+
+        let found = adapter.find_by_id(&import.id).await.unwrap().unwrap();
+        assert_eq!(found.error_message, None);
+        assert_eq!(found.error_code, None);
     }
 
     #[sqlx::test]

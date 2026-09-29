@@ -84,6 +84,8 @@ pub struct CardImport {
     pub line_errors: Vec<CardImportLineError>,
     pub line_error_count: u32,
     pub error_message: Option<String>,
+    /// Stable code of the failure, translated by the clients (ADR 0018).
+    pub error_code: Option<String>,
     pub created_at: DateTime<Utc>,
     pub finished_at: Option<DateTime<Utc>>,
 }

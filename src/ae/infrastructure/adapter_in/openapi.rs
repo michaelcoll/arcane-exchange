@@ -1,3 +1,4 @@
+use super::ErrorResponse;
 use super::autocomplete::dto::UserSuggestionResponse;
 use super::card::dto::{
     CardOfferResponse, CardOffersSortByParam, PaginatedCardOffersResponse,
@@ -100,8 +101,9 @@ use utoipa::OpenApi;
         TradeBindersResponse,
         AddTradeBinderRequest,
         UserProfileResponse,
+        ErrorResponse,
     )),
-    modifiers(&SecurityAddon),
+    modifiers(&SecurityAddon, &ErrorResponseAddon),
     info(
         title = "Card Collection Price Tracker API",
         version = "0.1.0",
@@ -137,5 +139,79 @@ impl utoipa::Modify for SecurityAddon {
                 ),
             );
         }
+    }
+}
+
+/// Every error goes through `AppError::into_response`, so every documented error response has
+/// the same `ErrorResponse` body: attached here once rather than on each `utoipa::path`.
+struct ErrorResponseAddon;
+
+impl utoipa::Modify for ErrorResponseAddon {
+    fn modify(&self, openapi: &mut utoipa::openapi::OpenApi) {
+        use utoipa::openapi::{Content, Ref, RefOr};
+
+        for item in openapi.paths.paths.values_mut() {
+            let operations = [
+                &mut item.get,
+                &mut item.put,
+                &mut item.post,
+                &mut item.delete,
+                &mut item.patch,
+            ];
+            for operation in operations.into_iter().flatten() {
+                for (status, response) in operation.responses.responses.iter_mut() {
+                    let RefOr::T(response) = response else {
+                        continue;
+                    };
+                    if status.starts_with('4') || status.starts_with('5') {
+                        response.content.insert(
+                            "application/json".to_string(),
+                            Content::new(Some(Ref::from_schema_name("ErrorResponse"))).into(),
+                        );
+                    }
+                }
+            }
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use utoipa::openapi::RefOr;
+
+    fn json_schema_of(status: &str, path: &str) -> Option<String> {
+        let openapi = ApiDoc::openapi();
+        let operation = openapi.paths.paths[path].post.clone().unwrap();
+        let RefOr::T(response) = &operation.responses.responses[status] else {
+            panic!("inline response expected");
+        };
+        let content = response.content.get("application/json")?;
+        let RefOr::T(content) = content else {
+            panic!("inline content expected");
+        };
+        match content.schema.as_ref()? {
+            RefOr::Ref(r) => Some(r.ref_location.clone()),
+            RefOr::T(_) => None,
+        }
+    }
+
+    #[test]
+    fn error_responses_document_the_error_body() {
+        for status in ["400", "401", "409"] {
+            assert_eq!(
+                json_schema_of(status, "/collection/import").as_deref(),
+                Some("#/components/schemas/ErrorResponse"),
+                "status {status}"
+            );
+        }
+    }
+
+    #[test]
+    fn success_responses_keep_their_own_body() {
+        assert_eq!(
+            json_schema_of("202", "/collection/import").as_deref(),
+            Some("#/components/schemas/CardImportStartedResponse")
+        );
     }
 }

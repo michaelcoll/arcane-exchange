@@ -769,10 +769,10 @@ async fn import_cards_fails_with_invalid_utf8() {
 
     assert!(result.is_err());
     match result.unwrap_err() {
-        AppError::Functional(FunctionalError::WrongFormat(msg)) => {
-            assert_eq!(msg, "Body is not valid UTF-8");
+        AppError::Functional(FunctionalError::MalformedCsv(msg)) => {
+            assert_eq!(msg, "body is not valid UTF-8");
         }
-        _ => panic!("Expected WrongFormat error"),
+        other => panic!("Expected MalformedCsv, got {other:?}"),
     }
 }
 
@@ -815,6 +815,7 @@ fn sample_card_import() -> crate::domain::card_import::CardImport {
         line_errors: vec![],
         line_error_count: 0,
         error_message: None,
+        error_code: None,
         created_at: chrono::Utc::now(),
         finished_at: Some(chrono::Utc::now()),
     }
@@ -843,6 +844,33 @@ async fn get_card_import_returns_the_import_when_owned_by_the_caller() {
     let axum::Json(response) = result.unwrap();
     assert_eq!(response.id, import_id.to_string());
     assert_eq!(response.status, "completed");
+}
+
+#[tokio::test]
+async fn get_card_import_exposes_the_error_code_of_a_failed_import() {
+    let mut import = sample_card_import();
+    import.status = crate::domain::card_import::CardImportStatus::Failed;
+    import.error_message = Some("no valid line in file".to_string());
+    import.error_code = Some("no_valid_line".to_string());
+    let import_id = import.id;
+
+    let mut mock = crate::application::use_case::MockGetCardImportUseCase::new();
+    mock.expect_find().returning(move |_, _| {
+        let import = import.clone();
+        Box::pin(async move { Ok(import) })
+    });
+    let app_state = make_app_state_with_card_import_query(mock);
+
+    let axum::Json(response) = get_card_import(
+        AuthenticatedUser(User::for_testing()),
+        State(app_state),
+        axum::extract::Path(import_id.to_string()),
+    )
+    .await
+    .unwrap();
+
+    assert_eq!(response.status, "failed");
+    assert_eq!(response.error_code.as_deref(), Some("no_valid_line"));
 }
 
 #[tokio::test]

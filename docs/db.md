@@ -25,6 +25,7 @@ erDiagram
         text error_message
         timestamp_with_time_zone created_at "not null, default: now()"
         timestamp_with_time_zone finished_at
+        text error_code
     }
     cardmarket_price {
         integer id_produit PK
