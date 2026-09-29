@@ -145,9 +145,10 @@ par la plateforme.
 _Avoid_ : soulte, paiement, balance à payer
 
 **Note** :
-L'appréciation, de zéro à cinq, que chaque partie porte sur l'autre à l'issue d'un Trade. Non
-modifiable une fois donnée.
-_Avoid_ : avis, review, score
+L'appréciation, de une à cinq étoiles, que chaque partie porte sur l'autre à l'issue d'un Trade.
+Optionnelle : une partie peut **passer la notation**, ce qui compte comme une réponse (enregistrée
+comme 0) et non comme une note de zéro étoile. Non modifiable une fois donnée ou passée.
+_Avoid_ : avis, review, score, « note de 0 »
 
 ### Joueurs
 
