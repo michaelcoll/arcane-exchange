@@ -83,10 +83,14 @@ impl Columns {
             .copied()
             .filter(|expected| !headers.contains(expected))
             .collect();
+        // A repeated column is unexpected too: which of the two to read would be a guess.
         let unexpected: Vec<&str> = headers
             .iter()
-            .copied()
-            .filter(|header| !COLLECTION_HEADERS.contains(header))
+            .enumerate()
+            .filter(|(position, header)| {
+                !COLLECTION_HEADERS.contains(header) || headers[..*position].contains(header)
+            })
+            .map(|(_, header)| *header)
             .collect();
         if !missing.is_empty() || !unexpected.is_empty() {
             return Err(FunctionalError::WrongFormat(format!(
@@ -545,6 +549,20 @@ mod tests {
             result,
             Err(AppError::Functional(FunctionalError::WrongFormat(err)))
                 if err == "unrecognized collection export: missing columns [], unexpected columns [Tags]"
+        ));
+    }
+
+    #[test]
+    fn parse_cards_rejects_a_duplicated_column() {
+        let csv = "Binder Name,Binder Type,Name,Set code,Set name,Collector number,Foil,Rarity,Quantity,ManaBox ID,Scryfall ID,Purchase price,Misprint,Altered,Signed,Condition,Language,Proxy,Purchase price currency,Added,Name\n\
+                   bulk,binder,Repeal,GPT,Guildpact,32,normal,common,2,27563,9e7dd929-4bba-46a6-86c9-b8ed853eb721,0.17,false,false,false,near_mint,fr,false,EUR,2026-02-05T20:44:45.815Z,Repeal";
+
+        let result = parse_cards(csv);
+
+        assert!(matches!(
+            result,
+            Err(AppError::Functional(FunctionalError::WrongFormat(err)))
+                if err == "unrecognized collection export: missing columns [], unexpected columns [Name]"
         ));
     }
 
