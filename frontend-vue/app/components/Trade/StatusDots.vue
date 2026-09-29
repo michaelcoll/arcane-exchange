@@ -8,8 +8,8 @@ const props = defineProps<{ status: TradeStatus }>();
 
 const emit = defineEmits<{ help: [] }>();
 
-const index = computed(() => TRADE_LIFECYCLE.findIndex((s) => s.status === props.status));
-const count = TRADE_LIFECYCLE.length;
+const index = computed(() => tradeStepIndex(props.status));
+const count = TRADE_STEPS.length;
 
 type Part = { kind: 'done' | 'todo'; key: string } | { kind: 'pill'; key: string };
 

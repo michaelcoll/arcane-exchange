@@ -104,9 +104,13 @@ export const TRADE_STEPS: { status: TradeStatus; title: string; detail: string }
   },
 ];
 
+/** Position du statut dans `TRADE_STEPS`, -1 pour ABANDONED (hors parcours nominal). */
+export const tradeStepIndex = (status: TradeStatus) =>
+  TRADE_STEPS.findIndex((s) => s.status === status);
+
 /** Pastille de l'indicateur à points : « NÉGOCIATION · 1/5 », ou « ABANDONNÉ » hors parcours. */
 export const tradeStatusStepLabel = (status: TradeStatus) => {
-  const index = TRADE_STEPS.findIndex((s) => s.status === status);
+  const index = tradeStepIndex(status);
   if (index < 0) return 'ABANDONNÉ';
   return `${TRADE_STEPS[index]!.title} · ${index + 1}/${TRADE_STEPS.length}`.toUpperCase();
 };

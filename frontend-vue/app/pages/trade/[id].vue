@@ -428,7 +428,8 @@ const label =
             <div class="h-px bg-slate-200 dark:bg-white/10" />
             <div class="flex flex-wrap items-center justify-between gap-3">
               <span v-if="partnerRating != null" :class="hint">
-                <span class="text-secondary">{{ partner }}</span> a noté de son côté.
+                <span class="text-secondary">{{ partner }}</span>
+                {{ partnerRating === 0 ? 'a passé la notation.' : 'a noté de son côté.' }}
               </span>
               <span v-else :class="hint">
                 En attente éventuelle de la note de
