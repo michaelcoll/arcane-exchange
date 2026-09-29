@@ -140,8 +140,9 @@ const bottomNavLinkClass = (path: string) => [
 
     <AppToast />
 
+    <!-- Une page peut masquer la nav du bas (meta `hideBottomNav`) pour sa propre barre d'action. -->
     <nav
-      v-if="isLoaded && isSignedIn"
+      v-if="isLoaded && isSignedIn && !route.meta.hideBottomNav"
       class="hidden max-md:fixed max-md:right-0 max-md:bottom-0 max-md:left-0 max-md:z-50 max-md:flex max-md:border-t max-md:border-slate-200 max-md:bg-slate-100/80 max-md:px-2 max-md:pt-2 max-md:pb-[calc(0.5rem+env(safe-area-inset-bottom))] max-md:backdrop-blur-md dark:max-md:border-white/10 dark:max-md:bg-zinc-950/80"
     >
       <NuxtLink to="/collection" :class="bottomNavLinkClass('/collection')">
