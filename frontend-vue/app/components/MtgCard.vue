@@ -88,7 +88,8 @@ onUnmounted(() => {
   >
     <span
       v-if="qty != null"
-      class="absolute top-1.5 right-1.5 z-[5] rounded-full border border-white/20 bg-black/60 px-1.5 py-0.5 font-mono text-xs font-semibold text-zinc-100 backdrop-blur-sm"
+      data-testid="qty"
+      class="absolute bottom-1.5 left-1.5 z-[5] rounded-full border border-white/20 bg-black/60 px-1.5 py-0.5 font-mono text-xs font-semibold text-zinc-100 backdrop-blur-sm"
       >×{{ qty }}</span
     >
 
