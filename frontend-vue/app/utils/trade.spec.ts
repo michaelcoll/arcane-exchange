@@ -15,6 +15,7 @@ import {
   tradeConfirmation,
   tradeSettlementLabel,
   tradeStatusStepLabel,
+  tradeStepIndex,
   type TradeStatus,
 } from './trade';
 import formatPrice from './format-price';
@@ -205,6 +206,14 @@ describe('formatTradeRating', () => {
 
   it('marks a missing rating', () => {
     expect(formatTradeRating(null)).toBe('non notée');
+  });
+});
+
+describe('tradeStepIndex', () => {
+  it('locates a status on the nominal path, -1 once abandoned', () => {
+    expect(tradeStepIndex('PENDING')).toBe(0);
+    expect(tradeStepIndex('CLOSED')).toBe(4);
+    expect(tradeStepIndex('ABANDONED')).toBe(-1);
   });
 });
 

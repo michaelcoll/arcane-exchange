@@ -8,7 +8,7 @@ const props = defineProps<{ status: TradeStatus; partner: string }>();
 const emit = defineEmits<{ close: [] }>();
 
 /* -1 pour un échange abandonné : aucune étape n'est alors « en cours ». */
-const current = computed(() => TRADE_STEPS.findIndex((s) => s.status === props.status));
+const current = computed(() => tradeStepIndex(props.status));
 
 type StepState = 'done' | 'current' | 'upcoming';
 
