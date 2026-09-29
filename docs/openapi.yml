@@ -38,6 +38,10 @@ paths:
           description: Card info from EDHRec
         '401':
           description: Missing or invalid token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
       security:
       - bearer_auth: []
   /card/offers:
@@ -101,10 +105,22 @@ paths:
                 $ref: '#/components/schemas/PaginatedCardOffersResponse'
         '400':
           description: Invalid or missing query params, or pagination out of bounds
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
         '401':
           description: Missing or invalid token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
         '404':
           description: No card found for this CardId
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
       security:
       - bearer_auth: []
   /card/{scryfall_id}/price-history:
@@ -149,10 +165,22 @@ paths:
                   $ref: '#/components/schemas/PriceHistoryEntryResponse'
         '400':
           description: Invalid date range (start_date > end_date), or missing `foil`
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
         '401':
           description: Missing or invalid token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
         '404':
           description: No card found for this scryfall_id
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
       security:
       - bearer_auth: []
   /collection:
@@ -234,8 +262,16 @@ paths:
                 $ref: '#/components/schemas/PaginatedCollectionResponse'
         '400':
           description: Pagination out of bounds
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
         '401':
           description: Missing or invalid token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
       security:
       - bearer_auth: []
   /collection/import:
@@ -254,6 +290,10 @@ paths:
                   $ref: '#/components/schemas/CardImportResponse'
         '401':
           description: Missing or invalid token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
       security:
       - bearer_auth: []
     post:
@@ -275,11 +315,23 @@ paths:
               schema:
                 $ref: '#/components/schemas/CardImportStartedResponse'
         '400':
-          description: Invalid body (non UTF-8, malformed CSV, ...)
+          description: Rejected file; `code` is `empty_file`, `malformed_csv`, `binder_export` or `unrecognized_format`
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
         '401':
           description: Missing or invalid token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
         '409':
           description: An import is already in progress for this user
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
       security:
       - bearer_auth: []
   /collection/import/{id}:
@@ -303,8 +355,16 @@ paths:
                 $ref: '#/components/schemas/CardImportResponse'
         '401':
           description: Missing or invalid token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
         '404':
           description: Import not found, or not owned by the caller
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
       security:
       - bearer_auth: []
   /collection/price-history:
@@ -336,8 +396,16 @@ paths:
                   $ref: '#/components/schemas/PriceHistoryEntryResponse'
         '400':
           description: Invalid date range (start_date > end_date)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
         '401':
           description: Missing or invalid token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
       security:
       - bearer_auth: []
   /collection/stats:
@@ -354,6 +422,10 @@ paths:
                 $ref: '#/components/schemas/CollectionStatsResponse'
         '401':
           description: Missing or invalid token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
       security:
       - bearer_auth: []
   /collection/visibility/rarities:
@@ -370,6 +442,10 @@ paths:
                 $ref: '#/components/schemas/RarityFiltersResponse'
         '401':
           description: Missing or invalid token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
       security:
       - bearer_auth: []
     post:
@@ -387,8 +463,16 @@ paths:
           description: Trade rule updated successfully
         '400':
           description: Invalid rarity code or kept_copies out of range
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
         '401':
           description: Missing or invalid token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
       security:
       - bearer_auth: []
   /maintenance/stats:
@@ -508,8 +592,16 @@ paths:
                 $ref: '#/components/schemas/PaginatedCollectionResponse'
         '400':
           description: Pagination out of bounds, or sort_by=added_at without player_username
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
         '401':
           description: Missing or invalid token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
       security:
       - bearer_auth: []
   /sets:
@@ -547,8 +639,16 @@ paths:
                 $ref: '#/components/schemas/SetInfoResponse'
         '400':
           description: Invalid set code
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
         '404':
           description: No set found for this set_code
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
   /trades:
     get:
       tags:
@@ -588,8 +688,16 @@ paths:
                 $ref: '#/components/schemas/PaginatedTradesResponse'
         '400':
           description: Invalid status filter, or pagination out of bounds
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
         '401':
           description: Missing or invalid token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
       security:
       - bearer_auth: []
     post:
@@ -611,10 +719,22 @@ paths:
                 $ref: '#/components/schemas/CreateTradeResponse'
         '400':
           description: Invalid payload, or respondent is the caller
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
         '401':
           description: Missing or invalid token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
         '404':
           description: Respondent username unknown
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
       security:
       - bearer_auth: []
   /trades/{trade_id}:
@@ -639,10 +759,22 @@ paths:
                 $ref: '#/components/schemas/TradeDetailResponse'
         '401':
           description: Missing or invalid token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
         '403':
           description: Caller is not a party to this trade
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
         '404':
           description: Trade not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
       security:
       - bearer_auth: []
   /trades/{trade_id}/abandon:
@@ -663,12 +795,28 @@ paths:
           description: Trade abandoned
         '401':
           description: Missing or invalid token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
         '403':
           description: Caller is not a party to this trade
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
         '404':
           description: Trade not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
         '409':
           description: Trade is already finalized and cannot be abandoned
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
       security:
       - bearer_auth: []
   /trades/{trade_id}/accept:
@@ -689,12 +837,28 @@ paths:
           description: Trade accepted
         '401':
           description: Missing or invalid token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
         '403':
           description: Caller is not a party to this trade
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
         '404':
           description: Trade not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
         '409':
           description: Trade cannot be accepted in its current status, or already accepted by the caller
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
       security:
       - bearer_auth: []
   /trades/{trade_id}/cards:
@@ -721,14 +885,34 @@ paths:
           description: Card added to the trade (quantity incremented if already present)
         '400':
           description: Invalid payload, or owner_username is not a party to this trade
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
         '401':
           description: Missing or invalid token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
         '403':
           description: Caller is not a party to this trade
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
         '404':
           description: Trade not found, owner username unknown, the caller doesn't own enough of the card, or the other party doesn't offer enough of it to trade (visibility/binders/rarity filters)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
         '409':
           description: Trade cannot be modified in its current status, or the card is already reserved by another trade
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
       security:
       - bearer_auth: []
   /trades/{trade_id}/cards/remove:
@@ -755,14 +939,34 @@ paths:
           description: Card removed from the trade
         '400':
           description: Invalid payload, or owner_username is not a party to this trade
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
         '401':
           description: Missing or invalid token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
         '403':
           description: Caller is not a party to this trade
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
         '404':
           description: Trade not found, owner username unknown, or card not part of the trade
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
         '409':
           description: Trade cannot be modified in its current status
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
       security:
       - bearer_auth: []
   /trades/{trade_id}/confirm:
@@ -783,12 +987,28 @@ paths:
           description: Physical exchange confirmed
         '401':
           description: Missing or invalid token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
         '403':
           description: Caller is not a party to this trade
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
         '404':
           description: Trade not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
         '409':
           description: Trade must be fully accepted before it can be confirmed, or already confirmed by the caller
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
       security:
       - bearer_auth: []
   /trades/{trade_id}/rate:
@@ -815,14 +1035,34 @@ paths:
           description: Rating recorded
         '400':
           description: Rating missing or out of the 0-5 range
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
         '401':
           description: Missing or invalid token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
         '403':
           description: Caller is not a party to this trade
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
         '404':
           description: Trade not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
         '409':
           description: Trade must be completed before it can be rated, or already rated by the caller
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
       security:
       - bearer_auth: []
   /user:
@@ -835,8 +1075,16 @@ paths:
           description: User registered/updated successfully
         '400':
           description: Missing username claim in token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
         '401':
           description: Missing or invalid authentication token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
       security:
       - bearer_auth: []
   /user/trade-binders:
@@ -853,6 +1101,10 @@ paths:
                 $ref: '#/components/schemas/TradeBindersResponse'
         '401':
           description: Missing or invalid authentication token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
       security:
       - bearer_auth: []
     post:
@@ -870,10 +1122,22 @@ paths:
           description: Binder selected for trade
         '400':
           description: Binder name is empty
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
         '401':
           description: Missing or invalid authentication token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
         '404':
           description: Binder not found in the authenticated user's collection
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
       security:
       - bearer_auth: []
   /user/trade-binders/{name}:
@@ -893,6 +1157,10 @@ paths:
           description: Binder deselected for trade
         '401':
           description: Missing or invalid authentication token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
       security:
       - bearer_auth: []
   /user/visibility:
@@ -909,8 +1177,16 @@ paths:
                 $ref: '#/components/schemas/VisibilityResponse'
         '401':
           description: Missing or invalid authentication token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
         '404':
           description: Authenticated user has never registered
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
       security:
       - bearer_auth: []
     put:
@@ -928,10 +1204,22 @@ paths:
           description: Visibility updated successfully
         '400':
           description: Invalid visibility value
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
         '401':
           description: Missing or invalid authentication token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
         '404':
           description: Authenticated user has never registered
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
       security:
       - bearer_auth: []
   /user/{username}:
@@ -955,8 +1243,16 @@ paths:
                 $ref: '#/components/schemas/UserProfileResponse'
         '401':
           description: Missing or invalid authentication token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
         '404':
           description: Username not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
       security:
       - bearer_auth: []
 components:
@@ -1033,6 +1329,13 @@ components:
         created_at:
           type: string
           description: RFC 3339 timestamp
+        error_code:
+          type:
+          - string
+          - 'null'
+          description: |-
+            Stable code of a failed import's error (`no_valid_line`, `internal`, …), translated by
+            the clients. `null` unless the import failed.
         error_count:
           type: integer
           format: int32
@@ -1041,6 +1344,7 @@ components:
           type:
           - string
           - 'null'
+          description: Technical message of a failed import, for diagnosis only — never shown to the user.
         errors:
           type: array
           items:
@@ -1251,6 +1555,21 @@ components:
         enqueued:
           type: integer
           minimum: 0
+    ErrorResponse:
+      type: object
+      description: |-
+        Body of every error response. `error` is a technical message, for diagnosis only; clients
+        translate `code` into what they show the user (ADR 0018).
+      required:
+      - error
+      - code
+      properties:
+        code:
+          type: string
+          description: Stable snake_case identifier of the error (e.g. `binder_export`, `internal`).
+        error:
+          type: string
+          description: Technical message, in English — never shown to the user as is.
     MessageResponse:
       type: object
       required:

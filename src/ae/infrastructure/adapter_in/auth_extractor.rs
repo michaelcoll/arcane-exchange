@@ -1,15 +1,16 @@
+use crate::application::error::{AppError, AuthenticationError};
 use crate::domain::user::User;
 use crate::infrastructure::AppState;
 use axum::{
     extract::FromRequestParts,
-    http::{StatusCode, header, request::Parts},
+    http::{header, request::Parts},
 };
 
 #[derive(Debug)]
 pub struct AuthenticatedUser(pub User);
 
 impl FromRequestParts<AppState> for AuthenticatedUser {
-    type Rejection = (StatusCode, String);
+    type Rejection = AppError;
 
     #[allow(clippy::manual_async_fn)]
     fn from_request_parts(
@@ -21,34 +22,26 @@ impl FromRequestParts<AppState> for AuthenticatedUser {
                 .headers
                 .get(header::AUTHORIZATION)
                 .and_then(|value| value.to_str().ok())
-                .ok_or_else(|| {
-                    (
-                        StatusCode::UNAUTHORIZED,
-                        "Missing Authorization header".to_string(),
-                    )
-                })?;
+                .ok_or_else(|| unauthorized("Missing Authorization header".to_string()))?;
 
-            let token = auth_header.strip_prefix("Bearer ").ok_or_else(|| {
-                (
-                    StatusCode::UNAUTHORIZED,
-                    "Invalid Authorization header format".to_string(),
-                )
-            })?;
+            let token = auth_header
+                .strip_prefix("Bearer ")
+                .ok_or_else(|| unauthorized("Invalid Authorization header format".to_string()))?;
 
             let user = state
                 .auth_service
                 .validate_token(token)
                 .await
-                .map_err(|e| {
-                    (
-                        StatusCode::UNAUTHORIZED,
-                        format!("Authentication failed: {}", e),
-                    )
-                })?;
+                .map_err(|e| unauthorized(e.to_string()))?;
 
             Ok(AuthenticatedUser(user))
         }
     }
+}
+
+/// Rejected as an `AppError`, so a 401 carries the same `{error, code}` body as any other error.
+fn unauthorized(message: String) -> AppError {
+    AppError::Authentication(AuthenticationError::InvalidToken(message))
 }
 
 #[cfg(test)]
@@ -56,7 +49,8 @@ mod tests {
     use super::*;
     use crate::application::service::auth_service::{AuthService, MockAuthService};
     use crate::domain::user::UserId;
-    use axum::http::Request;
+    use axum::http::{Request, StatusCode};
+    use axum::response::IntoResponse;
     use std::sync::Arc;
 
     fn create_test_app_state_with_auth(auth_service: Arc<dyn AuthService>) -> AppState {
@@ -77,9 +71,8 @@ mod tests {
         let result = AuthenticatedUser::from_request_parts(&mut parts, &state).await;
 
         assert!(result.is_err());
-        let (status, message) = result.unwrap_err();
-        assert_eq!(status, StatusCode::UNAUTHORIZED);
-        assert_eq!(message, "Missing Authorization header");
+        let response = result.unwrap_err().into_response();
+        assert_eq!(response.status(), StatusCode::UNAUTHORIZED);
     }
 
     #[tokio::test]
@@ -96,9 +89,11 @@ mod tests {
         let result = AuthenticatedUser::from_request_parts(&mut parts, &state).await;
 
         assert!(result.is_err());
-        let (status, message) = result.unwrap_err();
-        assert_eq!(status, StatusCode::UNAUTHORIZED);
-        assert_eq!(message, "Invalid Authorization header format");
+        assert!(matches!(
+            result.unwrap_err(),
+            AppError::Authentication(AuthenticationError::InvalidToken(message))
+                if message == "Invalid Authorization header format"
+        ));
     }
 
     #[tokio::test]

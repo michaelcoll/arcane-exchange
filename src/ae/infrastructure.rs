@@ -1,5 +1,6 @@
 use crate::application::caller::EdhRecCaller;
 use crate::application::card_import_job::CardImportJob;
+use crate::application::error::{AppError, InfraError};
 use crate::application::repository::CardImportRepository;
 use crate::application::service::auth_service::AuthService;
 use crate::application::service::autocomplete_user_service::AutocompleteUserService;
@@ -55,6 +56,7 @@ use crate::infrastructure::adapter_in::search::controller::create_search_router;
 use crate::infrastructure::adapter_in::sets::controller::create_set_router;
 use crate::infrastructure::adapter_in::trade::controller::create_trade_router;
 use crate::infrastructure::adapter_in::user::controller::create_user_router;
+use crate::infrastructure::adapter_in::with_error_body;
 use crate::infrastructure::adapter_out::caller::cardmarket_caller_adapter::CardMarketCallerAdapter;
 use crate::infrastructure::adapter_out::caller::edhrec_caller_adapter::EdhRecCallerAdapter;
 use crate::infrastructure::adapter_out::repository::card_prices_view_repository_adapter::CardPricesViewRepositoryAdapter;
@@ -379,6 +381,7 @@ fn create_router(app_state: AppState) -> Router {
         .nest("/user", create_user_router())
         .nest("/trades", create_trade_router())
         .with_state(app_state)
+        .layer(axum::middleware::map_response(with_error_body))
         .layer(NewSentryLayer::<Request<Body>>::new_from_top())
         .layer(SentryHttpLayer::new().enable_transaction())
 }
@@ -396,7 +399,9 @@ pub async fn create_infra(pool: Pool<Postgres>, config: &Config) -> Router {
     // the worker (or the router) starts, so a fresh import for the same user is accepted.
     match repos
         .card_import
-        .fail_all_active("server restarted during import")
+        .fail_all_active(&AppError::Infra(InfraError::QueueError(
+            "server restarted during import".to_string(),
+        )))
         .await
     {
         Ok(count) if count > 0 => {

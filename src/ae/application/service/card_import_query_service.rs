@@ -55,6 +55,7 @@ mod tests {
             line_errors: vec![],
             line_error_count: 0,
             error_message: None,
+            error_code: None,
             created_at: Utc::now(),
             finished_at: Some(Utc::now()),
         }

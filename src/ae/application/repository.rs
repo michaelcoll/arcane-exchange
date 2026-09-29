@@ -343,16 +343,17 @@ pub trait CardImportRepository: Send + Sync {
         processed_lines: u32,
     ) -> Result<(), AppError>;
 
+    /// Records the outcome; a failed import keeps the error's message and code.
     async fn finish(
         &self,
         id: &CardImportId,
         status: CardImportStatus,
-        error_message: Option<&str>,
+        error: Option<&AppError>,
     ) -> Result<(), AppError>;
 
-    /// Marks every `Pending`/`Running` import as `Failed` (used at server startup). Returns the
-    /// number of imports affected.
-    async fn fail_all_active(&self, reason: &str) -> Result<u64, AppError>;
+    /// Marks every `Pending`/`Running` import as `Failed` with `reason` (used at server startup).
+    /// Returns the number of imports affected.
+    async fn fail_all_active(&self, reason: &AppError) -> Result<u64, AppError>;
 
     /// Deletes the user's completed/failed imports beyond the `keep` most recent ones. An active
     /// (`Pending`/`Running`) import is never purged.

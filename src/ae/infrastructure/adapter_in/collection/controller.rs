@@ -42,7 +42,7 @@ pub fn create_collection_router() -> axum::Router<AppState> {
     ),
     responses(
         (status = 202, description = "Import accepted, processing in the background", body = CardImportStartedResponse),
-        (status = 400, description = "Invalid body (non UTF-8, malformed CSV, ...)"),
+        (status = 400, description = "Rejected file; `code` is `empty_file`, `malformed_csv`, `binder_export` or `unrecognized_format`"),
         (status = 401, description = "Missing or invalid token"),
         (status = 409, description = "An import is already in progress for this user"),
     ),
@@ -59,7 +59,7 @@ pub(crate) async fn import_cards(
         .map_err(|e| FunctionalError::WrongFormat(format!("Failed to read body: {}", e)))?;
 
     let csv = String::from_utf8(bytes.to_vec())
-        .map_err(|_| FunctionalError::WrongFormat("Body is not valid UTF-8".to_string()))?;
+        .map_err(|_| FunctionalError::MalformedCsv("body is not valid UTF-8".to_string()))?;
 
     tracing::info!("Importing cards for user: {}", user.id);
 

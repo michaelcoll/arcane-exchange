@@ -5,7 +5,9 @@ use crate::domain::language_code::LanguageCode;
 use axum::Json;
 use axum::http::StatusCode;
 use axum::response::{IntoResponse, Response};
-use serde_json::json;
+use serde::Serialize;
+use ts_rs::TS;
+use utoipa::ToSchema;
 
 pub mod auth_extractor;
 pub mod autocomplete;
@@ -36,6 +38,17 @@ pub(crate) fn parse_copy_id(
     )?)
 }
 
+/// Body of every error response. `error` is a technical message, for diagnosis only; clients
+/// translate `code` into what they show the user (ADR 0018).
+#[derive(Serialize, Debug, TS, ToSchema)]
+#[ts(export, export_to = "ErrorResponse.ts")]
+pub struct ErrorResponse {
+    /// Technical message, in English — never shown to the user as is.
+    pub error: String,
+    /// Stable snake_case identifier of the error (e.g. `binder_export`, `internal`).
+    pub code: String,
+}
+
 impl IntoResponse for AppError {
     fn into_response(self) -> Response {
         let status = match &self {
@@ -46,6 +59,11 @@ impl IntoResponse for AppError {
                 | FunctionalError::InvalidRarityCode(_)
                 | FunctionalError::InvalidCollectorNumber(_)
                 | FunctionalError::WrongFormat(_)
+                | FunctionalError::EmptyFile
+                | FunctionalError::MalformedCsv(_)
+                | FunctionalError::BinderExport
+                | FunctionalError::UnrecognizedFormat { .. }
+                | FunctionalError::NoValidLine
                 | FunctionalError::InvalidCardImportStatus(_)
                 | FunctionalError::InvalidPageSize { .. }
                 | FunctionalError::PaginationTooDeep { .. }
@@ -80,18 +98,54 @@ impl IntoResponse for AppError {
             },
         };
 
-        let body = Json(json!({
-            "error": String::from(self)
-        }));
+        let body = Json(ErrorResponse {
+            code: self.code().to_string(),
+            error: String::from(self),
+        });
 
         (status, body).into_response()
     }
+}
+
+/// Error responses built outside `AppError` — axum's extractor rejections, unknown routes — are
+/// plain text. Rewrites them with the `ErrorResponse` body, so every error the API returns has
+/// the documented shape: `invalid_request` for a client error, `internal` for a server one.
+pub(crate) async fn with_error_body(response: Response) -> Response {
+    let status = response.status();
+    let is_json = response
+        .headers()
+        .get(axum::http::header::CONTENT_TYPE)
+        .is_some_and(|value| value.as_bytes().starts_with(b"application/json"));
+    if !(status.is_client_error() || status.is_server_error()) || is_json {
+        return response;
+    }
+
+    // These bodies are short diagnostics; past 64 KiB, the message is dropped rather than kept.
+    let error = axum::body::to_bytes(response.into_body(), 64 * 1024)
+        .await
+        .map(|bytes| String::from_utf8_lossy(&bytes).into_owned())
+        .unwrap_or_default();
+    let code = if status.is_client_error() {
+        "invalid_request"
+    } else {
+        "internal"
+    };
+
+    (
+        status,
+        Json(ErrorResponse {
+            error,
+            code: code.to_string(),
+        }),
+    )
+        .into_response()
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::application::error::AuthenticationError;
+    use serde_json::json;
 
     #[test]
     fn parse_copy_id_builds_the_copy() {
@@ -122,6 +176,100 @@ mod tests {
                 FunctionalError::InvalidCollectorNumber(_)
             ))
         ));
+    }
+
+    async fn body_of(response: Response) -> serde_json::Value {
+        let bytes = axum::body::to_bytes(response.into_body(), usize::MAX)
+            .await
+            .unwrap();
+        serde_json::from_slice(&bytes).unwrap()
+    }
+
+    #[tokio::test]
+    async fn error_body_carries_the_message_and_the_code() {
+        let response = AppError::Functional(FunctionalError::BinderExport).into_response();
+
+        assert_eq!(response.status(), StatusCode::BAD_REQUEST);
+        assert_eq!(
+            body_of(response).await,
+            json!({
+                "error": "expecting a collection export, got a binder export",
+                "code": "binder_export"
+            })
+        );
+    }
+
+    #[tokio::test]
+    async fn an_extractor_rejection_gets_the_error_body() {
+        #[derive(serde::Deserialize)]
+        #[allow(dead_code)]
+        struct Params {
+            page: u32,
+        }
+        let uri: axum::http::Uri = "/x?page=abc".parse().unwrap();
+        let rejection = axum::extract::Query::<Params>::try_from_uri(&uri)
+            .err()
+            .unwrap()
+            .into_response();
+
+        let response = with_error_body(rejection).await;
+
+        assert_eq!(response.status(), StatusCode::BAD_REQUEST);
+        let body = body_of(response).await;
+        assert_eq!(body["code"], "invalid_request");
+        assert!(body["error"].as_str().unwrap().contains("page"));
+    }
+
+    #[tokio::test]
+    async fn a_bodiless_server_error_gets_the_internal_code() {
+        let response = with_error_body(StatusCode::SERVICE_UNAVAILABLE.into_response()).await;
+
+        assert_eq!(response.status(), StatusCode::SERVICE_UNAVAILABLE);
+        assert_eq!(body_of(response).await["code"], "internal");
+    }
+
+    #[tokio::test]
+    async fn an_app_error_body_is_left_as_is() {
+        let response =
+            with_error_body(AppError::Functional(FunctionalError::CardNotFound).into_response())
+                .await;
+
+        assert_eq!(body_of(response).await["code"], "card_not_found");
+    }
+
+    #[tokio::test]
+    async fn a_success_is_left_as_is() {
+        let response = with_error_body((StatusCode::OK, "plain").into_response()).await;
+
+        let bytes = axum::body::to_bytes(response.into_body(), usize::MAX)
+            .await
+            .unwrap();
+        assert_eq!(&bytes[..], b"plain");
+    }
+
+    #[tokio::test]
+    async fn infra_error_body_carries_the_internal_code() {
+        let response =
+            AppError::Infra(InfraError::RepositoryError("db down".to_string())).into_response();
+
+        assert_eq!(body_of(response).await["code"], "internal");
+    }
+
+    #[test]
+    fn import_format_errors_return_bad_request_status() {
+        for error in [
+            FunctionalError::EmptyFile,
+            FunctionalError::MalformedCsv("bad quote".to_string()),
+            FunctionalError::BinderExport,
+            FunctionalError::UnrecognizedFormat {
+                missing: vec!["Proxy".to_string()],
+                unexpected: vec![],
+            },
+            FunctionalError::NoValidLine,
+        ] {
+            let response = AppError::Functional(error).into_response();
+            assert_eq!(response.status(), StatusCode::BAD_REQUEST);
+        }
     }
 
     #[test]

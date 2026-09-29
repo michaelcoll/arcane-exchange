@@ -60,7 +60,11 @@ pub struct CardImportResponse {
     /// Truncated to at most 100 entries; `error_count` carries the true total.
     pub errors: Vec<CardImportLineErrorResponse>,
     pub error_count: u32,
+    /// Technical message of a failed import, for diagnosis only — never shown to the user.
     pub error_message: Option<String>,
+    /// Stable code of a failed import's error (`no_valid_line`, `internal`, …), translated by
+    /// the clients. `null` unless the import failed.
+    pub error_code: Option<String>,
     /// RFC 3339 timestamp
     pub created_at: String,
     /// RFC 3339 timestamp
@@ -82,6 +86,7 @@ impl From<CardImport> for CardImportResponse {
                 .collect(),
             error_count: import.line_error_count,
             error_message: import.error_message,
+            error_code: import.error_code,
             created_at: import.created_at.to_rfc3339(),
             finished_at: import.finished_at.map(|d| d.to_rfc3339()),
         }

@@ -47,6 +47,18 @@ impl From<AppError> for String {
     }
 }
 
+impl AppError {
+    /// Stable identifier sent to the clients alongside the technical message. Infrastructure
+    /// failures are not the user's to act on and all share `internal`.
+    pub fn code(&self) -> &'static str {
+        match self {
+            AppError::Functional(e) => e.code(),
+            AppError::Authentication(AuthenticationError::InvalidToken(_)) => "invalid_token",
+            AppError::Infra(_) => "internal",
+        }
+    }
+}
+
 impl std::fmt::Display for AppError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}", String::from(self.clone()))
@@ -76,6 +88,29 @@ impl From<InfraError> for AppError {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn code_of_a_functional_error_is_its_own() {
+        let error = AppError::Functional(FunctionalError::BinderExport);
+        assert_eq!(error.code(), "binder_export");
+    }
+
+    #[test]
+    fn code_of_any_infra_error_is_internal() {
+        for error in [
+            InfraError::RepositoryError("db down".to_string()),
+            InfraError::CallError("timeout".to_string()),
+            InfraError::QueueError("closed".to_string()),
+        ] {
+            assert_eq!(AppError::Infra(error).code(), "internal");
+        }
+    }
+
+    #[test]
+    fn code_of_an_authentication_error_is_invalid_token() {
+        let error = AppError::Authentication(AuthenticationError::InvalidToken("x".to_string()));
+        assert_eq!(error.code(), "invalid_token");
+    }
 
     #[test]
     fn app_error_to_string_for_parse_error() {

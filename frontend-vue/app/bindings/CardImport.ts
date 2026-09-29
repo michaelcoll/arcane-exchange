@@ -21,7 +21,15 @@ export type CardImport = {
    */
   errors: Array<CardImportLineError>;
   error_count: number;
+  /**
+   * Technical message of a failed import, for diagnosis only — never shown to the user.
+   */
   error_message: string | null;
+  /**
+   * Stable code of a failed import's error (`no_valid_line`, `internal`, …), translated by
+   * the clients. `null` unless the import failed.
+   */
+  error_code: string | null;
   /**
    * RFC 3339 timestamp
    */

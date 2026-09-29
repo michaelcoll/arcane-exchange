@@ -75,6 +75,7 @@ impl ImportCardUseCase for ImportCardService {
             line_errors,
             line_error_count,
             error_message: None,
+            error_code: None,
             created_at: Utc::now(),
             finished_at: None,
         };
@@ -142,7 +143,7 @@ impl RunCardImportService {
         if cards.is_empty() {
             // The collection is deliberately left untouched: no `delete_all` on a fully-invalid
             // file.
-            return Err(FunctionalError::WrongFormat("no valid line in file".to_string()).into());
+            return Err(FunctionalError::NoValidLine.into());
         }
 
         self.card_repository.delete_all(user.clone()).await?;
@@ -191,17 +192,16 @@ impl RunCardImportUseCase for RunCardImportService {
         // with it, the user's one-active-import slot) until then. Log it explicitly rather than
         // propagate it and lose the original outcome, which is what the caller (and the row, had
         // `finish` succeeded) actually needs to reflect.
-        let (status, error_message) = match &outcome {
+        let (status, error) = match &outcome {
             Ok(()) => (CardImportStatus::Completed, None),
             Err(e) => {
-                let message: String = e.clone().into();
-                tracing::error!(import_id = %import_id, error = %message, "card import failed");
-                (CardImportStatus::Failed, Some(message))
+                tracing::error!(import_id = %import_id, error = %e, code = e.code(), "card import failed");
+                (CardImportStatus::Failed, Some(e))
             }
         };
         if let Err(finish_err) = self
             .card_import_repository
-            .finish(&import_id, status, error_message.as_deref())
+            .finish(&import_id, status, error)
             .await
         {
             let finish_message: String = finish_err.into();
@@ -462,8 +462,10 @@ mod tests {
             .returning(|_| Box::pin(async { Ok(()) }));
         card_import_repository
             .expect_finish()
-            .withf(move |id, status, msg| {
-                *id == import_id && *status == CardImportStatus::Failed && msg.is_some()
+            .withf(move |id, status, error| {
+                *id == import_id
+                    && *status == CardImportStatus::Failed
+                    && error.is_some_and(|e| e.code() == "no_valid_line")
             })
             .times(1)
             .returning(|_, _, _| Box::pin(async { Ok(()) }));
@@ -517,8 +519,10 @@ mod tests {
             .returning(|_| Box::pin(async { Ok(()) }));
         card_import_repository
             .expect_finish()
-            .withf(move |id, status, msg| {
-                *id == import_id && *status == CardImportStatus::Failed && msg.is_some()
+            .withf(move |id, status, error| {
+                *id == import_id
+                    && *status == CardImportStatus::Failed
+                    && error.is_some_and(|e| e.code() == "internal")
             })
             .times(1)
             .returning(|_, _, _| Box::pin(async { Ok(()) }));

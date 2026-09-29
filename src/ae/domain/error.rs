@@ -10,6 +10,19 @@ pub enum FunctionalError {
     InvalidRarityCode(String),
     InvalidCollectorNumber(String),
     WrongFormat(String),
+    /// The imported file has no data line (or no header).
+    EmptyFile,
+    /// The imported file is not readable as CSV; carries the reader's diagnostic.
+    MalformedCsv(String),
+    /// A ManaBox binder export was imported where a collection export is expected.
+    BinderExport,
+    /// The header is not the one of a ManaBox collection export.
+    UnrecognizedFormat {
+        missing: Vec<String>,
+        unexpected: Vec<String>,
+    },
+    /// Not a single line of the imported file could be read.
+    NoValidLine,
     InvalidPageSize {
         requested: u32,
         max: u32,
@@ -44,6 +57,54 @@ pub enum FunctionalError {
     ImportNotFound,
 }
 
+impl FunctionalError {
+    /// Stable identifier of the error, part of the API contract: clients translate it into a
+    /// message, so renaming one breaks the clients already deployed (ADR 0018).
+    pub fn code(&self) -> &'static str {
+        match self {
+            FunctionalError::ParseError { .. } => "parse_error",
+            FunctionalError::InvalidLanguageCode(_) => "invalid_language_code",
+            FunctionalError::InvalidSetCode(_) => "invalid_set_code",
+            FunctionalError::InvalidRarityCode(_) => "invalid_rarity_code",
+            FunctionalError::InvalidCollectorNumber(_) => "invalid_collector_number",
+            FunctionalError::WrongFormat(_) => "wrong_format",
+            FunctionalError::EmptyFile => "empty_file",
+            FunctionalError::MalformedCsv(_) => "malformed_csv",
+            FunctionalError::BinderExport => "binder_export",
+            FunctionalError::UnrecognizedFormat { .. } => "unrecognized_format",
+            FunctionalError::NoValidLine => "no_valid_line",
+            FunctionalError::InvalidPageSize { .. } => "invalid_page_size",
+            FunctionalError::PaginationTooDeep { .. } => "pagination_too_deep",
+            FunctionalError::AddedAtSortRequiresPlayerUsername => {
+                "added_at_sort_requires_player_username"
+            }
+            FunctionalError::PriceNotFound => "price_not_found",
+            FunctionalError::CardNotFound => "card_not_found",
+            FunctionalError::SetNotFound => "set_not_found",
+            FunctionalError::SelfTrade => "self_trade",
+            FunctionalError::TradeNotModifiable => "trade_not_modifiable",
+            FunctionalError::TradeNotFound => "trade_not_found",
+            FunctionalError::TradeAccessDenied => "trade_access_denied",
+            FunctionalError::TradeNotAcceptable => "trade_not_acceptable",
+            FunctionalError::TradeAlreadyAccepted => "trade_already_accepted",
+            FunctionalError::TradeAlreadyFinalized => "trade_already_finalized",
+            FunctionalError::TradeNotFullyAccepted => "trade_not_fully_accepted",
+            FunctionalError::TradeAlreadyConfirmed => "trade_already_confirmed",
+            FunctionalError::TradeNotCompleted => "trade_not_completed",
+            FunctionalError::TradeAlreadyRated => "trade_already_rated",
+            FunctionalError::TradeConcurrentlyModified => "trade_concurrently_modified",
+            FunctionalError::UserNotFound => "user_not_found",
+            FunctionalError::TradeEmpty => "trade_empty",
+            FunctionalError::TradeCardNotFound => "trade_card_not_found",
+            FunctionalError::CardAlreadyReserved => "card_already_reserved",
+            FunctionalError::BinderNotFound => "binder_not_found",
+            FunctionalError::InvalidCardImportStatus(_) => "invalid_card_import_status",
+            FunctionalError::ImportAlreadyRunning => "import_already_running",
+            FunctionalError::ImportNotFound => "import_not_found",
+        }
+    }
+}
+
 impl From<FunctionalError> for String {
     fn from(val: FunctionalError) -> String {
         match val {
@@ -56,6 +117,20 @@ impl From<FunctionalError> for String {
             FunctionalError::InvalidRarityCode(msg) => format!("Invalid rarity code '{}'", msg),
             FunctionalError::InvalidCollectorNumber(msg) => msg,
             FunctionalError::WrongFormat(msg) => msg,
+            FunctionalError::EmptyFile => "missing headers or empty file".to_string(),
+            FunctionalError::MalformedCsv(msg) => format!("malformed CSV: {msg}"),
+            FunctionalError::BinderExport => {
+                "expecting a collection export, got a binder export".to_string()
+            }
+            FunctionalError::UnrecognizedFormat {
+                missing,
+                unexpected,
+            } => format!(
+                "unrecognized collection export: missing columns [{}], unexpected columns [{}]",
+                missing.join(", "),
+                unexpected.join(", ")
+            ),
+            FunctionalError::NoValidLine => "no valid line in file".to_string(),
             FunctionalError::InvalidPageSize { requested, max } => {
                 format!("Invalid page_size '{requested}' (must be between 1 and {max})")
             }
@@ -124,6 +199,63 @@ impl From<FunctionalError> for String {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn import_format_errors_carry_their_stable_code() {
+        let cases = [
+            (FunctionalError::EmptyFile, "empty_file"),
+            (
+                FunctionalError::MalformedCsv("bad quote".to_string()),
+                "malformed_csv",
+            ),
+            (FunctionalError::BinderExport, "binder_export"),
+            (
+                FunctionalError::UnrecognizedFormat {
+                    missing: vec![],
+                    unexpected: vec!["Tags".to_string()],
+                },
+                "unrecognized_format",
+            ),
+            (FunctionalError::NoValidLine, "no_valid_line"),
+        ];
+
+        for (error, code) in cases {
+            assert_eq!(error.code(), code);
+        }
+    }
+
+    #[test]
+    fn code_is_the_snake_case_variant_name() {
+        assert_eq!(
+            FunctionalError::WrongFormat(String::new()).code(),
+            "wrong_format"
+        );
+        assert_eq!(
+            FunctionalError::InvalidPageSize {
+                requested: 0,
+                max: 1
+            }
+            .code(),
+            "invalid_page_size"
+        );
+        assert_eq!(
+            FunctionalError::ImportAlreadyRunning.code(),
+            "import_already_running"
+        );
+    }
+
+    #[test]
+    fn string_from_unrecognized_format_lists_the_columns() {
+        let msg: String = FunctionalError::UnrecognizedFormat {
+            missing: vec!["Signed".to_string(), "Proxy".to_string()],
+            unexpected: vec![],
+        }
+        .into();
+        assert_eq!(
+            msg,
+            "unrecognized collection export: missing columns [Signed, Proxy], unexpected columns []"
+        );
+    }
 
     #[test]
     fn string_from_invalid_language_code_includes_the_value() {

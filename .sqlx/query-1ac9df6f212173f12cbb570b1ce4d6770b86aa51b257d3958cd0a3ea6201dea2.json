@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n            SELECT id, user_id, status, source_lines, total_lines, processed_lines,\n                   line_errors as \"line_errors: Json<Vec<LineErrorJson>>\",\n                   line_error_count, error_message, created_at, finished_at\n            FROM card_import\n            WHERE id = $1\n            ",
+  "query": "\n            SELECT id, user_id, status, source_lines, total_lines, processed_lines,\n                   line_errors as \"line_errors: Json<Vec<LineErrorJson>>\",\n                   line_error_count, error_message, error_code, created_at, finished_at\n            FROM card_import\n            WHERE user_id = $1\n            ORDER BY created_at DESC\n            ",
   "describe": {
     "columns": [
       {
@@ -104,6 +104,17 @@
       },
       {
         "ordinal": 9,
+        "name": "error_code",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "card_import",
+            "name": "error_code"
+          }
+        }
+      },
+      {
+        "ordinal": 10,
         "name": "created_at",
         "type_info": "Timestamptz",
         "origin": {
@@ -114,7 +125,7 @@
         }
       },
       {
-        "ordinal": 10,
+        "ordinal": 11,
         "name": "finished_at",
         "type_info": "Timestamptz",
         "origin": {
@@ -127,7 +138,7 @@
     ],
     "parameters": {
       "Left": [
-        "Uuid"
+        "Text"
       ]
     },
     "nullable": [
@@ -140,9 +151,10 @@
       false,
       false,
       true,
+      true,
       false,
       true
     ]
   },
-  "hash": "63448faa75da251a5c4c67f4b9af2c184249b37682bc180ad4999668d489b652"
+  "hash": "1ac9df6f212173f12cbb570b1ce4d6770b86aa51b257d3958cd0a3ea6201dea2"
 }

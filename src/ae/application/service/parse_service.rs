@@ -73,9 +73,7 @@ impl Columns {
                 .iter()
                 .all(|expected| headers.contains(expected))
         {
-            return Err(FunctionalError::WrongFormat(
-                "expecting a collection export, got a binder export".to_string(),
-            ));
+            return Err(FunctionalError::BinderExport);
         }
 
         let missing: Vec<&str> = COLLECTION_HEADERS
@@ -93,11 +91,10 @@ impl Columns {
             .map(|(_, header)| *header)
             .collect();
         if !missing.is_empty() || !unexpected.is_empty() {
-            return Err(FunctionalError::WrongFormat(format!(
-                "unrecognized collection export: missing columns [{}], unexpected columns [{}]",
-                missing.join(", "),
-                unexpected.join(", ")
-            )));
+            return Err(FunctionalError::UnrecognizedFormat {
+                missing: missing.into_iter().map(str::to_string).collect(),
+                unexpected: unexpected.into_iter().map(str::to_string).collect(),
+            });
         }
 
         // Every expected column is present at this point.
@@ -124,9 +121,7 @@ pub fn parse_cards(csv: &str) -> Result<ParsedCollection, AppError> {
     let estimated_lines = csv.lines().count();
 
     if estimated_lines <= 1 {
-        return Err(
-            FunctionalError::WrongFormat("missing headers or empty file".to_string()).into(),
-        );
+        return Err(FunctionalError::EmptyFile.into());
     }
 
     let mut reader = ReaderBuilder::new()
@@ -136,7 +131,7 @@ pub fn parse_cards(csv: &str) -> Result<ParsedCollection, AppError> {
 
     let headers = reader
         .headers()
-        .map_err(|e| FunctionalError::WrongFormat(e.to_string()))?
+        .map_err(|e| FunctionalError::MalformedCsv(e.to_string()))?
         .clone();
     let header_refs: Vec<&str> = headers.iter().collect();
     let columns = Columns::from_headers(&header_refs)?;
@@ -148,7 +143,7 @@ pub fn parse_cards(csv: &str) -> Result<ParsedCollection, AppError> {
     for (index, result) in reader.records().enumerate() {
         let line_number = index + 1 + 1; // +1 car lignes humaines, +1 car header
 
-        let record = result.map_err(|e| FunctionalError::WrongFormat(e.to_string()))?;
+        let record = result.map_err(|e| FunctionalError::MalformedCsv(e.to_string()))?;
         let field_refs: Vec<&str> = record.iter().collect();
 
         source_lines += 1;
@@ -507,7 +502,7 @@ mod tests {
 
         assert!(matches!(
             result,
-            Err(AppError::Functional(FunctionalError::WrongFormat(err))) if err == "missing headers or empty file"
+            Err(AppError::Functional(FunctionalError::EmptyFile))
         ));
     }
 
@@ -520,7 +515,7 @@ mod tests {
 
         assert!(matches!(
             result,
-            Err(AppError::Functional(FunctionalError::WrongFormat(err))) if err == "expecting a collection export, got a binder export"
+            Err(AppError::Functional(FunctionalError::BinderExport))
         ));
     }
 
@@ -533,8 +528,8 @@ mod tests {
 
         assert!(matches!(
             result,
-            Err(AppError::Functional(FunctionalError::WrongFormat(err)))
-                if err == "unrecognized collection export: missing columns [Signed, Proxy], unexpected columns []"
+            Err(AppError::Functional(FunctionalError::UnrecognizedFormat { missing, unexpected }))
+                if missing == ["Signed", "Proxy"] && unexpected.is_empty()
         ));
     }
 
@@ -547,8 +542,8 @@ mod tests {
 
         assert!(matches!(
             result,
-            Err(AppError::Functional(FunctionalError::WrongFormat(err)))
-                if err == "unrecognized collection export: missing columns [], unexpected columns [Tags]"
+            Err(AppError::Functional(FunctionalError::UnrecognizedFormat { missing, unexpected }))
+                if missing.is_empty() && unexpected == ["Tags"]
         ));
     }
 
@@ -561,8 +556,8 @@ mod tests {
 
         assert!(matches!(
             result,
-            Err(AppError::Functional(FunctionalError::WrongFormat(err)))
-                if err == "unrecognized collection export: missing columns [], unexpected columns [Name]"
+            Err(AppError::Functional(FunctionalError::UnrecognizedFormat { missing, unexpected }))
+                if missing.is_empty() && unexpected == ["Name"]
         ));
     }
 
@@ -575,7 +570,7 @@ mod tests {
 
         assert!(matches!(
             result,
-            Err(AppError::Functional(FunctionalError::WrongFormat(_)))
+            Err(AppError::Functional(FunctionalError::MalformedCsv(_)))
         ));
     }
 
