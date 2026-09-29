@@ -32,12 +32,33 @@ struct ImportViewModelTests {
             .conflict,
             .network,
             .http(500),
+            .rejected(code: "binder_export"),
+            .rejected(code: nil),
             .unexpected,
         ]
 
         for error in errors {
             #expect(!error.message.isEmpty)
         }
+    }
+
+    @Test func aRejectedFileShowsTheMessageOfItsCode() {
+        #expect(
+            ImportViewModel.LoadError.rejected(code: "binder_export").message
+                == "Ce fichier est un export de classeur. Exporte ta collection complète depuis ManaBox."
+        )
+    }
+
+    @Test func aRejectedFileWithAnUnknownCodeShowsAGenericMessage() {
+        #expect(ImportViewModel.LoadError.rejected(code: "wrong_format").message == "L'import a échoué.")
+    }
+
+    @Test func aRejectedFileNeverShowsTheBareStatus() {
+        #expect(!ImportViewModel.LoadError.rejected(code: nil).message.contains("400"))
+    }
+
+    @Test func hasNoFailureMessageBeforeAnyImport() {
+        #expect(ImportViewModel().failureMessage == nil)
     }
 
     @Test func conflictMessageMentionsAnAlreadyRunningImport() {

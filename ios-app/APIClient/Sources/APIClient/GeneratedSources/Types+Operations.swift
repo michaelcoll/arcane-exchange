@@ -144,8 +144,25 @@ public enum Operations {
     public enum get_card_info {
         public static let id: Swift.String = "get_card_info"
         public struct Input: Sendable, Hashable {
+            /// - Remark: Generated from `#/paths/card/card-info/POST/header`.
+            public struct Headers: Sendable, Hashable {
+                public var accept: [OpenAPIRuntime.AcceptHeaderContentType<Operations.get_card_info.AcceptableContentType>]
+                /// Creates a new `Headers`.
+                ///
+                /// - Parameters:
+                ///   - accept:
+                public init(accept: [OpenAPIRuntime.AcceptHeaderContentType<Operations.get_card_info.AcceptableContentType>] = .defaultValues()) {
+                    self.accept = accept
+                }
+            }
+            public var headers: Operations.get_card_info.Input.Headers
             /// Creates a new `Input`.
-            public init() {}
+            ///
+            /// - Parameters:
+            ///   - headers:
+            public init(headers: Operations.get_card_info.Input.Headers = .init()) {
+                self.headers = headers
+            }
         }
         @frozen public enum Output: Sendable, Hashable {
             public struct Ok: Sendable, Hashable {
@@ -184,8 +201,32 @@ public enum Operations {
                 }
             }
             public struct Unauthorized: Sendable, Hashable {
+                /// - Remark: Generated from `#/paths/card/card-info/POST/responses/401/content`.
+                @frozen public enum Body: Sendable, Hashable {
+                    /// - Remark: Generated from `#/paths/card/card-info/POST/responses/401/content/application\/json`.
+                    case json(Components.Schemas.ErrorResponse)
+                    /// The associated value of the enum case if `self` is `.json`.
+                    ///
+                    /// - Throws: An error if `self` is not `.json`.
+                    /// - SeeAlso: `.json`.
+                    public var json: Components.Schemas.ErrorResponse {
+                        get throws {
+                            switch self {
+                            case let .json(body):
+                                return body
+                            }
+                        }
+                    }
+                }
+                /// Received HTTP response body
+                public var body: Operations.get_card_info.Output.Unauthorized.Body
                 /// Creates a new `Unauthorized`.
-                public init() {}
+                ///
+                /// - Parameters:
+                ///   - body: Received HTTP response body
+                public init(body: Operations.get_card_info.Output.Unauthorized.Body) {
+                    self.body = body
+                }
             }
             /// Missing or invalid token
             ///
@@ -193,14 +234,6 @@ public enum Operations {
             ///
             /// HTTP response code: `401 unauthorized`.
             case unauthorized(Operations.get_card_info.Output.Unauthorized)
-            /// Missing or invalid token
-            ///
-            /// - Remark: Generated from `#/paths//card/card-info/post(get_card_info)/responses/401`.
-            ///
-            /// HTTP response code: `401 unauthorized`.
-            public static var unauthorized: Self {
-                .unauthorized(.init())
-            }
             /// The associated value of the enum case if `self` is `.unauthorized`.
             ///
             /// - Throws: An error if `self` is not `.unauthorized`.
@@ -222,6 +255,31 @@ public enum Operations {
             ///
             /// A response with a code that is not documented in the OpenAPI document.
             case undocumented(statusCode: Swift.Int, OpenAPIRuntime.UndocumentedPayload)
+        }
+        @frozen public enum AcceptableContentType: AcceptableProtocol {
+            case json
+            case other(Swift.String)
+            public init?(rawValue: Swift.String) {
+                switch rawValue.lowercased() {
+                case "application/json":
+                    self = .json
+                default:
+                    self = .other(rawValue)
+                }
+            }
+            public var rawValue: Swift.String {
+                switch self {
+                case let .other(string):
+                    return string
+                case .json:
+                    return "application/json"
+                }
+            }
+            public static var allCases: [Self] {
+                [
+                    .json
+                ]
+            }
         }
     }
     /// - Remark: HTTP `GET /card/offers`.
@@ -366,8 +424,32 @@ public enum Operations {
                 }
             }
             public struct BadRequest: Sendable, Hashable {
+                /// - Remark: Generated from `#/paths/card/offers/GET/responses/400/content`.
+                @frozen public enum Body: Sendable, Hashable {
+                    /// - Remark: Generated from `#/paths/card/offers/GET/responses/400/content/application\/json`.
+                    case json(Components.Schemas.ErrorResponse)
+                    /// The associated value of the enum case if `self` is `.json`.
+                    ///
+                    /// - Throws: An error if `self` is not `.json`.
+                    /// - SeeAlso: `.json`.
+                    public var json: Components.Schemas.ErrorResponse {
+                        get throws {
+                            switch self {
+                            case let .json(body):
+                                return body
+                            }
+                        }
+                    }
+                }
+                /// Received HTTP response body
+                public var body: Operations.get_card_offers.Output.BadRequest.Body
                 /// Creates a new `BadRequest`.
-                public init() {}
+                ///
+                /// - Parameters:
+                ///   - body: Received HTTP response body
+                public init(body: Operations.get_card_offers.Output.BadRequest.Body) {
+                    self.body = body
+                }
             }
             /// Invalid or missing query params, or pagination out of bounds
             ///
@@ -375,14 +457,6 @@ public enum Operations {
             ///
             /// HTTP response code: `400 badRequest`.
             case badRequest(Operations.get_card_offers.Output.BadRequest)
-            /// Invalid or missing query params, or pagination out of bounds
-            ///
-            /// - Remark: Generated from `#/paths//card/offers/get(get_card_offers)/responses/400`.
-            ///
-            /// HTTP response code: `400 badRequest`.
-            public static var badRequest: Self {
-                .badRequest(.init())
-            }
             /// The associated value of the enum case if `self` is `.badRequest`.
             ///
             /// - Throws: An error if `self` is not `.badRequest`.
@@ -401,8 +475,32 @@ public enum Operations {
                 }
             }
             public struct Unauthorized: Sendable, Hashable {
+                /// - Remark: Generated from `#/paths/card/offers/GET/responses/401/content`.
+                @frozen public enum Body: Sendable, Hashable {
+                    /// - Remark: Generated from `#/paths/card/offers/GET/responses/401/content/application\/json`.
+                    case json(Components.Schemas.ErrorResponse)
+                    /// The associated value of the enum case if `self` is `.json`.
+                    ///
+                    /// - Throws: An error if `self` is not `.json`.
+                    /// - SeeAlso: `.json`.
+                    public var json: Components.Schemas.ErrorResponse {
+                        get throws {
+                            switch self {
+                            case let .json(body):
+                                return body
+                            }
+                        }
+                    }
+                }
+                /// Received HTTP response body
+                public var body: Operations.get_card_offers.Output.Unauthorized.Body
                 /// Creates a new `Unauthorized`.
-                public init() {}
+                ///
+                /// - Parameters:
+                ///   - body: Received HTTP response body
+                public init(body: Operations.get_card_offers.Output.Unauthorized.Body) {
+                    self.body = body
+                }
             }
             /// Missing or invalid token
             ///
@@ -410,14 +508,6 @@ public enum Operations {
             ///
             /// HTTP response code: `401 unauthorized`.
             case unauthorized(Operations.get_card_offers.Output.Unauthorized)
-            /// Missing or invalid token
-            ///
-            /// - Remark: Generated from `#/paths//card/offers/get(get_card_offers)/responses/401`.
-            ///
-            /// HTTP response code: `401 unauthorized`.
-            public static var unauthorized: Self {
-                .unauthorized(.init())
-            }
             /// The associated value of the enum case if `self` is `.unauthorized`.
             ///
             /// - Throws: An error if `self` is not `.unauthorized`.
@@ -436,8 +526,32 @@ public enum Operations {
                 }
             }
             public struct NotFound: Sendable, Hashable {
+                /// - Remark: Generated from `#/paths/card/offers/GET/responses/404/content`.
+                @frozen public enum Body: Sendable, Hashable {
+                    /// - Remark: Generated from `#/paths/card/offers/GET/responses/404/content/application\/json`.
+                    case json(Components.Schemas.ErrorResponse)
+                    /// The associated value of the enum case if `self` is `.json`.
+                    ///
+                    /// - Throws: An error if `self` is not `.json`.
+                    /// - SeeAlso: `.json`.
+                    public var json: Components.Schemas.ErrorResponse {
+                        get throws {
+                            switch self {
+                            case let .json(body):
+                                return body
+                            }
+                        }
+                    }
+                }
+                /// Received HTTP response body
+                public var body: Operations.get_card_offers.Output.NotFound.Body
                 /// Creates a new `NotFound`.
-                public init() {}
+                ///
+                /// - Parameters:
+                ///   - body: Received HTTP response body
+                public init(body: Operations.get_card_offers.Output.NotFound.Body) {
+                    self.body = body
+                }
             }
             /// No card found for this CardId
             ///
@@ -445,14 +559,6 @@ public enum Operations {
             ///
             /// HTTP response code: `404 notFound`.
             case notFound(Operations.get_card_offers.Output.NotFound)
-            /// No card found for this CardId
-            ///
-            /// - Remark: Generated from `#/paths//card/offers/get(get_card_offers)/responses/404`.
-            ///
-            /// HTTP response code: `404 notFound`.
-            public static var notFound: Self {
-                .notFound(.init())
-            }
             /// The associated value of the enum case if `self` is `.notFound`.
             ///
             /// - Throws: An error if `self` is not `.notFound`.
@@ -633,8 +739,32 @@ public enum Operations {
                 }
             }
             public struct BadRequest: Sendable, Hashable {
+                /// - Remark: Generated from `#/paths/card/{scryfall_id}/price-history/GET/responses/400/content`.
+                @frozen public enum Body: Sendable, Hashable {
+                    /// - Remark: Generated from `#/paths/card/{scryfall_id}/price-history/GET/responses/400/content/application\/json`.
+                    case json(Components.Schemas.ErrorResponse)
+                    /// The associated value of the enum case if `self` is `.json`.
+                    ///
+                    /// - Throws: An error if `self` is not `.json`.
+                    /// - SeeAlso: `.json`.
+                    public var json: Components.Schemas.ErrorResponse {
+                        get throws {
+                            switch self {
+                            case let .json(body):
+                                return body
+                            }
+                        }
+                    }
+                }
+                /// Received HTTP response body
+                public var body: Operations.get_card_price_history.Output.BadRequest.Body
                 /// Creates a new `BadRequest`.
-                public init() {}
+                ///
+                /// - Parameters:
+                ///   - body: Received HTTP response body
+                public init(body: Operations.get_card_price_history.Output.BadRequest.Body) {
+                    self.body = body
+                }
             }
             /// Invalid date range (start_date > end_date), or missing `foil`
             ///
@@ -642,14 +772,6 @@ public enum Operations {
             ///
             /// HTTP response code: `400 badRequest`.
             case badRequest(Operations.get_card_price_history.Output.BadRequest)
-            /// Invalid date range (start_date > end_date), or missing `foil`
-            ///
-            /// - Remark: Generated from `#/paths//card/{scryfall_id}/price-history/get(get_card_price_history)/responses/400`.
-            ///
-            /// HTTP response code: `400 badRequest`.
-            public static var badRequest: Self {
-                .badRequest(.init())
-            }
             /// The associated value of the enum case if `self` is `.badRequest`.
             ///
             /// - Throws: An error if `self` is not `.badRequest`.
@@ -668,8 +790,32 @@ public enum Operations {
                 }
             }
             public struct Unauthorized: Sendable, Hashable {
+                /// - Remark: Generated from `#/paths/card/{scryfall_id}/price-history/GET/responses/401/content`.
+                @frozen public enum Body: Sendable, Hashable {
+                    /// - Remark: Generated from `#/paths/card/{scryfall_id}/price-history/GET/responses/401/content/application\/json`.
+                    case json(Components.Schemas.ErrorResponse)
+                    /// The associated value of the enum case if `self` is `.json`.
+                    ///
+                    /// - Throws: An error if `self` is not `.json`.
+                    /// - SeeAlso: `.json`.
+                    public var json: Components.Schemas.ErrorResponse {
+                        get throws {
+                            switch self {
+                            case let .json(body):
+                                return body
+                            }
+                        }
+                    }
+                }
+                /// Received HTTP response body
+                public var body: Operations.get_card_price_history.Output.Unauthorized.Body
                 /// Creates a new `Unauthorized`.
-                public init() {}
+                ///
+                /// - Parameters:
+                ///   - body: Received HTTP response body
+                public init(body: Operations.get_card_price_history.Output.Unauthorized.Body) {
+                    self.body = body
+                }
             }
             /// Missing or invalid token
             ///
@@ -677,14 +823,6 @@ public enum Operations {
             ///
             /// HTTP response code: `401 unauthorized`.
             case unauthorized(Operations.get_card_price_history.Output.Unauthorized)
-            /// Missing or invalid token
-            ///
-            /// - Remark: Generated from `#/paths//card/{scryfall_id}/price-history/get(get_card_price_history)/responses/401`.
-            ///
-            /// HTTP response code: `401 unauthorized`.
-            public static var unauthorized: Self {
-                .unauthorized(.init())
-            }
             /// The associated value of the enum case if `self` is `.unauthorized`.
             ///
             /// - Throws: An error if `self` is not `.unauthorized`.
@@ -703,8 +841,32 @@ public enum Operations {
                 }
             }
             public struct NotFound: Sendable, Hashable {
+                /// - Remark: Generated from `#/paths/card/{scryfall_id}/price-history/GET/responses/404/content`.
+                @frozen public enum Body: Sendable, Hashable {
+                    /// - Remark: Generated from `#/paths/card/{scryfall_id}/price-history/GET/responses/404/content/application\/json`.
+                    case json(Components.Schemas.ErrorResponse)
+                    /// The associated value of the enum case if `self` is `.json`.
+                    ///
+                    /// - Throws: An error if `self` is not `.json`.
+                    /// - SeeAlso: `.json`.
+                    public var json: Components.Schemas.ErrorResponse {
+                        get throws {
+                            switch self {
+                            case let .json(body):
+                                return body
+                            }
+                        }
+                    }
+                }
+                /// Received HTTP response body
+                public var body: Operations.get_card_price_history.Output.NotFound.Body
                 /// Creates a new `NotFound`.
-                public init() {}
+                ///
+                /// - Parameters:
+                ///   - body: Received HTTP response body
+                public init(body: Operations.get_card_price_history.Output.NotFound.Body) {
+                    self.body = body
+                }
             }
             /// No card found for this scryfall_id
             ///
@@ -712,14 +874,6 @@ public enum Operations {
             ///
             /// HTTP response code: `404 notFound`.
             case notFound(Operations.get_card_price_history.Output.NotFound)
-            /// No card found for this scryfall_id
-            ///
-            /// - Remark: Generated from `#/paths//card/{scryfall_id}/price-history/get(get_card_price_history)/responses/404`.
-            ///
-            /// HTTP response code: `404 notFound`.
-            public static var notFound: Self {
-                .notFound(.init())
-            }
             /// The associated value of the enum case if `self` is `.notFound`.
             ///
             /// - Throws: An error if `self` is not `.notFound`.
@@ -924,8 +1078,32 @@ public enum Operations {
                 }
             }
             public struct BadRequest: Sendable, Hashable {
+                /// - Remark: Generated from `#/paths/collection/GET/responses/400/content`.
+                @frozen public enum Body: Sendable, Hashable {
+                    /// - Remark: Generated from `#/paths/collection/GET/responses/400/content/application\/json`.
+                    case json(Components.Schemas.ErrorResponse)
+                    /// The associated value of the enum case if `self` is `.json`.
+                    ///
+                    /// - Throws: An error if `self` is not `.json`.
+                    /// - SeeAlso: `.json`.
+                    public var json: Components.Schemas.ErrorResponse {
+                        get throws {
+                            switch self {
+                            case let .json(body):
+                                return body
+                            }
+                        }
+                    }
+                }
+                /// Received HTTP response body
+                public var body: Operations.get_collection.Output.BadRequest.Body
                 /// Creates a new `BadRequest`.
-                public init() {}
+                ///
+                /// - Parameters:
+                ///   - body: Received HTTP response body
+                public init(body: Operations.get_collection.Output.BadRequest.Body) {
+                    self.body = body
+                }
             }
             /// Pagination out of bounds
             ///
@@ -933,14 +1111,6 @@ public enum Operations {
             ///
             /// HTTP response code: `400 badRequest`.
             case badRequest(Operations.get_collection.Output.BadRequest)
-            /// Pagination out of bounds
-            ///
-            /// - Remark: Generated from `#/paths//collection/get(get_collection)/responses/400`.
-            ///
-            /// HTTP response code: `400 badRequest`.
-            public static var badRequest: Self {
-                .badRequest(.init())
-            }
             /// The associated value of the enum case if `self` is `.badRequest`.
             ///
             /// - Throws: An error if `self` is not `.badRequest`.
@@ -959,8 +1129,32 @@ public enum Operations {
                 }
             }
             public struct Unauthorized: Sendable, Hashable {
+                /// - Remark: Generated from `#/paths/collection/GET/responses/401/content`.
+                @frozen public enum Body: Sendable, Hashable {
+                    /// - Remark: Generated from `#/paths/collection/GET/responses/401/content/application\/json`.
+                    case json(Components.Schemas.ErrorResponse)
+                    /// The associated value of the enum case if `self` is `.json`.
+                    ///
+                    /// - Throws: An error if `self` is not `.json`.
+                    /// - SeeAlso: `.json`.
+                    public var json: Components.Schemas.ErrorResponse {
+                        get throws {
+                            switch self {
+                            case let .json(body):
+                                return body
+                            }
+                        }
+                    }
+                }
+                /// Received HTTP response body
+                public var body: Operations.get_collection.Output.Unauthorized.Body
                 /// Creates a new `Unauthorized`.
-                public init() {}
+                ///
+                /// - Parameters:
+                ///   - body: Received HTTP response body
+                public init(body: Operations.get_collection.Output.Unauthorized.Body) {
+                    self.body = body
+                }
             }
             /// Missing or invalid token
             ///
@@ -968,14 +1162,6 @@ public enum Operations {
             ///
             /// HTTP response code: `401 unauthorized`.
             case unauthorized(Operations.get_collection.Output.Unauthorized)
-            /// Missing or invalid token
-            ///
-            /// - Remark: Generated from `#/paths//collection/get(get_collection)/responses/401`.
-            ///
-            /// HTTP response code: `401 unauthorized`.
-            public static var unauthorized: Self {
-                .unauthorized(.init())
-            }
             /// The associated value of the enum case if `self` is `.unauthorized`.
             ///
             /// - Throws: An error if `self` is not `.unauthorized`.
@@ -1102,8 +1288,32 @@ public enum Operations {
                 }
             }
             public struct Unauthorized: Sendable, Hashable {
+                /// - Remark: Generated from `#/paths/collection/import/GET/responses/401/content`.
+                @frozen public enum Body: Sendable, Hashable {
+                    /// - Remark: Generated from `#/paths/collection/import/GET/responses/401/content/application\/json`.
+                    case json(Components.Schemas.ErrorResponse)
+                    /// The associated value of the enum case if `self` is `.json`.
+                    ///
+                    /// - Throws: An error if `self` is not `.json`.
+                    /// - SeeAlso: `.json`.
+                    public var json: Components.Schemas.ErrorResponse {
+                        get throws {
+                            switch self {
+                            case let .json(body):
+                                return body
+                            }
+                        }
+                    }
+                }
+                /// Received HTTP response body
+                public var body: Operations.list_card_imports.Output.Unauthorized.Body
                 /// Creates a new `Unauthorized`.
-                public init() {}
+                ///
+                /// - Parameters:
+                ///   - body: Received HTTP response body
+                public init(body: Operations.list_card_imports.Output.Unauthorized.Body) {
+                    self.body = body
+                }
             }
             /// Missing or invalid token
             ///
@@ -1111,14 +1321,6 @@ public enum Operations {
             ///
             /// HTTP response code: `401 unauthorized`.
             case unauthorized(Operations.list_card_imports.Output.Unauthorized)
-            /// Missing or invalid token
-            ///
-            /// - Remark: Generated from `#/paths//collection/import/get(list_card_imports)/responses/401`.
-            ///
-            /// HTTP response code: `401 unauthorized`.
-            public static var unauthorized: Self {
-                .unauthorized(.init())
-            }
             /// The associated value of the enum case if `self` is `.unauthorized`.
             ///
             /// - Throws: An error if `self` is not `.unauthorized`.
@@ -1256,23 +1458,39 @@ public enum Operations {
                 }
             }
             public struct BadRequest: Sendable, Hashable {
+                /// - Remark: Generated from `#/paths/collection/import/POST/responses/400/content`.
+                @frozen public enum Body: Sendable, Hashable {
+                    /// - Remark: Generated from `#/paths/collection/import/POST/responses/400/content/application\/json`.
+                    case json(Components.Schemas.ErrorResponse)
+                    /// The associated value of the enum case if `self` is `.json`.
+                    ///
+                    /// - Throws: An error if `self` is not `.json`.
+                    /// - SeeAlso: `.json`.
+                    public var json: Components.Schemas.ErrorResponse {
+                        get throws {
+                            switch self {
+                            case let .json(body):
+                                return body
+                            }
+                        }
+                    }
+                }
+                /// Received HTTP response body
+                public var body: Operations.import_cards.Output.BadRequest.Body
                 /// Creates a new `BadRequest`.
-                public init() {}
+                ///
+                /// - Parameters:
+                ///   - body: Received HTTP response body
+                public init(body: Operations.import_cards.Output.BadRequest.Body) {
+                    self.body = body
+                }
             }
-            /// Invalid body (non UTF-8, malformed CSV, ...)
+            /// Rejected file; `code` is `empty_file`, `malformed_csv`, `binder_export` or `unrecognized_format`
             ///
             /// - Remark: Generated from `#/paths//collection/import/post(import_cards)/responses/400`.
             ///
             /// HTTP response code: `400 badRequest`.
             case badRequest(Operations.import_cards.Output.BadRequest)
-            /// Invalid body (non UTF-8, malformed CSV, ...)
-            ///
-            /// - Remark: Generated from `#/paths//collection/import/post(import_cards)/responses/400`.
-            ///
-            /// HTTP response code: `400 badRequest`.
-            public static var badRequest: Self {
-                .badRequest(.init())
-            }
             /// The associated value of the enum case if `self` is `.badRequest`.
             ///
             /// - Throws: An error if `self` is not `.badRequest`.
@@ -1291,8 +1509,32 @@ public enum Operations {
                 }
             }
             public struct Unauthorized: Sendable, Hashable {
+                /// - Remark: Generated from `#/paths/collection/import/POST/responses/401/content`.
+                @frozen public enum Body: Sendable, Hashable {
+                    /// - Remark: Generated from `#/paths/collection/import/POST/responses/401/content/application\/json`.
+                    case json(Components.Schemas.ErrorResponse)
+                    /// The associated value of the enum case if `self` is `.json`.
+                    ///
+                    /// - Throws: An error if `self` is not `.json`.
+                    /// - SeeAlso: `.json`.
+                    public var json: Components.Schemas.ErrorResponse {
+                        get throws {
+                            switch self {
+                            case let .json(body):
+                                return body
+                            }
+                        }
+                    }
+                }
+                /// Received HTTP response body
+                public var body: Operations.import_cards.Output.Unauthorized.Body
                 /// Creates a new `Unauthorized`.
-                public init() {}
+                ///
+                /// - Parameters:
+                ///   - body: Received HTTP response body
+                public init(body: Operations.import_cards.Output.Unauthorized.Body) {
+                    self.body = body
+                }
             }
             /// Missing or invalid token
             ///
@@ -1300,14 +1542,6 @@ public enum Operations {
             ///
             /// HTTP response code: `401 unauthorized`.
             case unauthorized(Operations.import_cards.Output.Unauthorized)
-            /// Missing or invalid token
-            ///
-            /// - Remark: Generated from `#/paths//collection/import/post(import_cards)/responses/401`.
-            ///
-            /// HTTP response code: `401 unauthorized`.
-            public static var unauthorized: Self {
-                .unauthorized(.init())
-            }
             /// The associated value of the enum case if `self` is `.unauthorized`.
             ///
             /// - Throws: An error if `self` is not `.unauthorized`.
@@ -1326,8 +1560,32 @@ public enum Operations {
                 }
             }
             public struct Conflict: Sendable, Hashable {
+                /// - Remark: Generated from `#/paths/collection/import/POST/responses/409/content`.
+                @frozen public enum Body: Sendable, Hashable {
+                    /// - Remark: Generated from `#/paths/collection/import/POST/responses/409/content/application\/json`.
+                    case json(Components.Schemas.ErrorResponse)
+                    /// The associated value of the enum case if `self` is `.json`.
+                    ///
+                    /// - Throws: An error if `self` is not `.json`.
+                    /// - SeeAlso: `.json`.
+                    public var json: Components.Schemas.ErrorResponse {
+                        get throws {
+                            switch self {
+                            case let .json(body):
+                                return body
+                            }
+                        }
+                    }
+                }
+                /// Received HTTP response body
+                public var body: Operations.import_cards.Output.Conflict.Body
                 /// Creates a new `Conflict`.
-                public init() {}
+                ///
+                /// - Parameters:
+                ///   - body: Received HTTP response body
+                public init(body: Operations.import_cards.Output.Conflict.Body) {
+                    self.body = body
+                }
             }
             /// An import is already in progress for this user
             ///
@@ -1335,14 +1593,6 @@ public enum Operations {
             ///
             /// HTTP response code: `409 conflict`.
             case conflict(Operations.import_cards.Output.Conflict)
-            /// An import is already in progress for this user
-            ///
-            /// - Remark: Generated from `#/paths//collection/import/post(import_cards)/responses/409`.
-            ///
-            /// HTTP response code: `409 conflict`.
-            public static var conflict: Self {
-                .conflict(.init())
-            }
             /// The associated value of the enum case if `self` is `.conflict`.
             ///
             /// - Throws: An error if `self` is not `.conflict`.
@@ -1489,8 +1739,32 @@ public enum Operations {
                 }
             }
             public struct Unauthorized: Sendable, Hashable {
+                /// - Remark: Generated from `#/paths/collection/import/{id}/GET/responses/401/content`.
+                @frozen public enum Body: Sendable, Hashable {
+                    /// - Remark: Generated from `#/paths/collection/import/{id}/GET/responses/401/content/application\/json`.
+                    case json(Components.Schemas.ErrorResponse)
+                    /// The associated value of the enum case if `self` is `.json`.
+                    ///
+                    /// - Throws: An error if `self` is not `.json`.
+                    /// - SeeAlso: `.json`.
+                    public var json: Components.Schemas.ErrorResponse {
+                        get throws {
+                            switch self {
+                            case let .json(body):
+                                return body
+                            }
+                        }
+                    }
+                }
+                /// Received HTTP response body
+                public var body: Operations.get_card_import.Output.Unauthorized.Body
                 /// Creates a new `Unauthorized`.
-                public init() {}
+                ///
+                /// - Parameters:
+                ///   - body: Received HTTP response body
+                public init(body: Operations.get_card_import.Output.Unauthorized.Body) {
+                    self.body = body
+                }
             }
             /// Missing or invalid token
             ///
@@ -1498,14 +1772,6 @@ public enum Operations {
             ///
             /// HTTP response code: `401 unauthorized`.
             case unauthorized(Operations.get_card_import.Output.Unauthorized)
-            /// Missing or invalid token
-            ///
-            /// - Remark: Generated from `#/paths//collection/import/{id}/get(get_card_import)/responses/401`.
-            ///
-            /// HTTP response code: `401 unauthorized`.
-            public static var unauthorized: Self {
-                .unauthorized(.init())
-            }
             /// The associated value of the enum case if `self` is `.unauthorized`.
             ///
             /// - Throws: An error if `self` is not `.unauthorized`.
@@ -1524,8 +1790,32 @@ public enum Operations {
                 }
             }
             public struct NotFound: Sendable, Hashable {
+                /// - Remark: Generated from `#/paths/collection/import/{id}/GET/responses/404/content`.
+                @frozen public enum Body: Sendable, Hashable {
+                    /// - Remark: Generated from `#/paths/collection/import/{id}/GET/responses/404/content/application\/json`.
+                    case json(Components.Schemas.ErrorResponse)
+                    /// The associated value of the enum case if `self` is `.json`.
+                    ///
+                    /// - Throws: An error if `self` is not `.json`.
+                    /// - SeeAlso: `.json`.
+                    public var json: Components.Schemas.ErrorResponse {
+                        get throws {
+                            switch self {
+                            case let .json(body):
+                                return body
+                            }
+                        }
+                    }
+                }
+                /// Received HTTP response body
+                public var body: Operations.get_card_import.Output.NotFound.Body
                 /// Creates a new `NotFound`.
-                public init() {}
+                ///
+                /// - Parameters:
+                ///   - body: Received HTTP response body
+                public init(body: Operations.get_card_import.Output.NotFound.Body) {
+                    self.body = body
+                }
             }
             /// Import not found, or not owned by the caller
             ///
@@ -1533,14 +1823,6 @@ public enum Operations {
             ///
             /// HTTP response code: `404 notFound`.
             case notFound(Operations.get_card_import.Output.NotFound)
-            /// Import not found, or not owned by the caller
-            ///
-            /// - Remark: Generated from `#/paths//collection/import/{id}/get(get_card_import)/responses/404`.
-            ///
-            /// HTTP response code: `404 notFound`.
-            public static var notFound: Self {
-                .notFound(.init())
-            }
             /// The associated value of the enum case if `self` is `.notFound`.
             ///
             /// - Throws: An error if `self` is not `.notFound`.
@@ -1696,8 +1978,32 @@ public enum Operations {
                 }
             }
             public struct BadRequest: Sendable, Hashable {
+                /// - Remark: Generated from `#/paths/collection/price-history/GET/responses/400/content`.
+                @frozen public enum Body: Sendable, Hashable {
+                    /// - Remark: Generated from `#/paths/collection/price-history/GET/responses/400/content/application\/json`.
+                    case json(Components.Schemas.ErrorResponse)
+                    /// The associated value of the enum case if `self` is `.json`.
+                    ///
+                    /// - Throws: An error if `self` is not `.json`.
+                    /// - SeeAlso: `.json`.
+                    public var json: Components.Schemas.ErrorResponse {
+                        get throws {
+                            switch self {
+                            case let .json(body):
+                                return body
+                            }
+                        }
+                    }
+                }
+                /// Received HTTP response body
+                public var body: Operations.get_collection_price_history.Output.BadRequest.Body
                 /// Creates a new `BadRequest`.
-                public init() {}
+                ///
+                /// - Parameters:
+                ///   - body: Received HTTP response body
+                public init(body: Operations.get_collection_price_history.Output.BadRequest.Body) {
+                    self.body = body
+                }
             }
             /// Invalid date range (start_date > end_date)
             ///
@@ -1705,14 +2011,6 @@ public enum Operations {
             ///
             /// HTTP response code: `400 badRequest`.
             case badRequest(Operations.get_collection_price_history.Output.BadRequest)
-            /// Invalid date range (start_date > end_date)
-            ///
-            /// - Remark: Generated from `#/paths//collection/price-history/get(get_collection_price_history)/responses/400`.
-            ///
-            /// HTTP response code: `400 badRequest`.
-            public static var badRequest: Self {
-                .badRequest(.init())
-            }
             /// The associated value of the enum case if `self` is `.badRequest`.
             ///
             /// - Throws: An error if `self` is not `.badRequest`.
@@ -1731,8 +2029,32 @@ public enum Operations {
                 }
             }
             public struct Unauthorized: Sendable, Hashable {
+                /// - Remark: Generated from `#/paths/collection/price-history/GET/responses/401/content`.
+                @frozen public enum Body: Sendable, Hashable {
+                    /// - Remark: Generated from `#/paths/collection/price-history/GET/responses/401/content/application\/json`.
+                    case json(Components.Schemas.ErrorResponse)
+                    /// The associated value of the enum case if `self` is `.json`.
+                    ///
+                    /// - Throws: An error if `self` is not `.json`.
+                    /// - SeeAlso: `.json`.
+                    public var json: Components.Schemas.ErrorResponse {
+                        get throws {
+                            switch self {
+                            case let .json(body):
+                                return body
+                            }
+                        }
+                    }
+                }
+                /// Received HTTP response body
+                public var body: Operations.get_collection_price_history.Output.Unauthorized.Body
                 /// Creates a new `Unauthorized`.
-                public init() {}
+                ///
+                /// - Parameters:
+                ///   - body: Received HTTP response body
+                public init(body: Operations.get_collection_price_history.Output.Unauthorized.Body) {
+                    self.body = body
+                }
             }
             /// Missing or invalid token
             ///
@@ -1740,14 +2062,6 @@ public enum Operations {
             ///
             /// HTTP response code: `401 unauthorized`.
             case unauthorized(Operations.get_collection_price_history.Output.Unauthorized)
-            /// Missing or invalid token
-            ///
-            /// - Remark: Generated from `#/paths//collection/price-history/get(get_collection_price_history)/responses/401`.
-            ///
-            /// HTTP response code: `401 unauthorized`.
-            public static var unauthorized: Self {
-                .unauthorized(.init())
-            }
             /// The associated value of the enum case if `self` is `.unauthorized`.
             ///
             /// - Throws: An error if `self` is not `.unauthorized`.
@@ -1874,8 +2188,32 @@ public enum Operations {
                 }
             }
             public struct Unauthorized: Sendable, Hashable {
+                /// - Remark: Generated from `#/paths/collection/stats/GET/responses/401/content`.
+                @frozen public enum Body: Sendable, Hashable {
+                    /// - Remark: Generated from `#/paths/collection/stats/GET/responses/401/content/application\/json`.
+                    case json(Components.Schemas.ErrorResponse)
+                    /// The associated value of the enum case if `self` is `.json`.
+                    ///
+                    /// - Throws: An error if `self` is not `.json`.
+                    /// - SeeAlso: `.json`.
+                    public var json: Components.Schemas.ErrorResponse {
+                        get throws {
+                            switch self {
+                            case let .json(body):
+                                return body
+                            }
+                        }
+                    }
+                }
+                /// Received HTTP response body
+                public var body: Operations.get_collection_stats.Output.Unauthorized.Body
                 /// Creates a new `Unauthorized`.
-                public init() {}
+                ///
+                /// - Parameters:
+                ///   - body: Received HTTP response body
+                public init(body: Operations.get_collection_stats.Output.Unauthorized.Body) {
+                    self.body = body
+                }
             }
             /// Missing or invalid token
             ///
@@ -1883,14 +2221,6 @@ public enum Operations {
             ///
             /// HTTP response code: `401 unauthorized`.
             case unauthorized(Operations.get_collection_stats.Output.Unauthorized)
-            /// Missing or invalid token
-            ///
-            /// - Remark: Generated from `#/paths//collection/stats/get(get_collection_stats)/responses/401`.
-            ///
-            /// HTTP response code: `401 unauthorized`.
-            public static var unauthorized: Self {
-                .unauthorized(.init())
-            }
             /// The associated value of the enum case if `self` is `.unauthorized`.
             ///
             /// - Throws: An error if `self` is not `.unauthorized`.
@@ -2017,8 +2347,32 @@ public enum Operations {
                 }
             }
             public struct Unauthorized: Sendable, Hashable {
+                /// - Remark: Generated from `#/paths/collection/visibility/rarities/GET/responses/401/content`.
+                @frozen public enum Body: Sendable, Hashable {
+                    /// - Remark: Generated from `#/paths/collection/visibility/rarities/GET/responses/401/content/application\/json`.
+                    case json(Components.Schemas.ErrorResponse)
+                    /// The associated value of the enum case if `self` is `.json`.
+                    ///
+                    /// - Throws: An error if `self` is not `.json`.
+                    /// - SeeAlso: `.json`.
+                    public var json: Components.Schemas.ErrorResponse {
+                        get throws {
+                            switch self {
+                            case let .json(body):
+                                return body
+                            }
+                        }
+                    }
+                }
+                /// Received HTTP response body
+                public var body: Operations.get_rarity_filters.Output.Unauthorized.Body
                 /// Creates a new `Unauthorized`.
-                public init() {}
+                ///
+                /// - Parameters:
+                ///   - body: Received HTTP response body
+                public init(body: Operations.get_rarity_filters.Output.Unauthorized.Body) {
+                    self.body = body
+                }
             }
             /// Missing or invalid token
             ///
@@ -2026,14 +2380,6 @@ public enum Operations {
             ///
             /// HTTP response code: `401 unauthorized`.
             case unauthorized(Operations.get_rarity_filters.Output.Unauthorized)
-            /// Missing or invalid token
-            ///
-            /// - Remark: Generated from `#/paths//collection/visibility/rarities/get(get_rarity_filters)/responses/401`.
-            ///
-            /// HTTP response code: `401 unauthorized`.
-            public static var unauthorized: Self {
-                .unauthorized(.init())
-            }
             /// The associated value of the enum case if `self` is `.unauthorized`.
             ///
             /// - Throws: An error if `self` is not `.unauthorized`.
@@ -2087,6 +2433,18 @@ public enum Operations {
     public enum set_rarity_filter {
         public static let id: Swift.String = "set_rarity_filter"
         public struct Input: Sendable, Hashable {
+            /// - Remark: Generated from `#/paths/collection/visibility/rarities/POST/header`.
+            public struct Headers: Sendable, Hashable {
+                public var accept: [OpenAPIRuntime.AcceptHeaderContentType<Operations.set_rarity_filter.AcceptableContentType>]
+                /// Creates a new `Headers`.
+                ///
+                /// - Parameters:
+                ///   - accept:
+                public init(accept: [OpenAPIRuntime.AcceptHeaderContentType<Operations.set_rarity_filter.AcceptableContentType>] = .defaultValues()) {
+                    self.accept = accept
+                }
+            }
+            public var headers: Operations.set_rarity_filter.Input.Headers
             /// - Remark: Generated from `#/paths/collection/visibility/rarities/POST/requestBody`.
             @frozen public enum Body: Sendable, Hashable {
                 /// - Remark: Generated from `#/paths/collection/visibility/rarities/POST/requestBody/content/application\/json`.
@@ -2096,8 +2454,13 @@ public enum Operations {
             /// Creates a new `Input`.
             ///
             /// - Parameters:
+            ///   - headers:
             ///   - body:
-            public init(body: Operations.set_rarity_filter.Input.Body) {
+            public init(
+                headers: Operations.set_rarity_filter.Input.Headers = .init(),
+                body: Operations.set_rarity_filter.Input.Body
+            ) {
+                self.headers = headers
                 self.body = body
             }
         }
@@ -2138,8 +2501,32 @@ public enum Operations {
                 }
             }
             public struct BadRequest: Sendable, Hashable {
+                /// - Remark: Generated from `#/paths/collection/visibility/rarities/POST/responses/400/content`.
+                @frozen public enum Body: Sendable, Hashable {
+                    /// - Remark: Generated from `#/paths/collection/visibility/rarities/POST/responses/400/content/application\/json`.
+                    case json(Components.Schemas.ErrorResponse)
+                    /// The associated value of the enum case if `self` is `.json`.
+                    ///
+                    /// - Throws: An error if `self` is not `.json`.
+                    /// - SeeAlso: `.json`.
+                    public var json: Components.Schemas.ErrorResponse {
+                        get throws {
+                            switch self {
+                            case let .json(body):
+                                return body
+                            }
+                        }
+                    }
+                }
+                /// Received HTTP response body
+                public var body: Operations.set_rarity_filter.Output.BadRequest.Body
                 /// Creates a new `BadRequest`.
-                public init() {}
+                ///
+                /// - Parameters:
+                ///   - body: Received HTTP response body
+                public init(body: Operations.set_rarity_filter.Output.BadRequest.Body) {
+                    self.body = body
+                }
             }
             /// Invalid rarity code or kept_copies out of range
             ///
@@ -2147,14 +2534,6 @@ public enum Operations {
             ///
             /// HTTP response code: `400 badRequest`.
             case badRequest(Operations.set_rarity_filter.Output.BadRequest)
-            /// Invalid rarity code or kept_copies out of range
-            ///
-            /// - Remark: Generated from `#/paths//collection/visibility/rarities/post(set_rarity_filter)/responses/400`.
-            ///
-            /// HTTP response code: `400 badRequest`.
-            public static var badRequest: Self {
-                .badRequest(.init())
-            }
             /// The associated value of the enum case if `self` is `.badRequest`.
             ///
             /// - Throws: An error if `self` is not `.badRequest`.
@@ -2173,8 +2552,32 @@ public enum Operations {
                 }
             }
             public struct Unauthorized: Sendable, Hashable {
+                /// - Remark: Generated from `#/paths/collection/visibility/rarities/POST/responses/401/content`.
+                @frozen public enum Body: Sendable, Hashable {
+                    /// - Remark: Generated from `#/paths/collection/visibility/rarities/POST/responses/401/content/application\/json`.
+                    case json(Components.Schemas.ErrorResponse)
+                    /// The associated value of the enum case if `self` is `.json`.
+                    ///
+                    /// - Throws: An error if `self` is not `.json`.
+                    /// - SeeAlso: `.json`.
+                    public var json: Components.Schemas.ErrorResponse {
+                        get throws {
+                            switch self {
+                            case let .json(body):
+                                return body
+                            }
+                        }
+                    }
+                }
+                /// Received HTTP response body
+                public var body: Operations.set_rarity_filter.Output.Unauthorized.Body
                 /// Creates a new `Unauthorized`.
-                public init() {}
+                ///
+                /// - Parameters:
+                ///   - body: Received HTTP response body
+                public init(body: Operations.set_rarity_filter.Output.Unauthorized.Body) {
+                    self.body = body
+                }
             }
             /// Missing or invalid token
             ///
@@ -2182,14 +2585,6 @@ public enum Operations {
             ///
             /// HTTP response code: `401 unauthorized`.
             case unauthorized(Operations.set_rarity_filter.Output.Unauthorized)
-            /// Missing or invalid token
-            ///
-            /// - Remark: Generated from `#/paths//collection/visibility/rarities/post(set_rarity_filter)/responses/401`.
-            ///
-            /// HTTP response code: `401 unauthorized`.
-            public static var unauthorized: Self {
-                .unauthorized(.init())
-            }
             /// The associated value of the enum case if `self` is `.unauthorized`.
             ///
             /// - Throws: An error if `self` is not `.unauthorized`.
@@ -2211,6 +2606,31 @@ public enum Operations {
             ///
             /// A response with a code that is not documented in the OpenAPI document.
             case undocumented(statusCode: Swift.Int, OpenAPIRuntime.UndocumentedPayload)
+        }
+        @frozen public enum AcceptableContentType: AcceptableProtocol {
+            case json
+            case other(Swift.String)
+            public init?(rawValue: Swift.String) {
+                switch rawValue.lowercased() {
+                case "application/json":
+                    self = .json
+                default:
+                    self = .other(rawValue)
+                }
+            }
+            public var rawValue: Swift.String {
+                switch self {
+                case let .other(string):
+                    return string
+                case .json:
+                    return "application/json"
+                }
+            }
+            public static var allCases: [Self] {
+                [
+                    .json
+                ]
+            }
         }
     }
     /// - Remark: HTTP `GET /maintenance/stats`.
@@ -2642,8 +3062,32 @@ public enum Operations {
                 }
             }
             public struct BadRequest: Sendable, Hashable {
+                /// - Remark: Generated from `#/paths/search/card/GET/responses/400/content`.
+                @frozen public enum Body: Sendable, Hashable {
+                    /// - Remark: Generated from `#/paths/search/card/GET/responses/400/content/application\/json`.
+                    case json(Components.Schemas.ErrorResponse)
+                    /// The associated value of the enum case if `self` is `.json`.
+                    ///
+                    /// - Throws: An error if `self` is not `.json`.
+                    /// - SeeAlso: `.json`.
+                    public var json: Components.Schemas.ErrorResponse {
+                        get throws {
+                            switch self {
+                            case let .json(body):
+                                return body
+                            }
+                        }
+                    }
+                }
+                /// Received HTTP response body
+                public var body: Operations.search_cards.Output.BadRequest.Body
                 /// Creates a new `BadRequest`.
-                public init() {}
+                ///
+                /// - Parameters:
+                ///   - body: Received HTTP response body
+                public init(body: Operations.search_cards.Output.BadRequest.Body) {
+                    self.body = body
+                }
             }
             /// Pagination out of bounds, or sort_by=added_at without player_username
             ///
@@ -2651,14 +3095,6 @@ public enum Operations {
             ///
             /// HTTP response code: `400 badRequest`.
             case badRequest(Operations.search_cards.Output.BadRequest)
-            /// Pagination out of bounds, or sort_by=added_at without player_username
-            ///
-            /// - Remark: Generated from `#/paths//search/card/get(search_cards)/responses/400`.
-            ///
-            /// HTTP response code: `400 badRequest`.
-            public static var badRequest: Self {
-                .badRequest(.init())
-            }
             /// The associated value of the enum case if `self` is `.badRequest`.
             ///
             /// - Throws: An error if `self` is not `.badRequest`.
@@ -2677,8 +3113,32 @@ public enum Operations {
                 }
             }
             public struct Unauthorized: Sendable, Hashable {
+                /// - Remark: Generated from `#/paths/search/card/GET/responses/401/content`.
+                @frozen public enum Body: Sendable, Hashable {
+                    /// - Remark: Generated from `#/paths/search/card/GET/responses/401/content/application\/json`.
+                    case json(Components.Schemas.ErrorResponse)
+                    /// The associated value of the enum case if `self` is `.json`.
+                    ///
+                    /// - Throws: An error if `self` is not `.json`.
+                    /// - SeeAlso: `.json`.
+                    public var json: Components.Schemas.ErrorResponse {
+                        get throws {
+                            switch self {
+                            case let .json(body):
+                                return body
+                            }
+                        }
+                    }
+                }
+                /// Received HTTP response body
+                public var body: Operations.search_cards.Output.Unauthorized.Body
                 /// Creates a new `Unauthorized`.
-                public init() {}
+                ///
+                /// - Parameters:
+                ///   - body: Received HTTP response body
+                public init(body: Operations.search_cards.Output.Unauthorized.Body) {
+                    self.body = body
+                }
             }
             /// Missing or invalid token
             ///
@@ -2686,14 +3146,6 @@ public enum Operations {
             ///
             /// HTTP response code: `401 unauthorized`.
             case unauthorized(Operations.search_cards.Output.Unauthorized)
-            /// Missing or invalid token
-            ///
-            /// - Remark: Generated from `#/paths//search/card/get(search_cards)/responses/401`.
-            ///
-            /// HTTP response code: `401 unauthorized`.
-            public static var unauthorized: Self {
-                .unauthorized(.init())
-            }
             /// The associated value of the enum case if `self` is `.unauthorized`.
             ///
             /// - Throws: An error if `self` is not `.unauthorized`.
@@ -2948,8 +3400,32 @@ public enum Operations {
                 }
             }
             public struct BadRequest: Sendable, Hashable {
+                /// - Remark: Generated from `#/paths/sets/{set_code}/GET/responses/400/content`.
+                @frozen public enum Body: Sendable, Hashable {
+                    /// - Remark: Generated from `#/paths/sets/{set_code}/GET/responses/400/content/application\/json`.
+                    case json(Components.Schemas.ErrorResponse)
+                    /// The associated value of the enum case if `self` is `.json`.
+                    ///
+                    /// - Throws: An error if `self` is not `.json`.
+                    /// - SeeAlso: `.json`.
+                    public var json: Components.Schemas.ErrorResponse {
+                        get throws {
+                            switch self {
+                            case let .json(body):
+                                return body
+                            }
+                        }
+                    }
+                }
+                /// Received HTTP response body
+                public var body: Operations.get_set.Output.BadRequest.Body
                 /// Creates a new `BadRequest`.
-                public init() {}
+                ///
+                /// - Parameters:
+                ///   - body: Received HTTP response body
+                public init(body: Operations.get_set.Output.BadRequest.Body) {
+                    self.body = body
+                }
             }
             /// Invalid set code
             ///
@@ -2957,14 +3433,6 @@ public enum Operations {
             ///
             /// HTTP response code: `400 badRequest`.
             case badRequest(Operations.get_set.Output.BadRequest)
-            /// Invalid set code
-            ///
-            /// - Remark: Generated from `#/paths//sets/{set_code}/get(get_set)/responses/400`.
-            ///
-            /// HTTP response code: `400 badRequest`.
-            public static var badRequest: Self {
-                .badRequest(.init())
-            }
             /// The associated value of the enum case if `self` is `.badRequest`.
             ///
             /// - Throws: An error if `self` is not `.badRequest`.
@@ -2983,8 +3451,32 @@ public enum Operations {
                 }
             }
             public struct NotFound: Sendable, Hashable {
+                /// - Remark: Generated from `#/paths/sets/{set_code}/GET/responses/404/content`.
+                @frozen public enum Body: Sendable, Hashable {
+                    /// - Remark: Generated from `#/paths/sets/{set_code}/GET/responses/404/content/application\/json`.
+                    case json(Components.Schemas.ErrorResponse)
+                    /// The associated value of the enum case if `self` is `.json`.
+                    ///
+                    /// - Throws: An error if `self` is not `.json`.
+                    /// - SeeAlso: `.json`.
+                    public var json: Components.Schemas.ErrorResponse {
+                        get throws {
+                            switch self {
+                            case let .json(body):
+                                return body
+                            }
+                        }
+                    }
+                }
+                /// Received HTTP response body
+                public var body: Operations.get_set.Output.NotFound.Body
                 /// Creates a new `NotFound`.
-                public init() {}
+                ///
+                /// - Parameters:
+                ///   - body: Received HTTP response body
+                public init(body: Operations.get_set.Output.NotFound.Body) {
+                    self.body = body
+                }
             }
             /// No set found for this set_code
             ///
@@ -2992,14 +3484,6 @@ public enum Operations {
             ///
             /// HTTP response code: `404 notFound`.
             case notFound(Operations.get_set.Output.NotFound)
-            /// No set found for this set_code
-            ///
-            /// - Remark: Generated from `#/paths//sets/{set_code}/get(get_set)/responses/404`.
-            ///
-            /// HTTP response code: `404 notFound`.
-            public static var notFound: Self {
-                .notFound(.init())
-            }
             /// The associated value of the enum case if `self` is `.notFound`.
             ///
             /// - Throws: An error if `self` is not `.notFound`.
@@ -3162,8 +3646,32 @@ public enum Operations {
                 }
             }
             public struct BadRequest: Sendable, Hashable {
+                /// - Remark: Generated from `#/paths/trades/GET/responses/400/content`.
+                @frozen public enum Body: Sendable, Hashable {
+                    /// - Remark: Generated from `#/paths/trades/GET/responses/400/content/application\/json`.
+                    case json(Components.Schemas.ErrorResponse)
+                    /// The associated value of the enum case if `self` is `.json`.
+                    ///
+                    /// - Throws: An error if `self` is not `.json`.
+                    /// - SeeAlso: `.json`.
+                    public var json: Components.Schemas.ErrorResponse {
+                        get throws {
+                            switch self {
+                            case let .json(body):
+                                return body
+                            }
+                        }
+                    }
+                }
+                /// Received HTTP response body
+                public var body: Operations.list_trades.Output.BadRequest.Body
                 /// Creates a new `BadRequest`.
-                public init() {}
+                ///
+                /// - Parameters:
+                ///   - body: Received HTTP response body
+                public init(body: Operations.list_trades.Output.BadRequest.Body) {
+                    self.body = body
+                }
             }
             /// Invalid status filter, or pagination out of bounds
             ///
@@ -3171,14 +3679,6 @@ public enum Operations {
             ///
             /// HTTP response code: `400 badRequest`.
             case badRequest(Operations.list_trades.Output.BadRequest)
-            /// Invalid status filter, or pagination out of bounds
-            ///
-            /// - Remark: Generated from `#/paths//trades/get(list_trades)/responses/400`.
-            ///
-            /// HTTP response code: `400 badRequest`.
-            public static var badRequest: Self {
-                .badRequest(.init())
-            }
             /// The associated value of the enum case if `self` is `.badRequest`.
             ///
             /// - Throws: An error if `self` is not `.badRequest`.
@@ -3197,8 +3697,32 @@ public enum Operations {
                 }
             }
             public struct Unauthorized: Sendable, Hashable {
+                /// - Remark: Generated from `#/paths/trades/GET/responses/401/content`.
+                @frozen public enum Body: Sendable, Hashable {
+                    /// - Remark: Generated from `#/paths/trades/GET/responses/401/content/application\/json`.
+                    case json(Components.Schemas.ErrorResponse)
+                    /// The associated value of the enum case if `self` is `.json`.
+                    ///
+                    /// - Throws: An error if `self` is not `.json`.
+                    /// - SeeAlso: `.json`.
+                    public var json: Components.Schemas.ErrorResponse {
+                        get throws {
+                            switch self {
+                            case let .json(body):
+                                return body
+                            }
+                        }
+                    }
+                }
+                /// Received HTTP response body
+                public var body: Operations.list_trades.Output.Unauthorized.Body
                 /// Creates a new `Unauthorized`.
-                public init() {}
+                ///
+                /// - Parameters:
+                ///   - body: Received HTTP response body
+                public init(body: Operations.list_trades.Output.Unauthorized.Body) {
+                    self.body = body
+                }
             }
             /// Missing or invalid token
             ///
@@ -3206,14 +3730,6 @@ public enum Operations {
             ///
             /// HTTP response code: `401 unauthorized`.
             case unauthorized(Operations.list_trades.Output.Unauthorized)
-            /// Missing or invalid token
-            ///
-            /// - Remark: Generated from `#/paths//trades/get(list_trades)/responses/401`.
-            ///
-            /// HTTP response code: `401 unauthorized`.
-            public static var unauthorized: Self {
-                .unauthorized(.init())
-            }
             /// The associated value of the enum case if `self` is `.unauthorized`.
             ///
             /// - Throws: An error if `self` is not `.unauthorized`.
@@ -3351,8 +3867,32 @@ public enum Operations {
                 }
             }
             public struct BadRequest: Sendable, Hashable {
+                /// - Remark: Generated from `#/paths/trades/POST/responses/400/content`.
+                @frozen public enum Body: Sendable, Hashable {
+                    /// - Remark: Generated from `#/paths/trades/POST/responses/400/content/application\/json`.
+                    case json(Components.Schemas.ErrorResponse)
+                    /// The associated value of the enum case if `self` is `.json`.
+                    ///
+                    /// - Throws: An error if `self` is not `.json`.
+                    /// - SeeAlso: `.json`.
+                    public var json: Components.Schemas.ErrorResponse {
+                        get throws {
+                            switch self {
+                            case let .json(body):
+                                return body
+                            }
+                        }
+                    }
+                }
+                /// Received HTTP response body
+                public var body: Operations.create_trade.Output.BadRequest.Body
                 /// Creates a new `BadRequest`.
-                public init() {}
+                ///
+                /// - Parameters:
+                ///   - body: Received HTTP response body
+                public init(body: Operations.create_trade.Output.BadRequest.Body) {
+                    self.body = body
+                }
             }
             /// Invalid payload, or respondent is the caller
             ///
@@ -3360,14 +3900,6 @@ public enum Operations {
             ///
             /// HTTP response code: `400 badRequest`.
             case badRequest(Operations.create_trade.Output.BadRequest)
-            /// Invalid payload, or respondent is the caller
-            ///
-            /// - Remark: Generated from `#/paths//trades/post(create_trade)/responses/400`.
-            ///
-            /// HTTP response code: `400 badRequest`.
-            public static var badRequest: Self {
-                .badRequest(.init())
-            }
             /// The associated value of the enum case if `self` is `.badRequest`.
             ///
             /// - Throws: An error if `self` is not `.badRequest`.
@@ -3386,8 +3918,32 @@ public enum Operations {
                 }
             }
             public struct Unauthorized: Sendable, Hashable {
+                /// - Remark: Generated from `#/paths/trades/POST/responses/401/content`.
+                @frozen public enum Body: Sendable, Hashable {
+                    /// - Remark: Generated from `#/paths/trades/POST/responses/401/content/application\/json`.
+                    case json(Components.Schemas.ErrorResponse)
+                    /// The associated value of the enum case if `self` is `.json`.
+                    ///
+                    /// - Throws: An error if `self` is not `.json`.
+                    /// - SeeAlso: `.json`.
+                    public var json: Components.Schemas.ErrorResponse {
+                        get throws {
+                            switch self {
+                            case let .json(body):
+                                return body
+                            }
+                        }
+                    }
+                }
+                /// Received HTTP response body
+                public var body: Operations.create_trade.Output.Unauthorized.Body
                 /// Creates a new `Unauthorized`.
-                public init() {}
+                ///
+                /// - Parameters:
+                ///   - body: Received HTTP response body
+                public init(body: Operations.create_trade.Output.Unauthorized.Body) {
+                    self.body = body
+                }
             }
             /// Missing or invalid token
             ///
@@ -3395,14 +3951,6 @@ public enum Operations {
             ///
             /// HTTP response code: `401 unauthorized`.
             case unauthorized(Operations.create_trade.Output.Unauthorized)
-            /// Missing or invalid token
-            ///
-            /// - Remark: Generated from `#/paths//trades/post(create_trade)/responses/401`.
-            ///
-            /// HTTP response code: `401 unauthorized`.
-            public static var unauthorized: Self {
-                .unauthorized(.init())
-            }
             /// The associated value of the enum case if `self` is `.unauthorized`.
             ///
             /// - Throws: An error if `self` is not `.unauthorized`.
@@ -3421,8 +3969,32 @@ public enum Operations {
                 }
             }
             public struct NotFound: Sendable, Hashable {
+                /// - Remark: Generated from `#/paths/trades/POST/responses/404/content`.
+                @frozen public enum Body: Sendable, Hashable {
+                    /// - Remark: Generated from `#/paths/trades/POST/responses/404/content/application\/json`.
+                    case json(Components.Schemas.ErrorResponse)
+                    /// The associated value of the enum case if `self` is `.json`.
+                    ///
+                    /// - Throws: An error if `self` is not `.json`.
+                    /// - SeeAlso: `.json`.
+                    public var json: Components.Schemas.ErrorResponse {
+                        get throws {
+                            switch self {
+                            case let .json(body):
+                                return body
+                            }
+                        }
+                    }
+                }
+                /// Received HTTP response body
+                public var body: Operations.create_trade.Output.NotFound.Body
                 /// Creates a new `NotFound`.
-                public init() {}
+                ///
+                /// - Parameters:
+                ///   - body: Received HTTP response body
+                public init(body: Operations.create_trade.Output.NotFound.Body) {
+                    self.body = body
+                }
             }
             /// Respondent username unknown
             ///
@@ -3430,14 +4002,6 @@ public enum Operations {
             ///
             /// HTTP response code: `404 notFound`.
             case notFound(Operations.create_trade.Output.NotFound)
-            /// Respondent username unknown
-            ///
-            /// - Remark: Generated from `#/paths//trades/post(create_trade)/responses/404`.
-            ///
-            /// HTTP response code: `404 notFound`.
-            public static var notFound: Self {
-                .notFound(.init())
-            }
             /// The associated value of the enum case if `self` is `.notFound`.
             ///
             /// - Throws: An error if `self` is not `.notFound`.
@@ -3584,8 +4148,32 @@ public enum Operations {
                 }
             }
             public struct Unauthorized: Sendable, Hashable {
+                /// - Remark: Generated from `#/paths/trades/{trade_id}/GET/responses/401/content`.
+                @frozen public enum Body: Sendable, Hashable {
+                    /// - Remark: Generated from `#/paths/trades/{trade_id}/GET/responses/401/content/application\/json`.
+                    case json(Components.Schemas.ErrorResponse)
+                    /// The associated value of the enum case if `self` is `.json`.
+                    ///
+                    /// - Throws: An error if `self` is not `.json`.
+                    /// - SeeAlso: `.json`.
+                    public var json: Components.Schemas.ErrorResponse {
+                        get throws {
+                            switch self {
+                            case let .json(body):
+                                return body
+                            }
+                        }
+                    }
+                }
+                /// Received HTTP response body
+                public var body: Operations.get_trade.Output.Unauthorized.Body
                 /// Creates a new `Unauthorized`.
-                public init() {}
+                ///
+                /// - Parameters:
+                ///   - body: Received HTTP response body
+                public init(body: Operations.get_trade.Output.Unauthorized.Body) {
+                    self.body = body
+                }
             }
             /// Missing or invalid token
             ///
@@ -3593,14 +4181,6 @@ public enum Operations {
             ///
             /// HTTP response code: `401 unauthorized`.
             case unauthorized(Operations.get_trade.Output.Unauthorized)
-            /// Missing or invalid token
-            ///
-            /// - Remark: Generated from `#/paths//trades/{trade_id}/get(get_trade)/responses/401`.
-            ///
-            /// HTTP response code: `401 unauthorized`.
-            public static var unauthorized: Self {
-                .unauthorized(.init())
-            }
             /// The associated value of the enum case if `self` is `.unauthorized`.
             ///
             /// - Throws: An error if `self` is not `.unauthorized`.
@@ -3619,8 +4199,32 @@ public enum Operations {
                 }
             }
             public struct Forbidden: Sendable, Hashable {
+                /// - Remark: Generated from `#/paths/trades/{trade_id}/GET/responses/403/content`.
+                @frozen public enum Body: Sendable, Hashable {
+                    /// - Remark: Generated from `#/paths/trades/{trade_id}/GET/responses/403/content/application\/json`.
+                    case json(Components.Schemas.ErrorResponse)
+                    /// The associated value of the enum case if `self` is `.json`.
+                    ///
+                    /// - Throws: An error if `self` is not `.json`.
+                    /// - SeeAlso: `.json`.
+                    public var json: Components.Schemas.ErrorResponse {
+                        get throws {
+                            switch self {
+                            case let .json(body):
+                                return body
+                            }
+                        }
+                    }
+                }
+                /// Received HTTP response body
+                public var body: Operations.get_trade.Output.Forbidden.Body
                 /// Creates a new `Forbidden`.
-                public init() {}
+                ///
+                /// - Parameters:
+                ///   - body: Received HTTP response body
+                public init(body: Operations.get_trade.Output.Forbidden.Body) {
+                    self.body = body
+                }
             }
             /// Caller is not a party to this trade
             ///
@@ -3628,14 +4232,6 @@ public enum Operations {
             ///
             /// HTTP response code: `403 forbidden`.
             case forbidden(Operations.get_trade.Output.Forbidden)
-            /// Caller is not a party to this trade
-            ///
-            /// - Remark: Generated from `#/paths//trades/{trade_id}/get(get_trade)/responses/403`.
-            ///
-            /// HTTP response code: `403 forbidden`.
-            public static var forbidden: Self {
-                .forbidden(.init())
-            }
             /// The associated value of the enum case if `self` is `.forbidden`.
             ///
             /// - Throws: An error if `self` is not `.forbidden`.
@@ -3654,8 +4250,32 @@ public enum Operations {
                 }
             }
             public struct NotFound: Sendable, Hashable {
+                /// - Remark: Generated from `#/paths/trades/{trade_id}/GET/responses/404/content`.
+                @frozen public enum Body: Sendable, Hashable {
+                    /// - Remark: Generated from `#/paths/trades/{trade_id}/GET/responses/404/content/application\/json`.
+                    case json(Components.Schemas.ErrorResponse)
+                    /// The associated value of the enum case if `self` is `.json`.
+                    ///
+                    /// - Throws: An error if `self` is not `.json`.
+                    /// - SeeAlso: `.json`.
+                    public var json: Components.Schemas.ErrorResponse {
+                        get throws {
+                            switch self {
+                            case let .json(body):
+                                return body
+                            }
+                        }
+                    }
+                }
+                /// Received HTTP response body
+                public var body: Operations.get_trade.Output.NotFound.Body
                 /// Creates a new `NotFound`.
-                public init() {}
+                ///
+                /// - Parameters:
+                ///   - body: Received HTTP response body
+                public init(body: Operations.get_trade.Output.NotFound.Body) {
+                    self.body = body
+                }
             }
             /// Trade not found
             ///
@@ -3663,14 +4283,6 @@ public enum Operations {
             ///
             /// HTTP response code: `404 notFound`.
             case notFound(Operations.get_trade.Output.NotFound)
-            /// Trade not found
-            ///
-            /// - Remark: Generated from `#/paths//trades/{trade_id}/get(get_trade)/responses/404`.
-            ///
-            /// HTTP response code: `404 notFound`.
-            public static var notFound: Self {
-                .notFound(.init())
-            }
             /// The associated value of the enum case if `self` is `.notFound`.
             ///
             /// - Throws: An error if `self` is not `.notFound`.
@@ -3739,12 +4351,29 @@ public enum Operations {
                 }
             }
             public var path: Operations.abandon_trade.Input.Path
+            /// - Remark: Generated from `#/paths/trades/{trade_id}/abandon/POST/header`.
+            public struct Headers: Sendable, Hashable {
+                public var accept: [OpenAPIRuntime.AcceptHeaderContentType<Operations.abandon_trade.AcceptableContentType>]
+                /// Creates a new `Headers`.
+                ///
+                /// - Parameters:
+                ///   - accept:
+                public init(accept: [OpenAPIRuntime.AcceptHeaderContentType<Operations.abandon_trade.AcceptableContentType>] = .defaultValues()) {
+                    self.accept = accept
+                }
+            }
+            public var headers: Operations.abandon_trade.Input.Headers
             /// Creates a new `Input`.
             ///
             /// - Parameters:
             ///   - path:
-            public init(path: Operations.abandon_trade.Input.Path) {
+            ///   - headers:
+            public init(
+                path: Operations.abandon_trade.Input.Path,
+                headers: Operations.abandon_trade.Input.Headers = .init()
+            ) {
                 self.path = path
+                self.headers = headers
             }
         }
         @frozen public enum Output: Sendable, Hashable {
@@ -3784,8 +4413,32 @@ public enum Operations {
                 }
             }
             public struct Unauthorized: Sendable, Hashable {
+                /// - Remark: Generated from `#/paths/trades/{trade_id}/abandon/POST/responses/401/content`.
+                @frozen public enum Body: Sendable, Hashable {
+                    /// - Remark: Generated from `#/paths/trades/{trade_id}/abandon/POST/responses/401/content/application\/json`.
+                    case json(Components.Schemas.ErrorResponse)
+                    /// The associated value of the enum case if `self` is `.json`.
+                    ///
+                    /// - Throws: An error if `self` is not `.json`.
+                    /// - SeeAlso: `.json`.
+                    public var json: Components.Schemas.ErrorResponse {
+                        get throws {
+                            switch self {
+                            case let .json(body):
+                                return body
+                            }
+                        }
+                    }
+                }
+                /// Received HTTP response body
+                public var body: Operations.abandon_trade.Output.Unauthorized.Body
                 /// Creates a new `Unauthorized`.
-                public init() {}
+                ///
+                /// - Parameters:
+                ///   - body: Received HTTP response body
+                public init(body: Operations.abandon_trade.Output.Unauthorized.Body) {
+                    self.body = body
+                }
             }
             /// Missing or invalid token
             ///
@@ -3793,14 +4446,6 @@ public enum Operations {
             ///
             /// HTTP response code: `401 unauthorized`.
             case unauthorized(Operations.abandon_trade.Output.Unauthorized)
-            /// Missing or invalid token
-            ///
-            /// - Remark: Generated from `#/paths//trades/{trade_id}/abandon/post(abandon_trade)/responses/401`.
-            ///
-            /// HTTP response code: `401 unauthorized`.
-            public static var unauthorized: Self {
-                .unauthorized(.init())
-            }
             /// The associated value of the enum case if `self` is `.unauthorized`.
             ///
             /// - Throws: An error if `self` is not `.unauthorized`.
@@ -3819,8 +4464,32 @@ public enum Operations {
                 }
             }
             public struct Forbidden: Sendable, Hashable {
+                /// - Remark: Generated from `#/paths/trades/{trade_id}/abandon/POST/responses/403/content`.
+                @frozen public enum Body: Sendable, Hashable {
+                    /// - Remark: Generated from `#/paths/trades/{trade_id}/abandon/POST/responses/403/content/application\/json`.
+                    case json(Components.Schemas.ErrorResponse)
+                    /// The associated value of the enum case if `self` is `.json`.
+                    ///
+                    /// - Throws: An error if `self` is not `.json`.
+                    /// - SeeAlso: `.json`.
+                    public var json: Components.Schemas.ErrorResponse {
+                        get throws {
+                            switch self {
+                            case let .json(body):
+                                return body
+                            }
+                        }
+                    }
+                }
+                /// Received HTTP response body
+                public var body: Operations.abandon_trade.Output.Forbidden.Body
                 /// Creates a new `Forbidden`.
-                public init() {}
+                ///
+                /// - Parameters:
+                ///   - body: Received HTTP response body
+                public init(body: Operations.abandon_trade.Output.Forbidden.Body) {
+                    self.body = body
+                }
             }
             /// Caller is not a party to this trade
             ///
@@ -3828,14 +4497,6 @@ public enum Operations {
             ///
             /// HTTP response code: `403 forbidden`.
             case forbidden(Operations.abandon_trade.Output.Forbidden)
-            /// Caller is not a party to this trade
-            ///
-            /// - Remark: Generated from `#/paths//trades/{trade_id}/abandon/post(abandon_trade)/responses/403`.
-            ///
-            /// HTTP response code: `403 forbidden`.
-            public static var forbidden: Self {
-                .forbidden(.init())
-            }
             /// The associated value of the enum case if `self` is `.forbidden`.
             ///
             /// - Throws: An error if `self` is not `.forbidden`.
@@ -3854,8 +4515,32 @@ public enum Operations {
                 }
             }
             public struct NotFound: Sendable, Hashable {
+                /// - Remark: Generated from `#/paths/trades/{trade_id}/abandon/POST/responses/404/content`.
+                @frozen public enum Body: Sendable, Hashable {
+                    /// - Remark: Generated from `#/paths/trades/{trade_id}/abandon/POST/responses/404/content/application\/json`.
+                    case json(Components.Schemas.ErrorResponse)
+                    /// The associated value of the enum case if `self` is `.json`.
+                    ///
+                    /// - Throws: An error if `self` is not `.json`.
+                    /// - SeeAlso: `.json`.
+                    public var json: Components.Schemas.ErrorResponse {
+                        get throws {
+                            switch self {
+                            case let .json(body):
+                                return body
+                            }
+                        }
+                    }
+                }
+                /// Received HTTP response body
+                public var body: Operations.abandon_trade.Output.NotFound.Body
                 /// Creates a new `NotFound`.
-                public init() {}
+                ///
+                /// - Parameters:
+                ///   - body: Received HTTP response body
+                public init(body: Operations.abandon_trade.Output.NotFound.Body) {
+                    self.body = body
+                }
             }
             /// Trade not found
             ///
@@ -3863,14 +4548,6 @@ public enum Operations {
             ///
             /// HTTP response code: `404 notFound`.
             case notFound(Operations.abandon_trade.Output.NotFound)
-            /// Trade not found
-            ///
-            /// - Remark: Generated from `#/paths//trades/{trade_id}/abandon/post(abandon_trade)/responses/404`.
-            ///
-            /// HTTP response code: `404 notFound`.
-            public static var notFound: Self {
-                .notFound(.init())
-            }
             /// The associated value of the enum case if `self` is `.notFound`.
             ///
             /// - Throws: An error if `self` is not `.notFound`.
@@ -3889,8 +4566,32 @@ public enum Operations {
                 }
             }
             public struct Conflict: Sendable, Hashable {
+                /// - Remark: Generated from `#/paths/trades/{trade_id}/abandon/POST/responses/409/content`.
+                @frozen public enum Body: Sendable, Hashable {
+                    /// - Remark: Generated from `#/paths/trades/{trade_id}/abandon/POST/responses/409/content/application\/json`.
+                    case json(Components.Schemas.ErrorResponse)
+                    /// The associated value of the enum case if `self` is `.json`.
+                    ///
+                    /// - Throws: An error if `self` is not `.json`.
+                    /// - SeeAlso: `.json`.
+                    public var json: Components.Schemas.ErrorResponse {
+                        get throws {
+                            switch self {
+                            case let .json(body):
+                                return body
+                            }
+                        }
+                    }
+                }
+                /// Received HTTP response body
+                public var body: Operations.abandon_trade.Output.Conflict.Body
                 /// Creates a new `Conflict`.
-                public init() {}
+                ///
+                /// - Parameters:
+                ///   - body: Received HTTP response body
+                public init(body: Operations.abandon_trade.Output.Conflict.Body) {
+                    self.body = body
+                }
             }
             /// Trade is already finalized and cannot be abandoned
             ///
@@ -3898,14 +4599,6 @@ public enum Operations {
             ///
             /// HTTP response code: `409 conflict`.
             case conflict(Operations.abandon_trade.Output.Conflict)
-            /// Trade is already finalized and cannot be abandoned
-            ///
-            /// - Remark: Generated from `#/paths//trades/{trade_id}/abandon/post(abandon_trade)/responses/409`.
-            ///
-            /// HTTP response code: `409 conflict`.
-            public static var conflict: Self {
-                .conflict(.init())
-            }
             /// The associated value of the enum case if `self` is `.conflict`.
             ///
             /// - Throws: An error if `self` is not `.conflict`.
@@ -3928,6 +4621,31 @@ public enum Operations {
             /// A response with a code that is not documented in the OpenAPI document.
             case undocumented(statusCode: Swift.Int, OpenAPIRuntime.UndocumentedPayload)
         }
+        @frozen public enum AcceptableContentType: AcceptableProtocol {
+            case json
+            case other(Swift.String)
+            public init?(rawValue: Swift.String) {
+                switch rawValue.lowercased() {
+                case "application/json":
+                    self = .json
+                default:
+                    self = .other(rawValue)
+                }
+            }
+            public var rawValue: Swift.String {
+                switch self {
+                case let .other(string):
+                    return string
+                case .json:
+                    return "application/json"
+                }
+            }
+            public static var allCases: [Self] {
+                [
+                    .json
+                ]
+            }
+        }
     }
     /// - Remark: HTTP `POST /trades/{trade_id}/accept`.
     /// - Remark: Generated from `#/paths//trades/{trade_id}/accept/post(accept_trade)`.
@@ -3949,12 +4667,29 @@ public enum Operations {
                 }
             }
             public var path: Operations.accept_trade.Input.Path
+            /// - Remark: Generated from `#/paths/trades/{trade_id}/accept/POST/header`.
+            public struct Headers: Sendable, Hashable {
+                public var accept: [OpenAPIRuntime.AcceptHeaderContentType<Operations.accept_trade.AcceptableContentType>]
+                /// Creates a new `Headers`.
+                ///
+                /// - Parameters:
+                ///   - accept:
+                public init(accept: [OpenAPIRuntime.AcceptHeaderContentType<Operations.accept_trade.AcceptableContentType>] = .defaultValues()) {
+                    self.accept = accept
+                }
+            }
+            public var headers: Operations.accept_trade.Input.Headers
             /// Creates a new `Input`.
             ///
             /// - Parameters:
             ///   - path:
-            public init(path: Operations.accept_trade.Input.Path) {
+            ///   - headers:
+            public init(
+                path: Operations.accept_trade.Input.Path,
+                headers: Operations.accept_trade.Input.Headers = .init()
+            ) {
                 self.path = path
+                self.headers = headers
             }
         }
         @frozen public enum Output: Sendable, Hashable {
@@ -3994,8 +4729,32 @@ public enum Operations {
                 }
             }
             public struct Unauthorized: Sendable, Hashable {
+                /// - Remark: Generated from `#/paths/trades/{trade_id}/accept/POST/responses/401/content`.
+                @frozen public enum Body: Sendable, Hashable {
+                    /// - Remark: Generated from `#/paths/trades/{trade_id}/accept/POST/responses/401/content/application\/json`.
+                    case json(Components.Schemas.ErrorResponse)
+                    /// The associated value of the enum case if `self` is `.json`.
+                    ///
+                    /// - Throws: An error if `self` is not `.json`.
+                    /// - SeeAlso: `.json`.
+                    public var json: Components.Schemas.ErrorResponse {
+                        get throws {
+                            switch self {
+                            case let .json(body):
+                                return body
+                            }
+                        }
+                    }
+                }
+                /// Received HTTP response body
+                public var body: Operations.accept_trade.Output.Unauthorized.Body
                 /// Creates a new `Unauthorized`.
-                public init() {}
+                ///
+                /// - Parameters:
+                ///   - body: Received HTTP response body
+                public init(body: Operations.accept_trade.Output.Unauthorized.Body) {
+                    self.body = body
+                }
             }
             /// Missing or invalid token
             ///
@@ -4003,14 +4762,6 @@ public enum Operations {
             ///
             /// HTTP response code: `401 unauthorized`.
             case unauthorized(Operations.accept_trade.Output.Unauthorized)
-            /// Missing or invalid token
-            ///
-            /// - Remark: Generated from `#/paths//trades/{trade_id}/accept/post(accept_trade)/responses/401`.
-            ///
-            /// HTTP response code: `401 unauthorized`.
-            public static var unauthorized: Self {
-                .unauthorized(.init())
-            }
             /// The associated value of the enum case if `self` is `.unauthorized`.
             ///
             /// - Throws: An error if `self` is not `.unauthorized`.
@@ -4029,8 +4780,32 @@ public enum Operations {
                 }
             }
             public struct Forbidden: Sendable, Hashable {
+                /// - Remark: Generated from `#/paths/trades/{trade_id}/accept/POST/responses/403/content`.
+                @frozen public enum Body: Sendable, Hashable {
+                    /// - Remark: Generated from `#/paths/trades/{trade_id}/accept/POST/responses/403/content/application\/json`.
+                    case json(Components.Schemas.ErrorResponse)
+                    /// The associated value of the enum case if `self` is `.json`.
+                    ///
+                    /// - Throws: An error if `self` is not `.json`.
+                    /// - SeeAlso: `.json`.
+                    public var json: Components.Schemas.ErrorResponse {
+                        get throws {
+                            switch self {
+                            case let .json(body):
+                                return body
+                            }
+                        }
+                    }
+                }
+                /// Received HTTP response body
+                public var body: Operations.accept_trade.Output.Forbidden.Body
                 /// Creates a new `Forbidden`.
-                public init() {}
+                ///
+                /// - Parameters:
+                ///   - body: Received HTTP response body
+                public init(body: Operations.accept_trade.Output.Forbidden.Body) {
+                    self.body = body
+                }
             }
             /// Caller is not a party to this trade
             ///
@@ -4038,14 +4813,6 @@ public enum Operations {
             ///
             /// HTTP response code: `403 forbidden`.
             case forbidden(Operations.accept_trade.Output.Forbidden)
-            /// Caller is not a party to this trade
-            ///
-            /// - Remark: Generated from `#/paths//trades/{trade_id}/accept/post(accept_trade)/responses/403`.
-            ///
-            /// HTTP response code: `403 forbidden`.
-            public static var forbidden: Self {
-                .forbidden(.init())
-            }
             /// The associated value of the enum case if `self` is `.forbidden`.
             ///
             /// - Throws: An error if `self` is not `.forbidden`.
@@ -4064,8 +4831,32 @@ public enum Operations {
                 }
             }
             public struct NotFound: Sendable, Hashable {
+                /// - Remark: Generated from `#/paths/trades/{trade_id}/accept/POST/responses/404/content`.
+                @frozen public enum Body: Sendable, Hashable {
+                    /// - Remark: Generated from `#/paths/trades/{trade_id}/accept/POST/responses/404/content/application\/json`.
+                    case json(Components.Schemas.ErrorResponse)
+                    /// The associated value of the enum case if `self` is `.json`.
+                    ///
+                    /// - Throws: An error if `self` is not `.json`.
+                    /// - SeeAlso: `.json`.
+                    public var json: Components.Schemas.ErrorResponse {
+                        get throws {
+                            switch self {
+                            case let .json(body):
+                                return body
+                            }
+                        }
+                    }
+                }
+                /// Received HTTP response body
+                public var body: Operations.accept_trade.Output.NotFound.Body
                 /// Creates a new `NotFound`.
-                public init() {}
+                ///
+                /// - Parameters:
+                ///   - body: Received HTTP response body
+                public init(body: Operations.accept_trade.Output.NotFound.Body) {
+                    self.body = body
+                }
             }
             /// Trade not found
             ///
@@ -4073,14 +4864,6 @@ public enum Operations {
             ///
             /// HTTP response code: `404 notFound`.
             case notFound(Operations.accept_trade.Output.NotFound)
-            /// Trade not found
-            ///
-            /// - Remark: Generated from `#/paths//trades/{trade_id}/accept/post(accept_trade)/responses/404`.
-            ///
-            /// HTTP response code: `404 notFound`.
-            public static var notFound: Self {
-                .notFound(.init())
-            }
             /// The associated value of the enum case if `self` is `.notFound`.
             ///
             /// - Throws: An error if `self` is not `.notFound`.
@@ -4099,8 +4882,32 @@ public enum Operations {
                 }
             }
             public struct Conflict: Sendable, Hashable {
+                /// - Remark: Generated from `#/paths/trades/{trade_id}/accept/POST/responses/409/content`.
+                @frozen public enum Body: Sendable, Hashable {
+                    /// - Remark: Generated from `#/paths/trades/{trade_id}/accept/POST/responses/409/content/application\/json`.
+                    case json(Components.Schemas.ErrorResponse)
+                    /// The associated value of the enum case if `self` is `.json`.
+                    ///
+                    /// - Throws: An error if `self` is not `.json`.
+                    /// - SeeAlso: `.json`.
+                    public var json: Components.Schemas.ErrorResponse {
+                        get throws {
+                            switch self {
+                            case let .json(body):
+                                return body
+                            }
+                        }
+                    }
+                }
+                /// Received HTTP response body
+                public var body: Operations.accept_trade.Output.Conflict.Body
                 /// Creates a new `Conflict`.
-                public init() {}
+                ///
+                /// - Parameters:
+                ///   - body: Received HTTP response body
+                public init(body: Operations.accept_trade.Output.Conflict.Body) {
+                    self.body = body
+                }
             }
             /// Trade cannot be accepted in its current status, or already accepted by the caller
             ///
@@ -4108,14 +4915,6 @@ public enum Operations {
             ///
             /// HTTP response code: `409 conflict`.
             case conflict(Operations.accept_trade.Output.Conflict)
-            /// Trade cannot be accepted in its current status, or already accepted by the caller
-            ///
-            /// - Remark: Generated from `#/paths//trades/{trade_id}/accept/post(accept_trade)/responses/409`.
-            ///
-            /// HTTP response code: `409 conflict`.
-            public static var conflict: Self {
-                .conflict(.init())
-            }
             /// The associated value of the enum case if `self` is `.conflict`.
             ///
             /// - Throws: An error if `self` is not `.conflict`.
@@ -4138,6 +4937,31 @@ public enum Operations {
             /// A response with a code that is not documented in the OpenAPI document.
             case undocumented(statusCode: Swift.Int, OpenAPIRuntime.UndocumentedPayload)
         }
+        @frozen public enum AcceptableContentType: AcceptableProtocol {
+            case json
+            case other(Swift.String)
+            public init?(rawValue: Swift.String) {
+                switch rawValue.lowercased() {
+                case "application/json":
+                    self = .json
+                default:
+                    self = .other(rawValue)
+                }
+            }
+            public var rawValue: Swift.String {
+                switch self {
+                case let .other(string):
+                    return string
+                case .json:
+                    return "application/json"
+                }
+            }
+            public static var allCases: [Self] {
+                [
+                    .json
+                ]
+            }
+        }
     }
     /// - Remark: HTTP `POST /trades/{trade_id}/cards`.
     /// - Remark: Generated from `#/paths//trades/{trade_id}/cards/post(add_trade_card)`.
@@ -4159,6 +4983,18 @@ public enum Operations {
                 }
             }
             public var path: Operations.add_trade_card.Input.Path
+            /// - Remark: Generated from `#/paths/trades/{trade_id}/cards/POST/header`.
+            public struct Headers: Sendable, Hashable {
+                public var accept: [OpenAPIRuntime.AcceptHeaderContentType<Operations.add_trade_card.AcceptableContentType>]
+                /// Creates a new `Headers`.
+                ///
+                /// - Parameters:
+                ///   - accept:
+                public init(accept: [OpenAPIRuntime.AcceptHeaderContentType<Operations.add_trade_card.AcceptableContentType>] = .defaultValues()) {
+                    self.accept = accept
+                }
+            }
+            public var headers: Operations.add_trade_card.Input.Headers
             /// - Remark: Generated from `#/paths/trades/{trade_id}/cards/POST/requestBody`.
             @frozen public enum Body: Sendable, Hashable {
                 /// - Remark: Generated from `#/paths/trades/{trade_id}/cards/POST/requestBody/content/application\/json`.
@@ -4169,12 +5005,15 @@ public enum Operations {
             ///
             /// - Parameters:
             ///   - path:
+            ///   - headers:
             ///   - body:
             public init(
                 path: Operations.add_trade_card.Input.Path,
+                headers: Operations.add_trade_card.Input.Headers = .init(),
                 body: Operations.add_trade_card.Input.Body
             ) {
                 self.path = path
+                self.headers = headers
                 self.body = body
             }
         }
@@ -4215,8 +5054,32 @@ public enum Operations {
                 }
             }
             public struct BadRequest: Sendable, Hashable {
+                /// - Remark: Generated from `#/paths/trades/{trade_id}/cards/POST/responses/400/content`.
+                @frozen public enum Body: Sendable, Hashable {
+                    /// - Remark: Generated from `#/paths/trades/{trade_id}/cards/POST/responses/400/content/application\/json`.
+                    case json(Components.Schemas.ErrorResponse)
+                    /// The associated value of the enum case if `self` is `.json`.
+                    ///
+                    /// - Throws: An error if `self` is not `.json`.
+                    /// - SeeAlso: `.json`.
+                    public var json: Components.Schemas.ErrorResponse {
+                        get throws {
+                            switch self {
+                            case let .json(body):
+                                return body
+                            }
+                        }
+                    }
+                }
+                /// Received HTTP response body
+                public var body: Operations.add_trade_card.Output.BadRequest.Body
                 /// Creates a new `BadRequest`.
-                public init() {}
+                ///
+                /// - Parameters:
+                ///   - body: Received HTTP response body
+                public init(body: Operations.add_trade_card.Output.BadRequest.Body) {
+                    self.body = body
+                }
             }
             /// Invalid payload, or owner_username is not a party to this trade
             ///
@@ -4224,14 +5087,6 @@ public enum Operations {
             ///
             /// HTTP response code: `400 badRequest`.
             case badRequest(Operations.add_trade_card.Output.BadRequest)
-            /// Invalid payload, or owner_username is not a party to this trade
-            ///
-            /// - Remark: Generated from `#/paths//trades/{trade_id}/cards/post(add_trade_card)/responses/400`.
-            ///
-            /// HTTP response code: `400 badRequest`.
-            public static var badRequest: Self {
-                .badRequest(.init())
-            }
             /// The associated value of the enum case if `self` is `.badRequest`.
             ///
             /// - Throws: An error if `self` is not `.badRequest`.
@@ -4250,8 +5105,32 @@ public enum Operations {
                 }
             }
             public struct Unauthorized: Sendable, Hashable {
+                /// - Remark: Generated from `#/paths/trades/{trade_id}/cards/POST/responses/401/content`.
+                @frozen public enum Body: Sendable, Hashable {
+                    /// - Remark: Generated from `#/paths/trades/{trade_id}/cards/POST/responses/401/content/application\/json`.
+                    case json(Components.Schemas.ErrorResponse)
+                    /// The associated value of the enum case if `self` is `.json`.
+                    ///
+                    /// - Throws: An error if `self` is not `.json`.
+                    /// - SeeAlso: `.json`.
+                    public var json: Components.Schemas.ErrorResponse {
+                        get throws {
+                            switch self {
+                            case let .json(body):
+                                return body
+                            }
+                        }
+                    }
+                }
+                /// Received HTTP response body
+                public var body: Operations.add_trade_card.Output.Unauthorized.Body
                 /// Creates a new `Unauthorized`.
-                public init() {}
+                ///
+                /// - Parameters:
+                ///   - body: Received HTTP response body
+                public init(body: Operations.add_trade_card.Output.Unauthorized.Body) {
+                    self.body = body
+                }
             }
             /// Missing or invalid token
             ///
@@ -4259,14 +5138,6 @@ public enum Operations {
             ///
             /// HTTP response code: `401 unauthorized`.
             case unauthorized(Operations.add_trade_card.Output.Unauthorized)
-            /// Missing or invalid token
-            ///
-            /// - Remark: Generated from `#/paths//trades/{trade_id}/cards/post(add_trade_card)/responses/401`.
-            ///
-            /// HTTP response code: `401 unauthorized`.
-            public static var unauthorized: Self {
-                .unauthorized(.init())
-            }
             /// The associated value of the enum case if `self` is `.unauthorized`.
             ///
             /// - Throws: An error if `self` is not `.unauthorized`.
@@ -4285,8 +5156,32 @@ public enum Operations {
                 }
             }
             public struct Forbidden: Sendable, Hashable {
+                /// - Remark: Generated from `#/paths/trades/{trade_id}/cards/POST/responses/403/content`.
+                @frozen public enum Body: Sendable, Hashable {
+                    /// - Remark: Generated from `#/paths/trades/{trade_id}/cards/POST/responses/403/content/application\/json`.
+                    case json(Components.Schemas.ErrorResponse)
+                    /// The associated value of the enum case if `self` is `.json`.
+                    ///
+                    /// - Throws: An error if `self` is not `.json`.
+                    /// - SeeAlso: `.json`.
+                    public var json: Components.Schemas.ErrorResponse {
+                        get throws {
+                            switch self {
+                            case let .json(body):
+                                return body
+                            }
+                        }
+                    }
+                }
+                /// Received HTTP response body
+                public var body: Operations.add_trade_card.Output.Forbidden.Body
                 /// Creates a new `Forbidden`.
-                public init() {}
+                ///
+                /// - Parameters:
+                ///   - body: Received HTTP response body
+                public init(body: Operations.add_trade_card.Output.Forbidden.Body) {
+                    self.body = body
+                }
             }
             /// Caller is not a party to this trade
             ///
@@ -4294,14 +5189,6 @@ public enum Operations {
             ///
             /// HTTP response code: `403 forbidden`.
             case forbidden(Operations.add_trade_card.Output.Forbidden)
-            /// Caller is not a party to this trade
-            ///
-            /// - Remark: Generated from `#/paths//trades/{trade_id}/cards/post(add_trade_card)/responses/403`.
-            ///
-            /// HTTP response code: `403 forbidden`.
-            public static var forbidden: Self {
-                .forbidden(.init())
-            }
             /// The associated value of the enum case if `self` is `.forbidden`.
             ///
             /// - Throws: An error if `self` is not `.forbidden`.
@@ -4320,8 +5207,32 @@ public enum Operations {
                 }
             }
             public struct NotFound: Sendable, Hashable {
+                /// - Remark: Generated from `#/paths/trades/{trade_id}/cards/POST/responses/404/content`.
+                @frozen public enum Body: Sendable, Hashable {
+                    /// - Remark: Generated from `#/paths/trades/{trade_id}/cards/POST/responses/404/content/application\/json`.
+                    case json(Components.Schemas.ErrorResponse)
+                    /// The associated value of the enum case if `self` is `.json`.
+                    ///
+                    /// - Throws: An error if `self` is not `.json`.
+                    /// - SeeAlso: `.json`.
+                    public var json: Components.Schemas.ErrorResponse {
+                        get throws {
+                            switch self {
+                            case let .json(body):
+                                return body
+                            }
+                        }
+                    }
+                }
+                /// Received HTTP response body
+                public var body: Operations.add_trade_card.Output.NotFound.Body
                 /// Creates a new `NotFound`.
-                public init() {}
+                ///
+                /// - Parameters:
+                ///   - body: Received HTTP response body
+                public init(body: Operations.add_trade_card.Output.NotFound.Body) {
+                    self.body = body
+                }
             }
             /// Trade not found, owner username unknown, the caller doesn't own enough of the card, or the other party doesn't offer enough of it to trade (visibility/binders/rarity filters)
             ///
@@ -4329,14 +5240,6 @@ public enum Operations {
             ///
             /// HTTP response code: `404 notFound`.
             case notFound(Operations.add_trade_card.Output.NotFound)
-            /// Trade not found, owner username unknown, the caller doesn't own enough of the card, or the other party doesn't offer enough of it to trade (visibility/binders/rarity filters)
-            ///
-            /// - Remark: Generated from `#/paths//trades/{trade_id}/cards/post(add_trade_card)/responses/404`.
-            ///
-            /// HTTP response code: `404 notFound`.
-            public static var notFound: Self {
-                .notFound(.init())
-            }
             /// The associated value of the enum case if `self` is `.notFound`.
             ///
             /// - Throws: An error if `self` is not `.notFound`.
@@ -4355,8 +5258,32 @@ public enum Operations {
                 }
             }
             public struct Conflict: Sendable, Hashable {
+                /// - Remark: Generated from `#/paths/trades/{trade_id}/cards/POST/responses/409/content`.
+                @frozen public enum Body: Sendable, Hashable {
+                    /// - Remark: Generated from `#/paths/trades/{trade_id}/cards/POST/responses/409/content/application\/json`.
+                    case json(Components.Schemas.ErrorResponse)
+                    /// The associated value of the enum case if `self` is `.json`.
+                    ///
+                    /// - Throws: An error if `self` is not `.json`.
+                    /// - SeeAlso: `.json`.
+                    public var json: Components.Schemas.ErrorResponse {
+                        get throws {
+                            switch self {
+                            case let .json(body):
+                                return body
+                            }
+                        }
+                    }
+                }
+                /// Received HTTP response body
+                public var body: Operations.add_trade_card.Output.Conflict.Body
                 /// Creates a new `Conflict`.
-                public init() {}
+                ///
+                /// - Parameters:
+                ///   - body: Received HTTP response body
+                public init(body: Operations.add_trade_card.Output.Conflict.Body) {
+                    self.body = body
+                }
             }
             /// Trade cannot be modified in its current status, or the card is already reserved by another trade
             ///
@@ -4364,14 +5291,6 @@ public enum Operations {
             ///
             /// HTTP response code: `409 conflict`.
             case conflict(Operations.add_trade_card.Output.Conflict)
-            /// Trade cannot be modified in its current status, or the card is already reserved by another trade
-            ///
-            /// - Remark: Generated from `#/paths//trades/{trade_id}/cards/post(add_trade_card)/responses/409`.
-            ///
-            /// HTTP response code: `409 conflict`.
-            public static var conflict: Self {
-                .conflict(.init())
-            }
             /// The associated value of the enum case if `self` is `.conflict`.
             ///
             /// - Throws: An error if `self` is not `.conflict`.
@@ -4394,6 +5313,31 @@ public enum Operations {
             /// A response with a code that is not documented in the OpenAPI document.
             case undocumented(statusCode: Swift.Int, OpenAPIRuntime.UndocumentedPayload)
         }
+        @frozen public enum AcceptableContentType: AcceptableProtocol {
+            case json
+            case other(Swift.String)
+            public init?(rawValue: Swift.String) {
+                switch rawValue.lowercased() {
+                case "application/json":
+                    self = .json
+                default:
+                    self = .other(rawValue)
+                }
+            }
+            public var rawValue: Swift.String {
+                switch self {
+                case let .other(string):
+                    return string
+                case .json:
+                    return "application/json"
+                }
+            }
+            public static var allCases: [Self] {
+                [
+                    .json
+                ]
+            }
+        }
     }
     /// - Remark: HTTP `POST /trades/{trade_id}/cards/remove`.
     /// - Remark: Generated from `#/paths//trades/{trade_id}/cards/remove/post(remove_trade_card)`.
@@ -4415,6 +5359,18 @@ public enum Operations {
                 }
             }
             public var path: Operations.remove_trade_card.Input.Path
+            /// - Remark: Generated from `#/paths/trades/{trade_id}/cards/remove/POST/header`.
+            public struct Headers: Sendable, Hashable {
+                public var accept: [OpenAPIRuntime.AcceptHeaderContentType<Operations.remove_trade_card.AcceptableContentType>]
+                /// Creates a new `Headers`.
+                ///
+                /// - Parameters:
+                ///   - accept:
+                public init(accept: [OpenAPIRuntime.AcceptHeaderContentType<Operations.remove_trade_card.AcceptableContentType>] = .defaultValues()) {
+                    self.accept = accept
+                }
+            }
+            public var headers: Operations.remove_trade_card.Input.Headers
             /// - Remark: Generated from `#/paths/trades/{trade_id}/cards/remove/POST/requestBody`.
             @frozen public enum Body: Sendable, Hashable {
                 /// - Remark: Generated from `#/paths/trades/{trade_id}/cards/remove/POST/requestBody/content/application\/json`.
@@ -4425,12 +5381,15 @@ public enum Operations {
             ///
             /// - Parameters:
             ///   - path:
+            ///   - headers:
             ///   - body:
             public init(
                 path: Operations.remove_trade_card.Input.Path,
+                headers: Operations.remove_trade_card.Input.Headers = .init(),
                 body: Operations.remove_trade_card.Input.Body
             ) {
                 self.path = path
+                self.headers = headers
                 self.body = body
             }
         }
@@ -4471,8 +5430,32 @@ public enum Operations {
                 }
             }
             public struct BadRequest: Sendable, Hashable {
+                /// - Remark: Generated from `#/paths/trades/{trade_id}/cards/remove/POST/responses/400/content`.
+                @frozen public enum Body: Sendable, Hashable {
+                    /// - Remark: Generated from `#/paths/trades/{trade_id}/cards/remove/POST/responses/400/content/application\/json`.
+                    case json(Components.Schemas.ErrorResponse)
+                    /// The associated value of the enum case if `self` is `.json`.
+                    ///
+                    /// - Throws: An error if `self` is not `.json`.
+                    /// - SeeAlso: `.json`.
+                    public var json: Components.Schemas.ErrorResponse {
+                        get throws {
+                            switch self {
+                            case let .json(body):
+                                return body
+                            }
+                        }
+                    }
+                }
+                /// Received HTTP response body
+                public var body: Operations.remove_trade_card.Output.BadRequest.Body
                 /// Creates a new `BadRequest`.
-                public init() {}
+                ///
+                /// - Parameters:
+                ///   - body: Received HTTP response body
+                public init(body: Operations.remove_trade_card.Output.BadRequest.Body) {
+                    self.body = body
+                }
             }
             /// Invalid payload, or owner_username is not a party to this trade
             ///
@@ -4480,14 +5463,6 @@ public enum Operations {
             ///
             /// HTTP response code: `400 badRequest`.
             case badRequest(Operations.remove_trade_card.Output.BadRequest)
-            /// Invalid payload, or owner_username is not a party to this trade
-            ///
-            /// - Remark: Generated from `#/paths//trades/{trade_id}/cards/remove/post(remove_trade_card)/responses/400`.
-            ///
-            /// HTTP response code: `400 badRequest`.
-            public static var badRequest: Self {
-                .badRequest(.init())
-            }
             /// The associated value of the enum case if `self` is `.badRequest`.
             ///
             /// - Throws: An error if `self` is not `.badRequest`.
@@ -4506,8 +5481,32 @@ public enum Operations {
                 }
             }
             public struct Unauthorized: Sendable, Hashable {
+                /// - Remark: Generated from `#/paths/trades/{trade_id}/cards/remove/POST/responses/401/content`.
+                @frozen public enum Body: Sendable, Hashable {
+                    /// - Remark: Generated from `#/paths/trades/{trade_id}/cards/remove/POST/responses/401/content/application\/json`.
+                    case json(Components.Schemas.ErrorResponse)
+                    /// The associated value of the enum case if `self` is `.json`.
+                    ///
+                    /// - Throws: An error if `self` is not `.json`.
+                    /// - SeeAlso: `.json`.
+                    public var json: Components.Schemas.ErrorResponse {
+                        get throws {
+                            switch self {
+                            case let .json(body):
+                                return body
+                            }
+                        }
+                    }
+                }
+                /// Received HTTP response body
+                public var body: Operations.remove_trade_card.Output.Unauthorized.Body
                 /// Creates a new `Unauthorized`.
-                public init() {}
+                ///
+                /// - Parameters:
+                ///   - body: Received HTTP response body
+                public init(body: Operations.remove_trade_card.Output.Unauthorized.Body) {
+                    self.body = body
+                }
             }
             /// Missing or invalid token
             ///
@@ -4515,14 +5514,6 @@ public enum Operations {
             ///
             /// HTTP response code: `401 unauthorized`.
             case unauthorized(Operations.remove_trade_card.Output.Unauthorized)
-            /// Missing or invalid token
-            ///
-            /// - Remark: Generated from `#/paths//trades/{trade_id}/cards/remove/post(remove_trade_card)/responses/401`.
-            ///
-            /// HTTP response code: `401 unauthorized`.
-            public static var unauthorized: Self {
-                .unauthorized(.init())
-            }
             /// The associated value of the enum case if `self` is `.unauthorized`.
             ///
             /// - Throws: An error if `self` is not `.unauthorized`.
@@ -4541,8 +5532,32 @@ public enum Operations {
                 }
             }
             public struct Forbidden: Sendable, Hashable {
+                /// - Remark: Generated from `#/paths/trades/{trade_id}/cards/remove/POST/responses/403/content`.
+                @frozen public enum Body: Sendable, Hashable {
+                    /// - Remark: Generated from `#/paths/trades/{trade_id}/cards/remove/POST/responses/403/content/application\/json`.
+                    case json(Components.Schemas.ErrorResponse)
+                    /// The associated value of the enum case if `self` is `.json`.
+                    ///
+                    /// - Throws: An error if `self` is not `.json`.
+                    /// - SeeAlso: `.json`.
+                    public var json: Components.Schemas.ErrorResponse {
+                        get throws {
+                            switch self {
+                            case let .json(body):
+                                return body
+                            }
+                        }
+                    }
+                }
+                /// Received HTTP response body
+                public var body: Operations.remove_trade_card.Output.Forbidden.Body
                 /// Creates a new `Forbidden`.
-                public init() {}
+                ///
+                /// - Parameters:
+                ///   - body: Received HTTP response body
+                public init(body: Operations.remove_trade_card.Output.Forbidden.Body) {
+                    self.body = body
+                }
             }
             /// Caller is not a party to this trade
             ///
@@ -4550,14 +5565,6 @@ public enum Operations {
             ///
             /// HTTP response code: `403 forbidden`.
             case forbidden(Operations.remove_trade_card.Output.Forbidden)
-            /// Caller is not a party to this trade
-            ///
-            /// - Remark: Generated from `#/paths//trades/{trade_id}/cards/remove/post(remove_trade_card)/responses/403`.
-            ///
-            /// HTTP response code: `403 forbidden`.
-            public static var forbidden: Self {
-                .forbidden(.init())
-            }
             /// The associated value of the enum case if `self` is `.forbidden`.
             ///
             /// - Throws: An error if `self` is not `.forbidden`.
@@ -4576,8 +5583,32 @@ public enum Operations {
                 }
             }
             public struct NotFound: Sendable, Hashable {
+                /// - Remark: Generated from `#/paths/trades/{trade_id}/cards/remove/POST/responses/404/content`.
+                @frozen public enum Body: Sendable, Hashable {
+                    /// - Remark: Generated from `#/paths/trades/{trade_id}/cards/remove/POST/responses/404/content/application\/json`.
+                    case json(Components.Schemas.ErrorResponse)
+                    /// The associated value of the enum case if `self` is `.json`.
+                    ///
+                    /// - Throws: An error if `self` is not `.json`.
+                    /// - SeeAlso: `.json`.
+                    public var json: Components.Schemas.ErrorResponse {
+                        get throws {
+                            switch self {
+                            case let .json(body):
+                                return body
+                            }
+                        }
+                    }
+                }
+                /// Received HTTP response body
+                public var body: Operations.remove_trade_card.Output.NotFound.Body
                 /// Creates a new `NotFound`.
-                public init() {}
+                ///
+                /// - Parameters:
+                ///   - body: Received HTTP response body
+                public init(body: Operations.remove_trade_card.Output.NotFound.Body) {
+                    self.body = body
+                }
             }
             /// Trade not found, owner username unknown, or card not part of the trade
             ///
@@ -4585,14 +5616,6 @@ public enum Operations {
             ///
             /// HTTP response code: `404 notFound`.
             case notFound(Operations.remove_trade_card.Output.NotFound)
-            /// Trade not found, owner username unknown, or card not part of the trade
-            ///
-            /// - Remark: Generated from `#/paths//trades/{trade_id}/cards/remove/post(remove_trade_card)/responses/404`.
-            ///
-            /// HTTP response code: `404 notFound`.
-            public static var notFound: Self {
-                .notFound(.init())
-            }
             /// The associated value of the enum case if `self` is `.notFound`.
             ///
             /// - Throws: An error if `self` is not `.notFound`.
@@ -4611,8 +5634,32 @@ public enum Operations {
                 }
             }
             public struct Conflict: Sendable, Hashable {
+                /// - Remark: Generated from `#/paths/trades/{trade_id}/cards/remove/POST/responses/409/content`.
+                @frozen public enum Body: Sendable, Hashable {
+                    /// - Remark: Generated from `#/paths/trades/{trade_id}/cards/remove/POST/responses/409/content/application\/json`.
+                    case json(Components.Schemas.ErrorResponse)
+                    /// The associated value of the enum case if `self` is `.json`.
+                    ///
+                    /// - Throws: An error if `self` is not `.json`.
+                    /// - SeeAlso: `.json`.
+                    public var json: Components.Schemas.ErrorResponse {
+                        get throws {
+                            switch self {
+                            case let .json(body):
+                                return body
+                            }
+                        }
+                    }
+                }
+                /// Received HTTP response body
+                public var body: Operations.remove_trade_card.Output.Conflict.Body
                 /// Creates a new `Conflict`.
-                public init() {}
+                ///
+                /// - Parameters:
+                ///   - body: Received HTTP response body
+                public init(body: Operations.remove_trade_card.Output.Conflict.Body) {
+                    self.body = body
+                }
             }
             /// Trade cannot be modified in its current status
             ///
@@ -4620,14 +5667,6 @@ public enum Operations {
             ///
             /// HTTP response code: `409 conflict`.
             case conflict(Operations.remove_trade_card.Output.Conflict)
-            /// Trade cannot be modified in its current status
-            ///
-            /// - Remark: Generated from `#/paths//trades/{trade_id}/cards/remove/post(remove_trade_card)/responses/409`.
-            ///
-            /// HTTP response code: `409 conflict`.
-            public static var conflict: Self {
-                .conflict(.init())
-            }
             /// The associated value of the enum case if `self` is `.conflict`.
             ///
             /// - Throws: An error if `self` is not `.conflict`.
@@ -4650,6 +5689,31 @@ public enum Operations {
             /// A response with a code that is not documented in the OpenAPI document.
             case undocumented(statusCode: Swift.Int, OpenAPIRuntime.UndocumentedPayload)
         }
+        @frozen public enum AcceptableContentType: AcceptableProtocol {
+            case json
+            case other(Swift.String)
+            public init?(rawValue: Swift.String) {
+                switch rawValue.lowercased() {
+                case "application/json":
+                    self = .json
+                default:
+                    self = .other(rawValue)
+                }
+            }
+            public var rawValue: Swift.String {
+                switch self {
+                case let .other(string):
+                    return string
+                case .json:
+                    return "application/json"
+                }
+            }
+            public static var allCases: [Self] {
+                [
+                    .json
+                ]
+            }
+        }
     }
     /// - Remark: HTTP `POST /trades/{trade_id}/confirm`.
     /// - Remark: Generated from `#/paths//trades/{trade_id}/confirm/post(confirm_trade)`.
@@ -4671,12 +5735,29 @@ public enum Operations {
                 }
             }
             public var path: Operations.confirm_trade.Input.Path
+            /// - Remark: Generated from `#/paths/trades/{trade_id}/confirm/POST/header`.
+            public struct Headers: Sendable, Hashable {
+                public var accept: [OpenAPIRuntime.AcceptHeaderContentType<Operations.confirm_trade.AcceptableContentType>]
+                /// Creates a new `Headers`.
+                ///
+                /// - Parameters:
+                ///   - accept:
+                public init(accept: [OpenAPIRuntime.AcceptHeaderContentType<Operations.confirm_trade.AcceptableContentType>] = .defaultValues()) {
+                    self.accept = accept
+                }
+            }
+            public var headers: Operations.confirm_trade.Input.Headers
             /// Creates a new `Input`.
             ///
             /// - Parameters:
             ///   - path:
-            public init(path: Operations.confirm_trade.Input.Path) {
+            ///   - headers:
+            public init(
+                path: Operations.confirm_trade.Input.Path,
+                headers: Operations.confirm_trade.Input.Headers = .init()
+            ) {
                 self.path = path
+                self.headers = headers
             }
         }
         @frozen public enum Output: Sendable, Hashable {
@@ -4716,8 +5797,32 @@ public enum Operations {
                 }
             }
             public struct Unauthorized: Sendable, Hashable {
+                /// - Remark: Generated from `#/paths/trades/{trade_id}/confirm/POST/responses/401/content`.
+                @frozen public enum Body: Sendable, Hashable {
+                    /// - Remark: Generated from `#/paths/trades/{trade_id}/confirm/POST/responses/401/content/application\/json`.
+                    case json(Components.Schemas.ErrorResponse)
+                    /// The associated value of the enum case if `self` is `.json`.
+                    ///
+                    /// - Throws: An error if `self` is not `.json`.
+                    /// - SeeAlso: `.json`.
+                    public var json: Components.Schemas.ErrorResponse {
+                        get throws {
+                            switch self {
+                            case let .json(body):
+                                return body
+                            }
+                        }
+                    }
+                }
+                /// Received HTTP response body
+                public var body: Operations.confirm_trade.Output.Unauthorized.Body
                 /// Creates a new `Unauthorized`.
-                public init() {}
+                ///
+                /// - Parameters:
+                ///   - body: Received HTTP response body
+                public init(body: Operations.confirm_trade.Output.Unauthorized.Body) {
+                    self.body = body
+                }
             }
             /// Missing or invalid token
             ///
@@ -4725,14 +5830,6 @@ public enum Operations {
             ///
             /// HTTP response code: `401 unauthorized`.
             case unauthorized(Operations.confirm_trade.Output.Unauthorized)
-            /// Missing or invalid token
-            ///
-            /// - Remark: Generated from `#/paths//trades/{trade_id}/confirm/post(confirm_trade)/responses/401`.
-            ///
-            /// HTTP response code: `401 unauthorized`.
-            public static var unauthorized: Self {
-                .unauthorized(.init())
-            }
             /// The associated value of the enum case if `self` is `.unauthorized`.
             ///
             /// - Throws: An error if `self` is not `.unauthorized`.
@@ -4751,8 +5848,32 @@ public enum Operations {
                 }
             }
             public struct Forbidden: Sendable, Hashable {
+                /// - Remark: Generated from `#/paths/trades/{trade_id}/confirm/POST/responses/403/content`.
+                @frozen public enum Body: Sendable, Hashable {
+                    /// - Remark: Generated from `#/paths/trades/{trade_id}/confirm/POST/responses/403/content/application\/json`.
+                    case json(Components.Schemas.ErrorResponse)
+                    /// The associated value of the enum case if `self` is `.json`.
+                    ///
+                    /// - Throws: An error if `self` is not `.json`.
+                    /// - SeeAlso: `.json`.
+                    public var json: Components.Schemas.ErrorResponse {
+                        get throws {
+                            switch self {
+                            case let .json(body):
+                                return body
+                            }
+                        }
+                    }
+                }
+                /// Received HTTP response body
+                public var body: Operations.confirm_trade.Output.Forbidden.Body
                 /// Creates a new `Forbidden`.
-                public init() {}
+                ///
+                /// - Parameters:
+                ///   - body: Received HTTP response body
+                public init(body: Operations.confirm_trade.Output.Forbidden.Body) {
+                    self.body = body
+                }
             }
             /// Caller is not a party to this trade
             ///
@@ -4760,14 +5881,6 @@ public enum Operations {
             ///
             /// HTTP response code: `403 forbidden`.
             case forbidden(Operations.confirm_trade.Output.Forbidden)
-            /// Caller is not a party to this trade
-            ///
-            /// - Remark: Generated from `#/paths//trades/{trade_id}/confirm/post(confirm_trade)/responses/403`.
-            ///
-            /// HTTP response code: `403 forbidden`.
-            public static var forbidden: Self {
-                .forbidden(.init())
-            }
             /// The associated value of the enum case if `self` is `.forbidden`.
             ///
             /// - Throws: An error if `self` is not `.forbidden`.
@@ -4786,8 +5899,32 @@ public enum Operations {
                 }
             }
             public struct NotFound: Sendable, Hashable {
+                /// - Remark: Generated from `#/paths/trades/{trade_id}/confirm/POST/responses/404/content`.
+                @frozen public enum Body: Sendable, Hashable {
+                    /// - Remark: Generated from `#/paths/trades/{trade_id}/confirm/POST/responses/404/content/application\/json`.
+                    case json(Components.Schemas.ErrorResponse)
+                    /// The associated value of the enum case if `self` is `.json`.
+                    ///
+                    /// - Throws: An error if `self` is not `.json`.
+                    /// - SeeAlso: `.json`.
+                    public var json: Components.Schemas.ErrorResponse {
+                        get throws {
+                            switch self {
+                            case let .json(body):
+                                return body
+                            }
+                        }
+                    }
+                }
+                /// Received HTTP response body
+                public var body: Operations.confirm_trade.Output.NotFound.Body
                 /// Creates a new `NotFound`.
-                public init() {}
+                ///
+                /// - Parameters:
+                ///   - body: Received HTTP response body
+                public init(body: Operations.confirm_trade.Output.NotFound.Body) {
+                    self.body = body
+                }
             }
             /// Trade not found
             ///
@@ -4795,14 +5932,6 @@ public enum Operations {
             ///
             /// HTTP response code: `404 notFound`.
             case notFound(Operations.confirm_trade.Output.NotFound)
-            /// Trade not found
-            ///
-            /// - Remark: Generated from `#/paths//trades/{trade_id}/confirm/post(confirm_trade)/responses/404`.
-            ///
-            /// HTTP response code: `404 notFound`.
-            public static var notFound: Self {
-                .notFound(.init())
-            }
             /// The associated value of the enum case if `self` is `.notFound`.
             ///
             /// - Throws: An error if `self` is not `.notFound`.
@@ -4821,8 +5950,32 @@ public enum Operations {
                 }
             }
             public struct Conflict: Sendable, Hashable {
+                /// - Remark: Generated from `#/paths/trades/{trade_id}/confirm/POST/responses/409/content`.
+                @frozen public enum Body: Sendable, Hashable {
+                    /// - Remark: Generated from `#/paths/trades/{trade_id}/confirm/POST/responses/409/content/application\/json`.
+                    case json(Components.Schemas.ErrorResponse)
+                    /// The associated value of the enum case if `self` is `.json`.
+                    ///
+                    /// - Throws: An error if `self` is not `.json`.
+                    /// - SeeAlso: `.json`.
+                    public var json: Components.Schemas.ErrorResponse {
+                        get throws {
+                            switch self {
+                            case let .json(body):
+                                return body
+                            }
+                        }
+                    }
+                }
+                /// Received HTTP response body
+                public var body: Operations.confirm_trade.Output.Conflict.Body
                 /// Creates a new `Conflict`.
-                public init() {}
+                ///
+                /// - Parameters:
+                ///   - body: Received HTTP response body
+                public init(body: Operations.confirm_trade.Output.Conflict.Body) {
+                    self.body = body
+                }
             }
             /// Trade must be fully accepted before it can be confirmed, or already confirmed by the caller
             ///
@@ -4830,14 +5983,6 @@ public enum Operations {
             ///
             /// HTTP response code: `409 conflict`.
             case conflict(Operations.confirm_trade.Output.Conflict)
-            /// Trade must be fully accepted before it can be confirmed, or already confirmed by the caller
-            ///
-            /// - Remark: Generated from `#/paths//trades/{trade_id}/confirm/post(confirm_trade)/responses/409`.
-            ///
-            /// HTTP response code: `409 conflict`.
-            public static var conflict: Self {
-                .conflict(.init())
-            }
             /// The associated value of the enum case if `self` is `.conflict`.
             ///
             /// - Throws: An error if `self` is not `.conflict`.
@@ -4860,6 +6005,31 @@ public enum Operations {
             /// A response with a code that is not documented in the OpenAPI document.
             case undocumented(statusCode: Swift.Int, OpenAPIRuntime.UndocumentedPayload)
         }
+        @frozen public enum AcceptableContentType: AcceptableProtocol {
+            case json
+            case other(Swift.String)
+            public init?(rawValue: Swift.String) {
+                switch rawValue.lowercased() {
+                case "application/json":
+                    self = .json
+                default:
+                    self = .other(rawValue)
+                }
+            }
+            public var rawValue: Swift.String {
+                switch self {
+                case let .other(string):
+                    return string
+                case .json:
+                    return "application/json"
+                }
+            }
+            public static var allCases: [Self] {
+                [
+                    .json
+                ]
+            }
+        }
     }
     /// - Remark: HTTP `POST /trades/{trade_id}/rate`.
     /// - Remark: Generated from `#/paths//trades/{trade_id}/rate/post(rate_trade)`.
@@ -4881,6 +6051,18 @@ public enum Operations {
                 }
             }
             public var path: Operations.rate_trade.Input.Path
+            /// - Remark: Generated from `#/paths/trades/{trade_id}/rate/POST/header`.
+            public struct Headers: Sendable, Hashable {
+                public var accept: [OpenAPIRuntime.AcceptHeaderContentType<Operations.rate_trade.AcceptableContentType>]
+                /// Creates a new `Headers`.
+                ///
+                /// - Parameters:
+                ///   - accept:
+                public init(accept: [OpenAPIRuntime.AcceptHeaderContentType<Operations.rate_trade.AcceptableContentType>] = .defaultValues()) {
+                    self.accept = accept
+                }
+            }
+            public var headers: Operations.rate_trade.Input.Headers
             /// - Remark: Generated from `#/paths/trades/{trade_id}/rate/POST/requestBody`.
             @frozen public enum Body: Sendable, Hashable {
                 /// - Remark: Generated from `#/paths/trades/{trade_id}/rate/POST/requestBody/content/application\/json`.
@@ -4891,12 +6073,15 @@ public enum Operations {
             ///
             /// - Parameters:
             ///   - path:
+            ///   - headers:
             ///   - body:
             public init(
                 path: Operations.rate_trade.Input.Path,
+                headers: Operations.rate_trade.Input.Headers = .init(),
                 body: Operations.rate_trade.Input.Body
             ) {
                 self.path = path
+                self.headers = headers
                 self.body = body
             }
         }
@@ -4937,8 +6122,32 @@ public enum Operations {
                 }
             }
             public struct BadRequest: Sendable, Hashable {
+                /// - Remark: Generated from `#/paths/trades/{trade_id}/rate/POST/responses/400/content`.
+                @frozen public enum Body: Sendable, Hashable {
+                    /// - Remark: Generated from `#/paths/trades/{trade_id}/rate/POST/responses/400/content/application\/json`.
+                    case json(Components.Schemas.ErrorResponse)
+                    /// The associated value of the enum case if `self` is `.json`.
+                    ///
+                    /// - Throws: An error if `self` is not `.json`.
+                    /// - SeeAlso: `.json`.
+                    public var json: Components.Schemas.ErrorResponse {
+                        get throws {
+                            switch self {
+                            case let .json(body):
+                                return body
+                            }
+                        }
+                    }
+                }
+                /// Received HTTP response body
+                public var body: Operations.rate_trade.Output.BadRequest.Body
                 /// Creates a new `BadRequest`.
-                public init() {}
+                ///
+                /// - Parameters:
+                ///   - body: Received HTTP response body
+                public init(body: Operations.rate_trade.Output.BadRequest.Body) {
+                    self.body = body
+                }
             }
             /// Rating missing or out of the 0-5 range
             ///
@@ -4946,14 +6155,6 @@ public enum Operations {
             ///
             /// HTTP response code: `400 badRequest`.
             case badRequest(Operations.rate_trade.Output.BadRequest)
-            /// Rating missing or out of the 0-5 range
-            ///
-            /// - Remark: Generated from `#/paths//trades/{trade_id}/rate/post(rate_trade)/responses/400`.
-            ///
-            /// HTTP response code: `400 badRequest`.
-            public static var badRequest: Self {
-                .badRequest(.init())
-            }
             /// The associated value of the enum case if `self` is `.badRequest`.
             ///
             /// - Throws: An error if `self` is not `.badRequest`.
@@ -4972,8 +6173,32 @@ public enum Operations {
                 }
             }
             public struct Unauthorized: Sendable, Hashable {
+                /// - Remark: Generated from `#/paths/trades/{trade_id}/rate/POST/responses/401/content`.
+                @frozen public enum Body: Sendable, Hashable {
+                    /// - Remark: Generated from `#/paths/trades/{trade_id}/rate/POST/responses/401/content/application\/json`.
+                    case json(Components.Schemas.ErrorResponse)
+                    /// The associated value of the enum case if `self` is `.json`.
+                    ///
+                    /// - Throws: An error if `self` is not `.json`.
+                    /// - SeeAlso: `.json`.
+                    public var json: Components.Schemas.ErrorResponse {
+                        get throws {
+                            switch self {
+                            case let .json(body):
+                                return body
+                            }
+                        }
+                    }
+                }
+                /// Received HTTP response body
+                public var body: Operations.rate_trade.Output.Unauthorized.Body
                 /// Creates a new `Unauthorized`.
-                public init() {}
+                ///
+                /// - Parameters:
+                ///   - body: Received HTTP response body
+                public init(body: Operations.rate_trade.Output.Unauthorized.Body) {
+                    self.body = body
+                }
             }
             /// Missing or invalid token
             ///
@@ -4981,14 +6206,6 @@ public enum Operations {
             ///
             /// HTTP response code: `401 unauthorized`.
             case unauthorized(Operations.rate_trade.Output.Unauthorized)
-            /// Missing or invalid token
-            ///
-            /// - Remark: Generated from `#/paths//trades/{trade_id}/rate/post(rate_trade)/responses/401`.
-            ///
-            /// HTTP response code: `401 unauthorized`.
-            public static var unauthorized: Self {
-                .unauthorized(.init())
-            }
             /// The associated value of the enum case if `self` is `.unauthorized`.
             ///
             /// - Throws: An error if `self` is not `.unauthorized`.
@@ -5007,8 +6224,32 @@ public enum Operations {
                 }
             }
             public struct Forbidden: Sendable, Hashable {
+                /// - Remark: Generated from `#/paths/trades/{trade_id}/rate/POST/responses/403/content`.
+                @frozen public enum Body: Sendable, Hashable {
+                    /// - Remark: Generated from `#/paths/trades/{trade_id}/rate/POST/responses/403/content/application\/json`.
+                    case json(Components.Schemas.ErrorResponse)
+                    /// The associated value of the enum case if `self` is `.json`.
+                    ///
+                    /// - Throws: An error if `self` is not `.json`.
+                    /// - SeeAlso: `.json`.
+                    public var json: Components.Schemas.ErrorResponse {
+                        get throws {
+                            switch self {
+                            case let .json(body):
+                                return body
+                            }
+                        }
+                    }
+                }
+                /// Received HTTP response body
+                public var body: Operations.rate_trade.Output.Forbidden.Body
                 /// Creates a new `Forbidden`.
-                public init() {}
+                ///
+                /// - Parameters:
+                ///   - body: Received HTTP response body
+                public init(body: Operations.rate_trade.Output.Forbidden.Body) {
+                    self.body = body
+                }
             }
             /// Caller is not a party to this trade
             ///
@@ -5016,14 +6257,6 @@ public enum Operations {
             ///
             /// HTTP response code: `403 forbidden`.
             case forbidden(Operations.rate_trade.Output.Forbidden)
-            /// Caller is not a party to this trade
-            ///
-            /// - Remark: Generated from `#/paths//trades/{trade_id}/rate/post(rate_trade)/responses/403`.
-            ///
-            /// HTTP response code: `403 forbidden`.
-            public static var forbidden: Self {
-                .forbidden(.init())
-            }
             /// The associated value of the enum case if `self` is `.forbidden`.
             ///
             /// - Throws: An error if `self` is not `.forbidden`.
@@ -5042,8 +6275,32 @@ public enum Operations {
                 }
             }
             public struct NotFound: Sendable, Hashable {
+                /// - Remark: Generated from `#/paths/trades/{trade_id}/rate/POST/responses/404/content`.
+                @frozen public enum Body: Sendable, Hashable {
+                    /// - Remark: Generated from `#/paths/trades/{trade_id}/rate/POST/responses/404/content/application\/json`.
+                    case json(Components.Schemas.ErrorResponse)
+                    /// The associated value of the enum case if `self` is `.json`.
+                    ///
+                    /// - Throws: An error if `self` is not `.json`.
+                    /// - SeeAlso: `.json`.
+                    public var json: Components.Schemas.ErrorResponse {
+                        get throws {
+                            switch self {
+                            case let .json(body):
+                                return body
+                            }
+                        }
+                    }
+                }
+                /// Received HTTP response body
+                public var body: Operations.rate_trade.Output.NotFound.Body
                 /// Creates a new `NotFound`.
-                public init() {}
+                ///
+                /// - Parameters:
+                ///   - body: Received HTTP response body
+                public init(body: Operations.rate_trade.Output.NotFound.Body) {
+                    self.body = body
+                }
             }
             /// Trade not found
             ///
@@ -5051,14 +6308,6 @@ public enum Operations {
             ///
             /// HTTP response code: `404 notFound`.
             case notFound(Operations.rate_trade.Output.NotFound)
-            /// Trade not found
-            ///
-            /// - Remark: Generated from `#/paths//trades/{trade_id}/rate/post(rate_trade)/responses/404`.
-            ///
-            /// HTTP response code: `404 notFound`.
-            public static var notFound: Self {
-                .notFound(.init())
-            }
             /// The associated value of the enum case if `self` is `.notFound`.
             ///
             /// - Throws: An error if `self` is not `.notFound`.
@@ -5077,8 +6326,32 @@ public enum Operations {
                 }
             }
             public struct Conflict: Sendable, Hashable {
+                /// - Remark: Generated from `#/paths/trades/{trade_id}/rate/POST/responses/409/content`.
+                @frozen public enum Body: Sendable, Hashable {
+                    /// - Remark: Generated from `#/paths/trades/{trade_id}/rate/POST/responses/409/content/application\/json`.
+                    case json(Components.Schemas.ErrorResponse)
+                    /// The associated value of the enum case if `self` is `.json`.
+                    ///
+                    /// - Throws: An error if `self` is not `.json`.
+                    /// - SeeAlso: `.json`.
+                    public var json: Components.Schemas.ErrorResponse {
+                        get throws {
+                            switch self {
+                            case let .json(body):
+                                return body
+                            }
+                        }
+                    }
+                }
+                /// Received HTTP response body
+                public var body: Operations.rate_trade.Output.Conflict.Body
                 /// Creates a new `Conflict`.
-                public init() {}
+                ///
+                /// - Parameters:
+                ///   - body: Received HTTP response body
+                public init(body: Operations.rate_trade.Output.Conflict.Body) {
+                    self.body = body
+                }
             }
             /// Trade must be completed before it can be rated, or already rated by the caller
             ///
@@ -5086,14 +6359,6 @@ public enum Operations {
             ///
             /// HTTP response code: `409 conflict`.
             case conflict(Operations.rate_trade.Output.Conflict)
-            /// Trade must be completed before it can be rated, or already rated by the caller
-            ///
-            /// - Remark: Generated from `#/paths//trades/{trade_id}/rate/post(rate_trade)/responses/409`.
-            ///
-            /// HTTP response code: `409 conflict`.
-            public static var conflict: Self {
-                .conflict(.init())
-            }
             /// The associated value of the enum case if `self` is `.conflict`.
             ///
             /// - Throws: An error if `self` is not `.conflict`.
@@ -5116,14 +6381,56 @@ public enum Operations {
             /// A response with a code that is not documented in the OpenAPI document.
             case undocumented(statusCode: Swift.Int, OpenAPIRuntime.UndocumentedPayload)
         }
+        @frozen public enum AcceptableContentType: AcceptableProtocol {
+            case json
+            case other(Swift.String)
+            public init?(rawValue: Swift.String) {
+                switch rawValue.lowercased() {
+                case "application/json":
+                    self = .json
+                default:
+                    self = .other(rawValue)
+                }
+            }
+            public var rawValue: Swift.String {
+                switch self {
+                case let .other(string):
+                    return string
+                case .json:
+                    return "application/json"
+                }
+            }
+            public static var allCases: [Self] {
+                [
+                    .json
+                ]
+            }
+        }
     }
     /// - Remark: HTTP `POST /user`.
     /// - Remark: Generated from `#/paths//user/post(register)`.
     public enum register {
         public static let id: Swift.String = "register"
         public struct Input: Sendable, Hashable {
+            /// - Remark: Generated from `#/paths/user/POST/header`.
+            public struct Headers: Sendable, Hashable {
+                public var accept: [OpenAPIRuntime.AcceptHeaderContentType<Operations.register.AcceptableContentType>]
+                /// Creates a new `Headers`.
+                ///
+                /// - Parameters:
+                ///   - accept:
+                public init(accept: [OpenAPIRuntime.AcceptHeaderContentType<Operations.register.AcceptableContentType>] = .defaultValues()) {
+                    self.accept = accept
+                }
+            }
+            public var headers: Operations.register.Input.Headers
             /// Creates a new `Input`.
-            public init() {}
+            ///
+            /// - Parameters:
+            ///   - headers:
+            public init(headers: Operations.register.Input.Headers = .init()) {
+                self.headers = headers
+            }
         }
         @frozen public enum Output: Sendable, Hashable {
             public struct NoContent: Sendable, Hashable {
@@ -5162,8 +6469,32 @@ public enum Operations {
                 }
             }
             public struct BadRequest: Sendable, Hashable {
+                /// - Remark: Generated from `#/paths/user/POST/responses/400/content`.
+                @frozen public enum Body: Sendable, Hashable {
+                    /// - Remark: Generated from `#/paths/user/POST/responses/400/content/application\/json`.
+                    case json(Components.Schemas.ErrorResponse)
+                    /// The associated value of the enum case if `self` is `.json`.
+                    ///
+                    /// - Throws: An error if `self` is not `.json`.
+                    /// - SeeAlso: `.json`.
+                    public var json: Components.Schemas.ErrorResponse {
+                        get throws {
+                            switch self {
+                            case let .json(body):
+                                return body
+                            }
+                        }
+                    }
+                }
+                /// Received HTTP response body
+                public var body: Operations.register.Output.BadRequest.Body
                 /// Creates a new `BadRequest`.
-                public init() {}
+                ///
+                /// - Parameters:
+                ///   - body: Received HTTP response body
+                public init(body: Operations.register.Output.BadRequest.Body) {
+                    self.body = body
+                }
             }
             /// Missing username claim in token
             ///
@@ -5171,14 +6502,6 @@ public enum Operations {
             ///
             /// HTTP response code: `400 badRequest`.
             case badRequest(Operations.register.Output.BadRequest)
-            /// Missing username claim in token
-            ///
-            /// - Remark: Generated from `#/paths//user/post(register)/responses/400`.
-            ///
-            /// HTTP response code: `400 badRequest`.
-            public static var badRequest: Self {
-                .badRequest(.init())
-            }
             /// The associated value of the enum case if `self` is `.badRequest`.
             ///
             /// - Throws: An error if `self` is not `.badRequest`.
@@ -5197,8 +6520,32 @@ public enum Operations {
                 }
             }
             public struct Unauthorized: Sendable, Hashable {
+                /// - Remark: Generated from `#/paths/user/POST/responses/401/content`.
+                @frozen public enum Body: Sendable, Hashable {
+                    /// - Remark: Generated from `#/paths/user/POST/responses/401/content/application\/json`.
+                    case json(Components.Schemas.ErrorResponse)
+                    /// The associated value of the enum case if `self` is `.json`.
+                    ///
+                    /// - Throws: An error if `self` is not `.json`.
+                    /// - SeeAlso: `.json`.
+                    public var json: Components.Schemas.ErrorResponse {
+                        get throws {
+                            switch self {
+                            case let .json(body):
+                                return body
+                            }
+                        }
+                    }
+                }
+                /// Received HTTP response body
+                public var body: Operations.register.Output.Unauthorized.Body
                 /// Creates a new `Unauthorized`.
-                public init() {}
+                ///
+                /// - Parameters:
+                ///   - body: Received HTTP response body
+                public init(body: Operations.register.Output.Unauthorized.Body) {
+                    self.body = body
+                }
             }
             /// Missing or invalid authentication token
             ///
@@ -5206,14 +6553,6 @@ public enum Operations {
             ///
             /// HTTP response code: `401 unauthorized`.
             case unauthorized(Operations.register.Output.Unauthorized)
-            /// Missing or invalid authentication token
-            ///
-            /// - Remark: Generated from `#/paths//user/post(register)/responses/401`.
-            ///
-            /// HTTP response code: `401 unauthorized`.
-            public static var unauthorized: Self {
-                .unauthorized(.init())
-            }
             /// The associated value of the enum case if `self` is `.unauthorized`.
             ///
             /// - Throws: An error if `self` is not `.unauthorized`.
@@ -5235,6 +6574,31 @@ public enum Operations {
             ///
             /// A response with a code that is not documented in the OpenAPI document.
             case undocumented(statusCode: Swift.Int, OpenAPIRuntime.UndocumentedPayload)
+        }
+        @frozen public enum AcceptableContentType: AcceptableProtocol {
+            case json
+            case other(Swift.String)
+            public init?(rawValue: Swift.String) {
+                switch rawValue.lowercased() {
+                case "application/json":
+                    self = .json
+                default:
+                    self = .other(rawValue)
+                }
+            }
+            public var rawValue: Swift.String {
+                switch self {
+                case let .other(string):
+                    return string
+                case .json:
+                    return "application/json"
+                }
+            }
+            public static var allCases: [Self] {
+                [
+                    .json
+                ]
+            }
         }
     }
     /// - Remark: HTTP `GET /user/trade-binders`.
@@ -5315,8 +6679,32 @@ public enum Operations {
                 }
             }
             public struct Unauthorized: Sendable, Hashable {
+                /// - Remark: Generated from `#/paths/user/trade-binders/GET/responses/401/content`.
+                @frozen public enum Body: Sendable, Hashable {
+                    /// - Remark: Generated from `#/paths/user/trade-binders/GET/responses/401/content/application\/json`.
+                    case json(Components.Schemas.ErrorResponse)
+                    /// The associated value of the enum case if `self` is `.json`.
+                    ///
+                    /// - Throws: An error if `self` is not `.json`.
+                    /// - SeeAlso: `.json`.
+                    public var json: Components.Schemas.ErrorResponse {
+                        get throws {
+                            switch self {
+                            case let .json(body):
+                                return body
+                            }
+                        }
+                    }
+                }
+                /// Received HTTP response body
+                public var body: Operations.get_trade_binders.Output.Unauthorized.Body
                 /// Creates a new `Unauthorized`.
-                public init() {}
+                ///
+                /// - Parameters:
+                ///   - body: Received HTTP response body
+                public init(body: Operations.get_trade_binders.Output.Unauthorized.Body) {
+                    self.body = body
+                }
             }
             /// Missing or invalid authentication token
             ///
@@ -5324,14 +6712,6 @@ public enum Operations {
             ///
             /// HTTP response code: `401 unauthorized`.
             case unauthorized(Operations.get_trade_binders.Output.Unauthorized)
-            /// Missing or invalid authentication token
-            ///
-            /// - Remark: Generated from `#/paths//user/trade-binders/get(get_trade_binders)/responses/401`.
-            ///
-            /// HTTP response code: `401 unauthorized`.
-            public static var unauthorized: Self {
-                .unauthorized(.init())
-            }
             /// The associated value of the enum case if `self` is `.unauthorized`.
             ///
             /// - Throws: An error if `self` is not `.unauthorized`.
@@ -5385,6 +6765,18 @@ public enum Operations {
     public enum add_trade_binder {
         public static let id: Swift.String = "add_trade_binder"
         public struct Input: Sendable, Hashable {
+            /// - Remark: Generated from `#/paths/user/trade-binders/POST/header`.
+            public struct Headers: Sendable, Hashable {
+                public var accept: [OpenAPIRuntime.AcceptHeaderContentType<Operations.add_trade_binder.AcceptableContentType>]
+                /// Creates a new `Headers`.
+                ///
+                /// - Parameters:
+                ///   - accept:
+                public init(accept: [OpenAPIRuntime.AcceptHeaderContentType<Operations.add_trade_binder.AcceptableContentType>] = .defaultValues()) {
+                    self.accept = accept
+                }
+            }
+            public var headers: Operations.add_trade_binder.Input.Headers
             /// - Remark: Generated from `#/paths/user/trade-binders/POST/requestBody`.
             @frozen public enum Body: Sendable, Hashable {
                 /// - Remark: Generated from `#/paths/user/trade-binders/POST/requestBody/content/application\/json`.
@@ -5394,8 +6786,13 @@ public enum Operations {
             /// Creates a new `Input`.
             ///
             /// - Parameters:
+            ///   - headers:
             ///   - body:
-            public init(body: Operations.add_trade_binder.Input.Body) {
+            public init(
+                headers: Operations.add_trade_binder.Input.Headers = .init(),
+                body: Operations.add_trade_binder.Input.Body
+            ) {
+                self.headers = headers
                 self.body = body
             }
         }
@@ -5436,8 +6833,32 @@ public enum Operations {
                 }
             }
             public struct BadRequest: Sendable, Hashable {
+                /// - Remark: Generated from `#/paths/user/trade-binders/POST/responses/400/content`.
+                @frozen public enum Body: Sendable, Hashable {
+                    /// - Remark: Generated from `#/paths/user/trade-binders/POST/responses/400/content/application\/json`.
+                    case json(Components.Schemas.ErrorResponse)
+                    /// The associated value of the enum case if `self` is `.json`.
+                    ///
+                    /// - Throws: An error if `self` is not `.json`.
+                    /// - SeeAlso: `.json`.
+                    public var json: Components.Schemas.ErrorResponse {
+                        get throws {
+                            switch self {
+                            case let .json(body):
+                                return body
+                            }
+                        }
+                    }
+                }
+                /// Received HTTP response body
+                public var body: Operations.add_trade_binder.Output.BadRequest.Body
                 /// Creates a new `BadRequest`.
-                public init() {}
+                ///
+                /// - Parameters:
+                ///   - body: Received HTTP response body
+                public init(body: Operations.add_trade_binder.Output.BadRequest.Body) {
+                    self.body = body
+                }
             }
             /// Binder name is empty
             ///
@@ -5445,14 +6866,6 @@ public enum Operations {
             ///
             /// HTTP response code: `400 badRequest`.
             case badRequest(Operations.add_trade_binder.Output.BadRequest)
-            /// Binder name is empty
-            ///
-            /// - Remark: Generated from `#/paths//user/trade-binders/post(add_trade_binder)/responses/400`.
-            ///
-            /// HTTP response code: `400 badRequest`.
-            public static var badRequest: Self {
-                .badRequest(.init())
-            }
             /// The associated value of the enum case if `self` is `.badRequest`.
             ///
             /// - Throws: An error if `self` is not `.badRequest`.
@@ -5471,8 +6884,32 @@ public enum Operations {
                 }
             }
             public struct Unauthorized: Sendable, Hashable {
+                /// - Remark: Generated from `#/paths/user/trade-binders/POST/responses/401/content`.
+                @frozen public enum Body: Sendable, Hashable {
+                    /// - Remark: Generated from `#/paths/user/trade-binders/POST/responses/401/content/application\/json`.
+                    case json(Components.Schemas.ErrorResponse)
+                    /// The associated value of the enum case if `self` is `.json`.
+                    ///
+                    /// - Throws: An error if `self` is not `.json`.
+                    /// - SeeAlso: `.json`.
+                    public var json: Components.Schemas.ErrorResponse {
+                        get throws {
+                            switch self {
+                            case let .json(body):
+                                return body
+                            }
+                        }
+                    }
+                }
+                /// Received HTTP response body
+                public var body: Operations.add_trade_binder.Output.Unauthorized.Body
                 /// Creates a new `Unauthorized`.
-                public init() {}
+                ///
+                /// - Parameters:
+                ///   - body: Received HTTP response body
+                public init(body: Operations.add_trade_binder.Output.Unauthorized.Body) {
+                    self.body = body
+                }
             }
             /// Missing or invalid authentication token
             ///
@@ -5480,14 +6917,6 @@ public enum Operations {
             ///
             /// HTTP response code: `401 unauthorized`.
             case unauthorized(Operations.add_trade_binder.Output.Unauthorized)
-            /// Missing or invalid authentication token
-            ///
-            /// - Remark: Generated from `#/paths//user/trade-binders/post(add_trade_binder)/responses/401`.
-            ///
-            /// HTTP response code: `401 unauthorized`.
-            public static var unauthorized: Self {
-                .unauthorized(.init())
-            }
             /// The associated value of the enum case if `self` is `.unauthorized`.
             ///
             /// - Throws: An error if `self` is not `.unauthorized`.
@@ -5506,8 +6935,32 @@ public enum Operations {
                 }
             }
             public struct NotFound: Sendable, Hashable {
+                /// - Remark: Generated from `#/paths/user/trade-binders/POST/responses/404/content`.
+                @frozen public enum Body: Sendable, Hashable {
+                    /// - Remark: Generated from `#/paths/user/trade-binders/POST/responses/404/content/application\/json`.
+                    case json(Components.Schemas.ErrorResponse)
+                    /// The associated value of the enum case if `self` is `.json`.
+                    ///
+                    /// - Throws: An error if `self` is not `.json`.
+                    /// - SeeAlso: `.json`.
+                    public var json: Components.Schemas.ErrorResponse {
+                        get throws {
+                            switch self {
+                            case let .json(body):
+                                return body
+                            }
+                        }
+                    }
+                }
+                /// Received HTTP response body
+                public var body: Operations.add_trade_binder.Output.NotFound.Body
                 /// Creates a new `NotFound`.
-                public init() {}
+                ///
+                /// - Parameters:
+                ///   - body: Received HTTP response body
+                public init(body: Operations.add_trade_binder.Output.NotFound.Body) {
+                    self.body = body
+                }
             }
             /// Binder not found in the authenticated user's collection
             ///
@@ -5515,14 +6968,6 @@ public enum Operations {
             ///
             /// HTTP response code: `404 notFound`.
             case notFound(Operations.add_trade_binder.Output.NotFound)
-            /// Binder not found in the authenticated user's collection
-            ///
-            /// - Remark: Generated from `#/paths//user/trade-binders/post(add_trade_binder)/responses/404`.
-            ///
-            /// HTTP response code: `404 notFound`.
-            public static var notFound: Self {
-                .notFound(.init())
-            }
             /// The associated value of the enum case if `self` is `.notFound`.
             ///
             /// - Throws: An error if `self` is not `.notFound`.
@@ -5545,6 +6990,31 @@ public enum Operations {
             /// A response with a code that is not documented in the OpenAPI document.
             case undocumented(statusCode: Swift.Int, OpenAPIRuntime.UndocumentedPayload)
         }
+        @frozen public enum AcceptableContentType: AcceptableProtocol {
+            case json
+            case other(Swift.String)
+            public init?(rawValue: Swift.String) {
+                switch rawValue.lowercased() {
+                case "application/json":
+                    self = .json
+                default:
+                    self = .other(rawValue)
+                }
+            }
+            public var rawValue: Swift.String {
+                switch self {
+                case let .other(string):
+                    return string
+                case .json:
+                    return "application/json"
+                }
+            }
+            public static var allCases: [Self] {
+                [
+                    .json
+                ]
+            }
+        }
     }
     /// - Remark: HTTP `DELETE /user/trade-binders/{name}`.
     /// - Remark: Generated from `#/paths//user/trade-binders/{name}/delete(remove_trade_binder)`.
@@ -5566,12 +7036,29 @@ public enum Operations {
                 }
             }
             public var path: Operations.remove_trade_binder.Input.Path
+            /// - Remark: Generated from `#/paths/user/trade-binders/{name}/DELETE/header`.
+            public struct Headers: Sendable, Hashable {
+                public var accept: [OpenAPIRuntime.AcceptHeaderContentType<Operations.remove_trade_binder.AcceptableContentType>]
+                /// Creates a new `Headers`.
+                ///
+                /// - Parameters:
+                ///   - accept:
+                public init(accept: [OpenAPIRuntime.AcceptHeaderContentType<Operations.remove_trade_binder.AcceptableContentType>] = .defaultValues()) {
+                    self.accept = accept
+                }
+            }
+            public var headers: Operations.remove_trade_binder.Input.Headers
             /// Creates a new `Input`.
             ///
             /// - Parameters:
             ///   - path:
-            public init(path: Operations.remove_trade_binder.Input.Path) {
+            ///   - headers:
+            public init(
+                path: Operations.remove_trade_binder.Input.Path,
+                headers: Operations.remove_trade_binder.Input.Headers = .init()
+            ) {
                 self.path = path
+                self.headers = headers
             }
         }
         @frozen public enum Output: Sendable, Hashable {
@@ -5611,8 +7098,32 @@ public enum Operations {
                 }
             }
             public struct Unauthorized: Sendable, Hashable {
+                /// - Remark: Generated from `#/paths/user/trade-binders/{name}/DELETE/responses/401/content`.
+                @frozen public enum Body: Sendable, Hashable {
+                    /// - Remark: Generated from `#/paths/user/trade-binders/{name}/DELETE/responses/401/content/application\/json`.
+                    case json(Components.Schemas.ErrorResponse)
+                    /// The associated value of the enum case if `self` is `.json`.
+                    ///
+                    /// - Throws: An error if `self` is not `.json`.
+                    /// - SeeAlso: `.json`.
+                    public var json: Components.Schemas.ErrorResponse {
+                        get throws {
+                            switch self {
+                            case let .json(body):
+                                return body
+                            }
+                        }
+                    }
+                }
+                /// Received HTTP response body
+                public var body: Operations.remove_trade_binder.Output.Unauthorized.Body
                 /// Creates a new `Unauthorized`.
-                public init() {}
+                ///
+                /// - Parameters:
+                ///   - body: Received HTTP response body
+                public init(body: Operations.remove_trade_binder.Output.Unauthorized.Body) {
+                    self.body = body
+                }
             }
             /// Missing or invalid authentication token
             ///
@@ -5620,14 +7131,6 @@ public enum Operations {
             ///
             /// HTTP response code: `401 unauthorized`.
             case unauthorized(Operations.remove_trade_binder.Output.Unauthorized)
-            /// Missing or invalid authentication token
-            ///
-            /// - Remark: Generated from `#/paths//user/trade-binders/{name}/delete(remove_trade_binder)/responses/401`.
-            ///
-            /// HTTP response code: `401 unauthorized`.
-            public static var unauthorized: Self {
-                .unauthorized(.init())
-            }
             /// The associated value of the enum case if `self` is `.unauthorized`.
             ///
             /// - Throws: An error if `self` is not `.unauthorized`.
@@ -5649,6 +7152,31 @@ public enum Operations {
             ///
             /// A response with a code that is not documented in the OpenAPI document.
             case undocumented(statusCode: Swift.Int, OpenAPIRuntime.UndocumentedPayload)
+        }
+        @frozen public enum AcceptableContentType: AcceptableProtocol {
+            case json
+            case other(Swift.String)
+            public init?(rawValue: Swift.String) {
+                switch rawValue.lowercased() {
+                case "application/json":
+                    self = .json
+                default:
+                    self = .other(rawValue)
+                }
+            }
+            public var rawValue: Swift.String {
+                switch self {
+                case let .other(string):
+                    return string
+                case .json:
+                    return "application/json"
+                }
+            }
+            public static var allCases: [Self] {
+                [
+                    .json
+                ]
+            }
         }
     }
     /// - Remark: HTTP `GET /user/visibility`.
@@ -5729,8 +7257,32 @@ public enum Operations {
                 }
             }
             public struct Unauthorized: Sendable, Hashable {
+                /// - Remark: Generated from `#/paths/user/visibility/GET/responses/401/content`.
+                @frozen public enum Body: Sendable, Hashable {
+                    /// - Remark: Generated from `#/paths/user/visibility/GET/responses/401/content/application\/json`.
+                    case json(Components.Schemas.ErrorResponse)
+                    /// The associated value of the enum case if `self` is `.json`.
+                    ///
+                    /// - Throws: An error if `self` is not `.json`.
+                    /// - SeeAlso: `.json`.
+                    public var json: Components.Schemas.ErrorResponse {
+                        get throws {
+                            switch self {
+                            case let .json(body):
+                                return body
+                            }
+                        }
+                    }
+                }
+                /// Received HTTP response body
+                public var body: Operations.get_visibility.Output.Unauthorized.Body
                 /// Creates a new `Unauthorized`.
-                public init() {}
+                ///
+                /// - Parameters:
+                ///   - body: Received HTTP response body
+                public init(body: Operations.get_visibility.Output.Unauthorized.Body) {
+                    self.body = body
+                }
             }
             /// Missing or invalid authentication token
             ///
@@ -5738,14 +7290,6 @@ public enum Operations {
             ///
             /// HTTP response code: `401 unauthorized`.
             case unauthorized(Operations.get_visibility.Output.Unauthorized)
-            /// Missing or invalid authentication token
-            ///
-            /// - Remark: Generated from `#/paths//user/visibility/get(get_visibility)/responses/401`.
-            ///
-            /// HTTP response code: `401 unauthorized`.
-            public static var unauthorized: Self {
-                .unauthorized(.init())
-            }
             /// The associated value of the enum case if `self` is `.unauthorized`.
             ///
             /// - Throws: An error if `self` is not `.unauthorized`.
@@ -5764,8 +7308,32 @@ public enum Operations {
                 }
             }
             public struct NotFound: Sendable, Hashable {
+                /// - Remark: Generated from `#/paths/user/visibility/GET/responses/404/content`.
+                @frozen public enum Body: Sendable, Hashable {
+                    /// - Remark: Generated from `#/paths/user/visibility/GET/responses/404/content/application\/json`.
+                    case json(Components.Schemas.ErrorResponse)
+                    /// The associated value of the enum case if `self` is `.json`.
+                    ///
+                    /// - Throws: An error if `self` is not `.json`.
+                    /// - SeeAlso: `.json`.
+                    public var json: Components.Schemas.ErrorResponse {
+                        get throws {
+                            switch self {
+                            case let .json(body):
+                                return body
+                            }
+                        }
+                    }
+                }
+                /// Received HTTP response body
+                public var body: Operations.get_visibility.Output.NotFound.Body
                 /// Creates a new `NotFound`.
-                public init() {}
+                ///
+                /// - Parameters:
+                ///   - body: Received HTTP response body
+                public init(body: Operations.get_visibility.Output.NotFound.Body) {
+                    self.body = body
+                }
             }
             /// Authenticated user has never registered
             ///
@@ -5773,14 +7341,6 @@ public enum Operations {
             ///
             /// HTTP response code: `404 notFound`.
             case notFound(Operations.get_visibility.Output.NotFound)
-            /// Authenticated user has never registered
-            ///
-            /// - Remark: Generated from `#/paths//user/visibility/get(get_visibility)/responses/404`.
-            ///
-            /// HTTP response code: `404 notFound`.
-            public static var notFound: Self {
-                .notFound(.init())
-            }
             /// The associated value of the enum case if `self` is `.notFound`.
             ///
             /// - Throws: An error if `self` is not `.notFound`.
@@ -5834,6 +7394,18 @@ public enum Operations {
     public enum set_visibility {
         public static let id: Swift.String = "set_visibility"
         public struct Input: Sendable, Hashable {
+            /// - Remark: Generated from `#/paths/user/visibility/PUT/header`.
+            public struct Headers: Sendable, Hashable {
+                public var accept: [OpenAPIRuntime.AcceptHeaderContentType<Operations.set_visibility.AcceptableContentType>]
+                /// Creates a new `Headers`.
+                ///
+                /// - Parameters:
+                ///   - accept:
+                public init(accept: [OpenAPIRuntime.AcceptHeaderContentType<Operations.set_visibility.AcceptableContentType>] = .defaultValues()) {
+                    self.accept = accept
+                }
+            }
+            public var headers: Operations.set_visibility.Input.Headers
             /// - Remark: Generated from `#/paths/user/visibility/PUT/requestBody`.
             @frozen public enum Body: Sendable, Hashable {
                 /// - Remark: Generated from `#/paths/user/visibility/PUT/requestBody/content/application\/json`.
@@ -5843,8 +7415,13 @@ public enum Operations {
             /// Creates a new `Input`.
             ///
             /// - Parameters:
+            ///   - headers:
             ///   - body:
-            public init(body: Operations.set_visibility.Input.Body) {
+            public init(
+                headers: Operations.set_visibility.Input.Headers = .init(),
+                body: Operations.set_visibility.Input.Body
+            ) {
+                self.headers = headers
                 self.body = body
             }
         }
@@ -5885,8 +7462,32 @@ public enum Operations {
                 }
             }
             public struct BadRequest: Sendable, Hashable {
+                /// - Remark: Generated from `#/paths/user/visibility/PUT/responses/400/content`.
+                @frozen public enum Body: Sendable, Hashable {
+                    /// - Remark: Generated from `#/paths/user/visibility/PUT/responses/400/content/application\/json`.
+                    case json(Components.Schemas.ErrorResponse)
+                    /// The associated value of the enum case if `self` is `.json`.
+                    ///
+                    /// - Throws: An error if `self` is not `.json`.
+                    /// - SeeAlso: `.json`.
+                    public var json: Components.Schemas.ErrorResponse {
+                        get throws {
+                            switch self {
+                            case let .json(body):
+                                return body
+                            }
+                        }
+                    }
+                }
+                /// Received HTTP response body
+                public var body: Operations.set_visibility.Output.BadRequest.Body
                 /// Creates a new `BadRequest`.
-                public init() {}
+                ///
+                /// - Parameters:
+                ///   - body: Received HTTP response body
+                public init(body: Operations.set_visibility.Output.BadRequest.Body) {
+                    self.body = body
+                }
             }
             /// Invalid visibility value
             ///
@@ -5894,14 +7495,6 @@ public enum Operations {
             ///
             /// HTTP response code: `400 badRequest`.
             case badRequest(Operations.set_visibility.Output.BadRequest)
-            /// Invalid visibility value
-            ///
-            /// - Remark: Generated from `#/paths//user/visibility/put(set_visibility)/responses/400`.
-            ///
-            /// HTTP response code: `400 badRequest`.
-            public static var badRequest: Self {
-                .badRequest(.init())
-            }
             /// The associated value of the enum case if `self` is `.badRequest`.
             ///
             /// - Throws: An error if `self` is not `.badRequest`.
@@ -5920,8 +7513,32 @@ public enum Operations {
                 }
             }
             public struct Unauthorized: Sendable, Hashable {
+                /// - Remark: Generated from `#/paths/user/visibility/PUT/responses/401/content`.
+                @frozen public enum Body: Sendable, Hashable {
+                    /// - Remark: Generated from `#/paths/user/visibility/PUT/responses/401/content/application\/json`.
+                    case json(Components.Schemas.ErrorResponse)
+                    /// The associated value of the enum case if `self` is `.json`.
+                    ///
+                    /// - Throws: An error if `self` is not `.json`.
+                    /// - SeeAlso: `.json`.
+                    public var json: Components.Schemas.ErrorResponse {
+                        get throws {
+                            switch self {
+                            case let .json(body):
+                                return body
+                            }
+                        }
+                    }
+                }
+                /// Received HTTP response body
+                public var body: Operations.set_visibility.Output.Unauthorized.Body
                 /// Creates a new `Unauthorized`.
-                public init() {}
+                ///
+                /// - Parameters:
+                ///   - body: Received HTTP response body
+                public init(body: Operations.set_visibility.Output.Unauthorized.Body) {
+                    self.body = body
+                }
             }
             /// Missing or invalid authentication token
             ///
@@ -5929,14 +7546,6 @@ public enum Operations {
             ///
             /// HTTP response code: `401 unauthorized`.
             case unauthorized(Operations.set_visibility.Output.Unauthorized)
-            /// Missing or invalid authentication token
-            ///
-            /// - Remark: Generated from `#/paths//user/visibility/put(set_visibility)/responses/401`.
-            ///
-            /// HTTP response code: `401 unauthorized`.
-            public static var unauthorized: Self {
-                .unauthorized(.init())
-            }
             /// The associated value of the enum case if `self` is `.unauthorized`.
             ///
             /// - Throws: An error if `self` is not `.unauthorized`.
@@ -5955,8 +7564,32 @@ public enum Operations {
                 }
             }
             public struct NotFound: Sendable, Hashable {
+                /// - Remark: Generated from `#/paths/user/visibility/PUT/responses/404/content`.
+                @frozen public enum Body: Sendable, Hashable {
+                    /// - Remark: Generated from `#/paths/user/visibility/PUT/responses/404/content/application\/json`.
+                    case json(Components.Schemas.ErrorResponse)
+                    /// The associated value of the enum case if `self` is `.json`.
+                    ///
+                    /// - Throws: An error if `self` is not `.json`.
+                    /// - SeeAlso: `.json`.
+                    public var json: Components.Schemas.ErrorResponse {
+                        get throws {
+                            switch self {
+                            case let .json(body):
+                                return body
+                            }
+                        }
+                    }
+                }
+                /// Received HTTP response body
+                public var body: Operations.set_visibility.Output.NotFound.Body
                 /// Creates a new `NotFound`.
-                public init() {}
+                ///
+                /// - Parameters:
+                ///   - body: Received HTTP response body
+                public init(body: Operations.set_visibility.Output.NotFound.Body) {
+                    self.body = body
+                }
             }
             /// Authenticated user has never registered
             ///
@@ -5964,14 +7597,6 @@ public enum Operations {
             ///
             /// HTTP response code: `404 notFound`.
             case notFound(Operations.set_visibility.Output.NotFound)
-            /// Authenticated user has never registered
-            ///
-            /// - Remark: Generated from `#/paths//user/visibility/put(set_visibility)/responses/404`.
-            ///
-            /// HTTP response code: `404 notFound`.
-            public static var notFound: Self {
-                .notFound(.init())
-            }
             /// The associated value of the enum case if `self` is `.notFound`.
             ///
             /// - Throws: An error if `self` is not `.notFound`.
@@ -5993,6 +7618,31 @@ public enum Operations {
             ///
             /// A response with a code that is not documented in the OpenAPI document.
             case undocumented(statusCode: Swift.Int, OpenAPIRuntime.UndocumentedPayload)
+        }
+        @frozen public enum AcceptableContentType: AcceptableProtocol {
+            case json
+            case other(Swift.String)
+            public init?(rawValue: Swift.String) {
+                switch rawValue.lowercased() {
+                case "application/json":
+                    self = .json
+                default:
+                    self = .other(rawValue)
+                }
+            }
+            public var rawValue: Swift.String {
+                switch self {
+                case let .other(string):
+                    return string
+                case .json:
+                    return "application/json"
+                }
+            }
+            public static var allCases: [Self] {
+                [
+                    .json
+                ]
+            }
         }
     }
     /// - Remark: HTTP `GET /user/{username}`.
@@ -6093,8 +7743,32 @@ public enum Operations {
                 }
             }
             public struct Unauthorized: Sendable, Hashable {
+                /// - Remark: Generated from `#/paths/user/{username}/GET/responses/401/content`.
+                @frozen public enum Body: Sendable, Hashable {
+                    /// - Remark: Generated from `#/paths/user/{username}/GET/responses/401/content/application\/json`.
+                    case json(Components.Schemas.ErrorResponse)
+                    /// The associated value of the enum case if `self` is `.json`.
+                    ///
+                    /// - Throws: An error if `self` is not `.json`.
+                    /// - SeeAlso: `.json`.
+                    public var json: Components.Schemas.ErrorResponse {
+                        get throws {
+                            switch self {
+                            case let .json(body):
+                                return body
+                            }
+                        }
+                    }
+                }
+                /// Received HTTP response body
+                public var body: Operations.get_user_profile.Output.Unauthorized.Body
                 /// Creates a new `Unauthorized`.
-                public init() {}
+                ///
+                /// - Parameters:
+                ///   - body: Received HTTP response body
+                public init(body: Operations.get_user_profile.Output.Unauthorized.Body) {
+                    self.body = body
+                }
             }
             /// Missing or invalid authentication token
             ///
@@ -6102,14 +7776,6 @@ public enum Operations {
             ///
             /// HTTP response code: `401 unauthorized`.
             case unauthorized(Operations.get_user_profile.Output.Unauthorized)
-            /// Missing or invalid authentication token
-            ///
-            /// - Remark: Generated from `#/paths//user/{username}/get(get_user_profile)/responses/401`.
-            ///
-            /// HTTP response code: `401 unauthorized`.
-            public static var unauthorized: Self {
-                .unauthorized(.init())
-            }
             /// The associated value of the enum case if `self` is `.unauthorized`.
             ///
             /// - Throws: An error if `self` is not `.unauthorized`.
@@ -6128,8 +7794,32 @@ public enum Operations {
                 }
             }
             public struct NotFound: Sendable, Hashable {
+                /// - Remark: Generated from `#/paths/user/{username}/GET/responses/404/content`.
+                @frozen public enum Body: Sendable, Hashable {
+                    /// - Remark: Generated from `#/paths/user/{username}/GET/responses/404/content/application\/json`.
+                    case json(Components.Schemas.ErrorResponse)
+                    /// The associated value of the enum case if `self` is `.json`.
+                    ///
+                    /// - Throws: An error if `self` is not `.json`.
+                    /// - SeeAlso: `.json`.
+                    public var json: Components.Schemas.ErrorResponse {
+                        get throws {
+                            switch self {
+                            case let .json(body):
+                                return body
+                            }
+                        }
+                    }
+                }
+                /// Received HTTP response body
+                public var body: Operations.get_user_profile.Output.NotFound.Body
                 /// Creates a new `NotFound`.
-                public init() {}
+                ///
+                /// - Parameters:
+                ///   - body: Received HTTP response body
+                public init(body: Operations.get_user_profile.Output.NotFound.Body) {
+                    self.body = body
+                }
             }
             /// Username not found
             ///
@@ -6137,14 +7827,6 @@ public enum Operations {
             ///
             /// HTTP response code: `404 notFound`.
             case notFound(Operations.get_user_profile.Output.NotFound)
-            /// Username not found
-            ///
-            /// - Remark: Generated from `#/paths//user/{username}/get(get_user_profile)/responses/404`.
-            ///
-            /// HTTP response code: `404 notFound`.
-            public static var notFound: Self {
-                .notFound(.init())
-            }
             /// The associated value of the enum case if `self` is `.notFound`.
             ///
             /// - Throws: An error if `self` is not `.notFound`.
