@@ -192,6 +192,7 @@ const {
   error: importError,
   wasAlreadyRunning: importWasAlreadyRunning,
   progressPercent: importProgressPercent,
+  failureMessage: importFailureMessage,
   start: startImportFlow,
   stopPolling: stopImportPolling,
   reset: resetImportFlow,
@@ -759,7 +760,7 @@ const onDragLeave = () => {
             class="mt-2 max-h-32 list-disc space-y-1 overflow-y-auto pl-5 text-xs text-amber-600 dark:text-amber-400"
           >
             <li v-for="e in importStatus.errors" :key="e.line">
-              Ligne {{ e.line }} : champ « {{ e.field }} » invalide ({{ e.value }})
+              {{ importLineErrorMessage(e) }}
             </li>
           </ul>
           <button
@@ -773,7 +774,7 @@ const onDragLeave = () => {
         <!-- Step: done (failed) -->
         <template v-else-if="importStep === 'done'">
           <p class="mt-0 text-sm text-red-400">
-            {{ importStatus?.error_message ?? "L'import a échoué." }}
+            {{ importFailureMessage }}
           </p>
           <button
             class="bg-primary hover:bg-primary-soft mt-4 inline-flex w-full items-center justify-center gap-2 rounded-xl border border-transparent px-4 py-2.5 text-sm leading-none font-bold whitespace-nowrap text-[var(--on-primary)] shadow-lg transition-all duration-150 hover:-translate-y-px active:translate-y-0"

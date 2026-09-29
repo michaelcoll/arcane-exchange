@@ -12,6 +12,7 @@ function makeImport(overrides: Partial<CardImport> = {}): CardImport {
     errors: [],
     error_count: 0,
     error_message: null,
+    error_code: null,
     created_at: '2026-01-01T00:00:00Z',
     finished_at: null,
     ...overrides,
@@ -74,11 +75,13 @@ describe('useCardImportFlow', () => {
     const onCompleted = vi.fn();
     const services: CardImportServices = {
       importCards: vi.fn().mockResolvedValue({ id: 'import-1' }),
-      getCardImport: vi
-        .fn()
-        .mockResolvedValue(
-          makeImport({ status: 'failed', error_message: 'no valid line in file' }),
-        ),
+      getCardImport: vi.fn().mockResolvedValue(
+        makeImport({
+          status: 'failed',
+          error_message: 'no valid line in file',
+          error_code: 'no_valid_line',
+        }),
+      ),
       listCardImports: vi.fn(),
     };
 
@@ -90,6 +93,7 @@ describe('useCardImportFlow', () => {
     expect(flow.step.value).toBe('done');
     expect(flow.status.value?.status).toBe('failed');
     expect(onCompleted).not.toHaveBeenCalled();
+    expect(flow.failureMessage.value).toBe("Aucune ligne du fichier n'a pu être lue.");
   });
 
   it('follows the already-running import on a 409 instead of failing', async () => {
@@ -127,9 +131,15 @@ describe('useCardImportFlow', () => {
     expect(flow.error.value).toBe('Un import est déjà en cours.');
   });
 
-  it('surfaces the server error message on a non-409 failure', async () => {
+  it('translates the code of a rejected file, never showing the technical message', async () => {
     const services: CardImportServices = {
-      importCards: vi.fn().mockRejectedValue({ data: { error: 'Body is not valid UTF-8' } }),
+      importCards: vi.fn().mockRejectedValue({
+        statusCode: 400,
+        data: {
+          error: 'expecting a collection export, got a binder export',
+          code: 'binder_export',
+        },
+      }),
       getCardImport: vi.fn(),
       listCardImports: vi.fn(),
     };
@@ -139,7 +149,41 @@ describe('useCardImportFlow', () => {
     await flow.start('csv-content');
 
     expect(flow.step.value).toBe('idle');
-    expect(flow.error.value).toBe('Body is not valid UTF-8');
+    expect(flow.error.value).toBe(
+      'Ce fichier est un export de classeur. Exporte ta collection complète depuis ManaBox.',
+    );
+  });
+
+  it('shows a generic message for an unknown code', async () => {
+    const services: CardImportServices = {
+      importCards: vi.fn().mockRejectedValue({
+        statusCode: 400,
+        data: { error: 'Body is too large', code: 'wrong_format' },
+      }),
+      getCardImport: vi.fn(),
+      listCardImports: vi.fn(),
+    };
+
+    const flow = useCardImportFlow(services);
+
+    await flow.start('csv-content');
+
+    expect(flow.error.value).toBe("L'import a échoué.");
+  });
+
+  it('has no failure message while the import has not failed', async () => {
+    const services: CardImportServices = {
+      importCards: vi.fn().mockResolvedValue({ id: 'import-1' }),
+      getCardImport: vi.fn().mockResolvedValue(makeImport({ status: 'running' })),
+      listCardImports: vi.fn(),
+    };
+
+    const flow = useCardImportFlow(services);
+
+    await flow.start('csv-content');
+    await vi.advanceTimersByTimeAsync(0);
+
+    expect(flow.failureMessage.value).toBeNull();
   });
 
   it('reset stops polling and clears state', async () => {
