@@ -53,7 +53,7 @@ impl AppError {
     pub fn code(&self) -> &'static str {
         match self {
             AppError::Functional(e) => e.code(),
-            AppError::Authentication(AuthenticationError::InvalidToken(_)) => "invalid_token",
+            AppError::Authentication(_) => "unauthorized",
             AppError::Infra(_) => "internal",
         }
     }
@@ -107,9 +107,9 @@ mod tests {
     }
 
     #[test]
-    fn code_of_an_authentication_error_is_invalid_token() {
+    fn code_of_an_authentication_error_is_unauthorized() {
         let error = AppError::Authentication(AuthenticationError::InvalidToken("x".to_string()));
-        assert_eq!(error.code(), "invalid_token");
+        assert_eq!(error.code(), "unauthorized");
     }
 
     #[test]
