@@ -1,6 +1,8 @@
 import { computed, ref } from 'vue';
 import type { CardImport } from '~/bindings/CardImport';
 import type { CardImportStarted } from '~/bindings/CardImportStarted';
+import type { ErrorResponse } from '~/bindings/ErrorResponse';
+import { importErrorMessage } from '../utils/import-error';
 
 export interface CardImportServices {
   importCards: (csv: string) => Promise<CardImportStarted>;
@@ -40,6 +42,11 @@ export const useCardImportFlow = (
     if (total <= 0) return status.value?.status === 'completed' ? 100 : 0;
     return Math.min(100, Math.round((processed / total) * 100));
   });
+
+  /** Why the followed import failed, translated from its `error_code`; `null` unless it failed. */
+  const failureMessage = computed(() =>
+    status.value?.status === 'failed' ? importErrorMessage(status.value.error_code) : null,
+  );
 
   const stopPolling = () => {
     if (pollHandle) {
@@ -92,7 +99,7 @@ export const useCardImportFlow = (
       const err = e as {
         statusCode?: number;
         response?: { status?: number };
-        data?: { error?: string };
+        data?: Partial<ErrorResponse>;
       };
       if (err?.statusCode === 409 || err?.response?.status === 409) {
         wasAlreadyRunning.value = true;
@@ -104,7 +111,7 @@ export const useCardImportFlow = (
           error.value = 'Un import est déjà en cours.';
         }
       } else {
-        error.value = err?.data?.error ?? "Erreur lors de l'import";
+        error.value = importErrorMessage(err?.data?.code);
       }
     }
   };
@@ -115,6 +122,7 @@ export const useCardImportFlow = (
     error,
     wasAlreadyRunning,
     progressPercent,
+    failureMessage,
     start,
     stopPolling,
     reset,
