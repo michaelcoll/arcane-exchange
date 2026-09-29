@@ -83,6 +83,12 @@ Le remplacement intégral de la collection d'un joueur à partir d'un export Man
 par son état, sa progression et ses erreurs de ligne.
 _Avoid_ : synchronisation, upload
 
+**Proxy** :
+Une reproduction non officielle d'une carte, déclarée comme telle dans ManaBox. Un proxy n'est pas
+un exemplaire : il n'entre jamais dans une collection, n'a pas de valeur et ne s'échange pas.
+L'import l'écarte silencieusement, comme les tokens.
+_Avoid_ : copie, fausse carte, contrefaçon
+
 ### Mise à l'échange
 
 **Visibilité de collection** :
