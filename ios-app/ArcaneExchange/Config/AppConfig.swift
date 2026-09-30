@@ -14,9 +14,19 @@ enum AppConfig {
     /// Reads the Settings override first, then the value baked in at build time. A blank or
     /// malformed override falls back to the built-in value rather than crashing the app, so a
     /// typo in Settings stays recoverable from the app itself.
+    ///
+    /// The widget extension has no Settings pane: its own defaults are empty, and it reads the
+    /// copy the app leaves in the App Group (`shareAPIBaseURL()`).
     static var apiBaseURL: URL {
         let override = UserDefaults.standard.string(forKey: apiBaseURLDefaultsKey)
+            ?? SharedContainer.defaults.string(forKey: apiBaseURLDefaultsKey)
         return override.flatMap(parseBaseURL) ?? bundledAPIBaseURL
+    }
+
+    /// Copies the URL in use into the App Group for the widgets. Called whenever the app comes
+    /// to the foreground: the Settings app may have changed it while the app was away.
+    static func shareAPIBaseURL() {
+        SharedContainer.defaults.set(apiBaseURL.absoluteString, forKey: apiBaseURLDefaultsKey)
     }
 
     /// The `API_BASE_URL` of the build configuration, before any Settings override.

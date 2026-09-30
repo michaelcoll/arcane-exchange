@@ -16,6 +16,7 @@ enum CardOfferTrade {
         do {
             let tradeID = try await createTrade(with: offer.owner_username)
             try await addCard(card, to: tradeID, ownedBy: offer.owner_username)
+            HomeWidgetReload.reload(.trades)
             return .success(TradeDetailRoute(id: tradeID, partnerUsername: offer.owner_username))
         } catch let refusal as Refusal {
             return .failure(refusal)

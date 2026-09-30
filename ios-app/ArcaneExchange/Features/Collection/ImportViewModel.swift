@@ -132,6 +132,8 @@ final class ImportViewModel {
                     status = current
                     if current.status == "completed" || current.status == "failed" {
                         step = .done
+                        // A finished import changes the card counts on the widget.
+                        HomeWidgetReload.reload(.collection)
                         return
                     }
                 } catch {

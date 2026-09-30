@@ -78,11 +78,24 @@ targets:
         product: Nuke
       - package: Nuke
         product: NukeUI
+      - target: ArcaneExchangeWidgets
+    # Shared with the widget extension (`SharedContainer`): the App Group carries the API base
+    # URL and the widgets' last snapshots, the Keychain group the Clerk session. Automatic
+    # signing registers both on the first device build — a free account is enough.
+    entitlements:
+      path: ArcaneExchange/ArcaneExchange.entitlements
+      properties:
+        com.apple.security.application-groups:
+          - group.fr.piconsoft.arcane-exchange
+        keychain-access-groups:
+          - $(AppIdentifierPrefix)fr.piconsoft.arcane-exchange.shared
     info:
       path: ArcaneExchange/Info.plist
       properties:
         API_BASE_URL: $(API_BASE_URL)
         CLERK_PUBLISHABLE_KEY: $(CLERK_PUBLISHABLE_KEY)
+        # The team prefix of the shared Keychain group, read by `SharedContainer`.
+        AppIdentifierPrefix: $(AppIdentifierPrefix)
         UILaunchScreen: {}
         # Without this the bundle claims no localization at all, iOS resolves the app's
         # language to English, and everything the system formats or labels comes out English
@@ -100,7 +113,70 @@ targets:
           - CFBundleURLName: ClerkOAuthCallback
             CFBundleURLSchemes:
               - $(PRODUCT_BUNDLE_IDENTIFIER)
+          # Home-screen widget taps (`HomeWidgetLink.scheme`).
+          - CFBundleURLName: HomeWidgetLink
+            CFBundleURLSchemes:
+              - arcane-exchange
         # ATS otherwise blocks the Dev config's plain-HTTP localhost backend.
+        NSAppTransportSecurity:
+          NSExceptionDomains:
+            localhost:
+              NSExceptionAllowsInsecureHTTPLoads: true
+
+  # The home-screen widgets (#473). They call the API themselves, with the session the app
+  # opened: everything they share with it is listed under `SharedContainer`.
+  ArcaneExchangeWidgets:
+    type: app-extension
+    platform: iOS
+    sources:
+      - path: ArcaneExchangeWidgets
+      # The app's sources the widgets need, compiled a second time into the extension.
+      - path: ArcaneExchange/HomeWidgets
+        # Only the app asks WidgetKit for reloads.
+        excludes:
+          - HomeWidgetReload.swift
+      - path: ArcaneExchange/Networking
+      - path: ArcaneExchange/Config/AppConfig.swift
+      - path: ArcaneExchange/Support/Palette.swift
+      - path: ArcaneExchange/Support/Price.swift
+      - path: ArcaneExchange/Support/PlayerMonogram.swift
+      - path: ArcaneExchange/Support/UsernameLabel.swift
+      - path: ArcaneExchange/Features/CardDetail/CardDetailModel.swift
+      - path: ArcaneExchange/Features/Trades/TradeModel.swift
+      - path: ArcaneExchange/Features/Trades/TradeStatusPill.swift
+      # The color sets behind `Palette`.
+      - path: ArcaneExchange/Assets.xcassets
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: fr.piconsoft.arcane-exchange.widgets
+        TARGETED_DEVICE_FAMILY: "1"
+        DEVELOPMENT_LANGUAGE: fr
+    dependencies:
+      - package: APIClient
+      - package: ClerkKit
+        product: ClerkKit
+      - package: OpenAPIRuntime
+        product: OpenAPIRuntime
+      - package: OpenAPIURLSession
+        product: OpenAPIURLSession
+      - package: HTTPTypes
+        product: HTTPTypes
+    entitlements:
+      path: ArcaneExchangeWidgets/ArcaneExchangeWidgets.entitlements
+      properties:
+        com.apple.security.application-groups:
+          - group.fr.piconsoft.arcane-exchange
+        keychain-access-groups:
+          - $(AppIdentifierPrefix)fr.piconsoft.arcane-exchange.shared
+    info:
+      path: ArcaneExchangeWidgets/Info.plist
+      properties:
+        CFBundleDisplayName: Arcane Exchange
+        API_BASE_URL: $(API_BASE_URL)
+        CLERK_PUBLISHABLE_KEY: $(CLERK_PUBLISHABLE_KEY)
+        AppIdentifierPrefix: $(AppIdentifierPrefix)
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.widgetkit-extension
         NSAppTransportSecurity:
           NSExceptionDomains:
             localhost:

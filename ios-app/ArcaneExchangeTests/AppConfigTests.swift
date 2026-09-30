@@ -35,11 +35,37 @@ struct AppConfigTests {
         }
     }
 
+    /// The widget extension's own defaults are empty: it reads what the app shared.
+    @Test func withoutASettingTheSharedCopyIsUsed() {
+        let shared = SharedContainer.defaults
+        let key = AppConfig.apiBaseURLDefaultsKey
+        let previousShared = shared.string(forKey: key)
+        shared.set("https://shared.example.com/api/v1", forKey: key)
+        defer { shared.set(previousShared, forKey: key) }
+
+        withAPIBaseURLSetting(nil) {
+            #expect(AppConfig.apiBaseURL.absoluteString == "https://shared.example.com/api/v1")
+        }
+    }
+
+    @Test func shareCopiesTheURLInUseForTheWidgets() {
+        let shared = SharedContainer.defaults
+        let key = AppConfig.apiBaseURLDefaultsKey
+        let previousShared = shared.string(forKey: key)
+        defer { shared.set(previousShared, forKey: key) }
+
+        withAPIBaseURLSetting("https://staging.example.com/api/v1") {
+            AppConfig.shareAPIBaseURL()
+            #expect(shared.string(forKey: key) == "https://staging.example.com/api/v1")
+        }
+    }
+
     @Test func bundledURLTargetsTheVersionedAPI() {
         #expect(AppConfig.bundledAPIBaseURL.absoluteString.hasSuffix("/api/v1"))
     }
 
-    private func withAPIBaseURLSetting(_ value: String, _ body: () -> Void) {
+    /// `nil` removes the setting for the duration of `body`.
+    private func withAPIBaseURLSetting(_ value: String?, _ body: () -> Void) {
         let defaults = UserDefaults.standard
         let key = AppConfig.apiBaseURLDefaultsKey
         let previous = defaults.string(forKey: key)

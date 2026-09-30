@@ -43,6 +43,20 @@ Commandes : [mise.instructions.md](mise.instructions.md) · CI : [ci.instruction
   the web client's `Card/Cell.vue` (±3 % is noise).
 - **Language**: UI strings in French, code and comments in English.
 
+## Home-screen widgets
+
+- The `ArcaneExchangeWidgets` extension compiles `ArcaneExchange/HomeWidgets/` plus a short list of app
+  files (see its `sources` in `project.yml`). Keep what the widgets need free of `NukeUI`, `ClerkKitUI`
+  and view models: a new dependency means a new line there, and the extension must still build.
+- The widget views live in `HomeWidgets/`, not in the extension, so tests and previews can render them.
+- Everything shared with the app is in `SharedContainer`: the App Group (API base URL, last snapshots)
+  and the Keychain group holding the Clerk session. Both are declared in the two targets'
+  `entitlements` in `project.yml` — rename one side, rename the other. Clerk is configured through
+  `ClerkSetup` in both processes; never call `Clerk.configure` directly.
+- The app reloads the widgets itself (`HomeWidgetReload`) after anything that changes what they show;
+  `HomeWidgetSchedule` only covers the app being closed. A new trade action or import path must call it.
+- Widget taps open `arcane-exchange://` links (`HomeWidgetLink`), routed by `AppRouter`.
+
 ## Runtime configuration
 
 `AppConfig` reads `API_BASE_URL` and `CLERK_PUBLISHABLE_KEY` from `Info.plist` (fed by the xcconfigs at build time).

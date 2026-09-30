@@ -277,13 +277,18 @@ run = "xcodebuild -scheme ArcaneExchange -destination 'platform=iOS Simulator,na
 [tasks.lint-ios]
 description = "Lints the iOS app"
 dir = "ios-app"
-# Exactly the two paths passed to swiftlint, plus its config. Globs are relative to `dir`.
-sources = ["ArcaneExchange/**/*.swift", "APIClient/Sources/**/*.swift", ".swiftlint.yml"]
-run = "swiftlint lint --strict ArcaneExchange APIClient/Sources"
+# Exactly the paths passed to swiftlint, plus its config. Globs are relative to `dir`.
+sources = [
+  "ArcaneExchange/**/*.swift",
+  "ArcaneExchangeWidgets/**/*.swift",
+  "APIClient/Sources/**/*.swift",
+  ".swiftlint.yml",
+]
+run = "swiftlint lint --strict ArcaneExchange ArcaneExchangeWidgets APIClient/Sources"
 
 [tasks.format-ios]
 dir = "ios-app"
-run = "swiftformat ArcaneExchange APIClient/Sources"
+run = "swiftformat ArcaneExchange ArcaneExchangeWidgets APIClient/Sources"
 hide = true
 
 [tasks.clean-ios]

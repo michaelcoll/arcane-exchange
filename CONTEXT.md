@@ -73,6 +73,11 @@ La possession, par un joueur, d'un certain nombre d'exemplaires d'une carte dans
 et un binder donné. Porte la quantité, le prix d'achat et la date d'ajout.
 _Avoid_ : ligne de collection, possession, card quantity
 
+**Valeur de collection** :
+La somme, pour un joueur et à une date, du prix de tendance de chaque exemplaire qu'il possédait ce
+jour-là, dans sa finition. Sa série jour par jour forme l'historique de valeur de la collection.
+_Avoid_ : cote de collection, patrimoine, total
+
 **Binder** :
 Le classeur physique dans lequel un joueur range des exemplaires, tel que déclaré à l'import. Donnée
 importée en lecture seule — la plateforme ne crée, ne renomme et ne supprime jamais de binder.

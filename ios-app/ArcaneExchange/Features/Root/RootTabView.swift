@@ -15,11 +15,13 @@ struct RootTabView: View {
         case search
     }
 
-    @State private var selection: Destination = .collection
+    /// Holds the selected tab, so a widget tap can switch it.
+    @Environment(AppRouter.self) private var router
     @State private var searchText = ""
 
     var body: some View {
-        TabView(selection: $selection) {
+        @Bindable var router = router
+        TabView(selection: $router.tab) {
             Tab("Collection", systemImage: "rectangle.stack", value: .collection) {
                 CollectionView()
             }
@@ -37,4 +39,5 @@ struct RootTabView: View {
 
 #Preview {
     RootTabView()
+        .environment(AppRouter())
 }
