@@ -3,7 +3,7 @@ import Foundation
 import OpenAPIRuntime
 
 /// Backs the trade settings of the Réglages sheet: the collection's visibility, the ManaBox
-/// binders opened to trade, and the per-rarity rules — the `/collection/trade-settings`
+/// binders opened to trade, and the rarity filters — the `/collection/trade-settings`
 /// endpoints the web client's `useTradeSettingsService` also drives.
 @MainActor
 @Observable
@@ -139,7 +139,7 @@ final class TradeSettingsViewModel {
                 kept_copies: kept,
                 rarity: rarity
             )
-            switch try await APIClientProvider.shared.set_trade_rarity(body: .json(body)) {
+            switch try await APIClientProvider.shared.set_trade_rarity_filter(body: .json(body)) {
             case .noContent:
                 break
             case .unauthorized:
@@ -205,7 +205,7 @@ final class TradeSettingsViewModel {
     }
 
     private func fetchRarityFilters() async throws -> [RarityFilter] {
-        switch try await APIClientProvider.shared.get_trade_rarities() {
+        switch try await APIClientProvider.shared.get_trade_rarity_filters() {
         case let .ok(response):
             return try response.body.json.rarities
         case .unauthorized:

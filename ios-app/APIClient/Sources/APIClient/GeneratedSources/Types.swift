@@ -51,11 +51,11 @@ public protocol APIProtocol: Sendable {
     /// - Remark: Generated from `#/paths//collection/trade-settings/binders/{name}/delete(remove_trade_binder)`.
     func remove_trade_binder(_ input: Operations.remove_trade_binder.Input) async throws -> Operations.remove_trade_binder.Output
     /// - Remark: HTTP `GET /collection/trade-settings/rarities`.
-    /// - Remark: Generated from `#/paths//collection/trade-settings/rarities/get(get_trade_rarities)`.
-    func get_trade_rarities(_ input: Operations.get_trade_rarities.Input) async throws -> Operations.get_trade_rarities.Output
+    /// - Remark: Generated from `#/paths//collection/trade-settings/rarities/get(get_trade_rarity_filters)`.
+    func get_trade_rarity_filters(_ input: Operations.get_trade_rarity_filters.Input) async throws -> Operations.get_trade_rarity_filters.Output
     /// - Remark: HTTP `POST /collection/trade-settings/rarities`.
-    /// - Remark: Generated from `#/paths//collection/trade-settings/rarities/post(set_trade_rarity)`.
-    func set_trade_rarity(_ input: Operations.set_trade_rarity.Input) async throws -> Operations.set_trade_rarity.Output
+    /// - Remark: Generated from `#/paths//collection/trade-settings/rarities/post(set_trade_rarity_filter)`.
+    func set_trade_rarity_filter(_ input: Operations.set_trade_rarity_filter.Input) async throws -> Operations.set_trade_rarity_filter.Output
     /// - Remark: HTTP `GET /collection/trade-settings/visibility`.
     /// - Remark: Generated from `#/paths//collection/trade-settings/visibility/get(get_trade_visibility)`.
     func get_trade_visibility(_ input: Operations.get_trade_visibility.Input) async throws -> Operations.get_trade_visibility.Output
@@ -239,17 +239,17 @@ extension APIProtocol {
         ))
     }
     /// - Remark: HTTP `GET /collection/trade-settings/rarities`.
-    /// - Remark: Generated from `#/paths//collection/trade-settings/rarities/get(get_trade_rarities)`.
-    public func get_trade_rarities(headers: Operations.get_trade_rarities.Input.Headers = .init()) async throws -> Operations.get_trade_rarities.Output {
-        try await get_trade_rarities(Operations.get_trade_rarities.Input(headers: headers))
+    /// - Remark: Generated from `#/paths//collection/trade-settings/rarities/get(get_trade_rarity_filters)`.
+    public func get_trade_rarity_filters(headers: Operations.get_trade_rarity_filters.Input.Headers = .init()) async throws -> Operations.get_trade_rarity_filters.Output {
+        try await get_trade_rarity_filters(Operations.get_trade_rarity_filters.Input(headers: headers))
     }
     /// - Remark: HTTP `POST /collection/trade-settings/rarities`.
-    /// - Remark: Generated from `#/paths//collection/trade-settings/rarities/post(set_trade_rarity)`.
-    public func set_trade_rarity(
-        headers: Operations.set_trade_rarity.Input.Headers = .init(),
-        body: Operations.set_trade_rarity.Input.Body
-    ) async throws -> Operations.set_trade_rarity.Output {
-        try await set_trade_rarity(Operations.set_trade_rarity.Input(
+    /// - Remark: Generated from `#/paths//collection/trade-settings/rarities/post(set_trade_rarity_filter)`.
+    public func set_trade_rarity_filter(
+        headers: Operations.set_trade_rarity_filter.Input.Headers = .init(),
+        body: Operations.set_trade_rarity_filter.Input.Body
+    ) async throws -> Operations.set_trade_rarity_filter.Output {
+        try await set_trade_rarity_filter(Operations.set_trade_rarity_filter.Input(
             headers: headers,
             body: body
         ))

@@ -55,6 +55,7 @@ use crate::infrastructure::adapter_in::collection::controller::create_collection
 use crate::infrastructure::adapter_in::search::controller::create_search_router;
 use crate::infrastructure::adapter_in::sets::controller::create_set_router;
 use crate::infrastructure::adapter_in::trade::controller::create_trade_router;
+use crate::infrastructure::adapter_in::trade_settings::controller::create_trade_settings_router;
 use crate::infrastructure::adapter_in::user::controller::create_user_router;
 use crate::infrastructure::adapter_in::with_error_body;
 use crate::infrastructure::adapter_out::caller::cardmarket_caller_adapter::CardMarketCallerAdapter;
@@ -375,6 +376,7 @@ fn create_router(app_state: AppState) -> Router {
         .nest("/autocomplete", create_autocomplete_router())
         .nest("/card", create_card_router())
         .nest("/collection", create_collection_router())
+        .nest("/collection/trade-settings", create_trade_settings_router())
         .nest("/search", create_search_router())
         .nest("/sets", create_set_router())
         .nest("/maintenance", create_maintenance_router())

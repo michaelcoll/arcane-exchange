@@ -22,7 +22,10 @@ pub fn create_trade_settings_router() -> axum::Router<AppState> {
         )
         .route("/binders", get(get_trade_binders).post(add_trade_binder))
         .route("/binders/{name}", delete(remove_trade_binder))
-        .route("/rarities", get(get_trade_rarities).post(set_trade_rarity))
+        .route(
+            "/rarities",
+            get(get_trade_rarity_filters).post(set_trade_rarity_filter),
+        )
 }
 
 #[utoipa::path(
@@ -152,13 +155,13 @@ pub(crate) async fn remove_trade_binder(
     get,
     path = "/collection/trade-settings/rarities",
     responses(
-        (status = 200, description = "Rarities owned within the binders selected for trade, with their trade rule and computed counts", body = RarityFiltersResponse),
+        (status = 200, description = "Rarities owned within the binders selected for trade, with their rarity filter and computed counts", body = RarityFiltersResponse),
         (status = 401, description = "Missing or invalid token"),
     ),
     security(("bearer_auth" = [])),
     tag = "trade-settings",
 )]
-pub(crate) async fn get_trade_rarities(
+pub(crate) async fn get_trade_rarity_filters(
     State(state): State<AppState>,
     AuthenticatedUser(user): AuthenticatedUser,
 ) -> Result<axum::Json<RarityFiltersResponse>, AppError> {
@@ -180,14 +183,14 @@ pub(crate) async fn get_trade_rarities(
     path = "/collection/trade-settings/rarities",
     request_body = SetRarityFilterRequest,
     responses(
-        (status = 204, description = "Trade rule updated successfully"),
+        (status = 204, description = "Rarity filter updated successfully"),
         (status = 400, description = "Invalid rarity code or kept_copies out of range"),
         (status = 401, description = "Missing or invalid token"),
     ),
     security(("bearer_auth" = [])),
     tag = "trade-settings",
 )]
-pub(crate) async fn set_trade_rarity(
+pub(crate) async fn set_trade_rarity_filter(
     State(state): State<AppState>,
     AuthenticatedUser(user): AuthenticatedUser,
     axum::Json(payload): axum::Json<SetRarityFilterRequest>,

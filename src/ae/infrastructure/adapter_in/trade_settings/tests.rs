@@ -324,7 +324,7 @@ async fn remove_trade_binder_propagates_use_case_error() {
 // ============================================================
 
 #[tokio::test]
-async fn get_trade_rarities_returns_filters_from_use_case() {
+async fn get_trade_rarity_filters_returns_filters_from_use_case() {
     let mut mock = MockGetRarityTradeFiltersUseCase::new();
     mock.expect_get_rarity_trade_filters().returning(|_| {
         Box::pin(async {
@@ -339,7 +339,7 @@ async fn get_trade_rarities_returns_filters_from_use_case() {
     });
 
     let state = make_app_state_get_rarities(mock);
-    let result = get_trade_rarities(State(state), test_user()).await;
+    let result = get_trade_rarity_filters(State(state), test_user()).await;
 
     let axum::Json(response) = result.unwrap();
     assert_eq!(response.rarities.len(), 1);
@@ -351,20 +351,20 @@ async fn get_trade_rarities_returns_filters_from_use_case() {
 }
 
 #[tokio::test]
-async fn get_trade_rarities_returns_empty_list() {
+async fn get_trade_rarity_filters_returns_empty_list() {
     let mut mock = MockGetRarityTradeFiltersUseCase::new();
     mock.expect_get_rarity_trade_filters()
         .returning(|_| Box::pin(async { Ok(vec![]) }));
 
     let state = make_app_state_get_rarities(mock);
-    let result = get_trade_rarities(State(state), test_user()).await;
+    let result = get_trade_rarity_filters(State(state), test_user()).await;
 
     let axum::Json(response) = result.unwrap();
     assert!(response.rarities.is_empty());
 }
 
 #[tokio::test]
-async fn get_trade_rarities_propagates_error_from_use_case() {
+async fn get_trade_rarity_filters_propagates_error_from_use_case() {
     let mut mock = MockGetRarityTradeFiltersUseCase::new();
     mock.expect_get_rarity_trade_filters().returning(|_| {
         Box::pin(async {
@@ -375,7 +375,7 @@ async fn get_trade_rarities_propagates_error_from_use_case() {
     });
 
     let state = make_app_state_get_rarities(mock);
-    let result = get_trade_rarities(State(state), test_user()).await;
+    let result = get_trade_rarity_filters(State(state), test_user()).await;
 
     match result.unwrap_err() {
         AppError::Infra(InfraError::RepositoryError(msg)) => assert_eq!(msg, "db failure"),
@@ -384,7 +384,7 @@ async fn get_trade_rarities_propagates_error_from_use_case() {
 }
 
 #[tokio::test]
-async fn set_trade_rarity_forwards_payload_to_use_case() {
+async fn set_trade_rarity_filter_forwards_payload_to_use_case() {
     let mut mock = MockSetRarityTradeFilterUseCase::new();
     mock.expect_set_rarity_trade_filter()
         .withf(|user_id, rule| {
@@ -397,7 +397,7 @@ async fn set_trade_rarity_forwards_payload_to_use_case() {
         .returning(|_, _| Box::pin(async { Ok(()) }));
 
     let state = make_app_state_set_rarity(mock);
-    let result = set_trade_rarity(
+    let result = set_trade_rarity_filter(
         State(state),
         test_user(),
         axum::Json(SetRarityFilterRequest {
@@ -412,11 +412,11 @@ async fn set_trade_rarity_forwards_payload_to_use_case() {
 }
 
 #[tokio::test]
-async fn set_trade_rarity_rejects_unknown_rarity_without_calling_use_case() {
+async fn set_trade_rarity_filter_rejects_unknown_rarity_without_calling_use_case() {
     let mock = MockSetRarityTradeFilterUseCase::new();
 
     let state = make_app_state_set_rarity(mock);
-    let result = set_trade_rarity(
+    let result = set_trade_rarity_filter(
         State(state),
         test_user(),
         axum::Json(SetRarityFilterRequest {
@@ -434,11 +434,11 @@ async fn set_trade_rarity_rejects_unknown_rarity_without_calling_use_case() {
 }
 
 #[tokio::test]
-async fn set_trade_rarity_rejects_negative_kept_copies_without_calling_use_case() {
+async fn set_trade_rarity_filter_rejects_negative_kept_copies_without_calling_use_case() {
     let mock = MockSetRarityTradeFilterUseCase::new();
 
     let state = make_app_state_set_rarity(mock);
-    let result = set_trade_rarity(
+    let result = set_trade_rarity_filter(
         State(state),
         test_user(),
         axum::Json(SetRarityFilterRequest {
@@ -456,7 +456,7 @@ async fn set_trade_rarity_rejects_negative_kept_copies_without_calling_use_case(
 }
 
 #[tokio::test]
-async fn set_trade_rarity_propagates_error_from_use_case() {
+async fn set_trade_rarity_filter_propagates_error_from_use_case() {
     let mut mock = MockSetRarityTradeFilterUseCase::new();
     mock.expect_set_rarity_trade_filter().returning(|_, _| {
         Box::pin(async {
@@ -467,7 +467,7 @@ async fn set_trade_rarity_propagates_error_from_use_case() {
     });
 
     let state = make_app_state_set_rarity(mock);
-    let result = set_trade_rarity(
+    let result = set_trade_rarity_filter(
         State(state),
         test_user(),
         axum::Json(SetRarityFilterRequest {

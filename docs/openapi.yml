@@ -508,10 +508,10 @@ paths:
     get:
       tags:
       - trade-settings
-      operationId: get_trade_rarities
+      operationId: get_trade_rarity_filters
       responses:
         '200':
-          description: Rarities owned within the binders selected for trade, with their trade rule and computed counts
+          description: Rarities owned within the binders selected for trade, with their rarity filter and computed counts
           content:
             application/json:
               schema:
@@ -527,7 +527,7 @@ paths:
     post:
       tags:
       - trade-settings
-      operationId: set_trade_rarity
+      operationId: set_trade_rarity_filter
       requestBody:
         content:
           application/json:
@@ -536,7 +536,7 @@ paths:
         required: true
       responses:
         '204':
-          description: Trade rule updated successfully
+          description: Rarity filter updated successfully
         '400':
           description: Invalid rarity code or kept_copies out of range
           content:

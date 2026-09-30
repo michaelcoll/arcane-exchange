@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// The mockup's `TradeRatio` band, shown under the trade rules on the Réglages screen: how the
+/// The mockup's `TradeRatio` band, shown under the trade settings on the Réglages screen: how the
 /// copies owned inside the selected binders split between proposed, kept and closed rarities.
 struct TradeRatioBand: View {
     let ratio: TradeRatio
