@@ -37,11 +37,11 @@ struct CollectionFilters: Hashable, Codable {
 }
 
 /// Local, device-only memory of the Collection tab's sort and filters, restored at launch and
-/// wiped on sign-out: the sets filtered belong to the previous player's collection.
+/// wiped by `SignOutCleanup`: the sets filtered belong to the previous player's collection.
 struct CollectionFiltersStore {
     static let storageKey = "collection.filters"
 
-    let defaults: UserDefaults
+    private let defaults: UserDefaults
 
     init(defaults: UserDefaults = .standard) {
         self.defaults = defaults

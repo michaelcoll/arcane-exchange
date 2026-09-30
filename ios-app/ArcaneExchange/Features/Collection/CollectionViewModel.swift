@@ -47,8 +47,9 @@ final class CollectionViewModel {
     /// `reload` resets it to 0, which lets an in-flight `loadMore` notice its page is stale.
     private var nextPage: Int32 = 0
 
-    /// Both the first load and the view's own `.task` ask for the sets: one request is enough.
-    private var isLoadingSets = false
+    /// The set-list request in flight. The first load and the view's own `.task` both ask for
+    /// the sets: the second caller joins the first request instead of racing it.
+    private var setsLoad: Task<Void, Never>?
 
     private let store: CollectionFiltersStore
 
@@ -70,6 +71,8 @@ final class CollectionViewModel {
     func loadInitiallyIfNeeded() async {
         guard cards.isEmpty, !isLoading, loadError == nil else { return }
         if !filters.sets.isEmpty {
+            // The spinner, not the "no match" screen, while the set list comes back.
+            isLoading = true
             await loadSetsIfNeeded()
         }
         await reload()
@@ -77,6 +80,8 @@ final class CollectionViewModel {
 
     /// The import may have replaced the whole collection: its sets included.
     func reloadAfterImport() async {
+        // A list requested before the import finished is stale: wait it out, then ask again.
+        await setsLoad?.value
         await loadSets()
         await reload()
     }
@@ -134,12 +139,19 @@ final class CollectionViewModel {
         await loadSets()
     }
 
+    private func loadSets() async {
+        if let setsLoad {
+            return await setsLoad.value
+        }
+        let load = Task { await fetchSets() }
+        setsLoad = load
+        await load.value
+        setsLoad = nil
+    }
+
     /// Only a list that actually came back prunes the set filter: a failed request says nothing
     /// about what the collection holds.
-    private func loadSets() async {
-        guard !isLoadingSets else { return }
-        isLoadingSets = true
-        defer { isLoadingSets = false }
+    private func fetchSets() async {
         guard let output = try? await APIClientProvider.shared.get_collection_stats(),
               case let .ok(response) = output,
               let stats = try? response.body.json

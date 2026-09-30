@@ -60,7 +60,7 @@ struct CollectionFiltersTests {
 
     // MARK: Persistence
 
-    /// A throwaway domain per test, so no run leaks into `.standard` or into another test.
+    /// A domain of its own per test: none reads `.standard` or another test's writes.
     private static func freshDefaults() -> UserDefaults {
         UserDefaults(suiteName: "CollectionFiltersTests.\(UUID().uuidString)")!
     }

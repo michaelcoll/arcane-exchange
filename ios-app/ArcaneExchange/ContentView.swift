@@ -23,12 +23,8 @@ struct ContentView: View {
                 }
             }
         }
-        // Only a signed-in → signed-out transition: the launch goes the other way while Clerk
-        // restores the session, and must keep what the previous run remembered.
-        .onChange(of: clerk.user == nil) { wasSignedOut, isSignedOut in
-            if !wasSignedOut, isSignedOut {
-                CollectionFiltersStore().clear()
-            }
+        .onChange(of: [clerk.isLoaded, clerk.user != nil], initial: true) {
+            SignOutCleanup.run(isLoaded: clerk.isLoaded, isSignedIn: clerk.user != nil)
         }
     }
 }
