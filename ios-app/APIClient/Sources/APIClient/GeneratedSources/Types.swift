@@ -41,12 +41,27 @@ public protocol APIProtocol: Sendable {
     /// - Remark: HTTP `GET /collection/stats`.
     /// - Remark: Generated from `#/paths//collection/stats/get(get_collection_stats)`.
     func get_collection_stats(_ input: Operations.get_collection_stats.Input) async throws -> Operations.get_collection_stats.Output
-    /// - Remark: HTTP `GET /collection/visibility/rarities`.
-    /// - Remark: Generated from `#/paths//collection/visibility/rarities/get(get_rarity_filters)`.
-    func get_rarity_filters(_ input: Operations.get_rarity_filters.Input) async throws -> Operations.get_rarity_filters.Output
-    /// - Remark: HTTP `POST /collection/visibility/rarities`.
-    /// - Remark: Generated from `#/paths//collection/visibility/rarities/post(set_rarity_filter)`.
-    func set_rarity_filter(_ input: Operations.set_rarity_filter.Input) async throws -> Operations.set_rarity_filter.Output
+    /// - Remark: HTTP `GET /collection/trade-settings/binders`.
+    /// - Remark: Generated from `#/paths//collection/trade-settings/binders/get(get_trade_binders)`.
+    func get_trade_binders(_ input: Operations.get_trade_binders.Input) async throws -> Operations.get_trade_binders.Output
+    /// - Remark: HTTP `POST /collection/trade-settings/binders`.
+    /// - Remark: Generated from `#/paths//collection/trade-settings/binders/post(add_trade_binder)`.
+    func add_trade_binder(_ input: Operations.add_trade_binder.Input) async throws -> Operations.add_trade_binder.Output
+    /// - Remark: HTTP `DELETE /collection/trade-settings/binders/{name}`.
+    /// - Remark: Generated from `#/paths//collection/trade-settings/binders/{name}/delete(remove_trade_binder)`.
+    func remove_trade_binder(_ input: Operations.remove_trade_binder.Input) async throws -> Operations.remove_trade_binder.Output
+    /// - Remark: HTTP `GET /collection/trade-settings/rarities`.
+    /// - Remark: Generated from `#/paths//collection/trade-settings/rarities/get(get_trade_rarities)`.
+    func get_trade_rarities(_ input: Operations.get_trade_rarities.Input) async throws -> Operations.get_trade_rarities.Output
+    /// - Remark: HTTP `POST /collection/trade-settings/rarities`.
+    /// - Remark: Generated from `#/paths//collection/trade-settings/rarities/post(set_trade_rarity)`.
+    func set_trade_rarity(_ input: Operations.set_trade_rarity.Input) async throws -> Operations.set_trade_rarity.Output
+    /// - Remark: HTTP `GET /collection/trade-settings/visibility`.
+    /// - Remark: Generated from `#/paths//collection/trade-settings/visibility/get(get_trade_visibility)`.
+    func get_trade_visibility(_ input: Operations.get_trade_visibility.Input) async throws -> Operations.get_trade_visibility.Output
+    /// - Remark: HTTP `PUT /collection/trade-settings/visibility`.
+    /// - Remark: Generated from `#/paths//collection/trade-settings/visibility/put(set_trade_visibility)`.
+    func set_trade_visibility(_ input: Operations.set_trade_visibility.Input) async throws -> Operations.set_trade_visibility.Output
     /// - Remark: HTTP `GET /maintenance/stats`.
     /// - Remark: Generated from `#/paths//maintenance/stats/get(get_stats)`.
     func get_stats(_ input: Operations.get_stats.Input) async throws -> Operations.get_stats.Output
@@ -95,21 +110,6 @@ public protocol APIProtocol: Sendable {
     /// - Remark: HTTP `POST /user`.
     /// - Remark: Generated from `#/paths//user/post(register)`.
     func register(_ input: Operations.register.Input) async throws -> Operations.register.Output
-    /// - Remark: HTTP `GET /user/trade-binders`.
-    /// - Remark: Generated from `#/paths//user/trade-binders/get(get_trade_binders)`.
-    func get_trade_binders(_ input: Operations.get_trade_binders.Input) async throws -> Operations.get_trade_binders.Output
-    /// - Remark: HTTP `POST /user/trade-binders`.
-    /// - Remark: Generated from `#/paths//user/trade-binders/post(add_trade_binder)`.
-    func add_trade_binder(_ input: Operations.add_trade_binder.Input) async throws -> Operations.add_trade_binder.Output
-    /// - Remark: HTTP `DELETE /user/trade-binders/{name}`.
-    /// - Remark: Generated from `#/paths//user/trade-binders/{name}/delete(remove_trade_binder)`.
-    func remove_trade_binder(_ input: Operations.remove_trade_binder.Input) async throws -> Operations.remove_trade_binder.Output
-    /// - Remark: HTTP `GET /user/visibility`.
-    /// - Remark: Generated from `#/paths//user/visibility/get(get_visibility)`.
-    func get_visibility(_ input: Operations.get_visibility.Input) async throws -> Operations.get_visibility.Output
-    /// - Remark: HTTP `PUT /user/visibility`.
-    /// - Remark: Generated from `#/paths//user/visibility/put(set_visibility)`.
-    func set_visibility(_ input: Operations.set_visibility.Input) async throws -> Operations.set_visibility.Output
     /// - Remark: HTTP `GET /user/{username}`.
     /// - Remark: Generated from `#/paths//user/{username}/get(get_user_profile)`.
     func get_user_profile(_ input: Operations.get_user_profile.Input) async throws -> Operations.get_user_profile.Output
@@ -211,18 +211,61 @@ extension APIProtocol {
     public func get_collection_stats(headers: Operations.get_collection_stats.Input.Headers = .init()) async throws -> Operations.get_collection_stats.Output {
         try await get_collection_stats(Operations.get_collection_stats.Input(headers: headers))
     }
-    /// - Remark: HTTP `GET /collection/visibility/rarities`.
-    /// - Remark: Generated from `#/paths//collection/visibility/rarities/get(get_rarity_filters)`.
-    public func get_rarity_filters(headers: Operations.get_rarity_filters.Input.Headers = .init()) async throws -> Operations.get_rarity_filters.Output {
-        try await get_rarity_filters(Operations.get_rarity_filters.Input(headers: headers))
+    /// - Remark: HTTP `GET /collection/trade-settings/binders`.
+    /// - Remark: Generated from `#/paths//collection/trade-settings/binders/get(get_trade_binders)`.
+    public func get_trade_binders(headers: Operations.get_trade_binders.Input.Headers = .init()) async throws -> Operations.get_trade_binders.Output {
+        try await get_trade_binders(Operations.get_trade_binders.Input(headers: headers))
     }
-    /// - Remark: HTTP `POST /collection/visibility/rarities`.
-    /// - Remark: Generated from `#/paths//collection/visibility/rarities/post(set_rarity_filter)`.
-    public func set_rarity_filter(
-        headers: Operations.set_rarity_filter.Input.Headers = .init(),
-        body: Operations.set_rarity_filter.Input.Body
-    ) async throws -> Operations.set_rarity_filter.Output {
-        try await set_rarity_filter(Operations.set_rarity_filter.Input(
+    /// - Remark: HTTP `POST /collection/trade-settings/binders`.
+    /// - Remark: Generated from `#/paths//collection/trade-settings/binders/post(add_trade_binder)`.
+    public func add_trade_binder(
+        headers: Operations.add_trade_binder.Input.Headers = .init(),
+        body: Operations.add_trade_binder.Input.Body
+    ) async throws -> Operations.add_trade_binder.Output {
+        try await add_trade_binder(Operations.add_trade_binder.Input(
+            headers: headers,
+            body: body
+        ))
+    }
+    /// - Remark: HTTP `DELETE /collection/trade-settings/binders/{name}`.
+    /// - Remark: Generated from `#/paths//collection/trade-settings/binders/{name}/delete(remove_trade_binder)`.
+    public func remove_trade_binder(
+        path: Operations.remove_trade_binder.Input.Path,
+        headers: Operations.remove_trade_binder.Input.Headers = .init()
+    ) async throws -> Operations.remove_trade_binder.Output {
+        try await remove_trade_binder(Operations.remove_trade_binder.Input(
+            path: path,
+            headers: headers
+        ))
+    }
+    /// - Remark: HTTP `GET /collection/trade-settings/rarities`.
+    /// - Remark: Generated from `#/paths//collection/trade-settings/rarities/get(get_trade_rarities)`.
+    public func get_trade_rarities(headers: Operations.get_trade_rarities.Input.Headers = .init()) async throws -> Operations.get_trade_rarities.Output {
+        try await get_trade_rarities(Operations.get_trade_rarities.Input(headers: headers))
+    }
+    /// - Remark: HTTP `POST /collection/trade-settings/rarities`.
+    /// - Remark: Generated from `#/paths//collection/trade-settings/rarities/post(set_trade_rarity)`.
+    public func set_trade_rarity(
+        headers: Operations.set_trade_rarity.Input.Headers = .init(),
+        body: Operations.set_trade_rarity.Input.Body
+    ) async throws -> Operations.set_trade_rarity.Output {
+        try await set_trade_rarity(Operations.set_trade_rarity.Input(
+            headers: headers,
+            body: body
+        ))
+    }
+    /// - Remark: HTTP `GET /collection/trade-settings/visibility`.
+    /// - Remark: Generated from `#/paths//collection/trade-settings/visibility/get(get_trade_visibility)`.
+    public func get_trade_visibility(headers: Operations.get_trade_visibility.Input.Headers = .init()) async throws -> Operations.get_trade_visibility.Output {
+        try await get_trade_visibility(Operations.get_trade_visibility.Input(headers: headers))
+    }
+    /// - Remark: HTTP `PUT /collection/trade-settings/visibility`.
+    /// - Remark: Generated from `#/paths//collection/trade-settings/visibility/put(set_trade_visibility)`.
+    public func set_trade_visibility(
+        headers: Operations.set_trade_visibility.Input.Headers = .init(),
+        body: Operations.set_trade_visibility.Input.Body
+    ) async throws -> Operations.set_trade_visibility.Output {
+        try await set_trade_visibility(Operations.set_trade_visibility.Input(
             headers: headers,
             body: body
         ))
@@ -378,49 +421,6 @@ extension APIProtocol {
     /// - Remark: Generated from `#/paths//user/post(register)`.
     public func register(headers: Operations.register.Input.Headers = .init()) async throws -> Operations.register.Output {
         try await register(Operations.register.Input(headers: headers))
-    }
-    /// - Remark: HTTP `GET /user/trade-binders`.
-    /// - Remark: Generated from `#/paths//user/trade-binders/get(get_trade_binders)`.
-    public func get_trade_binders(headers: Operations.get_trade_binders.Input.Headers = .init()) async throws -> Operations.get_trade_binders.Output {
-        try await get_trade_binders(Operations.get_trade_binders.Input(headers: headers))
-    }
-    /// - Remark: HTTP `POST /user/trade-binders`.
-    /// - Remark: Generated from `#/paths//user/trade-binders/post(add_trade_binder)`.
-    public func add_trade_binder(
-        headers: Operations.add_trade_binder.Input.Headers = .init(),
-        body: Operations.add_trade_binder.Input.Body
-    ) async throws -> Operations.add_trade_binder.Output {
-        try await add_trade_binder(Operations.add_trade_binder.Input(
-            headers: headers,
-            body: body
-        ))
-    }
-    /// - Remark: HTTP `DELETE /user/trade-binders/{name}`.
-    /// - Remark: Generated from `#/paths//user/trade-binders/{name}/delete(remove_trade_binder)`.
-    public func remove_trade_binder(
-        path: Operations.remove_trade_binder.Input.Path,
-        headers: Operations.remove_trade_binder.Input.Headers = .init()
-    ) async throws -> Operations.remove_trade_binder.Output {
-        try await remove_trade_binder(Operations.remove_trade_binder.Input(
-            path: path,
-            headers: headers
-        ))
-    }
-    /// - Remark: HTTP `GET /user/visibility`.
-    /// - Remark: Generated from `#/paths//user/visibility/get(get_visibility)`.
-    public func get_visibility(headers: Operations.get_visibility.Input.Headers = .init()) async throws -> Operations.get_visibility.Output {
-        try await get_visibility(Operations.get_visibility.Input(headers: headers))
-    }
-    /// - Remark: HTTP `PUT /user/visibility`.
-    /// - Remark: Generated from `#/paths//user/visibility/put(set_visibility)`.
-    public func set_visibility(
-        headers: Operations.set_visibility.Input.Headers = .init(),
-        body: Operations.set_visibility.Input.Body
-    ) async throws -> Operations.set_visibility.Output {
-        try await set_visibility(Operations.set_visibility.Input(
-            headers: headers,
-            body: body
-        ))
     }
     /// - Remark: HTTP `GET /user/{username}`.
     /// - Remark: Generated from `#/paths//user/{username}/get(get_user_profile)`.

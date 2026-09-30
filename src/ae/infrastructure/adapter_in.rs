@@ -18,6 +18,7 @@ pub mod openapi;
 pub mod search;
 pub mod sets;
 pub mod trade;
+pub mod trade_settings;
 pub mod user;
 
 /// Builds the card copy a request designates by its raw `set_code` / `collector_number` /

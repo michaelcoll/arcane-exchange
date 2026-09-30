@@ -7,8 +7,7 @@ use super::card::dto::{
 use super::collection::dto::{
     BinderInfoResponse, CardImportLineErrorResponse, CardImportResponse, CardImportStartedResponse,
     CollectionCardResponse, CollectionStatsResponse, MessageResponse, PaginatedCollectionResponse,
-    PriceGuideResponse, RarityCodeParam, RarityFilterResponse, RarityFiltersResponse,
-    SetInfoResponse, SetRarityFilterRequest, SortByParam, SortDirParam,
+    PriceGuideResponse, RarityCodeParam, SetInfoResponse, SortByParam, SortDirParam,
 };
 use super::maintenance::dto::{EnqueueResponse, StatsResponse};
 use super::trade::dto::{
@@ -16,10 +15,11 @@ use super::trade::dto::{
     RateTradeRequest, RemoveTradeCardRequest, TradeCardResponse, TradeDetailResponse,
     TradePartyStateResponse, TradeStatusParam, TradeSummaryResponse,
 };
-use super::user::dto::{
-    AddTradeBinderRequest, CollectionVisibilityParam, SetVisibilityRequest, TradeBindersResponse,
-    UserProfileResponse, VisibilityResponse,
+use super::trade_settings::dto::{
+    AddTradeBinderRequest, CollectionVisibilityParam, RarityFilterResponse, RarityFiltersResponse,
+    SetRarityFilterRequest, SetVisibilityRequest, TradeBindersResponse, VisibilityResponse,
 };
+use super::user::dto::UserProfileResponse;
 use utoipa::OpenApi;
 
 #[derive(OpenApi)]
@@ -31,8 +31,13 @@ use utoipa::OpenApi;
         super::collection::controller::get_card_import,
         super::collection::controller::get_collection_stats,
         super::collection::controller::get_collection_price_history,
-        super::collection::controller::get_rarity_filters,
-        super::collection::controller::set_rarity_filter,
+        super::trade_settings::controller::get_trade_visibility,
+        super::trade_settings::controller::set_trade_visibility,
+        super::trade_settings::controller::get_trade_binders,
+        super::trade_settings::controller::add_trade_binder,
+        super::trade_settings::controller::remove_trade_binder,
+        super::trade_settings::controller::get_trade_rarities,
+        super::trade_settings::controller::set_trade_rarity,
         super::search::controller::search_cards,
         super::card::controller::get_card_info,
         super::card::controller::get_card_price_history,
@@ -41,11 +46,6 @@ use utoipa::OpenApi;
         super::maintenance::controller::trigger_price_update,
         super::maintenance::controller::update_cardmarket_ids,
         super::user::controller::register,
-        super::user::controller::get_visibility,
-        super::user::controller::set_visibility,
-        super::user::controller::get_trade_binders,
-        super::user::controller::add_trade_binder,
-        super::user::controller::remove_trade_binder,
         super::user::controller::get_user_profile,
         super::trade::controller::create_trade,
         super::trade::controller::add_trade_card,
@@ -113,6 +113,7 @@ use utoipa::OpenApi;
     tags(
         (name = "card", description = "Single card lookup, price history and sale offers (authentication required)"),
         (name = "collection", description = "Player's private collection (authentication required, no public catalog)"),
+        (name = "trade-settings", description = "Settings deciding what of a player's collection is exposed for trade: visibility, binders open for trade, rarity filters (authentication required)"),
         (name = "search", description = "Public card search across all users' collections (authentication required)"),
         (name = "maintenance", description = "Maintenance operations (public)"),
         (name = "auth", description = "Authentication and user registration (authentication required)"),
@@ -205,6 +206,38 @@ mod tests {
                 Some("#/components/schemas/ErrorResponse"),
                 "status {status}"
             );
+        }
+    }
+
+    #[test]
+    fn trade_settings_live_under_the_collection_with_their_own_tag() {
+        let openapi = ApiDoc::openapi();
+        let paths = &openapi.paths.paths;
+
+        for path in [
+            "/collection/trade-settings/visibility",
+            "/collection/trade-settings/binders",
+            "/collection/trade-settings/binders/{name}",
+            "/collection/trade-settings/rarities",
+        ] {
+            let item = paths.get(path).unwrap_or_else(|| panic!("{path} missing"));
+            let operations = [&item.get, &item.put, &item.post, &item.delete];
+            for operation in operations.into_iter().flatten() {
+                assert_eq!(
+                    operation.tags.as_deref(),
+                    Some(&["trade-settings".to_string()][..]),
+                    "{path}"
+                );
+            }
+        }
+
+        for path in [
+            "/user/visibility",
+            "/user/trade-binders",
+            "/user/trade-binders/{name}",
+            "/collection/visibility/rarities",
+        ] {
+            assert!(!paths.contains_key(path), "{path} should be gone");
         }
     }
 

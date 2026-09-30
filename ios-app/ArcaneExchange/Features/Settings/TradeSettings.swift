@@ -1,6 +1,6 @@
 import APIClient
 
-/// Short names for the schema types the Réglages screen works with.
+/// Short names for the schema types the trade settings work with.
 typealias CollectionVisibility = Components.Schemas.CollectionVisibilityParam
 typealias BinderInfo = Components.Schemas.BinderInfoResponse
 typealias RarityFilter = Components.Schemas.RarityFilterResponse
@@ -27,9 +27,9 @@ extension CollectionVisibility {
     static let ordered: [CollectionVisibility] = [._public, .trade, ._private]
 }
 
-enum TradeRules {
+enum TradeSettings {
     /// Mirrors the backend's `MAX_KEPT_COPIES` (a higher value is rejected with a 400) and the
-    /// web client's `utils/trade-rules.ts`.
+    /// web client's `utils/trade-settings.ts`.
     static let maxKeptCopies: Int32 = 4
 }
 
@@ -65,7 +65,7 @@ struct TradeRatio: Equatable {
     }
 }
 
-enum AccountCopy {
+enum TradeSettingsCopy {
     /// "2 sur 5" — how many binders are opened to trade, out of those the last import found.
     static func binderSelection(selected: Int, total: Int) -> String {
         "\(selected) sur \(total)"

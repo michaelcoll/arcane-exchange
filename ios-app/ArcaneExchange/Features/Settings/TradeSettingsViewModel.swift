@@ -2,12 +2,12 @@ import APIClient
 import Foundation
 import OpenAPIRuntime
 
-/// Backs the Réglages sheet: the collection's visibility, the ManaBox binders opened to trade,
-/// and the per-rarity rules — the same three endpoints the web client's `pages/profile` and
-/// `Profile/TradeRules.vue` drive.
+/// Backs the trade settings of the Réglages sheet: the collection's visibility, the ManaBox
+/// binders opened to trade, and the per-rarity rules — the `/collection/trade-settings`
+/// endpoints the web client's `useTradeSettingsService` also drives.
 @MainActor
 @Observable
-final class AccountSettingsViewModel {
+final class TradeSettingsViewModel {
     /// Everything a failed request can say, in the user's terms — same shape as
     /// `CollectionViewModel.LoadError`.
     enum RequestError: Equatable {
@@ -80,7 +80,7 @@ final class AccountSettingsViewModel {
         isSavingVisibility = true
         defer { isSavingVisibility = false }
         do {
-            switch try await APIClientProvider.shared.set_visibility(body: .json(.init(visibility: newValue))) {
+            switch try await APIClientProvider.shared.set_trade_visibility(body: .json(.init(visibility: newValue))) {
             case .noContent:
                 break
             case .unauthorized:
@@ -130,7 +130,7 @@ final class AccountSettingsViewModel {
     /// Writes one rarity rule, then refetches: `proposed` is computed server-side from the
     /// copies owned minus the kept ones, and the row shows it.
     func setRarity(_ rarity: String, isOpen: Bool, keptCopies: Int32) async {
-        let kept = min(TradeRules.maxKeptCopies, max(0, keptCopies))
+        let kept = min(TradeSettings.maxKeptCopies, max(0, keptCopies))
         busyRarity = rarity
         defer { busyRarity = nil }
         do {
@@ -139,7 +139,7 @@ final class AccountSettingsViewModel {
                 kept_copies: kept,
                 rarity: rarity
             )
-            switch try await APIClientProvider.shared.set_rarity_filter(body: .json(body)) {
+            switch try await APIClientProvider.shared.set_trade_rarity(body: .json(body)) {
             case .noContent:
                 break
             case .unauthorized:
@@ -169,7 +169,7 @@ final class AccountSettingsViewModel {
     // MARK: Requests
 
     private func fetchVisibility() async throws -> CollectionVisibility {
-        switch try await APIClientProvider.shared.get_visibility() {
+        switch try await APIClientProvider.shared.get_trade_visibility() {
         case let .ok(response):
             return try response.body.json.visibility
         case .unauthorized:
@@ -205,7 +205,7 @@ final class AccountSettingsViewModel {
     }
 
     private func fetchRarityFilters() async throws -> [RarityFilter] {
-        switch try await APIClientProvider.shared.get_rarity_filters() {
+        switch try await APIClientProvider.shared.get_trade_rarities() {
         case let .ok(response):
             return try response.body.json.rarities
         case .unauthorized:

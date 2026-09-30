@@ -2,7 +2,7 @@ import Testing
 
 @testable import ArcaneExchange
 
-struct AccountSettingsTests {
+struct TradeSettingsTests {
     private func filter(_ rarity: String, isOpen: Bool, copies: Int64, proposed: Int64, kept: Int32 = 0) -> RarityFilter {
         RarityFilter(copies: copies, is_open: isOpen, kept_copies: kept, proposed: proposed, rarity: rarity)
     }
@@ -52,14 +52,14 @@ struct AccountSettingsTests {
     }
 
     @Test func pluralizesTheRuleCopy() {
-        #expect(AccountCopy.copies(1) == "1 exemplaire")
-        #expect(AccountCopy.cards(2) == "2 cartes")
-        #expect(AccountCopy.proposed(3, isOpen: true) == "3 proposés")
-        #expect(AccountCopy.proposed(1, isOpen: true) == "1 proposé")
-        #expect(AccountCopy.proposed(7, isOpen: false) == "aucun proposé")
-        #expect(AccountCopy.binderSelection(selected: 2, total: 5) == "2 sur 5")
-        #expect(AccountCopy.openRarities(0) == "aucune ouverte")
-        #expect(AccountCopy.openRarities(1) == "1 ouverte")
-        #expect(AccountCopy.openRarities(4) == "4 ouvertes")
+        #expect(TradeSettingsCopy.copies(1) == "1 exemplaire")
+        #expect(TradeSettingsCopy.cards(2) == "2 cartes")
+        #expect(TradeSettingsCopy.proposed(3, isOpen: true) == "3 proposés")
+        #expect(TradeSettingsCopy.proposed(1, isOpen: true) == "1 proposé")
+        #expect(TradeSettingsCopy.proposed(7, isOpen: false) == "aucun proposé")
+        #expect(TradeSettingsCopy.binderSelection(selected: 2, total: 5) == "2 sur 5")
+        #expect(TradeSettingsCopy.openRarities(0) == "aucune ouverte")
+        #expect(TradeSettingsCopy.openRarities(1) == "1 ouverte")
+        #expect(TradeSettingsCopy.openRarities(4) == "4 ouvertes")
     }
 }

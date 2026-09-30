@@ -428,11 +428,87 @@ paths:
                 $ref: '#/components/schemas/ErrorResponse'
       security:
       - bearer_auth: []
-  /collection/visibility/rarities:
+  /collection/trade-settings/binders:
     get:
       tags:
-      - collection
-      operationId: get_rarity_filters
+      - trade-settings
+      operationId: get_trade_binders
+      responses:
+        '200':
+          description: Binders selected for trade by the authenticated user
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TradeBindersResponse'
+        '401':
+          description: Missing or invalid authentication token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      security:
+      - bearer_auth: []
+    post:
+      tags:
+      - trade-settings
+      operationId: add_trade_binder
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AddTradeBinderRequest'
+        required: true
+      responses:
+        '204':
+          description: Binder selected for trade
+        '400':
+          description: Binder name is empty
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Missing or invalid authentication token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Binder not found in the authenticated user's collection
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      security:
+      - bearer_auth: []
+  /collection/trade-settings/binders/{name}:
+    delete:
+      tags:
+      - trade-settings
+      operationId: remove_trade_binder
+      parameters:
+      - name: name
+        in: path
+        description: Binder name
+        required: true
+        schema:
+          type: string
+      responses:
+        '204':
+          description: Binder deselected for trade
+        '401':
+          description: Missing or invalid authentication token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      security:
+      - bearer_auth: []
+  /collection/trade-settings/rarities:
+    get:
+      tags:
+      - trade-settings
+      operationId: get_trade_rarities
       responses:
         '200':
           description: Rarities owned within the binders selected for trade, with their trade rule and computed counts
@@ -450,8 +526,8 @@ paths:
       - bearer_auth: []
     post:
       tags:
-      - collection
-      operationId: set_rarity_filter
+      - trade-settings
+      operationId: set_trade_rarity
       requestBody:
         content:
           application/json:
@@ -469,6 +545,65 @@ paths:
                 $ref: '#/components/schemas/ErrorResponse'
         '401':
           description: Missing or invalid token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      security:
+      - bearer_auth: []
+  /collection/trade-settings/visibility:
+    get:
+      tags:
+      - trade-settings
+      operationId: get_trade_visibility
+      responses:
+        '200':
+          description: Current collection visibility
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VisibilityResponse'
+        '401':
+          description: Missing or invalid authentication token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Authenticated user has never registered
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      security:
+      - bearer_auth: []
+    put:
+      tags:
+      - trade-settings
+      operationId: set_trade_visibility
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SetVisibilityRequest'
+        required: true
+      responses:
+        '204':
+          description: Visibility updated successfully
+        '400':
+          description: Invalid visibility value
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Missing or invalid authentication token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Authenticated user has never registered
           content:
             application/json:
               schema:
@@ -1081,141 +1216,6 @@ paths:
                 $ref: '#/components/schemas/ErrorResponse'
         '401':
           description: Missing or invalid authentication token
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-      security:
-      - bearer_auth: []
-  /user/trade-binders:
-    get:
-      tags:
-      - auth
-      operationId: get_trade_binders
-      responses:
-        '200':
-          description: Binders selected for trade by the authenticated user
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/TradeBindersResponse'
-        '401':
-          description: Missing or invalid authentication token
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-      security:
-      - bearer_auth: []
-    post:
-      tags:
-      - auth
-      operationId: add_trade_binder
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/AddTradeBinderRequest'
-        required: true
-      responses:
-        '204':
-          description: Binder selected for trade
-        '400':
-          description: Binder name is empty
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '401':
-          description: Missing or invalid authentication token
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '404':
-          description: Binder not found in the authenticated user's collection
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-      security:
-      - bearer_auth: []
-  /user/trade-binders/{name}:
-    delete:
-      tags:
-      - auth
-      operationId: remove_trade_binder
-      parameters:
-      - name: name
-        in: path
-        description: Binder name
-        required: true
-        schema:
-          type: string
-      responses:
-        '204':
-          description: Binder deselected for trade
-        '401':
-          description: Missing or invalid authentication token
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-      security:
-      - bearer_auth: []
-  /user/visibility:
-    get:
-      tags:
-      - auth
-      operationId: get_visibility
-      responses:
-        '200':
-          description: Current collection visibility
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/VisibilityResponse'
-        '401':
-          description: Missing or invalid authentication token
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '404':
-          description: Authenticated user has never registered
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-      security:
-      - bearer_auth: []
-    put:
-      tags:
-      - auth
-      operationId: set_visibility
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/SetVisibilityRequest'
-        required: true
-      responses:
-        '204':
-          description: Visibility updated successfully
-        '400':
-          description: Invalid visibility value
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '401':
-          description: Missing or invalid authentication token
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '404':
-          description: Authenticated user has never registered
           content:
             application/json:
               schema:
@@ -2022,6 +2022,8 @@ tags:
   description: Single card lookup, price history and sale offers (authentication required)
 - name: collection
   description: Player's private collection (authentication required, no public catalog)
+- name: trade-settings
+  description: 'Settings deciding what of a player''s collection is exposed for trade: visibility, binders open for trade, rarity filters (authentication required)'
 - name: search
   description: Public card search across all users' collections (authentication required)
 - name: maintenance

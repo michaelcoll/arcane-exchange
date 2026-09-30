@@ -1,18 +1,16 @@
 use super::dto::{
     CardImportResponse, CardImportStartedResponse, CollectionCardResponse, CollectionParams,
-    CollectionStatsResponse, PaginatedCollectionResponse, RarityFilterResponse,
-    RarityFiltersResponse, SetRarityFilterRequest,
+    CollectionStatsResponse, PaginatedCollectionResponse,
 };
 use crate::application::error::AppError;
 use crate::domain::card_import::CardImportId;
 use crate::domain::collection::CollectionQuery;
 use crate::domain::error::FunctionalError;
 use crate::domain::pagination::PageRequest;
-use crate::domain::rarity_code::RarityCode;
-use crate::domain::rarity_trade_filter::RarityTradeFilterRule;
 use crate::infrastructure::AppState;
 use crate::infrastructure::adapter_in::auth_extractor::AuthenticatedUser;
 use crate::infrastructure::adapter_in::card::dto::{PriceHistoryEntryResponse, PriceHistoryParams};
+use crate::infrastructure::adapter_in::trade_settings::controller::create_trade_settings_router;
 use axum::body::to_bytes;
 use axum::extract::{Path, State};
 use axum::http::StatusCode;
@@ -26,10 +24,7 @@ pub fn create_collection_router() -> axum::Router<AppState> {
         .route("/import/{id}", get(get_card_import))
         .route("/stats", get(get_collection_stats))
         .route("/price-history", get(get_collection_price_history))
-        .route(
-            "/visibility/rarities",
-            get(get_rarity_filters).post(set_rarity_filter),
-        )
+        .nest("/trade-settings", create_trade_settings_router())
 }
 
 #[utoipa::path(
@@ -248,68 +243,4 @@ pub(crate) async fn get_collection_price_history(
             })
             .collect(),
     ))
-}
-
-#[utoipa::path(
-    get,
-    path = "/collection/visibility/rarities",
-    responses(
-        (status = 200, description = "Rarities owned within the binders selected for trade, with their trade rule and computed counts", body = RarityFiltersResponse),
-        (status = 401, description = "Missing or invalid token"),
-    ),
-    security(("bearer_auth" = [])),
-    tag = "collection",
-)]
-pub(crate) async fn get_rarity_filters(
-    AuthenticatedUser(user): AuthenticatedUser,
-    State(state): State<AppState>,
-) -> Result<axum::Json<RarityFiltersResponse>, AppError> {
-    let rarities = state
-        .get_rarity_trade_filters_use_case
-        .get_rarity_trade_filters(user.id)
-        .await?;
-
-    Ok(axum::Json(RarityFiltersResponse {
-        rarities: rarities
-            .into_iter()
-            .map(RarityFilterResponse::from)
-            .collect(),
-    }))
-}
-
-#[utoipa::path(
-    post,
-    path = "/collection/visibility/rarities",
-    request_body = SetRarityFilterRequest,
-    responses(
-        (status = 204, description = "Trade rule updated successfully"),
-        (status = 400, description = "Invalid rarity code or kept_copies out of range"),
-        (status = 401, description = "Missing or invalid token"),
-    ),
-    security(("bearer_auth" = [])),
-    tag = "collection",
-)]
-pub(crate) async fn set_rarity_filter(
-    AuthenticatedUser(user): AuthenticatedUser,
-    State(state): State<AppState>,
-    axum::Json(payload): axum::Json<SetRarityFilterRequest>,
-) -> Result<StatusCode, AppError> {
-    let rarity = RarityCode::try_new(&payload.rarity)?;
-    let kept_copies = u8::try_from(payload.kept_copies).map_err(|_| {
-        FunctionalError::WrongFormat("Kept copies must be between 0 and 4".to_string())
-    })?;
-
-    state
-        .set_rarity_trade_filter_use_case
-        .set_rarity_trade_filter(
-            user.id,
-            RarityTradeFilterRule {
-                rarity,
-                is_open: payload.is_open,
-                kept_copies,
-            },
-        )
-        .await?;
-
-    Ok(StatusCode::NO_CONTENT)
 }

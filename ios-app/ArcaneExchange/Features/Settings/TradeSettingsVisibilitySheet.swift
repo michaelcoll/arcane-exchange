@@ -2,8 +2,8 @@ import SwiftUI
 
 /// Sub-drawer "Visibilité de la collection" (the mockup's `sheet === 'vis'`): the three modes,
 /// each with what it actually exposes to other players.
-struct VisibilitySheet: View {
-    let model: AccountSettingsViewModel
+struct TradeSettingsVisibilitySheet: View {
+    let model: TradeSettingsViewModel
 
     @Environment(\.dismiss) private var dismiss
 
