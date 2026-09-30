@@ -25,6 +25,10 @@ struct ContentView: View {
         }
         .onChange(of: [clerk.isLoaded, clerk.user != nil], initial: true) {
             SignOutCleanup.run(isLoaded: clerk.isLoaded, isSignedIn: clerk.user != nil)
+            // Signing in or out changes whose data the widgets show.
+            if clerk.isLoaded {
+                HomeWidgetReload.reloadAll()
+            }
         }
     }
 }

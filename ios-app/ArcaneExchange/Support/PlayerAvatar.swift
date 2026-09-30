@@ -49,20 +49,6 @@ struct PlayerAvatar: View {
     }
 }
 
-/// Player initials for `PlayerAvatar`. A plain enum, not a `View` member: `View` is
-/// `@MainActor`, and this pure string logic is called from off-main contexts (tests).
-enum PlayerMonogram {
-    /// Up to two letters: the initials of the first two `_`/`.`/`-`/space-separated chunks,
-    /// falling back to the first two characters of the raw handle.
-    static func initials(from username: String) -> String {
-        let words = username.split { !$0.isLetter && !$0.isNumber }
-        let letters = words.prefix(2).compactMap(\.first)
-        return letters.isEmpty
-            ? String(username.prefix(2)).uppercased()
-            : String(letters).uppercased()
-    }
-}
-
 /// Session cache of avatar URLs, keyed by username: one `GET /user/{username}` per player for
 /// the life of the process, shared by every `PlayerAvatar` on screen — the collection grid,
 /// search results, and a trade's two rails can all name the same player. Mirrors the web

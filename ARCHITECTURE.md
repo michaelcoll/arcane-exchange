@@ -148,6 +148,9 @@ ses idiomes plutôt que de la transposer littéralement.
   view model), pas de Combine. Le projet Xcode est **généré** (XcodeGen) et non versionné : la source
   de vérité est `ios-app/project.yml` et les `.xcconfig`. Les chemins d'images se résolvent contre
   l'origine de l'URL de l'API, puisque le front sert `/card-images` là où il relaie `/api/v1`.
+  Deux **widgets d'écran d'accueil** (extension `ArcaneExchangeWidgets/`) reprennent les tuiles de
+  l'accueil web : ils appellent l'API eux-mêmes, avec la session Clerk de l'app lue dans un groupe
+  Keychain partagé, et gardent leur dernier instantané dans un App Group.
 
 ## Outillage et déploiement
 

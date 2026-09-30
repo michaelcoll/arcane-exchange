@@ -7,8 +7,14 @@ import Foundation
 /// restored, and that must not wipe what the previous run remembered. Checking the state rather
 /// than a sign-out transition also covers a session that expired while the app was closed.
 enum SignOutCleanup {
-    static func run(isLoaded: Bool, isSignedIn: Bool, defaults: UserDefaults = .standard) {
+    static func run(
+        isLoaded: Bool,
+        isSignedIn: Bool,
+        defaults: UserDefaults = .standard,
+        widgetDefaults: UserDefaults = SharedContainer.defaults
+    ) {
         guard isLoaded, !isSignedIn else { return }
         CollectionFiltersStore(defaults: defaults).clear()
+        HomeWidgetCache(defaults: widgetDefaults).clear()
     }
 }

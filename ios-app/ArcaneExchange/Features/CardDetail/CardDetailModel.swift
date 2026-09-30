@@ -8,7 +8,8 @@ typealias CollectionEntry = Components.Schemas.CollectionEntryResponse
 typealias PriceGuide = Components.Schemas.PriceGuideResponse
 
 /// One day of the Cardmarket price guide, in euros — the shape `PriceHistoryChart` plots.
-struct PricePoint: Identifiable, Equatable {
+/// `Codable` for the collection widget, which keeps its last series on disk.
+struct PricePoint: Identifiable, Equatable, Codable {
     let date: Date
     let low: Double
     let avg: Double

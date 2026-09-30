@@ -26,6 +26,16 @@ struct SignOutCleanupTests {
         #expect(CollectionFiltersStore(defaults: defaults).load().sets == ["MH3"])
     }
 
+    /// The widgets would otherwise keep showing the previous player's collection and trades.
+    @Test func forgetsTheWidgetSnapshotsOnceSignedOut() {
+        let defaults = Self.defaultsWithSavedFilters()
+        let widgetCache = HomeWidgetCache(defaults: defaults)
+        widgetCache.save(TradesSnapshot(total: 0, trades: []), for: .trades)
+        SignOutCleanup.run(isLoaded: true, isSignedIn: false, defaults: defaults, widgetDefaults: defaults)
+
+        #expect(widgetCache.load(TradesSnapshot.self, for: .trades) == nil)
+    }
+
     @Test func keepsThemWhileSignedIn() {
         let defaults = Self.defaultsWithSavedFilters()
         SignOutCleanup.run(isLoaded: true, isSignedIn: true, defaults: defaults)

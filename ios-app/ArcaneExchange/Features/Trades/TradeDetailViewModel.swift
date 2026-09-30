@@ -175,6 +175,7 @@ final class TradeDetailViewModel {
         }
         await load()
         isBusy = false
+        HomeWidgetReload.reload(.trades)
     }
 
     /// Maps a 204-or-error action response to a user-facing message, `nil` meaning success.

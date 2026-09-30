@@ -9,6 +9,7 @@ import SwiftUI
 struct TradesView: View {
     @State private var model = TradesViewModel()
     @State private var path = NavigationPath()
+    @Environment(AppRouter.self) private var router
 
     var body: some View {
         NavigationStack(path: $path) {
@@ -26,6 +27,12 @@ struct TradesView: View {
                     if isRoot {
                         Task { await model.reload() }
                     }
+                }
+                // A trade tapped in the widget replaces whatever the stack showed.
+                .onChange(of: router.pendingTrade, initial: true) { _, route in
+                    guard let route else { return }
+                    path = NavigationPath([route])
+                    router.pendingTrade = nil
                 }
         }
         .tradeNavigation(path: $path)
