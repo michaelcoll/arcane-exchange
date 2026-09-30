@@ -14,6 +14,19 @@ struct CollectionSnapshot: Codable, Equatable {
         self.uniqueCards = uniqueCards
     }
 
+    /// The `start_date` / `end_date` to ask for: today and the 29 days before, in the device's
+    /// calendar — the web tile's `lastNDaysRange(30)`. The endpoint's own default starts a day
+    /// earlier, which would move the variation's starting point away from the web's.
+    static func historyRange(endingAt now: Date, calendar: Calendar = .current) -> (start: String, end: String) {
+        let start = calendar.date(byAdding: .day, value: -29, to: now)!
+        return (isoDay(start, calendar), isoDay(now, calendar))
+    }
+
+    private static func isoDay(_ date: Date, _ calendar: Calendar) -> String {
+        let day = calendar.dateComponents([.year, .month, .day], from: date)
+        return String(format: "%04d-%02d-%02d", day.year!, day.month!, day.day!)
+    }
+
     /// Today's collection value: the trend of the most recent day, like the web tile.
     var valueCents: Int {
         points.last.map { Self.cents($0.trend) } ?? 0
@@ -84,7 +97,7 @@ struct ActiveTrade: Codable, Equatable, Identifiable {
     let status: String
 
     /// « 2 données · 1 reçue », the web row's subtitle.
-    var cardCounts: String {
+    var cardCountsLabel: String {
         let given = myCardCount > 1 ? "\(myCardCount) données" : "\(myCardCount) donnée"
         let received = partnerCardCount > 1 ? "\(partnerCardCount) reçues" : "\(partnerCardCount) reçue"
         return "\(given) · \(received)"
