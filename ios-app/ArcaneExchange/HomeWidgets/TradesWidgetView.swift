@@ -90,7 +90,7 @@ private struct TradeWidgetRow: View {
                 UsernameLabel(username: trade.partnerUsername)
                     .font(.subheadline.weight(.semibold))
                     .lineLimit(1)
-                Text(trade.cardCounts)
+                Text(trade.cardCountsLabel)
                     .font(.caption2)
                     .foregroundStyle(.secondary)
                     .lineLimit(1)

@@ -43,6 +43,18 @@ struct CollectionSnapshotTests {
         return CollectionSnapshot(history: entries, totalCards: 12, uniqueCards: 9)
     }
 
+    /// Same window as the web tile's `lastNDaysRange(30)`: today and the 29 days before, local
+    /// dates — not the endpoint's default, which starts a day earlier.
+    @Test func historyCoversTodayAndThe29DaysBefore() {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = TimeZone(identifier: "Europe/Paris")!
+        let now = ISO8601DateFormatter().date(from: "2026-09-30T23:30:00Z")! // 1 Oct in Paris
+        let range = CollectionSnapshot.historyRange(endingAt: now, calendar: calendar)
+
+        #expect(range.start == "2026-09-02")
+        #expect(range.end == "2026-10-01")
+    }
+
     @Test func valueIsTheLastTrend() {
         #expect(Self.snapshot(trends: [10000, 12345]).valueCents == 12345)
     }

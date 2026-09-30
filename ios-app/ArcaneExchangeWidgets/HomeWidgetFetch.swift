@@ -26,8 +26,10 @@ enum HomeWidgetFetch {
 
     static func collection() async throws -> CollectionSnapshot {
         let client = APIClientProvider.shared
-        // No dates: the endpoint defaults to the last 30 days.
-        async let history = client.get_collection_price_history(query: .init())
+        let range = CollectionSnapshot.historyRange(endingAt: .now)
+        async let history = client.get_collection_price_history(
+            query: .init(start_date: range.start, end_date: range.end)
+        )
         async let stats = client.get_collection_stats()
 
         let entries: [PriceHistoryEntry] = switch try await history {
