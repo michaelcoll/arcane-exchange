@@ -18,7 +18,10 @@ let package = Package(
             dependencies: [
                 .product(name: "OpenAPIRuntime", package: "swift-openapi-runtime"),
                 .product(name: "OpenAPIURLSession", package: "swift-openapi-urlsession"),
-            ]
+            ],
+            // Only generated code lives here, and the generator writes `public import` for every
+            // module whether a file exposes it or not: one UnusedImportAccess warning per file.
+            swiftSettings: [.unsafeFlags(["-suppress-warnings"])]
         )
     ]
 )
