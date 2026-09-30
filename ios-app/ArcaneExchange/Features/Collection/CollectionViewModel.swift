@@ -31,7 +31,10 @@ final class CollectionViewModel {
     /// Matches the mockup's "pagination API de 20 cartes, chargées au défilement".
     private static let pageSize: Int32 = 20
 
-    var filters = CollectionFilters()
+    /// Restored from the previous launch, and saved again on every change.
+    var filters: CollectionFilters {
+        didSet { store.save(filters) }
+    }
 
     private(set) var cards: [CollectionCard] = []
     private(set) var total = 0
@@ -44,15 +47,37 @@ final class CollectionViewModel {
     /// `reload` resets it to 0, which lets an in-flight `loadMore` notice its page is stale.
     private var nextPage: Int32 = 0
 
+    /// Both the first load and the view's own `.task` ask for the sets: one request is enough.
+    private var isLoadingSets = false
+
+    private let store: CollectionFiltersStore
+
     var hasMore: Bool {
         cards.count < total
+    }
+
+    init(defaults: UserDefaults = .standard) {
+        store = CollectionFiltersStore(defaults: defaults)
+        filters = store.load()
     }
 
     /// First load only. The view's `.task` re-runs every time the screen re-appears (e.g. after
     /// popping a card detail); without this guard that would reload page 0 and throw away both
     /// the already-loaded pages and the user's scroll position.
+    ///
+    /// A restored set filter waits for the set list first, so a set no longer owned is dropped
+    /// before the grid is asked for — not after an empty first page.
     func loadInitiallyIfNeeded() async {
         guard cards.isEmpty, !isLoading, loadError == nil else { return }
+        if !filters.sets.isEmpty {
+            await loadSetsIfNeeded()
+        }
+        await reload()
+    }
+
+    /// The import may have replaced the whole collection: its sets included.
+    func reloadAfterImport() async {
+        await loadSets()
         await reload()
     }
 
@@ -106,6 +131,15 @@ final class CollectionViewModel {
     /// live without the list (rarities still work), so a failure here must not blank the grid.
     func loadSetsIfNeeded() async {
         guard sets.isEmpty else { return }
+        await loadSets()
+    }
+
+    /// Only a list that actually came back prunes the set filter: a failed request says nothing
+    /// about what the collection holds.
+    private func loadSets() async {
+        guard !isLoadingSets else { return }
+        isLoadingSets = true
+        defer { isLoadingSets = false }
         guard let output = try? await APIClientProvider.shared.get_collection_stats(),
               case let .ok(response) = output,
               let stats = try? response.body.json
@@ -113,6 +147,7 @@ final class CollectionViewModel {
             return
         }
         sets = stats.sets.sorted { $0.name.localizedStandardCompare($1.name) == .orderedAscending }
+        filters.dropSets(notIn: sets)
     }
 
     private func fetchPage(_ page: Int32) async throws -> Components.Schemas.PaginatedCollectionResponse {

@@ -77,6 +77,6 @@ struct CollectionView: View {
     /// The import may have replaced the whole collection — reload from page 0 once the sheet
     /// closes, whether it completed, failed, or was dismissed mid-import.
     private func handleImportDismiss() {
-        Task { await model.reload() }
+        Task { await model.reloadAfterImport() }
     }
 }
