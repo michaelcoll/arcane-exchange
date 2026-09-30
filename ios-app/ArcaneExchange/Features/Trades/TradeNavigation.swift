@@ -19,6 +19,8 @@ struct TradeNavigator: Equatable {
 
     /// The closure only appends to the stack's `path` binding, which always writes to the
     /// owning view's current state: a rebuilt navigator behaves exactly like the old one.
+    /// It also equals the no-op default, so `tradeNavigation(path:)` must never be applied
+    /// conditionally: a view already on screen would keep the no-op.
     static func == (_: Self, _: Self) -> Bool {
         true
     }
