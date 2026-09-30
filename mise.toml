@@ -259,10 +259,19 @@ depends = ["generate-ios"]
 run = "xcodebuild -scheme ArcaneExchange -configuration Debug -destination 'generic/platform=iOS Simulator' build"
 alias = ["bi"]
 
+[tasks.boot-ios-simulator]
+# Left to itself, xcodebuild boots the simulator and shuts it down after every run: each run then
+# pays a cold boot, whose first-boot work slows the app install and launch to ~2m40 against ~50 s
+# warm. A simulator booted here stays up between runs. No-op when already booted. Same device name
+# as the `test-ios` destination.
+dir = "ios-app"
+run = "xcrun simctl bootstatus 'iPhone 17' -b"
+hide = true
+
 [tasks.test-ios]
 description = "Tests the iOS app"
 dir = "ios-app"
-depends = ["generate-ios"]
+depends = ["generate-ios", "boot-ios-simulator"]
 run = "xcodebuild -scheme ArcaneExchange -destination 'platform=iOS Simulator,name=iPhone 17' test"
 
 [tasks.lint-ios]
