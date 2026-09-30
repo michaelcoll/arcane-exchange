@@ -13,7 +13,8 @@ typealias SortDirection = Components.Schemas.SortDirParam
 ///
 /// `Hashable` on purpose: the view drives reloads with `.task(id:)`, so any change here — a
 /// rarity toggled, a different sort — re-runs the request without an explicit refresh call.
-struct CollectionFilters: Hashable {
+/// `Codable` so `CollectionFiltersStore` can keep it across launches.
+struct CollectionFilters: Hashable, Codable {
     var rarities: Set<RarityCode> = []
     var sets: Set<String> = []
     var sortBy: SortField = .trend
@@ -26,6 +27,42 @@ struct CollectionFilters: Hashable {
     mutating func clearAll() {
         rarities = []
         sets = []
+    }
+
+    /// Forgets the sets the collection no longer holds — a remembered set can outlive a
+    /// re-import, and would then blank the grid for no visible reason.
+    mutating func dropSets(notIn owned: [SetInfo]) {
+        sets.formIntersection(owned.map(\.code))
+    }
+}
+
+/// Local, device-only memory of the Collection tab's sort and filters, restored at launch and
+/// wiped on sign-out: the sets filtered belong to the previous player's collection.
+struct CollectionFiltersStore {
+    static let storageKey = "collection.filters"
+
+    let defaults: UserDefaults
+
+    init(defaults: UserDefaults = .standard) {
+        self.defaults = defaults
+    }
+
+    /// The saved filters, or the defaults when nothing — or nothing readable — was saved.
+    func load() -> CollectionFilters {
+        guard let data = defaults.data(forKey: Self.storageKey),
+              let filters = try? JSONDecoder().decode(CollectionFilters.self, from: data)
+        else {
+            return CollectionFilters()
+        }
+        return filters
+    }
+
+    func save(_ filters: CollectionFilters) {
+        defaults.set(try? JSONEncoder().encode(filters), forKey: Self.storageKey)
+    }
+
+    func clear() {
+        defaults.removeObject(forKey: Self.storageKey)
     }
 }
 

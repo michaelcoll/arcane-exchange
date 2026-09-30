@@ -1,3 +1,4 @@
+import Foundation
 import Testing
 
 @testable import ArcaneExchange
@@ -55,6 +56,65 @@ struct CollectionFiltersTests {
     @Test func countsTheActiveFiltersOnTheChip() {
         #expect(CollectionCopy.filterChip(activeCount: 0) == "Filtres")
         #expect(CollectionCopy.filterChip(activeCount: 3) == "Filtres · 3")
+    }
+
+    // MARK: Persistence
+
+    /// A throwaway domain per test, so no run leaks into `.standard` or into another test.
+    private static func freshDefaults() -> UserDefaults {
+        UserDefaults(suiteName: "CollectionFiltersTests.\(UUID().uuidString)")!
+    }
+
+    @Test func startsFromTheDefaultsWhenNothingWasSaved() {
+        #expect(CollectionFiltersStore(defaults: Self.freshDefaults()).load() == CollectionFilters())
+    }
+
+    @Test func restoresTheSortAndTheFiltersSaved() {
+        let defaults = Self.freshDefaults()
+        let saved = CollectionFilters(rarities: [.R, .M], sets: ["MH3"], sortBy: .added_at, sortDir: .asc)
+        CollectionFiltersStore(defaults: defaults).save(saved)
+
+        #expect(CollectionFiltersStore(defaults: defaults).load() == saved)
+    }
+
+    /// A payload from another app version must not crash the tab — it falls back to defaults.
+    @Test func ignoresAnUnreadablePayload() {
+        let defaults = Self.freshDefaults()
+        defaults.set(Data("{\"sortBy\":\"nope\"}".utf8), forKey: CollectionFiltersStore.storageKey)
+
+        #expect(CollectionFiltersStore(defaults: defaults).load() == CollectionFilters())
+    }
+
+    @Test func forgetsEverythingOnClear() {
+        let defaults = Self.freshDefaults()
+        let store = CollectionFiltersStore(defaults: defaults)
+        store.save(CollectionFilters(rarities: [.C], sets: ["EOE"], sortBy: .added_at, sortDir: .asc))
+        store.clear()
+
+        #expect(store.load() == CollectionFilters())
+    }
+
+    @MainActor
+    @Test func theViewModelRestoresAndSavesItsFilters() {
+        let defaults = Self.freshDefaults()
+        let saved = CollectionFilters(rarities: [.U], sortBy: .added_at)
+        CollectionFiltersStore(defaults: defaults).save(saved)
+
+        let model = CollectionViewModel(defaults: defaults)
+        #expect(model.filters == saved)
+
+        model.filters.sortDir = .asc
+        #expect(CollectionFiltersStore(defaults: defaults).load().sortDir == .asc)
+    }
+
+    /// After a re-import a remembered set may no longer be owned: left in place it would blank
+    /// the grid for no visible reason.
+    @Test func dropsTheSetsNoLongerOwned() {
+        var filters = CollectionFilters(rarities: [.R], sets: ["MH3", "ZZZ"])
+        filters.dropSets(notIn: Self.sets)
+
+        #expect(filters.sets == ["MH3"])
+        #expect(filters.rarities == [.R])
     }
 
     // MARK: Sets search
