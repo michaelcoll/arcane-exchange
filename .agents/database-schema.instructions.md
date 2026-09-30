@@ -31,7 +31,7 @@ indexes, constraints). Read it for column names and relations; this file only do
 - **`v_tradable_entry` is the only source of what a player actually offers**, derived from `users.visibility`,
   `trading_binders` and `collection_rarity_filters`. It deducts `kept_copies` **per `collection_entry` row (per
   binder)**, not once per aggregated card total — this must stay numerically identical to the "Proposés" counter of
-  `/collection/visibility/rarities`, or a card split across several checked binders offers more copies for trade
+  `/collection/trade-settings/rarities`, or a card split across several checked binders offers more copies for trade
   than the profile screen announces.
 
 ## Changing the schema

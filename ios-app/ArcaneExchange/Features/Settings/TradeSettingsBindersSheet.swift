@@ -2,8 +2,8 @@ import SwiftUI
 
 /// Sub-drawer "Classeurs échangeables" (the mockup's `sheet === 'binders'`): which ManaBox
 /// binders of the last import are opened to trade.
-struct TradeBindersSheet: View {
-    let model: AccountSettingsViewModel
+struct TradeSettingsBindersSheet: View {
+    let model: TradeSettingsViewModel
 
     @Environment(\.dismiss) private var dismiss
 
@@ -20,7 +20,7 @@ struct TradeBindersSheet: View {
                         Toggle(isOn: binding(for: binder.name)) {
                             VStack(alignment: .leading, spacing: 2) {
                                 Text(binder.name)
-                                Text(AccountCopy.cards(Int(binder.card_count)))
+                                Text(TradeSettingsCopy.cards(Int(binder.card_count)))
                                     .font(.caption)
                                     .foregroundStyle(.secondary)
                             }

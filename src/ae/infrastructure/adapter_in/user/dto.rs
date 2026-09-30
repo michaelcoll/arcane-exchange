@@ -1,43 +1,7 @@
-use crate::domain::user::{CollectionVisibility, User};
-use serde::{Deserialize, Serialize};
+use crate::domain::user::User;
+use serde::Serialize;
 use ts_rs::TS;
 use utoipa::ToSchema;
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, TS, ToSchema)]
-#[serde(rename = "CollectionVisibility", rename_all = "snake_case")]
-#[ts(export, export_to = "CollectionVisibility.ts")]
-pub enum CollectionVisibilityParam {
-    Public,
-    Trade,
-    Private,
-}
-
-impl From<CollectionVisibilityParam> for CollectionVisibility {
-    fn from(p: CollectionVisibilityParam) -> Self {
-        match p {
-            CollectionVisibilityParam::Public => CollectionVisibility::Public,
-            CollectionVisibilityParam::Trade => CollectionVisibility::Trade,
-            CollectionVisibilityParam::Private => CollectionVisibility::Private,
-        }
-    }
-}
-
-impl From<CollectionVisibility> for CollectionVisibilityParam {
-    fn from(v: CollectionVisibility) -> Self {
-        match v {
-            CollectionVisibility::Public => CollectionVisibilityParam::Public,
-            CollectionVisibility::Trade => CollectionVisibilityParam::Trade,
-            CollectionVisibility::Private => CollectionVisibilityParam::Private,
-        }
-    }
-}
-
-#[derive(Debug, Serialize, TS, ToSchema)]
-#[serde(rename = "VisibilityResponse")]
-#[ts(export, export_to = "VisibilityResponse.ts")]
-pub struct VisibilityResponse {
-    pub visibility: CollectionVisibilityParam,
-}
 
 #[derive(Debug, Serialize, TS, ToSchema)]
 #[serde(rename = "UserProfileResponse")]
@@ -56,22 +20,4 @@ impl From<User> for UserProfileResponse {
             avatar_url: user.avatar_url,
         }
     }
-}
-
-#[derive(Debug, Deserialize, TS, ToSchema)]
-#[ts(export, export_to = "SetVisibilityRequest.ts")]
-pub(crate) struct SetVisibilityRequest {
-    pub(crate) visibility: CollectionVisibilityParam,
-}
-
-#[derive(Debug, Serialize, TS, ToSchema)]
-#[ts(export, export_to = "TradeBindersResponse.ts")]
-pub struct TradeBindersResponse {
-    pub binders: Vec<String>,
-}
-
-#[derive(Debug, Deserialize, TS, ToSchema)]
-#[ts(export, export_to = "AddTradeBinderRequest.ts")]
-pub(crate) struct AddTradeBinderRequest {
-    pub(crate) binder_name: String,
 }

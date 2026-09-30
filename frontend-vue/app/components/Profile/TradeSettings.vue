@@ -1,10 +1,11 @@
 <script setup lang="ts">
 import type { RarityCode } from '~/bindings/RarityCode';
-import { MAX_KEPT_COPIES, fmtInt } from '~/utils/trade-rules';
+import { MAX_KEPT_COPIES, fmtInt } from '~/utils/trade-settings';
 import { RARITY_COLOR_CLASS, RARITY_LABELS } from '~/utils/rarity';
 
-const { getCollectionStats, getRarityFilters, setRarityFilter } = useCollectionService();
-const { getTradeBinders, addTradeBinder, removeTradeBinder } = useUserService();
+const { getCollectionStats } = useCollectionService();
+const { getTradeBinders, addTradeBinder, removeTradeBinder, getRarityFilters, setRarityFilter } =
+  useTradeSettingsService();
 const { showError } = useToast();
 
 const errorMessage = (e: unknown) =>

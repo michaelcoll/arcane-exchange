@@ -1,12 +1,12 @@
 import SwiftUI
 
 extension View {
-    /// Surfaces a rejected write from `AccountSettingsViewModel`.
+    /// Surfaces a rejected write from `TradeSettingsViewModel`.
     ///
     /// Every drawer that writes carries it: SwiftUI cannot present an alert on a view that a
     /// sheet already covers, so putting it only on the Réglages screen would silently swallow
     /// every failure raised from a sub-drawer.
-    func writeErrorAlert(_ model: AccountSettingsViewModel) -> some View {
+    func writeErrorAlert(_ model: TradeSettingsViewModel) -> some View {
         alert(
             "Modification impossible",
             isPresented: Binding(

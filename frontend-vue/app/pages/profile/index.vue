@@ -4,7 +4,7 @@ import type { CollectionVisibility } from '~/bindings/CollectionVisibility';
 definePageMeta({ middleware: 'auth' });
 
 const { user } = useUser();
-const { getVisibility, setVisibility } = useUserService();
+const { getVisibility, setVisibility } = useTradeSettingsService();
 const { showError } = useToast();
 
 const initials = computed(() => {
@@ -206,6 +206,6 @@ const visHelp = [
       </div>
     </section>
 
-    <ProfileTradeRules v-if="vis === 'trade'" />
+    <ProfileTradeSettings v-if="vis === 'trade'" />
   </div>
 </template>

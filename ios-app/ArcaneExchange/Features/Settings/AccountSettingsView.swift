@@ -2,7 +2,7 @@ import ClerkKit
 import SwiftUI
 
 /// Réglages (`ScrProfile` in the iOS mockup), presented from the nav-bar avatar: the account
-/// card, one row per trade rule — each opening its own drawer — and sign-out.
+/// card, one row per trade setting — each opening its own drawer — and sign-out.
 struct AccountSettingsView: View {
     /// The sub-drawers, exactly the mockup's three `ISheet`s.
     private enum Drawer: String, Identifiable {
@@ -18,7 +18,7 @@ struct AccountSettingsView: View {
     @Environment(Clerk.self) private var clerk
     @Environment(\.dismiss) private var dismiss
 
-    @State private var model = AccountSettingsViewModel()
+    @State private var model = TradeSettingsViewModel()
     @State private var drawer: Drawer?
     @State private var isConfirmingSignOut = false
 
@@ -35,9 +35,9 @@ struct AccountSettingsView: View {
                 .task { await model.load() }
                 .sheet(item: $drawer) { drawer in
                     switch drawer {
-                    case .visibility: VisibilitySheet(model: model)
-                    case .binders: TradeBindersSheet(model: model)
-                    case .rarities: RarityFiltersSheet(model: model)
+                    case .visibility: TradeSettingsVisibilitySheet(model: model)
+                    case .binders: TradeSettingsBindersSheet(model: model)
+                    case .rarities: TradeSettingsRaritiesSheet(model: model)
                     }
                 }
                 .writeErrorAlert(model)
@@ -58,7 +58,7 @@ struct AccountSettingsView: View {
             if let error = model.loadError {
                 loadErrorSection(error)
             } else {
-                tradeRulesSection
+                tradeSettingsSection
             }
             signOutSection
         }
@@ -70,7 +70,7 @@ struct AccountSettingsView: View {
         }
     }
 
-    private func loadErrorSection(_ error: AccountSettingsViewModel.RequestError) -> some View {
+    private func loadErrorSection(_ error: TradeSettingsViewModel.RequestError) -> some View {
         Section {
             VStack(alignment: .leading, spacing: 10) {
                 Label("Réglages indisponibles", systemImage: "exclamationmark.triangle")
@@ -88,10 +88,10 @@ struct AccountSettingsView: View {
 
     // MARK: Ce que je propose à l'échange
 
-    /// One row per rule, each opening its drawer — the mockup's `IGroup` of chevron rows, with
-    /// the ratio band closing the group. Binders and rarities only bite in `trade` visibility,
-    /// so they show up with it, like the web client's `ProfileTradeRules`.
-    private var tradeRulesSection: some View {
+    /// One row per trade setting, each opening its drawer — the mockup's `IGroup` of chevron
+    /// rows, with the ratio band closing the group. Binders and rarities only bite in `trade`
+    /// visibility, so they show up with it, like the web client's `ProfileTradeSettings`.
+    private var tradeSettingsSection: some View {
         Section {
             drawerRow(
                 title: "Visibilité de la collection",
@@ -103,7 +103,7 @@ struct AccountSettingsView: View {
                 drawerRow(
                     title: "Classeurs échangeables",
                     systemImage: "rectangle.stack",
-                    value: AccountCopy.binderSelection(
+                    value: TradeSettingsCopy.binderSelection(
                         selected: model.selectedBinders.count,
                         total: model.binders.count
                     ),
@@ -112,7 +112,7 @@ struct AccountSettingsView: View {
                 drawerRow(
                     title: "Filtres de rareté",
                     systemImage: "line.3.horizontal.decrease",
-                    value: AccountCopy.openRarities(model.rarities.count(where: \.is_open)),
+                    value: TradeSettingsCopy.openRarities(model.rarities.count(where: \.is_open)),
                     drawer: .rarities
                 )
                 TradeRatioBand(ratio: model.ratio)

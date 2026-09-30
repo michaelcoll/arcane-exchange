@@ -2,8 +2,8 @@ import SwiftUI
 
 /// Sub-drawer "Filtres de rareté" (the mockup's `sheet === 'rar'`): per rarity, whether it is
 /// open to trade and how many copies are always kept.
-struct RarityFiltersSheet: View {
-    let model: AccountSettingsViewModel
+struct TradeSettingsRaritiesSheet: View {
+    let model: TradeSettingsViewModel
 
     @Environment(\.dismiss) private var dismiss
 
@@ -55,9 +55,9 @@ struct RarityFiltersSheet: View {
                     VStack(alignment: .leading, spacing: 2) {
                         Text(rarity?.label ?? row.rarity)
                         HStack(spacing: 6) {
-                            Text(AccountCopy.copies(Int(row.copies)))
+                            Text(TradeSettingsCopy.copies(Int(row.copies)))
                             Text("·")
-                            Text(AccountCopy.proposed(Int(row.proposed), isOpen: row.is_open))
+                            Text(TradeSettingsCopy.proposed(Int(row.proposed), isOpen: row.is_open))
                                 .foregroundStyle(row.is_open ? Palette.primary : Color.secondary)
                         }
                         .font(.caption)
@@ -96,7 +96,7 @@ struct RarityFiltersSheet: View {
                     Task { await model.setRarity(row.rarity, isOpen: true, keptCopies: kept) }
                 }
             ),
-            in: 0 ... TradeRules.maxKeptCopies
+            in: 0 ... TradeSettings.maxKeptCopies
         ) {
             HStack {
                 Text("Exemplaires gardés")
