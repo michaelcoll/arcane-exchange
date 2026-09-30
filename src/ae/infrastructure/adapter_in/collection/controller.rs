@@ -10,7 +10,6 @@ use crate::domain::pagination::PageRequest;
 use crate::infrastructure::AppState;
 use crate::infrastructure::adapter_in::auth_extractor::AuthenticatedUser;
 use crate::infrastructure::adapter_in::card::dto::{PriceHistoryEntryResponse, PriceHistoryParams};
-use crate::infrastructure::adapter_in::trade_settings::controller::create_trade_settings_router;
 use axum::body::to_bytes;
 use axum::extract::{Path, State};
 use axum::http::StatusCode;
@@ -24,7 +23,6 @@ pub fn create_collection_router() -> axum::Router<AppState> {
         .route("/import/{id}", get(get_card_import))
         .route("/stats", get(get_collection_stats))
         .route("/price-history", get(get_collection_price_history))
-        .nest("/trade-settings", create_trade_settings_router())
 }
 
 #[utoipa::path(

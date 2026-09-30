@@ -2848,27 +2848,27 @@ public enum Operations {
         }
     }
     /// - Remark: HTTP `GET /collection/trade-settings/rarities`.
-    /// - Remark: Generated from `#/paths//collection/trade-settings/rarities/get(get_trade_rarities)`.
-    public enum get_trade_rarities {
-        public static let id: Swift.String = "get_trade_rarities"
+    /// - Remark: Generated from `#/paths//collection/trade-settings/rarities/get(get_trade_rarity_filters)`.
+    public enum get_trade_rarity_filters {
+        public static let id: Swift.String = "get_trade_rarity_filters"
         public struct Input: Sendable, Hashable {
             /// - Remark: Generated from `#/paths/collection/trade-settings/rarities/GET/header`.
             public struct Headers: Sendable, Hashable {
-                public var accept: [OpenAPIRuntime.AcceptHeaderContentType<Operations.get_trade_rarities.AcceptableContentType>]
+                public var accept: [OpenAPIRuntime.AcceptHeaderContentType<Operations.get_trade_rarity_filters.AcceptableContentType>]
                 /// Creates a new `Headers`.
                 ///
                 /// - Parameters:
                 ///   - accept:
-                public init(accept: [OpenAPIRuntime.AcceptHeaderContentType<Operations.get_trade_rarities.AcceptableContentType>] = .defaultValues()) {
+                public init(accept: [OpenAPIRuntime.AcceptHeaderContentType<Operations.get_trade_rarity_filters.AcceptableContentType>] = .defaultValues()) {
                     self.accept = accept
                 }
             }
-            public var headers: Operations.get_trade_rarities.Input.Headers
+            public var headers: Operations.get_trade_rarity_filters.Input.Headers
             /// Creates a new `Input`.
             ///
             /// - Parameters:
             ///   - headers:
-            public init(headers: Operations.get_trade_rarities.Input.Headers = .init()) {
+            public init(headers: Operations.get_trade_rarity_filters.Input.Headers = .init()) {
                 self.headers = headers
             }
         }
@@ -2892,26 +2892,26 @@ public enum Operations {
                     }
                 }
                 /// Received HTTP response body
-                public var body: Operations.get_trade_rarities.Output.Ok.Body
+                public var body: Operations.get_trade_rarity_filters.Output.Ok.Body
                 /// Creates a new `Ok`.
                 ///
                 /// - Parameters:
                 ///   - body: Received HTTP response body
-                public init(body: Operations.get_trade_rarities.Output.Ok.Body) {
+                public init(body: Operations.get_trade_rarity_filters.Output.Ok.Body) {
                     self.body = body
                 }
             }
-            /// Rarities owned within the binders selected for trade, with their trade rule and computed counts
+            /// Rarities owned within the binders selected for trade, with their rarity filter and computed counts
             ///
-            /// - Remark: Generated from `#/paths//collection/trade-settings/rarities/get(get_trade_rarities)/responses/200`.
+            /// - Remark: Generated from `#/paths//collection/trade-settings/rarities/get(get_trade_rarity_filters)/responses/200`.
             ///
             /// HTTP response code: `200 ok`.
-            case ok(Operations.get_trade_rarities.Output.Ok)
+            case ok(Operations.get_trade_rarity_filters.Output.Ok)
             /// The associated value of the enum case if `self` is `.ok`.
             ///
             /// - Throws: An error if `self` is not `.ok`.
             /// - SeeAlso: `.ok`.
-            public var ok: Operations.get_trade_rarities.Output.Ok {
+            public var ok: Operations.get_trade_rarity_filters.Output.Ok {
                 get throws {
                     switch self {
                     case let .ok(response):
@@ -2943,26 +2943,26 @@ public enum Operations {
                     }
                 }
                 /// Received HTTP response body
-                public var body: Operations.get_trade_rarities.Output.Unauthorized.Body
+                public var body: Operations.get_trade_rarity_filters.Output.Unauthorized.Body
                 /// Creates a new `Unauthorized`.
                 ///
                 /// - Parameters:
                 ///   - body: Received HTTP response body
-                public init(body: Operations.get_trade_rarities.Output.Unauthorized.Body) {
+                public init(body: Operations.get_trade_rarity_filters.Output.Unauthorized.Body) {
                     self.body = body
                 }
             }
             /// Missing or invalid token
             ///
-            /// - Remark: Generated from `#/paths//collection/trade-settings/rarities/get(get_trade_rarities)/responses/401`.
+            /// - Remark: Generated from `#/paths//collection/trade-settings/rarities/get(get_trade_rarity_filters)/responses/401`.
             ///
             /// HTTP response code: `401 unauthorized`.
-            case unauthorized(Operations.get_trade_rarities.Output.Unauthorized)
+            case unauthorized(Operations.get_trade_rarity_filters.Output.Unauthorized)
             /// The associated value of the enum case if `self` is `.unauthorized`.
             ///
             /// - Throws: An error if `self` is not `.unauthorized`.
             /// - SeeAlso: `.unauthorized`.
-            public var unauthorized: Operations.get_trade_rarities.Output.Unauthorized {
+            public var unauthorized: Operations.get_trade_rarity_filters.Output.Unauthorized {
                 get throws {
                     switch self {
                     case let .unauthorized(response):
@@ -3007,36 +3007,36 @@ public enum Operations {
         }
     }
     /// - Remark: HTTP `POST /collection/trade-settings/rarities`.
-    /// - Remark: Generated from `#/paths//collection/trade-settings/rarities/post(set_trade_rarity)`.
-    public enum set_trade_rarity {
-        public static let id: Swift.String = "set_trade_rarity"
+    /// - Remark: Generated from `#/paths//collection/trade-settings/rarities/post(set_trade_rarity_filter)`.
+    public enum set_trade_rarity_filter {
+        public static let id: Swift.String = "set_trade_rarity_filter"
         public struct Input: Sendable, Hashable {
             /// - Remark: Generated from `#/paths/collection/trade-settings/rarities/POST/header`.
             public struct Headers: Sendable, Hashable {
-                public var accept: [OpenAPIRuntime.AcceptHeaderContentType<Operations.set_trade_rarity.AcceptableContentType>]
+                public var accept: [OpenAPIRuntime.AcceptHeaderContentType<Operations.set_trade_rarity_filter.AcceptableContentType>]
                 /// Creates a new `Headers`.
                 ///
                 /// - Parameters:
                 ///   - accept:
-                public init(accept: [OpenAPIRuntime.AcceptHeaderContentType<Operations.set_trade_rarity.AcceptableContentType>] = .defaultValues()) {
+                public init(accept: [OpenAPIRuntime.AcceptHeaderContentType<Operations.set_trade_rarity_filter.AcceptableContentType>] = .defaultValues()) {
                     self.accept = accept
                 }
             }
-            public var headers: Operations.set_trade_rarity.Input.Headers
+            public var headers: Operations.set_trade_rarity_filter.Input.Headers
             /// - Remark: Generated from `#/paths/collection/trade-settings/rarities/POST/requestBody`.
             @frozen public enum Body: Sendable, Hashable {
                 /// - Remark: Generated from `#/paths/collection/trade-settings/rarities/POST/requestBody/content/application\/json`.
                 case json(Components.Schemas.SetRarityFilterRequest)
             }
-            public var body: Operations.set_trade_rarity.Input.Body
+            public var body: Operations.set_trade_rarity_filter.Input.Body
             /// Creates a new `Input`.
             ///
             /// - Parameters:
             ///   - headers:
             ///   - body:
             public init(
-                headers: Operations.set_trade_rarity.Input.Headers = .init(),
-                body: Operations.set_trade_rarity.Input.Body
+                headers: Operations.set_trade_rarity_filter.Input.Headers = .init(),
+                body: Operations.set_trade_rarity_filter.Input.Body
             ) {
                 self.headers = headers
                 self.body = body
@@ -3047,15 +3047,15 @@ public enum Operations {
                 /// Creates a new `NoContent`.
                 public init() {}
             }
-            /// Trade rule updated successfully
+            /// Rarity filter updated successfully
             ///
-            /// - Remark: Generated from `#/paths//collection/trade-settings/rarities/post(set_trade_rarity)/responses/204`.
+            /// - Remark: Generated from `#/paths//collection/trade-settings/rarities/post(set_trade_rarity_filter)/responses/204`.
             ///
             /// HTTP response code: `204 noContent`.
-            case noContent(Operations.set_trade_rarity.Output.NoContent)
-            /// Trade rule updated successfully
+            case noContent(Operations.set_trade_rarity_filter.Output.NoContent)
+            /// Rarity filter updated successfully
             ///
-            /// - Remark: Generated from `#/paths//collection/trade-settings/rarities/post(set_trade_rarity)/responses/204`.
+            /// - Remark: Generated from `#/paths//collection/trade-settings/rarities/post(set_trade_rarity_filter)/responses/204`.
             ///
             /// HTTP response code: `204 noContent`.
             public static var noContent: Self {
@@ -3065,7 +3065,7 @@ public enum Operations {
             ///
             /// - Throws: An error if `self` is not `.noContent`.
             /// - SeeAlso: `.noContent`.
-            public var noContent: Operations.set_trade_rarity.Output.NoContent {
+            public var noContent: Operations.set_trade_rarity_filter.Output.NoContent {
                 get throws {
                     switch self {
                     case let .noContent(response):
@@ -3097,26 +3097,26 @@ public enum Operations {
                     }
                 }
                 /// Received HTTP response body
-                public var body: Operations.set_trade_rarity.Output.BadRequest.Body
+                public var body: Operations.set_trade_rarity_filter.Output.BadRequest.Body
                 /// Creates a new `BadRequest`.
                 ///
                 /// - Parameters:
                 ///   - body: Received HTTP response body
-                public init(body: Operations.set_trade_rarity.Output.BadRequest.Body) {
+                public init(body: Operations.set_trade_rarity_filter.Output.BadRequest.Body) {
                     self.body = body
                 }
             }
             /// Invalid rarity code or kept_copies out of range
             ///
-            /// - Remark: Generated from `#/paths//collection/trade-settings/rarities/post(set_trade_rarity)/responses/400`.
+            /// - Remark: Generated from `#/paths//collection/trade-settings/rarities/post(set_trade_rarity_filter)/responses/400`.
             ///
             /// HTTP response code: `400 badRequest`.
-            case badRequest(Operations.set_trade_rarity.Output.BadRequest)
+            case badRequest(Operations.set_trade_rarity_filter.Output.BadRequest)
             /// The associated value of the enum case if `self` is `.badRequest`.
             ///
             /// - Throws: An error if `self` is not `.badRequest`.
             /// - SeeAlso: `.badRequest`.
-            public var badRequest: Operations.set_trade_rarity.Output.BadRequest {
+            public var badRequest: Operations.set_trade_rarity_filter.Output.BadRequest {
                 get throws {
                     switch self {
                     case let .badRequest(response):
@@ -3148,26 +3148,26 @@ public enum Operations {
                     }
                 }
                 /// Received HTTP response body
-                public var body: Operations.set_trade_rarity.Output.Unauthorized.Body
+                public var body: Operations.set_trade_rarity_filter.Output.Unauthorized.Body
                 /// Creates a new `Unauthorized`.
                 ///
                 /// - Parameters:
                 ///   - body: Received HTTP response body
-                public init(body: Operations.set_trade_rarity.Output.Unauthorized.Body) {
+                public init(body: Operations.set_trade_rarity_filter.Output.Unauthorized.Body) {
                     self.body = body
                 }
             }
             /// Missing or invalid token
             ///
-            /// - Remark: Generated from `#/paths//collection/trade-settings/rarities/post(set_trade_rarity)/responses/401`.
+            /// - Remark: Generated from `#/paths//collection/trade-settings/rarities/post(set_trade_rarity_filter)/responses/401`.
             ///
             /// HTTP response code: `401 unauthorized`.
-            case unauthorized(Operations.set_trade_rarity.Output.Unauthorized)
+            case unauthorized(Operations.set_trade_rarity_filter.Output.Unauthorized)
             /// The associated value of the enum case if `self` is `.unauthorized`.
             ///
             /// - Throws: An error if `self` is not `.unauthorized`.
             /// - SeeAlso: `.unauthorized`.
-            public var unauthorized: Operations.set_trade_rarity.Output.Unauthorized {
+            public var unauthorized: Operations.set_trade_rarity_filter.Output.Unauthorized {
                 get throws {
                     switch self {
                     case let .unauthorized(response):

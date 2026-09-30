@@ -99,7 +99,7 @@ _Avoid_ : règles de trade, trade rules, paramètres du compte
 
 **Visibilité de collection** :
 Le réglage par lequel un joueur décide de ce qu'un tiers peut voir de sa collection : `public` (tout),
-`trade` (ce que ses règles de mise à l'échange retiennent) ou `private` (rien). `private` par défaut.
+`trade` (ce que ses réglages de mise à l'échange retiennent) ou `private` (rien). `private` par défaut.
 _Avoid_ : confidentialité, mode privé
 
 **Binder ouvert à l'échange** :

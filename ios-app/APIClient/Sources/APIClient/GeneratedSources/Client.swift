@@ -1417,11 +1417,11 @@ public struct Client: APIProtocol {
         )
     }
     /// - Remark: HTTP `GET /collection/trade-settings/rarities`.
-    /// - Remark: Generated from `#/paths//collection/trade-settings/rarities/get(get_trade_rarities)`.
-    public func get_trade_rarities(_ input: Operations.get_trade_rarities.Input) async throws -> Operations.get_trade_rarities.Output {
+    /// - Remark: Generated from `#/paths//collection/trade-settings/rarities/get(get_trade_rarity_filters)`.
+    public func get_trade_rarity_filters(_ input: Operations.get_trade_rarity_filters.Input) async throws -> Operations.get_trade_rarity_filters.Output {
         try await client.send(
             input: input,
-            forOperation: Operations.get_trade_rarities.id,
+            forOperation: Operations.get_trade_rarity_filters.id,
             serializer: { input in
                 let path = try converter.renderedPath(
                     template: "/collection/trade-settings/rarities",
@@ -1442,7 +1442,7 @@ public struct Client: APIProtocol {
                 switch response.status.code {
                 case 200:
                     let contentType = converter.extractContentTypeIfPresent(in: response.headerFields)
-                    let body: Operations.get_trade_rarities.Output.Ok.Body
+                    let body: Operations.get_trade_rarity_filters.Output.Ok.Body
                     let chosenContentType = try converter.bestContentType(
                         received: contentType,
                         options: [
@@ -1464,7 +1464,7 @@ public struct Client: APIProtocol {
                     return .ok(.init(body: body))
                 case 401:
                     let contentType = converter.extractContentTypeIfPresent(in: response.headerFields)
-                    let body: Operations.get_trade_rarities.Output.Unauthorized.Body
+                    let body: Operations.get_trade_rarity_filters.Output.Unauthorized.Body
                     let chosenContentType = try converter.bestContentType(
                         received: contentType,
                         options: [
@@ -1497,11 +1497,11 @@ public struct Client: APIProtocol {
         )
     }
     /// - Remark: HTTP `POST /collection/trade-settings/rarities`.
-    /// - Remark: Generated from `#/paths//collection/trade-settings/rarities/post(set_trade_rarity)`.
-    public func set_trade_rarity(_ input: Operations.set_trade_rarity.Input) async throws -> Operations.set_trade_rarity.Output {
+    /// - Remark: Generated from `#/paths//collection/trade-settings/rarities/post(set_trade_rarity_filter)`.
+    public func set_trade_rarity_filter(_ input: Operations.set_trade_rarity_filter.Input) async throws -> Operations.set_trade_rarity_filter.Output {
         try await client.send(
             input: input,
-            forOperation: Operations.set_trade_rarity.id,
+            forOperation: Operations.set_trade_rarity_filter.id,
             serializer: { input in
                 let path = try converter.renderedPath(
                     template: "/collection/trade-settings/rarities",
@@ -1533,7 +1533,7 @@ public struct Client: APIProtocol {
                     return .noContent(.init())
                 case 400:
                     let contentType = converter.extractContentTypeIfPresent(in: response.headerFields)
-                    let body: Operations.set_trade_rarity.Output.BadRequest.Body
+                    let body: Operations.set_trade_rarity_filter.Output.BadRequest.Body
                     let chosenContentType = try converter.bestContentType(
                         received: contentType,
                         options: [
@@ -1555,7 +1555,7 @@ public struct Client: APIProtocol {
                     return .badRequest(.init(body: body))
                 case 401:
                     let contentType = converter.extractContentTypeIfPresent(in: response.headerFields)
-                    let body: Operations.set_trade_rarity.Output.Unauthorized.Body
+                    let body: Operations.set_trade_rarity_filter.Output.Unauthorized.Body
                     let chosenContentType = try converter.bestContentType(
                         received: contentType,
                         options: [

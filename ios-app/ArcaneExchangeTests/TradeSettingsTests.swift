@@ -51,7 +51,7 @@ struct TradeSettingsTests {
         #expect(CollectionVisibility._public.label == "Publique")
     }
 
-    @Test func pluralizesTheRuleCopy() {
+    @Test func pluralizesTheTradeSettingsCopy() {
         #expect(TradeSettingsCopy.copies(1) == "1 exemplaire")
         #expect(TradeSettingsCopy.cards(2) == "2 cartes")
         #expect(TradeSettingsCopy.proposed(3, isOpen: true) == "3 proposés")
