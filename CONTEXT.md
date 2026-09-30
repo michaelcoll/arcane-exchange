@@ -91,6 +91,12 @@ _Avoid_ : copie, fausse carte, contrefaçon
 
 ### Mise à l'échange
 
+**Réglages de mise à l'échange** :
+L'ensemble des réglages par lesquels un joueur décide de ce qu'il expose de sa collection : sa
+visibilité de collection, ses binders ouverts à l'échange et ses filtres de rareté. Ils portent sur
+la collection, pas sur le joueur.
+_Avoid_ : règles de trade, trade rules, paramètres du compte
+
 **Visibilité de collection** :
 Le réglage par lequel un joueur décide de ce qu'un tiers peut voir de sa collection : `public` (tout),
 `trade` (ce que ses règles de mise à l'échange retiennent) ou `private` (rien). `private` par défaut.
