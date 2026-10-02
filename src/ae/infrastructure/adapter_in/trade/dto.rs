@@ -9,20 +9,20 @@ use ts_rs::TS;
 use utoipa::ToSchema;
 
 #[derive(Deserialize, TS, ToSchema)]
-#[ts(export, export_to = "CreateTradeRequest.ts")]
+#[ts(export)]
 pub(crate) struct CreateTradeRequest {
     pub(crate) respondent_username: String,
 }
 
 #[derive(Serialize, TS, ToSchema)]
 #[serde(rename = "CreateTradeResponse")]
-#[ts(export, export_to = "CreateTradeResponse.ts")]
+#[ts(export)]
 pub struct CreateTradeResponse {
     pub id: String,
 }
 
 #[derive(Deserialize, TS, ToSchema)]
-#[ts(export, export_to = "AddTradeCardRequest.ts")]
+#[ts(export)]
 pub(crate) struct AddTradeCardRequest {
     pub(crate) set_code: String,
     pub(crate) collector_number: String,
@@ -33,7 +33,7 @@ pub(crate) struct AddTradeCardRequest {
 }
 
 #[derive(Deserialize, TS, ToSchema)]
-#[ts(export, export_to = "RemoveTradeCardRequest.ts")]
+#[ts(export)]
 pub(crate) struct RemoveTradeCardRequest {
     pub(crate) set_code: String,
     pub(crate) collector_number: String,
@@ -43,7 +43,7 @@ pub(crate) struct RemoveTradeCardRequest {
 }
 
 #[derive(Deserialize, TS, ToSchema)]
-#[ts(export, export_to = "RateTradeRequest.ts")]
+#[ts(export)]
 pub(crate) struct RateTradeRequest {
     /// Rating given to the other party, from 0 to 5 inclusive.
     pub(crate) rating: u8,
@@ -53,7 +53,7 @@ pub(crate) struct RateTradeRequest {
 /// `TradeDetailResponse::my_cards`/`partner_cards` it's found in, not by a field here.
 #[derive(Serialize, TS, ToSchema)]
 #[serde(rename = "TradeCard")]
-#[ts(export, export_to = "TradeCard.ts")]
+#[ts(export)]
 pub struct TradeCardResponse {
     pub set_code: String,
     pub collector_number: String,
@@ -92,7 +92,7 @@ impl From<TradeCardDetail> for TradeCardResponse {
 /// of view (`me` vs `partner`) — see `TradeDetailResponse`.
 #[derive(Serialize, Debug, TS, ToSchema)]
 #[serde(rename = "TradePartyState")]
-#[ts(export, export_to = "TradePartyState.ts")]
+#[ts(export)]
 pub struct TradePartyStateResponse {
     pub accepted: bool,
     pub confirmed: bool,
@@ -111,7 +111,7 @@ impl From<TradePartyState> for TradePartyStateResponse {
 
 #[derive(Serialize, TS, ToSchema)]
 #[serde(rename = "TradeDetail")]
-#[ts(export, export_to = "TradeDetail.ts")]
+#[ts(export)]
 pub struct TradeDetailResponse {
     pub id: String,
     pub status: String,
@@ -146,7 +146,7 @@ impl From<TradeDetail> for TradeDetailResponse {
 
 #[derive(Serialize, Debug, TS, ToSchema)]
 #[serde(rename = "TradeSummary")]
-#[ts(export, export_to = "TradeSummary.ts")]
+#[ts(export)]
 pub struct TradeSummaryResponse {
     pub id: String,
     pub status: String,
@@ -172,7 +172,7 @@ impl From<TradeSummary> for TradeSummaryResponse {
 
 #[derive(Serialize, Debug, TS, ToSchema)]
 #[serde(rename = "PaginatedTrades")]
-#[ts(export, export_to = "PaginatedTrades.ts")]
+#[ts(export)]
 pub struct PaginatedTradesResponse {
     pub items: Vec<TradeSummaryResponse>,
     pub total: u64,
@@ -184,7 +184,7 @@ pub struct PaginatedTradesResponse {
 /// (e.g. `?status=PENDING&status=CLOSED`), mirroring `RarityCodeParam` on `/search/card`.
 #[derive(Deserialize, Debug, PartialEq, TS, ToSchema)]
 #[serde(rename = "TradeStatusParam", rename_all = "SCREAMING_SNAKE_CASE")]
-#[ts(export, export_to = "TradeStatusParam.ts")]
+#[ts(export)]
 pub enum TradeStatusParam {
     Pending,
     OneAccepted,
@@ -208,7 +208,7 @@ impl From<TradeStatusParam> for TradeStatus {
 }
 
 #[derive(Deserialize, TS)]
-#[ts(export, export_to = "ListTradesParams.ts")]
+#[ts(export)]
 pub(crate) struct ListTradesParams {
     #[serde(default)]
     pub(crate) page: u32,

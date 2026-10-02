@@ -5,7 +5,7 @@ use utoipa::ToSchema;
 
 #[derive(Debug, Serialize, TS, ToSchema)]
 #[serde(rename = "UserProfileResponse")]
-#[ts(export, export_to = "UserProfileResponse.ts")]
+#[ts(export)]
 pub struct UserProfileResponse {
     pub id: String,
     pub username: Option<String>,

@@ -7,7 +7,7 @@ use utoipa::ToSchema;
 // --- Collection visibility ---
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, TS, ToSchema)]
 #[serde(rename = "CollectionVisibility", rename_all = "snake_case")]
-#[ts(export, export_to = "CollectionVisibility.ts")]
+#[ts(export)]
 pub enum CollectionVisibilityParam {
     Public,
     Trade,
@@ -36,26 +36,26 @@ impl From<CollectionVisibility> for CollectionVisibilityParam {
 
 #[derive(Debug, Serialize, TS, ToSchema)]
 #[serde(rename = "VisibilityResponse")]
-#[ts(export, export_to = "VisibilityResponse.ts")]
+#[ts(export)]
 pub struct VisibilityResponse {
     pub visibility: CollectionVisibilityParam,
 }
 
 #[derive(Debug, Deserialize, TS, ToSchema)]
-#[ts(export, export_to = "SetVisibilityRequest.ts")]
+#[ts(export)]
 pub(crate) struct SetVisibilityRequest {
     pub(crate) visibility: CollectionVisibilityParam,
 }
 
 // --- Binders open for trade ---
 #[derive(Debug, Serialize, TS, ToSchema)]
-#[ts(export, export_to = "TradeBindersResponse.ts")]
+#[ts(export)]
 pub struct TradeBindersResponse {
     pub binders: Vec<String>,
 }
 
 #[derive(Debug, Deserialize, TS, ToSchema)]
-#[ts(export, export_to = "AddTradeBinderRequest.ts")]
+#[ts(export)]
 pub(crate) struct AddTradeBinderRequest {
     pub(crate) binder_name: String,
 }
@@ -63,7 +63,7 @@ pub(crate) struct AddTradeBinderRequest {
 // --- Rarity trade filters ---
 #[derive(Serialize, Debug, TS, ToSchema)]
 #[serde(rename = "RarityFilter")]
-#[ts(export, export_to = "RarityFilter.ts")]
+#[ts(export)]
 pub struct RarityFilterResponse {
     pub rarity: String,
     pub is_open: bool,
@@ -86,13 +86,13 @@ impl From<RarityTradeFilter> for RarityFilterResponse {
 
 #[derive(Serialize, Debug, TS, ToSchema)]
 #[serde(rename = "RarityFilters")]
-#[ts(export, export_to = "RarityFilters.ts")]
+#[ts(export)]
 pub struct RarityFiltersResponse {
     pub rarities: Vec<RarityFilterResponse>,
 }
 
 #[derive(Deserialize, Debug, TS, ToSchema)]
-#[ts(export, export_to = "SetRarityFilterRequest.ts")]
+#[ts(export)]
 pub(crate) struct SetRarityFilterRequest {
     pub(crate) rarity: String,
     pub(crate) is_open: bool,
