@@ -98,8 +98,34 @@ struct HomeWidgetLoaderTests {
     }
 
     private static let trades = TradesSnapshot(total: 1, trades: [
-        ActiveTrade(id: "t1", partnerUsername: "mizzix_42", myCardCount: 2, partnerCardCount: 1, status: "PENDING"),
+        ActiveTrade(id: "t1", partnerUsername: "mizzix_42", myCardCount: 2, partnerCardCount: 1, status: .pending),
     ])
+
+    @Test func keepsTheTradeStatusesThroughTheCache() {
+        let cache = Self.cache()
+        let snapshot = TradesSnapshot(total: 2, trades: [
+            ActiveTrade(id: "t1", partnerUsername: "mizzix_42", myCardCount: 2, partnerCardCount: 1, status: .oneAccepted),
+            ActiveTrade(id: "t2", partnerUsername: "golgari.jo", myCardCount: 1, partnerCardCount: 3, status: .fullyAccepted),
+        ])
+        cache.save(snapshot, for: .trades)
+
+        #expect(cache.load(TradesSnapshot.self, for: .trades)?.trades.map(\.status) == [.oneAccepted, .fullyAccepted])
+    }
+
+    /// A status a newer API added must not lose the whole cached snapshot: it reads back as
+    /// `.pending`, like `TradeStatus(apiValue:)`.
+    @Test func readsAnUnknownCachedStatusAsPending() throws {
+        let defaults = UserDefaults(suiteName: "HomeWidgetLoaderTests.\(UUID().uuidString)")!
+        let json = """
+        {"total":1,"trades":[{"id":"t1","partnerUsername":"mizzix_42","myCardCount":2,"partnerCardCount":1,\
+        "status":"SOMETHING_ELSE"}]}
+        """
+        // The key `HomeWidgetCache` stores the trades widget's snapshot under.
+        defaults.set(Data(json.utf8), forKey: "home_widget_snapshot.TradesWidget")
+
+        let snapshot = try #require(HomeWidgetCache(defaults: defaults).load(TradesSnapshot.self, for: .trades))
+        #expect(snapshot.trades.map(\.status) == [.pending])
+    }
 
     @Test func showsAndRemembersWhatTheAPIReturned() async {
         let cache = Self.cache()
