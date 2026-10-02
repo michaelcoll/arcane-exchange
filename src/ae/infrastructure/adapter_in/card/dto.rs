@@ -10,7 +10,7 @@ use utoipa::ToSchema;
 /// Params for `/collection/price-history`; both dates are optional and defaulted by the use case
 /// (last 30 days when absent).
 #[derive(Deserialize, TS)]
-#[ts(export, export_to = "PriceHistoryParams.ts")]
+#[ts(export)]
 pub(crate) struct PriceHistoryParams {
     /// ISO 8601 date string (YYYY-MM-DD)
     #[ts(optional, type = "string")]
@@ -24,7 +24,7 @@ pub(crate) struct PriceHistoryParams {
 /// required: the catalog doesn't know a card's finish, so the caller must say which series
 /// (normal or foil) it wants.
 #[derive(Deserialize, TS)]
-#[ts(export, export_to = "CardPriceHistoryParams.ts")]
+#[ts(export)]
 pub(crate) struct CardPriceHistoryParams {
     pub(crate) foil: bool,
     /// ISO 8601 date string (YYYY-MM-DD)
@@ -37,7 +37,7 @@ pub(crate) struct CardPriceHistoryParams {
 
 #[derive(Serialize, Debug, TS, ToSchema)]
 #[serde(rename = "PriceHistoryEntry")]
-#[ts(export, export_to = "PriceHistoryEntry.ts")]
+#[ts(export)]
 pub struct PriceHistoryEntryResponse {
     /// ISO 8601 date string (YYYY-MM-DD)
     pub date: String,
@@ -50,7 +50,7 @@ pub struct PriceHistoryEntryResponse {
 
 #[derive(Deserialize, Default, TS, ToSchema)]
 #[serde(rename = "CardOffersSortBy", rename_all = "snake_case")]
-#[ts(export, export_to = "CardOffersSortBy.ts")]
+#[ts(export)]
 pub(crate) enum CardOffersSortByParam {
     #[default]
     SellingPrice,
@@ -65,7 +65,7 @@ impl From<CardOffersSortByParam> for CardOfferSortField {
 }
 
 #[derive(Deserialize, TS)]
-#[ts(export, export_to = "CardOffersParams.ts")]
+#[ts(export)]
 pub(crate) struct CardOffersParams {
     pub(crate) set_code: String,
     pub(crate) collector_number: String,
@@ -81,7 +81,7 @@ pub(crate) struct CardOffersParams {
 
 #[derive(Serialize, Debug, TS, ToSchema)]
 #[serde(rename = "CardOffer")]
-#[ts(export, export_to = "CardOffer.ts")]
+#[ts(export)]
 pub struct CardOfferResponse {
     pub owner_username: String,
     /// Quantity this owner actually offers to trade — after applying their collection
@@ -120,7 +120,7 @@ impl From<CollectionEntry> for CardOfferResponse {
 
 #[derive(Serialize, Debug, TS, ToSchema)]
 #[serde(rename = "PaginatedCardOffers")]
-#[ts(export, export_to = "PaginatedCardOffers.ts")]
+#[ts(export)]
 pub struct PaginatedCardOffersResponse {
     pub items: Vec<CardOfferResponse>,
     pub total: u64,

@@ -5,7 +5,7 @@ use serde::Deserialize;
 use ts_rs::TS;
 
 #[derive(Deserialize, TS)]
-#[ts(export, export_to = "SearchParams.ts")]
+#[ts(export)]
 pub(crate) struct SearchParams {
     #[serde(default)]
     pub(crate) page: u32,

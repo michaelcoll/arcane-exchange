@@ -12,7 +12,7 @@ use utoipa::ToSchema;
 
 #[derive(Serialize, Debug, TS, ToSchema)]
 #[serde(rename = "Message")]
-#[ts(export, export_to = "Message.ts")]
+#[ts(export)]
 pub struct MessageResponse {
     pub message: String,
 }
@@ -20,14 +20,14 @@ pub struct MessageResponse {
 // --- Card import ---
 #[derive(Serialize, Debug, TS, ToSchema)]
 #[serde(rename = "CardImportStarted")]
-#[ts(export, export_to = "CardImportStarted.ts")]
+#[ts(export)]
 pub struct CardImportStartedResponse {
     pub id: String,
 }
 
 #[derive(Serialize, Debug, TS, ToSchema)]
 #[serde(rename = "CardImportLineError")]
-#[ts(export, export_to = "CardImportLineError.ts")]
+#[ts(export)]
 pub struct CardImportLineErrorResponse {
     pub line: usize,
     pub field: String,
@@ -46,7 +46,7 @@ impl From<CardImportLineError> for CardImportLineErrorResponse {
 
 #[derive(Serialize, Debug, TS, ToSchema)]
 #[serde(rename = "CardImport")]
-#[ts(export, export_to = "CardImport.ts")]
+#[ts(export)]
 pub struct CardImportResponse {
     pub id: String,
     /// `pending`, `running`, `completed` or `failed`.
@@ -95,7 +95,7 @@ impl From<CardImport> for CardImportResponse {
 // --- Collection stats ---
 #[derive(Serialize, Debug, TS, ToSchema)]
 #[serde(rename = "SetInfo")]
-#[ts(export, export_to = "SetInfo.ts")]
+#[ts(export)]
 pub struct SetInfoResponse {
     pub code: String,
     pub name: String,
@@ -112,7 +112,7 @@ impl From<SetName> for SetInfoResponse {
 
 #[derive(Serialize, Debug, TS, ToSchema)]
 #[serde(rename = "BinderInfo")]
-#[ts(export, export_to = "BinderInfo.ts")]
+#[ts(export)]
 pub struct BinderInfoResponse {
     pub name: String,
     pub card_count: u64,
@@ -129,7 +129,7 @@ impl From<BinderInfo> for BinderInfoResponse {
 
 #[derive(Serialize, Debug, TS, ToSchema)]
 #[serde(rename = "CollectionStats")]
-#[ts(export, export_to = "CollectionStats.ts")]
+#[ts(export)]
 pub struct CollectionStatsResponse {
     pub total_cards: u64,
     pub unique_cards: u64,
@@ -159,7 +159,7 @@ impl From<CollectionStats> for CollectionStatsResponse {
 // --- Query params ---
 #[derive(Deserialize, Default, Debug, PartialEq, TS, ToSchema)]
 #[serde(rename = "SortBy", rename_all = "snake_case")]
-#[ts(export, export_to = "SortBy.ts")]
+#[ts(export)]
 pub enum SortByParam {
     Avg,
     #[default]
@@ -171,7 +171,7 @@ pub enum SortByParam {
 
 #[derive(Deserialize, Default, Debug, PartialEq, TS, ToSchema)]
 #[serde(rename = "SortDir", rename_all = "snake_case")]
-#[ts(export, export_to = "SortDir.ts")]
+#[ts(export)]
 pub enum SortDirParam {
     Asc,
     #[default]
@@ -201,7 +201,7 @@ impl From<SortDirParam> for SortDirection {
 
 #[derive(Deserialize, Debug, PartialEq, TS, ToSchema)]
 #[serde(rename = "RarityCode")]
-#[ts(export, export_to = "RarityCode.ts")]
+#[ts(export)]
 pub enum RarityCodeParam {
     C,
     U,
@@ -246,7 +246,7 @@ pub(crate) fn default_page_size() -> u32 {
 }
 
 #[derive(Deserialize, TS)]
-#[ts(export, export_to = "CollectionParams.ts")]
+#[ts(export)]
 pub(crate) struct CollectionParams {
     #[serde(default)]
     pub(crate) page: u32,
@@ -291,7 +291,7 @@ impl Default for CollectionParams {
 // --- Réponses ---
 #[derive(Serialize, TS, ToSchema)]
 #[serde(rename = "PriceGuide")]
-#[ts(export, export_to = "PriceGuide.ts")]
+#[ts(export)]
 pub struct PriceGuideResponse {
     pub low: Option<u32>,
     pub avg: Option<u32>,
@@ -310,7 +310,7 @@ impl From<PriceGuide> for PriceGuideResponse {
 
 #[derive(Serialize, TS, ToSchema)]
 #[serde(rename = "CollectionEntry")]
-#[ts(export, export_to = "CollectionEntry.ts")]
+#[ts(export)]
 pub struct CollectionEntryResponse {
     pub quantity: u8,
     pub purchase_price: u32,
@@ -320,7 +320,7 @@ pub struct CollectionEntryResponse {
 
 #[derive(Serialize, TS, ToSchema)]
 #[serde(rename = "CollectionCard")]
-#[ts(export, export_to = "CollectionCard.ts")]
+#[ts(export)]
 pub struct CollectionCardResponse {
     pub set_code: String,
     pub collector_number: String,
@@ -352,7 +352,7 @@ pub struct CollectionCardResponse {
 
 #[derive(Serialize, TS, ToSchema)]
 #[serde(rename = "PaginatedCollection")]
-#[ts(export, export_to = "PaginatedCollection.ts")]
+#[ts(export)]
 pub struct PaginatedCollectionResponse {
     pub items: Vec<CollectionCardResponse>,
     pub total: u64,

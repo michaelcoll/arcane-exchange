@@ -42,7 +42,7 @@ pub(crate) fn parse_copy_id(
 /// Body of every error response. `error` is a technical message, for diagnosis only; clients
 /// translate `code` into what they show the user (ADR 0018).
 #[derive(Serialize, Debug, TS, ToSchema)]
-#[ts(export, export_to = "ErrorResponse.ts")]
+#[ts(export)]
 pub struct ErrorResponse {
     /// Technical message, in English — never shown to the user as is.
     pub error: String,
