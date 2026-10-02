@@ -32,7 +32,8 @@ Commandes : [mise.instructions.md](mise.instructions.md) · CI : [ci.instruction
 - **Design**: do not port the mockup's HTML/CSS structure into SwiftUI — reference via the `maquette-ios` skill,
   tokens in [design-system.instructions.md](design-system.instructions.md), adapted to iOS idioms.
 - **Colors**: accents are named by role, as on the web — `Palette.primary` / `.primaryInk` / `.onPrimary` and the
-  `secondary` counterparts (`Support/Palette.swift`), `RarityColor` for the five rarities. The asset values are the
+  `secondary` counterparts (`Support/Palette.swift`), `Palette.down` for a value drop (never SwiftUI `.red`),
+  `RarityColor` for the five rarities. The asset values are the
   web's light/dark tokens from `main.css`, pinned by `PaletteTests`: change both sides together. Never
   `Color.accentColor`, SwiftUI `.cyan` / `.purple` for an accent, or a `Primary`/`Secondary` `ShapeStyle` member (it
   collides with SwiftUI's `.primary` / `.secondary` label styles). The system accent is the `Primary` asset through
