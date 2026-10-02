@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { mockNuxtImport, mountSuspended } from '@nuxt/test-utils/runtime';
+import { mockNuxtImport, mountSuspended, registerEndpoint } from '@nuxt/test-utils/runtime';
 import { flushPromises, type VueWrapper } from '@vue/test-utils';
 import type { Ref } from 'vue';
 import type { Stats } from '~/bindings/Stats';
@@ -22,7 +22,7 @@ const { getStatsMock } = vi.hoisted(() => ({ getStatsMock: vi.fn() }));
 mockNuxtImport('useAuth', () => () => authState);
 // Signing in wakes the register-user plugin, which has no backend to call here.
 mockNuxtImport('useUserService', () => () => ({ register: () => Promise.resolve() }));
-mockNuxtImport('useStatsService', () => () => ({ getStats: getStatsMock }));
+registerEndpoint('/api/v1/stats', () => getStatsMock());
 
 const stats = (overrides: Partial<Stats> = {}): Stats => ({
   card_number: 84312,
@@ -47,6 +47,7 @@ describe('SiteFooter', () => {
     signIn(true, false);
     getStatsMock.mockReset();
     getStatsMock.mockResolvedValue(stats());
+    clearNuxtData('stats');
   });
 
   describe('platform stats', () => {
@@ -108,7 +109,7 @@ describe('SiteFooter', () => {
     });
 
     it('silently hides the stats and the pill when /stats fails, leaving the rest of the footer', async () => {
-      getStatsMock.mockRejectedValue(new Error('503'));
+      getStatsMock.mockResolvedValue(new Response(null, { status: 503 }));
       const wrapper = await mountSuspended(SiteFooter);
       await flushPromises();
 

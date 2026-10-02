@@ -141,8 +141,9 @@ Les deux clients consomment la même API et partagent le même langage métier, 
 de code**. La maquette (non versionnée) sert de référence visuelle commune ; chaque client l'adapte à
 ses idiomes plutôt que de la transposer littéralement.
 
-- **Web** — Nuxt 4 / Vue 3 / Tailwind. Les appels API passent tous par un composable unique qui
-  injecte le jeton ; un composable de service par ressource. Thème sombre par défaut, jetons de
+- **Web** — Nuxt 4 / Vue 3 / Tailwind. Les appels API passent par un composable unique qui injecte
+  le jeton, sauf ceux des endpoints publics (comme `/stats`, lu par le footer hors session), qui
+  utilisent `$fetch` directement ; un composable de service par ressource. Thème sombre par défaut, jetons de
   design en variables CSS.
 - **iOS** — SwiftUI + `@Observable`, un dossier par écran (`Features/<Feature>/` avec sa vue et son
   view model), pas de Combine. Le projet Xcode est **généré** (XcodeGen) et non versionné : la source
