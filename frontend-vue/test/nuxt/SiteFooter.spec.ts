@@ -1,6 +1,8 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { mockNuxtImport, mountSuspended } from '@nuxt/test-utils/runtime';
+import { flushPromises, type VueWrapper } from '@vue/test-utils';
 import type { Ref } from 'vue';
+import type { Stats } from '~/bindings/Stats';
 import SiteFooter from '~/components/SiteFooter.vue';
 
 // `useAuth` is also called by app.vue and the register-user plugin while the Nuxt test app
@@ -15,9 +17,20 @@ const { authState } = await vi.hoisted(async () => {
   };
 });
 
+const { getStatsMock } = vi.hoisted(() => ({ getStatsMock: vi.fn() }));
+
 mockNuxtImport('useAuth', () => () => authState);
 // Signing in wakes the register-user plugin, which has no backend to call here.
 mockNuxtImport('useUserService', () => () => ({ register: () => Promise.resolve() }));
+mockNuxtImport('useStatsService', () => () => ({ getStats: getStatsMock }));
+
+const stats = (overrides: Partial<Stats> = {}): Stats => ({
+  card_number: 84312,
+  card_price_number: 3482916,
+  db_size_mb: 1248,
+  last_price_date: '2026-10-02',
+  ...overrides,
+});
 
 const signIn = (loaded: boolean, signedIn: boolean | undefined) => {
   authState.isLoaded.value = loaded;
@@ -30,7 +43,82 @@ const externalLink = async (text: string) => {
 };
 
 describe('SiteFooter', () => {
-  beforeEach(() => signIn(true, false));
+  beforeEach(() => {
+    signIn(true, false);
+    getStatsMock.mockReset();
+    getStatsMock.mockResolvedValue(stats());
+  });
+
+  describe('platform stats', () => {
+    beforeEach(() => {
+      vi.useFakeTimers({ toFake: ['Date'] });
+      vi.setSystemTime(new Date(2026, 9, 2, 14, 0));
+    });
+    afterEach(() => {
+      vi.useRealTimers();
+    });
+
+    // Intl.NumberFormat('fr-FR') groups digits with a narrow no-break space, normalized here.
+    const statTexts = (wrapper: VueWrapper) =>
+      wrapper
+        .findAll('[data-stat]')
+        .map((el) => el.findAll('span, b').map((part) => part.text().replace(/\s+/g, ' ')));
+
+    it('shows the three stats, with French number formatting', async () => {
+      const wrapper = await mountSuspended(SiteFooter);
+      await flushPromises();
+
+      expect(statTexts(wrapper)).toEqual([
+        ['Cartes référencées', '84 312'],
+        ['Prix enregistrés', '3 482 916'],
+        ['Taille de la base', '1 248 Mo'],
+      ]);
+      expect(getStatsMock).toHaveBeenCalledOnce();
+    });
+
+    it('keeps the stats on mobile', async () => {
+      const wrapper = await mountSuspended(SiteFooter);
+      await flushPromises();
+      for (const el of wrapper.findAll('[data-stat]')) {
+        expect(el.element.closest('[data-desktop-only]')).toBeNull();
+      }
+    });
+
+    it.each([
+      ['2026-10-02', "Prix mis à jour aujourd'hui", 'good'],
+      ['2026-10-01', 'Prix mis à jour hier', 'good'],
+      ['2026-09-27', 'Prix mis à jour il y a 5 jours', 'muted'],
+    ])('flags a price dated %s as « %s », in the %s tone', async (date, label, tone) => {
+      getStatsMock.mockResolvedValue(stats({ last_price_date: date }));
+      const wrapper = await mountSuspended(SiteFooter);
+      await flushPromises();
+
+      const pill = wrapper.get('[data-price-freshness]');
+      expect(pill.text()).toBe(label);
+      expect(pill.attributes('data-tone')).toBe(tone);
+    });
+
+    it('hides only the freshness pill when no price was ever imported', async () => {
+      getStatsMock.mockResolvedValue(stats({ last_price_date: null }));
+      const wrapper = await mountSuspended(SiteFooter);
+      await flushPromises();
+
+      expect(wrapper.find('[data-price-freshness]').exists()).toBe(false);
+      expect(statTexts(wrapper)).toHaveLength(3);
+    });
+
+    it('silently hides the stats and the pill when /stats fails, leaving the rest of the footer', async () => {
+      getStatsMock.mockRejectedValue(new Error('503'));
+      const wrapper = await mountSuspended(SiteFooter);
+      await flushPromises();
+
+      expect(wrapper.find('[data-price-freshness]').exists()).toBe(false);
+      expect(wrapper.find('[data-stat]').exists()).toBe(false);
+      expect(wrapper.text()).toContain('Rejoindre le Discord');
+      expect(wrapper.text()).toContain('Fan Content Policy');
+      expect(wrapper.text()).toContain('Arcane Exchange');
+    });
+  });
 
   it('shows the « Naviguer » column to a signed-in player, with links to the right screens', async () => {
     signIn(true, true);
