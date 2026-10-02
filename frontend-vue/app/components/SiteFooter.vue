@@ -65,7 +65,7 @@ const dot = 'h-[3px] w-[3px] flex-none rounded-full bg-[var(--ink-4)]';
             <span
               class="text-secondary grid h-[38px] w-[38px] flex-none place-items-center rounded-[10px] bg-[color-mix(in_oklch,var(--secondary)_16%,var(--surface))]"
             >
-              <Icon name="lucide:message-circle" :size="20" />
+              <Icon name="simple-icons:discord" :size="20" />
             </span>
             <span class="flex flex-col gap-0.5 max-[860px]:flex-1">
               <b class="font-display text-sm font-semibold">Rejoindre le Discord</b>
@@ -110,7 +110,7 @@ const dot = 'h-[3px] w-[3px] flex-none rounded-full bg-[var(--ink-4)]';
             rel="noopener noreferrer"
             class="hover:text-primary inline-flex items-center gap-1.5 transition-colors duration-150"
           >
-            <Icon name="lucide:github" :size="12" />Code source
+            <Icon name="simple-icons:github" :size="12" />Code source
           </a>
         </div>
       </div>
