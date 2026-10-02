@@ -6,7 +6,7 @@ use utoipa::ToSchema;
 /// Global platform statistics, public.
 #[derive(Serialize, Debug, TS, ToSchema)]
 #[serde(rename = "Stats")]
-#[ts(export, export_to = "Stats.ts")]
+#[ts(export)]
 pub struct StatsResponse {
     /// Number of Cards known to the platform.
     pub card_number: u32,
