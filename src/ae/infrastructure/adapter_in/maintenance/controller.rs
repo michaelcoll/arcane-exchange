@@ -1,32 +1,16 @@
-use super::dto::{EnqueueResponse, StatsResponse};
+use super::dto::EnqueueResponse;
 use crate::application::error::AppError;
 use crate::infrastructure::AppState;
 use axum::Json;
 use axum::extract::State;
 use axum::http::StatusCode;
-use axum::routing::{get, post};
+use axum::routing::post;
 
 pub fn create_maintenance_router() -> axum::Router<AppState> {
     axum::Router::new()
-        .route("/stats", get(get_stats))
         .route("/trigger-price-update", post(trigger_price_update))
         .route("/update-cardmarket-ids", post(update_cardmarket_ids))
         .route("/update-card-images", post(update_card_images))
-}
-
-#[utoipa::path(
-    get,
-    path = "/maintenance/stats",
-    responses(
-        (status = 200, description = "Global database statistics", body = StatsResponse),
-    ),
-    tag = "maintenance",
-)]
-pub(crate) async fn get_stats(
-    State(state): State<AppState>,
-) -> Result<Json<StatsResponse>, AppError> {
-    let stats = state.stats_use_case.get_stats().await?;
-    Ok(Json(stats.into()))
 }
 
 #[utoipa::path(

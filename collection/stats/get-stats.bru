@@ -1,13 +1,13 @@
 meta {
-  name: stats
+  name: get-stats
   type: http
   seq: 1
 }
 
 get {
-  url: {{baseUrl}}/maintenance/stats
+  url: {{baseUrl}}/stats
   body: none
-  auth: inherit
+  auth: none
 }
 
 settings {

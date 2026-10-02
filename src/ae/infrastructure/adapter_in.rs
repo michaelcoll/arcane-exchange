@@ -17,6 +17,7 @@ pub mod maintenance;
 pub mod openapi;
 pub mod search;
 pub mod sets;
+pub mod stats;
 pub mod trade;
 pub mod trade_settings;
 pub mod user;

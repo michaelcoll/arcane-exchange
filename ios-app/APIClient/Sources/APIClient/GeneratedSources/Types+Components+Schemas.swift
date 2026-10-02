@@ -936,33 +936,50 @@ extension Components {
             case asc = "asc"
             case desc = "desc"
         }
+        /// Global platform statistics, public.
+        ///
         /// - Remark: Generated from `#/components/schemas/StatsResponse`.
         public struct StatsResponse: Codable, Hashable, Sendable {
+            /// Number of Cards known to the platform.
+            ///
             /// - Remark: Generated from `#/components/schemas/StatsResponse/card_number`.
             public var card_number: Swift.Int32
+            /// Number of Cardmarket prices recorded.
+            ///
             /// - Remark: Generated from `#/components/schemas/StatsResponse/card_price_number`.
             public var card_price_number: Swift.Int32
+            /// Database size, in MB.
+            ///
             /// - Remark: Generated from `#/components/schemas/StatsResponse/db_size_mb`.
             public var db_size_mb: Swift.Int32
+            /// ISO 8601 date string (YYYY-MM-DD) of the most recent Cardmarket price — prices are dated
+            /// to the day. `null` until a price has been imported.
+            ///
+            /// - Remark: Generated from `#/components/schemas/StatsResponse/last_price_date`.
+            public var last_price_date: Swift.String?
             /// Creates a new `StatsResponse`.
             ///
             /// - Parameters:
-            ///   - card_number:
-            ///   - card_price_number:
-            ///   - db_size_mb:
+            ///   - card_number: Number of Cards known to the platform.
+            ///   - card_price_number: Number of Cardmarket prices recorded.
+            ///   - db_size_mb: Database size, in MB.
+            ///   - last_price_date: ISO 8601 date string (YYYY-MM-DD) of the most recent Cardmarket price — prices are dated
             public init(
                 card_number: Swift.Int32,
                 card_price_number: Swift.Int32,
-                db_size_mb: Swift.Int32
+                db_size_mb: Swift.Int32,
+                last_price_date: Swift.String? = nil
             ) {
                 self.card_number = card_number
                 self.card_price_number = card_price_number
                 self.db_size_mb = db_size_mb
+                self.last_price_date = last_price_date
             }
             public enum CodingKeys: String, CodingKey {
                 case card_number
                 case card_price_number
                 case db_size_mb
+                case last_price_date
             }
         }
         /// - Remark: Generated from `#/components/schemas/TradeBindersResponse`.

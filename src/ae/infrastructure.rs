@@ -69,6 +69,7 @@ use crate::infrastructure::adapter_out::repository::stats_repository_adapter::St
 use crate::infrastructure::adapter_out::repository::trade_repository_adapter::TradeRepositoryAdapter;
 use crate::infrastructure::adapter_out::repository::trading_binders_repository_adapter::TradingBindersRepositoryAdapter;
 use adapter_in::maintenance::controller::create_maintenance_router;
+use adapter_in::stats::controller::create_stats_router;
 use adapter_out::caller::gatherer_caller_adapter::GathererCallerAdapter;
 use adapter_out::caller::scryfall_caller_adapter::ScryfallCallerAdapter;
 use adapter_out::repository::card_image_file_repository_adapter::CardImageFileRepositoryAdapter;
@@ -371,7 +372,7 @@ async fn schedule_price_import_job(import_price_use_case: Arc<dyn ImportPriceUse
     cron.start().await;
 }
 
-fn create_router(app_state: AppState) -> Router {
+pub(crate) fn create_router(app_state: AppState) -> Router {
     Router::new()
         .nest("/autocomplete", create_autocomplete_router())
         .nest("/card", create_card_router())
@@ -379,6 +380,7 @@ fn create_router(app_state: AppState) -> Router {
         .nest("/collection/trade-settings", create_trade_settings_router())
         .nest("/search", create_search_router())
         .nest("/sets", create_set_router())
+        .nest("/stats", create_stats_router())
         .nest("/maintenance", create_maintenance_router())
         .nest("/user", create_user_router())
         .nest("/trades", create_trade_router())

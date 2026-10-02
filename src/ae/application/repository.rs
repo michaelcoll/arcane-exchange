@@ -165,6 +165,8 @@ pub trait StatsRepository: Send + Sync {
     async fn get_card_number(&self) -> Result<u32, AppError>;
     async fn get_card_price_number(&self) -> Result<u32, AppError>;
     async fn get_db_size(&self) -> Result<u16, AppError>;
+    /// Date of the most recent Cardmarket price, `None` when no price has been imported.
+    async fn get_last_price_date(&self) -> Result<Option<NaiveDate>, AppError>;
 }
 
 #[async_trait]

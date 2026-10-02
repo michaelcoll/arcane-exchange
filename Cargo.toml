@@ -43,4 +43,6 @@ webp = { version = "0.3", default-features = false }
 
 [dev-dependencies]
 mockall = "0.15"
+# `ServiceExt::oneshot`, to drive the router in tests.
+tower = { version = "0.5", features = ["util"] }
 wiremock = "0.6"

@@ -62,9 +62,6 @@ public protocol APIProtocol: Sendable {
     /// - Remark: HTTP `PUT /collection/trade-settings/visibility`.
     /// - Remark: Generated from `#/paths//collection/trade-settings/visibility/put(set_trade_visibility)`.
     func set_trade_visibility(_ input: Operations.set_trade_visibility.Input) async throws -> Operations.set_trade_visibility.Output
-    /// - Remark: HTTP `GET /maintenance/stats`.
-    /// - Remark: Generated from `#/paths//maintenance/stats/get(get_stats)`.
-    func get_stats(_ input: Operations.get_stats.Input) async throws -> Operations.get_stats.Output
     /// - Remark: HTTP `POST /maintenance/trigger-price-update`.
     /// - Remark: Generated from `#/paths//maintenance/trigger-price-update/post(trigger_price_update)`.
     func trigger_price_update(_ input: Operations.trigger_price_update.Input) async throws -> Operations.trigger_price_update.Output
@@ -80,6 +77,9 @@ public protocol APIProtocol: Sendable {
     /// - Remark: HTTP `GET /sets/{set_code}`.
     /// - Remark: Generated from `#/paths//sets/{set_code}/get(get_set)`.
     func get_set(_ input: Operations.get_set.Input) async throws -> Operations.get_set.Output
+    /// - Remark: HTTP `GET /stats`.
+    /// - Remark: Generated from `#/paths//stats/get(get_stats)`.
+    func get_stats(_ input: Operations.get_stats.Input) async throws -> Operations.get_stats.Output
     /// - Remark: HTTP `GET /trades`.
     /// - Remark: Generated from `#/paths//trades/get(list_trades)`.
     func list_trades(_ input: Operations.list_trades.Input) async throws -> Operations.list_trades.Output
@@ -270,11 +270,6 @@ extension APIProtocol {
             body: body
         ))
     }
-    /// - Remark: HTTP `GET /maintenance/stats`.
-    /// - Remark: Generated from `#/paths//maintenance/stats/get(get_stats)`.
-    public func get_stats(headers: Operations.get_stats.Input.Headers = .init()) async throws -> Operations.get_stats.Output {
-        try await get_stats(Operations.get_stats.Input(headers: headers))
-    }
     /// - Remark: HTTP `POST /maintenance/trigger-price-update`.
     /// - Remark: Generated from `#/paths//maintenance/trigger-price-update/post(trigger_price_update)`.
     public func trigger_price_update() async throws -> Operations.trigger_price_update.Output {
@@ -311,6 +306,11 @@ extension APIProtocol {
             path: path,
             headers: headers
         ))
+    }
+    /// - Remark: HTTP `GET /stats`.
+    /// - Remark: Generated from `#/paths//stats/get(get_stats)`.
+    public func get_stats(headers: Operations.get_stats.Input.Headers = .init()) async throws -> Operations.get_stats.Output {
+        try await get_stats(Operations.get_stats.Input(headers: headers))
     }
     /// - Remark: HTTP `GET /trades`.
     /// - Remark: Generated from `#/paths//trades/get(list_trades)`.

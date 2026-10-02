@@ -9,7 +9,8 @@ use super::collection::dto::{
     CollectionCardResponse, CollectionStatsResponse, MessageResponse, PaginatedCollectionResponse,
     PriceGuideResponse, RarityCodeParam, SetInfoResponse, SortByParam, SortDirParam,
 };
-use super::maintenance::dto::{EnqueueResponse, StatsResponse};
+use super::maintenance::dto::EnqueueResponse;
+use super::stats::dto::StatsResponse;
 use super::trade::dto::{
     AddTradeCardRequest, CreateTradeRequest, CreateTradeResponse, PaginatedTradesResponse,
     RateTradeRequest, RemoveTradeCardRequest, TradeCardResponse, TradeDetailResponse,
@@ -42,7 +43,7 @@ use utoipa::OpenApi;
         super::card::controller::get_card_info,
         super::card::controller::get_card_price_history,
         super::card::controller::get_card_offers,
-        super::maintenance::controller::get_stats,
+        super::stats::controller::get_stats,
         super::maintenance::controller::trigger_price_update,
         super::maintenance::controller::update_cardmarket_ids,
         super::user::controller::register,
@@ -120,6 +121,7 @@ use utoipa::OpenApi;
         (name = "trades", description = "Trade requests between two collectors (authentication required)"),
         (name = "autocomplete", description = "Public username autocomplete (no authentication)"),
         (name = "sets", description = "Set catalog lookup (no authentication)"),
+        (name = "stats", description = "Global platform statistics (no authentication)"),
     )
 )]
 pub struct ApiDoc;

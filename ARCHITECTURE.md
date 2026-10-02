@@ -132,8 +132,8 @@ en plusieurs répliques en l'état.
 - La table des utilisateurs est un **miroir local** du strict nécessaire (identifiant, pseudo), pas
   une source de vérité.
 - Un extracteur de requête porte l'authentification : **un handler qui le déclare est protégé, un
-  handler qui ne le déclare pas est public.** Seuls la maintenance et l'autocomplétion d'utilisateurs
-  sont publics.
+  handler qui ne le déclare pas est public.** Seuls la maintenance, l'autocomplétion d'utilisateurs,
+  le catalogue des sets et les statistiques globales (`GET /stats`) sont publics.
 
 ## Clients
 
