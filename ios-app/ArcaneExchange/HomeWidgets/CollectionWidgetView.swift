@@ -11,17 +11,9 @@ struct CollectionWidgetView: View {
     let content: HomeWidgetContent<CollectionSnapshot>
 
     var body: some View {
-        Group {
-            switch content {
-            case let .snapshot(snapshot):
-                CollectionTile(snapshot: snapshot)
-            case .signedOut:
-                HomeWidgetMessage.signedOut
-            case .unavailable:
-                HomeWidgetMessage.unavailable
-            }
+        HomeWidgetContainer(content: content, link: .collection) { snapshot in
+            CollectionTile(snapshot: snapshot)
         }
-        .widgetURL(HomeWidgetLink.collection.url)
     }
 }
 
@@ -171,33 +163,6 @@ private struct CollectionValueGraph: View {
 enum HomeWidgetSurface {
     static var background: Color {
         Color(.secondarySystemBackground)
-    }
-}
-
-/// The two states a widget can be in without data.
-@MainActor
-enum HomeWidgetMessage {
-    static var signedOut: some View {
-        message("Connecte-toi dans Arcane Exchange", systemImage: "person.crop.circle")
-    }
-
-    static var unavailable: some View {
-        message("Serveur injoignable pour le moment", systemImage: "wifi.exclamationmark")
-    }
-
-    private static func message(_ text: String, systemImage: String) -> some View {
-        VStack(spacing: 8) {
-            Image(systemName: systemImage)
-                .font(.title2)
-                .foregroundStyle(Palette.primary)
-                .widgetAccentable()
-            Text(text)
-                .font(.footnote.weight(.medium))
-                .multilineTextAlignment(.center)
-                .foregroundStyle(.secondary)
-        }
-        .padding(16)
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 }
 

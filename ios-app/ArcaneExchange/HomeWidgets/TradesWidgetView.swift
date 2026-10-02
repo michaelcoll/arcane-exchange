@@ -9,17 +9,9 @@ struct TradesWidgetView: View {
     let content: HomeWidgetContent<TradesSnapshot>
 
     var body: some View {
-        Group {
-            switch content {
-            case let .snapshot(snapshot):
-                TradesTile(snapshot: snapshot)
-            case .signedOut:
-                HomeWidgetMessage.signedOut
-            case .unavailable:
-                HomeWidgetMessage.unavailable
-            }
+        HomeWidgetContainer(content: content, link: .trades) { snapshot in
+            TradesTile(snapshot: snapshot)
         }
-        .widgetURL(HomeWidgetLink.trades.url)
     }
 }
 
