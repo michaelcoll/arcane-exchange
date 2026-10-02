@@ -98,7 +98,7 @@ private struct TradeWidgetRow: View {
 
             Spacer(minLength: 6)
 
-            TradeStatusPill(status: TradeStatus(apiValue: trade.status))
+            TradeStatusPill(status: trade.status)
                 .widgetAccentable()
         }
         // A `Link` tints its label with the accent; the row keeps the label colors instead.
@@ -117,10 +117,10 @@ extension TradesSnapshot {
     /// The widget gallery's sample, also used for the placeholder while the first timeline loads.
     static let sample = TradesSnapshot(total: 3, trades: [
         ActiveTrade(
-            id: "t1", partnerUsername: "mizzix_42", myCardCount: 2, partnerCardCount: 1, status: "ONE_ACCEPTED"
+            id: "t1", partnerUsername: "mizzix_42", myCardCount: 2, partnerCardCount: 1, status: .oneAccepted
         ),
         ActiveTrade(
-            id: "t2", partnerUsername: "golgari.jo", myCardCount: 1, partnerCardCount: 3, status: "PENDING"
+            id: "t2", partnerUsername: "golgari.jo", myCardCount: 1, partnerCardCount: 3, status: .pending
         )
     ])
 }

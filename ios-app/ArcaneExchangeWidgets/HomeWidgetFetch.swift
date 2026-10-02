@@ -70,7 +70,7 @@ enum HomeWidgetFetch {
                     partnerUsername: trade.partner_username,
                     myCardCount: Int(trade.my_card_count),
                     partnerCardCount: Int(trade.partner_card_count),
-                    status: trade.status
+                    status: TradeStatus(apiValue: trade.status)
                 )
             }
         )

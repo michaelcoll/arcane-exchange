@@ -12,7 +12,7 @@ typealias TradeStatusParam = Components.Schemas.TradeStatusParam
 ///
 /// The API types `status` as a plain string, so this narrows it, falling back to `.pending`
 /// exactly like `toTradeStatus` on the web.
-enum TradeStatus: String, CaseIterable, Hashable {
+enum TradeStatus: String, CaseIterable, Hashable, Codable {
     case pending = "PENDING"
     case oneAccepted = "ONE_ACCEPTED"
     case fullyAccepted = "FULLY_ACCEPTED"
@@ -22,6 +22,12 @@ enum TradeStatus: String, CaseIterable, Hashable {
 
     init(apiValue: String) {
         self = TradeStatus(rawValue: apiValue) ?? .pending
+    }
+
+    /// Same fallback when read back from a cache: a status added after the value was stored
+    /// reads as `.pending` instead of failing the whole decode.
+    init(from decoder: Decoder) throws {
+        try self.init(apiValue: decoder.singleValueContainer().decode(String.self))
     }
 
     var label: String {
