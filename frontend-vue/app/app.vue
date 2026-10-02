@@ -50,7 +50,16 @@ const bottomNavLinkClass = (path: string) => [
 </script>
 
 <template>
-  <div class="min-h-screen pb-24">
+  <!-- Sur mobile, la nav du bas (ou la barre d'action d'une page qui la masque) est fixe :
+       la marge du bas garde le footer hors de sa portée. -->
+  <div
+    :class="[
+      'flex min-h-screen flex-col',
+      isLoaded && isSignedIn
+        ? 'max-md:pb-[calc(6rem+env(safe-area-inset-bottom))]'
+        : 'pb-[env(safe-area-inset-bottom)]',
+    ]"
+  >
     <NuxtRouteAnnouncer />
 
     <header
@@ -61,33 +70,7 @@ const bottomNavLinkClass = (path: string) => [
           <span
             class="border-primary/30 bg-primary/15 grid h-8 w-8 shrink-0 place-items-center overflow-hidden rounded-lg border"
           >
-            <svg
-              viewBox="0 0 28 28"
-              class="h-4 w-4"
-              fill="none"
-              stroke-width="2.2"
-              stroke-linejoin="round"
-              aria-hidden="true"
-            >
-              <rect
-                x="5"
-                y="8.5"
-                width="11"
-                height="11"
-                rx="3"
-                transform="rotate(45 10.5 14)"
-                stroke="var(--primary)"
-              />
-              <rect
-                x="12"
-                y="8.5"
-                width="11"
-                height="11"
-                rx="3"
-                transform="rotate(45 17.5 14)"
-                stroke="var(--secondary)"
-              />
-            </svg>
+            <AppLogo class="h-4 w-4" />
           </span>
           <span class="text-base font-semibold tracking-tight"
             >Arcane <b class="text-primary font-semibold">Exchange</b></span
@@ -134,9 +117,11 @@ const bottomNavLinkClass = (path: string) => [
       </div>
     </header>
 
-    <main>
+    <main class="flex-1">
       <NuxtPage />
     </main>
+
+    <SiteFooter />
 
     <AppToast />
 
