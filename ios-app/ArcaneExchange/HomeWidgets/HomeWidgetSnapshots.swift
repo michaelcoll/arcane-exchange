@@ -94,7 +94,7 @@ struct ActiveTrade: Codable, Equatable, Identifiable {
     let partnerUsername: String
     let myCardCount: Int
     let partnerCardCount: Int
-    let status: String
+    let status: TradeStatus
 
     /// « 2 données · 1 reçue », the web row's subtitle.
     var cardCountsLabel: String {
