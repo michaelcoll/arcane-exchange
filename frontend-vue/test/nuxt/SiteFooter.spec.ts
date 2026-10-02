@@ -67,6 +67,15 @@ describe('SiteFooter', () => {
     expect(link.attributes('rel')).toBe('noopener noreferrer');
   });
 
+  it.each([
+    ['Rejoindre le Discord', 'simple-icons:discord'],
+    ['Code source', 'simple-icons:github'],
+  ])('marks « %s » with the brand logo', async (text, icon) => {
+    const link = await externalLink(text);
+    const icons = link.findAll('.iconify').flatMap((i) => i.classes());
+    expect(icons).toContain(`i-${icon}`);
+  });
+
   it('carries the Fan Content Policy notice and the data attributions', async () => {
     const wrapper = await mountSuspended(SiteFooter);
     expect(wrapper.text()).toContain(

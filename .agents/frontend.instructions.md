@@ -25,6 +25,8 @@
     - **Interactions**: card hover = subtle scale + surface-tint background shift.
 - **Icons**: only `<Icon name="lucide:…" :size="…" />` (`@nuxt/icon`). No hand-rolled SVG icon components or
   inline icon paths.
+  - **Brand logos** (Discord, GitHub…): `simple-icons:…`, since Lucide ships no brand icons (`lucide:github` is
+    deprecated).
 
 **For the full token reference and component inventory, refer to
 [design-system.instructions.md](design-system.instructions.md).**
