@@ -40,7 +40,7 @@ struct HomeWidgetCache {
         }
     }
 
-    private static func key(_ kind: HomeWidgetKind) -> String {
+    static func key(_ kind: HomeWidgetKind) -> String {
         "home_widget_snapshot.\(kind.rawValue)"
     }
 }
