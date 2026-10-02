@@ -39,6 +39,12 @@ enum Palette {
     static var onSecondary: Color {
         Color("OnSecondary")
     }
+
+    /// `--down`: a value going down — a falling collection, a bad deal. Rising values are
+    /// `primary`.
+    static var down: Color {
+        Color("Down")
+    }
 }
 
 extension View {
