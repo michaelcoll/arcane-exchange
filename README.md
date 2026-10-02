@@ -15,7 +15,9 @@ collections, and trade them — card for card.
 - **Trade in two clicks** — request a card, get a counter-offer, negotiate. The app computes the value difference; the
   cash delta is settled between players, off-platform.
 
-**Stack** — Rust (Axum, SQLx) · Nuxt 4 / Vue 3 / Tailwind · PostgreSQL 18 · Clerk for authentication.
+- **On your iPhone too** — a native iOS app, with home-screen widgets for your collection and your ongoing trades.
+
+**Stack** — Rust (Axum, SQLx) · Nuxt 4 / Vue 3 / Tailwind · SwiftUI · PostgreSQL 18 · Clerk for authentication.
 
 ## Quick start (Docker Compose)
 
@@ -27,23 +29,12 @@ docker compose up -d
 - App: <http://localhost:9797>
 - API: <http://localhost:8080>
 
+`docker-compose.yml` stores the database and card images under `/mnt/ssd/…`: adjust those volume paths to your
+machine first.
+
 ## Development
 
-Install [`mise`](https://mise.jdx.dev/) — it provides Node, pnpm and the Rust CLI tools. You also need a stable **Rust**
-toolchain (edition 2024) and a **PostgreSQL 18** instance.
-
-```bash
-mise install                    # toolchain
-mise run setup                  # install dependencies
-docker compose up -d postgres   # or use your own PostgreSQL
-mise run migrate                # apply database migrations
-
-mise run back                   # API on http://localhost:8080
-mise run front                  # app on http://localhost:3000
-```
-
-Before opening a PR, run `mise run checks` (OpenAPI, tests, lint) and `mise run format`.
-`mise tasks` lists everything else.
+See [CONTRIBUTING.md](CONTRIBUTING.md) to set up a development environment and open a pull request.
 
 ## Configuration
 
@@ -53,13 +44,3 @@ development, and in `docker-compose.yml` for Compose.
 
 Authentication is handled by [Clerk](https://clerk.com/): create an instance, then set `CLERK_FRONTEND_API_URL`
 (used by the backend to validate JWTs) along with the publishable and secret keys used by the frontend.
-
-## Contributing
-
-- The HTTP API is documented in [`docs/openapi.yml`](docs/openapi.yml) — regenerate it with `mise run rebuild-docs`.
-- Architecture decisions are recorded in [`docs/adr/`](docs/adr).
-- Conventions, architecture notes and the full task list are in [`AGENTS.md`](AGENTS.md) and `.agents/`.
-
-## License
-
-[MIT](LICENSE) © Michaël COLL
