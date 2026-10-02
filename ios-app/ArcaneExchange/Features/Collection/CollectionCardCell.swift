@@ -120,7 +120,7 @@ struct CollectionCardCell: View {
     }
 
     private func dealBadge(_ deal: CardDeal) -> some View {
-        let color: Color = deal.kind == .good ? .green : .red
+        let color: Color = deal.kind == .good ? .green : Palette.down
         return Text(deal.label)
             .font(.caption2)
             .fontWeight(.bold)

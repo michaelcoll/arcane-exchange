@@ -100,7 +100,7 @@ private struct CollectionTile: View {
     @ViewBuilder private var variation: some View {
         if snapshot.hasEnoughHistory {
             Text(snapshot.variation.label)
-                .foregroundStyle(snapshot.variation.isRising ? Palette.primary : .red)
+                .foregroundStyle(snapshot.variation.isRising ? Palette.primary : Palette.down)
         } else {
             Text("Pas encore assez d'historique")
                 .textCase(.uppercase)

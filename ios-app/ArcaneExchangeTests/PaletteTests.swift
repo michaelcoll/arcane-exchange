@@ -4,7 +4,7 @@ import UIKit
 
 @testable import ArcaneExchange
 
-/// The role colors are the web's `--primary*` / `--secondary*` / `--rarity-*` tokens
+/// The role colors are the web's `--primary*` / `--secondary*` / `--rarity-*` / `--down` tokens
 /// (`frontend-vue/app/assets/css/main.css`), converted from `oklch` to sRGB. Changing one
 /// side without the other breaks this suite.
 @MainActor
@@ -22,6 +22,7 @@ struct PaletteTests {
         "RarityRare": (0x8C6200, 0xE0AF3B),
         "RarityMythic": (0xBC2D00, 0xF5642B),
         "RaritySpecial": (0xB43694, 0xEF6DC9),
+        "Down": (0xC83B32, 0xDF8074),
     ]
 
     @Test(arguments: webValues.keys.sorted())
