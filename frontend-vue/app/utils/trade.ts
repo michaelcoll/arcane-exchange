@@ -21,6 +21,16 @@ export const toTradeStatus = (raw: string): TradeStatus =>
 
 export type TradeTone = 'primary' | 'secondary' | 'good' | 'down' | 'muted';
 
+/** Bordure, fond et texte d'une pastille (`Trade/StatusPill`, fraîcheur des prix du footer). */
+export const TRADE_TONE_CLASSES: Record<TradeTone, string> = {
+  primary: 'border-primary/30 bg-primary/10 text-primary-ink',
+  secondary: 'border-secondary/30 bg-secondary/10 text-secondary-ink',
+  good: 'border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:border-emerald-400/30 dark:bg-emerald-400/10 dark:text-emerald-300',
+  down: 'border-red-500/30 bg-red-500/10 text-red-600 dark:border-red-400/30 dark:bg-red-400/10 dark:text-red-400',
+  muted:
+    'border-slate-300 bg-slate-100 text-slate-500 dark:border-white/15 dark:bg-white/5 dark:text-slate-400',
+};
+
 /** Note laissée au partenaire : 1 à 5 étoiles, 0 si la notation a été passée, `null` tant que
  * non renseignée. */
 export type TradeRating = number | null;

@@ -13,30 +13,21 @@ const year = new Date().getFullYear();
 
 // The footer is not critical: if `/stats` fails, the stats and the pill simply stay hidden — no
 // toast, no error state.
-const { data: stats } = useAsyncData('stats', getStats, { lazy: true });
+const { data: stats } = getStats();
 
 const freshness = computed(() =>
   stats.value?.last_price_date ? priceFreshness(stats.value.last_price_date) : null,
 );
 
-const formatCount = (value: number) => new Intl.NumberFormat('fr-FR').format(value);
-
 const statItems = computed(() =>
   stats.value
     ? [
-        { label: 'Cartes référencées', value: formatCount(stats.value.card_number) },
-        { label: 'Prix enregistrés', value: formatCount(stats.value.card_price_number) },
-        { label: 'Taille de la base', value: `${formatCount(stats.value.db_size_mb)} Mo` },
+        { label: 'Cartes référencées', value: fmtInt(stats.value.card_number) },
+        { label: 'Prix enregistrés', value: fmtInt(stats.value.card_price_number) },
+        { label: 'Taille de la base', value: `${fmtInt(stats.value.db_size_mb)} Mo` },
       ]
     : [],
 );
-
-// Same tones as `Trade/StatusPill`, in its `sm` size.
-const pillTone: Record<PriceFreshness['tone'], string> = {
-  good: 'border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:border-emerald-400/30 dark:bg-emerald-400/10 dark:text-emerald-300',
-  muted:
-    'border-slate-300 bg-slate-100 text-slate-500 dark:border-white/15 dark:bg-white/5 dark:text-slate-400',
-};
 
 const label =
   'font-mono text-[10.5px] font-medium tracking-[0.13em] whitespace-nowrap text-[var(--ink-3)] uppercase';
@@ -68,7 +59,7 @@ const dot = 'h-[3px] w-[3px] flex-none rounded-full bg-[var(--ink-4)]';
               :data-tone="freshness.tone"
               :class="[
                 'inline-flex items-center gap-1.5 rounded-full border px-2.5 py-[3px] font-mono text-[10px] font-semibold tracking-wider whitespace-nowrap',
-                pillTone[freshness.tone],
+                TRADE_TONE_CLASSES[freshness.tone],
               ]"
             >
               <span
