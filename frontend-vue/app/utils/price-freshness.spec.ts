@@ -1,7 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { priceFreshness } from './price-freshness';
 
-// Late evening, local time: the day must not drift with the offset from UTC.
 const now = new Date(2026, 9, 2, 23, 30);
 
 describe('priceFreshness', () => {
