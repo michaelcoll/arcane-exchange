@@ -610,18 +610,6 @@ paths:
                 $ref: '#/components/schemas/ErrorResponse'
       security:
       - bearer_auth: []
-  /maintenance/stats:
-    get:
-      tags:
-      - maintenance
-      operationId: get_stats
-      responses:
-        '200':
-          description: Global database statistics
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/StatsResponse'
   /maintenance/trigger-price-update:
     post:
       tags:
@@ -784,6 +772,23 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+  /stats:
+    get:
+      tags:
+      - stats
+      operationId: get_stats
+      responses:
+        '200':
+          description: Global platform statistics, cached for 6 hours
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+              description: public, max-age=21600
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StatsResponse'
   /trades:
     get:
       tags:
@@ -1810,6 +1815,7 @@ components:
       - desc
     StatsResponse:
       type: object
+      description: Global platform statistics, public.
       required:
       - card_number
       - card_price_number
@@ -1818,15 +1824,25 @@ components:
         card_number:
           type: integer
           format: int32
+          description: Number of Cards known to the platform.
           minimum: 0
         card_price_number:
           type: integer
           format: int32
+          description: Number of Cardmarket prices recorded.
           minimum: 0
         db_size_mb:
           type: integer
           format: int32
+          description: Database size, in MB.
           minimum: 0
+        last_price_date:
+          type:
+          - string
+          - 'null'
+          description: |-
+            ISO 8601 date string (YYYY-MM-DD) of the most recent Cardmarket price — prices are dated
+            to the day. `null` until a price has been imported.
     TradeBindersResponse:
       type: object
       required:
@@ -2036,3 +2052,5 @@ tags:
   description: Public username autocomplete (no authentication)
 - name: sets
   description: Set catalog lookup (no authentication)
+- name: stats
+  description: Global platform statistics (no authentication)

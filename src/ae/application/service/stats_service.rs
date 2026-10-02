@@ -21,11 +21,13 @@ impl StatsUseCase for StatsService {
         let card_number = self.repository.get_card_number().await?;
         let card_price_number = self.repository.get_card_price_number().await?;
         let db_size_mb = self.repository.get_db_size().await?;
+        let last_price_date = self.repository.get_last_price_date().await?;
 
         Ok(Stats {
             card_number,
             card_price_number,
             db_size_mb,
+            last_price_date,
         })
     }
 }
@@ -35,6 +37,7 @@ mod tests {
     use super::*;
     use crate::application::error::InfraError;
     use crate::application::repository::MockStatsRepository;
+    use chrono::NaiveDate;
 
     #[tokio::test]
     async fn test_get_stats_returns_stats_on_success() {
@@ -55,6 +58,11 @@ mod tests {
             .times(1)
             .returning(|| Box::pin(async { Ok(128) }));
 
+        mock_repository
+            .expect_get_last_price_date()
+            .times(1)
+            .returning(|| Box::pin(async { Ok(NaiveDate::from_ymd_opt(2026, 10, 1)) }));
+
         let service = StatsService::new(Arc::new(mock_repository));
         let result = service.get_stats().await;
 
@@ -63,6 +71,39 @@ mod tests {
         assert_eq!(stats.card_number, 42);
         assert_eq!(stats.card_price_number, 85);
         assert_eq!(stats.db_size_mb, 128);
+        assert_eq!(stats.last_price_date, NaiveDate::from_ymd_opt(2026, 10, 1));
+    }
+
+    #[tokio::test]
+    async fn test_get_stats_returns_error_on_last_price_date_repository_error() {
+        let mut mock_repository = MockStatsRepository::new();
+        mock_repository
+            .expect_get_card_number()
+            .returning(|| Box::pin(async { Ok(42) }));
+        mock_repository
+            .expect_get_card_price_number()
+            .returning(|| Box::pin(async { Ok(85) }));
+        mock_repository
+            .expect_get_db_size()
+            .returning(|| Box::pin(async { Ok(128) }));
+        mock_repository
+            .expect_get_last_price_date()
+            .times(1)
+            .returning(|| {
+                Box::pin(async {
+                    Err(AppError::Infra(InfraError::RepositoryError(
+                        "Date DB error".to_string(),
+                    )))
+                })
+            });
+
+        let service = StatsService::new(Arc::new(mock_repository));
+        let result = service.get_stats().await;
+
+        match result.unwrap_err() {
+            AppError::Infra(InfraError::RepositoryError(msg)) => assert_eq!(msg, "Date DB error"),
+            _ => panic!("Expected RepositoryError"),
+        }
     }
 
     #[tokio::test]
@@ -171,6 +212,11 @@ mod tests {
             .times(1)
             .returning(|| Box::pin(async { Ok(0) }));
 
+        mock_repository
+            .expect_get_last_price_date()
+            .times(1)
+            .returning(|| Box::pin(async { Ok(None) }));
+
         let service = StatsService::new(Arc::new(mock_repository));
         let result = service.get_stats().await;
 
@@ -179,6 +225,7 @@ mod tests {
         assert_eq!(stats.card_number, 0);
         assert_eq!(stats.card_price_number, 0);
         assert_eq!(stats.db_size_mb, 0);
+        assert_eq!(stats.last_price_date, None);
     }
 
     #[tokio::test]
@@ -199,6 +246,11 @@ mod tests {
             .expect_get_db_size()
             .times(1)
             .returning(|| Box::pin(async { Ok(u16::MAX) }));
+
+        mock_repository
+            .expect_get_last_price_date()
+            .times(1)
+            .returning(|| Box::pin(async { Ok(None) }));
 
         let service = StatsService::new(Arc::new(mock_repository));
         let result = service.get_stats().await;
@@ -228,6 +280,11 @@ mod tests {
             .expect_get_db_size()
             .times(2)
             .returning(|| Box::pin(async { Ok(30) }));
+
+        mock_repository
+            .expect_get_last_price_date()
+            .times(2)
+            .returning(|| Box::pin(async { Ok(None) }));
 
         let service = Arc::new(StatsService::new(Arc::new(mock_repository)));
 

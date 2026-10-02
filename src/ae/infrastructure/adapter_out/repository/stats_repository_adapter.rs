@@ -2,6 +2,7 @@ use crate::application::error::AppError;
 use crate::application::repository::StatsRepository;
 use crate::infrastructure::adapter_out::repository::entities::{CountEntity, SizeEntity};
 use async_trait::async_trait;
+use chrono::NaiveDate;
 use sqlx::{Pool, Postgres};
 
 pub struct StatsRepositoryAdapter {
@@ -50,14 +51,24 @@ impl StatsRepository for StatsRepositoryAdapter {
         .size
         .unwrap() as u16)
     }
+
+    #[tracing::instrument(name = "stats_repo.get_last_price_date", skip_all, fields(sentry.op = "db"))]
+    async fn get_last_price_date(&self) -> Result<Option<NaiveDate>, AppError> {
+        Ok(
+            sqlx::query_scalar!("SELECT max(date) AS last_price_date FROM cardmarket_price")
+                .fetch_one(&self.pool)
+                .await?,
+        )
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::infrastructure::adapter_out::repository::common_repository_tests::{
-        insert_card_without_cardmarket_id, insert_set,
+        insert_card_without_cardmarket_id, insert_price, insert_set,
     };
+    use crate::infrastructure::adapter_out::repository::entities::CardMarketPriceEntity;
     use sqlx::PgPool;
 
     #[sqlx::test]
@@ -112,6 +123,33 @@ mod tests {
 
         assert!(result.is_ok());
         assert_eq!(result.unwrap(), 0);
+    }
+
+    #[sqlx::test]
+    async fn should_return_the_most_recent_price_date(pool: PgPool) {
+        let adapter = StatsRepositoryAdapter::new(pool.clone());
+        let older = NaiveDate::from_ymd_opt(2026, 9, 30).unwrap();
+        let latest = NaiveDate::from_ymd_opt(2026, 10, 1).unwrap();
+        insert_price(&pool, CardMarketPriceEntity::simple_at(1, latest, 100)).await;
+        insert_price(&pool, CardMarketPriceEntity::simple_at(2, older, 100)).await;
+
+        let result = adapter.get_last_price_date().await;
+
+        assert_eq!(result.unwrap(), Some(latest));
+    }
+
+    #[sqlx::test]
+    async fn should_return_no_price_date_when_no_prices_exist(pool: PgPool) {
+        let adapter = StatsRepositoryAdapter::new(pool.clone());
+
+        sqlx::query("TRUNCATE cardmarket_price")
+            .execute(&pool)
+            .await
+            .unwrap();
+
+        let result = adapter.get_last_price_date().await;
+
+        assert_eq!(result.unwrap(), None);
     }
 
     #[sqlx::test]
