@@ -45,7 +45,10 @@ private struct SearchResultsGrid: View {
 
     var body: some View {
         content
-            .task { await model.load() }
+            .task { await model.loadInitiallyIfNeeded() }
+            .onChange(of: model.filters) {
+                Task { await model.load() }
+            }
     }
 
     @ViewBuilder private var content: some View {
@@ -77,7 +80,9 @@ private struct SearchResultsGrid: View {
                     playerHeader(username)
                 }
 
-                Text(CollectionCopy.cardCount(model.total))
+                CollectionFilterRail(filters: $model.filters, sortOptions: target.sortOptions, onFilterTap: nil)
+
+                Text(CollectionCopy.sortedSummary(total: model.total, sortBy: model.filters.sortBy))
                     .font(.caption)
                     .textCase(.uppercase)
                     .foregroundStyle(.secondary)

@@ -117,6 +117,11 @@ enum CollectionCopy {
         count > 1 ? "\(count) cartes" : "\(count) carte"
     }
 
+    /// "42 cartes · triées par valeur" — the line above a sorted card grid.
+    static func sortedSummary(total: Int, sortBy: SortField) -> String {
+        "\(cardCount(total)) · triées par \(sortBy.label.lowercased())"
+    }
+
     /// "3 joueurs la proposent" / "1 joueur la propose" — the owners-list section header.
     static func offerCount(_ count: Int) -> String {
         count > 1 ? "\(count) joueurs la proposent" : "\(count) joueur la propose"

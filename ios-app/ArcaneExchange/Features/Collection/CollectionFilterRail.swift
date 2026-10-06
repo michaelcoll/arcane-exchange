@@ -4,17 +4,23 @@ import SwiftUI
 /// are a refinement of the list, not app chrome.
 struct CollectionFilterRail: View {
     @Binding var filters: CollectionFilters
-    let onFilterTap: () -> Void
+    /// The criteria the sort menu offers. With a single one, the menu only picks the direction.
+    let sortOptions: [SortField]
+    /// `nil` hides the filter chip, for a screen that only sorts.
+    let onFilterTap: (() -> Void)?
 
     var body: some View {
         ScrollView(.horizontal) {
             HStack(spacing: 8) {
                 sortMenu
-                chipButton(
-                    title: CollectionCopy.filterChip(activeCount: filters.activeCount),
-                    systemImage: "line.3.horizontal.decrease",
-                    isActive: filters.activeCount > 0
-                )
+                if let onFilterTap {
+                    chipButton(
+                        title: CollectionCopy.filterChip(activeCount: filters.activeCount),
+                        systemImage: "line.3.horizontal.decrease",
+                        isActive: filters.activeCount > 0,
+                        action: onFilterTap
+                    )
+                }
             }
             .padding(.vertical, 2)
         }
@@ -25,9 +31,11 @@ struct CollectionFilterRail: View {
     /// The arrow, not the wording, carries the direction — so the chip's icon flips with it.
     private var sortMenu: some View {
         Menu(content: {
-            Picker("Trier par", selection: $filters.sortBy) {
-                ForEach(SortField.collectionOptions, id: \.self) { field in
-                    Text(field.label).tag(field)
+            if sortOptions.count > 1 {
+                Picker("Trier par", selection: $filters.sortBy) {
+                    ForEach(sortOptions, id: \.self) { field in
+                        Text(field.label).tag(field)
+                    }
                 }
             }
             Picker("Ordre", selection: $filters.sortDir) {
@@ -43,8 +51,13 @@ struct CollectionFilterRail: View {
         .tint(Palette.primary)
     }
 
-    private func chipButton(title: String, systemImage: String, isActive: Bool) -> some View {
-        Button(action: onFilterTap, label: {
+    private func chipButton(
+        title: String,
+        systemImage: String,
+        isActive: Bool,
+        action: @escaping () -> Void
+    ) -> some View {
+        Button(action: action, label: {
             chipLabel(title, systemImage: systemImage)
         })
         .buttonStyle(.bordered)
@@ -60,14 +73,24 @@ struct CollectionFilterRail: View {
 }
 
 #Preview {
-    CollectionFilterRail(filters: .constant(CollectionFilters()), onFilterTap: {})
-        .padding()
+    CollectionFilterRail(
+        filters: .constant(CollectionFilters()),
+        sortOptions: SortField.collectionOptions,
+        onFilterTap: {}
+    )
+    .padding()
 }
 
 #Preview("Filtres actifs") {
     CollectionFilterRail(
         filters: .constant(CollectionFilters(rarities: [.R, .M], sets: ["MH3"])),
+        sortOptions: SortField.collectionOptions,
         onFilterTap: {}
     )
     .padding()
+}
+
+#Preview("Tri seul") {
+    CollectionFilterRail(filters: .constant(CollectionFilters()), sortOptions: [.trend], onFilterTap: nil)
+        .padding()
 }
