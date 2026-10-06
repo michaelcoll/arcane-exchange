@@ -51,8 +51,13 @@ final class SearchResultsViewModel {
     private(set) var sets: [SetInfo] = []
     private var isLoadingSets = false
 
-    /// Next page to request; doubles as a generation counter so a stale `loadMore` bails.
+    /// Next page to request.
     private var nextPage: Int32 = 0
+
+    /// Bumped by every `load()`. A response is applied only while its generation is still the
+    /// current one, so when the filters change mid-flight the latest load wins, whatever order
+    /// the responses come back in.
+    private var generation = 0
 
     var hasMore: Bool {
         cards.count < total
@@ -74,17 +79,21 @@ final class SearchResultsViewModel {
 
     /// Reloads from page 0. Called for the first load and whenever `filters` changes.
     func load() async {
+        generation += 1
+        let current = generation
         isLoading = true
         loadError = nil
         nextPage = 0
         ArtworkPipeline.cancelPrefetching()
         do {
             let response = try await fetchPage(0)
+            guard generation == current else { return }
             cards = response.items
             total = Int(response.total)
             nextPage = 1
             ArtworkPipeline.prefetch(CardArtwork.urls(for: response.items))
         } catch {
+            guard generation == current else { return }
             cards = []
             total = 0
             loadError = Self.loadError(from: error)
@@ -96,17 +105,19 @@ final class SearchResultsViewModel {
         guard !isLoading, !isLoadingMore, hasMore, loadError == nil else { return }
         guard cards.suffix(4).contains(card) else { return }
 
+        let current = generation
         let page = nextPage
         isLoadingMore = true
         defer { isLoadingMore = false }
         do {
             let response = try await fetchPage(page)
-            guard nextPage == page else { return }
+            guard generation == current else { return }
             cards.append(contentsOf: response.items)
             total = Int(response.total)
             nextPage = page + 1
             ArtworkPipeline.prefetch(CardArtwork.urls(for: response.items))
         } catch {
+            guard generation == current else { return }
             loadError = Self.loadError(from: error)
         }
     }

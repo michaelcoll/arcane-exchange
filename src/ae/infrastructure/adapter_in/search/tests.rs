@@ -736,6 +736,26 @@ async fn search_card_sets_treats_a_blank_player_username_as_absent() {
 }
 
 #[tokio::test]
+async fn search_card_sets_treats_a_blank_q_as_absent() {
+    let mut mock = MockSearchSetsUseCase::new();
+    mock.expect_search_sets()
+        .withf(|scope| scope.search_query.is_none())
+        .returning(|_| Box::pin(async { Ok(vec![]) }));
+
+    let result = search_card_sets(
+        AuthenticatedUser(User::for_testing()),
+        State(make_app_state_with_search_sets(mock)),
+        Query(SearchSetsParams {
+            q: Some("  ".to_string()),
+            player_username: Some("Bob".to_string()),
+        }),
+    )
+    .await;
+
+    assert!(result.is_ok());
+}
+
+#[tokio::test]
 async fn search_card_sets_returns_the_sets_in_the_use_case_order() {
     let mut mock = MockSearchSetsUseCase::new();
     mock.expect_search_sets().returning(|_| {
