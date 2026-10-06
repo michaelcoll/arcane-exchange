@@ -71,7 +71,7 @@ struct CollectionView: View {
     }
 
     private var summary: String {
-        "\(CollectionCopy.cardCount(model.total)) · triées par \(model.filters.sortBy.label.lowercased())"
+        CollectionCopy.sortedSummary(total: model.total, sortBy: model.filters.sortBy)
     }
 
     /// The import may have replaced the whole collection — reload from page 0 once the sheet

@@ -31,6 +31,10 @@ final class SearchResultsViewModel {
 
     let target: SearchResultsRoute.Target
 
+    /// The sort picked on this screen. It lives as long as the model, i.e. while the screen
+    /// stays on the navigation stack, so a round trip to a card detail keeps it.
+    var filters: CollectionFilters
+
     private(set) var cards: [CollectionCard] = []
     private(set) var total = 0
     private(set) var isLoading = false
@@ -46,8 +50,18 @@ final class SearchResultsViewModel {
 
     init(target: SearchResultsRoute.Target) {
         self.target = target
+        filters = target.defaultFilters
     }
 
+    /// First load only. The view's `.task` re-runs each time the screen re-appears (e.g. after
+    /// popping a card detail); reloading then would throw away the loaded pages and the scroll
+    /// position.
+    func loadInitiallyIfNeeded() async {
+        guard cards.isEmpty, !isLoading, loadError == nil else { return }
+        await load()
+    }
+
+    /// Reloads from page 0. Called for the first load and whenever `filters` changes.
     func load() async {
         isLoading = true
         loadError = nil
@@ -87,27 +101,7 @@ final class SearchResultsViewModel {
     }
 
     private func fetchPage(_ page: Int32) async throws -> Components.Schemas.PaginatedCollectionResponse {
-        let query: Operations.search_cards.Input.Query
-        switch target {
-        case let .card(text):
-            query = .init(
-                page: page,
-                page_size: Self.pageSize,
-                sort_by: .trend,
-                sort_dir: .desc,
-                q: text
-            )
-        case let .player(username):
-            // `sort_by=added_at` is only accepted alongside `player_username` (see the 400 rule
-            // on `/search/card`) — which is exactly this branch.
-            query = .init(
-                page: page,
-                page_size: Self.pageSize,
-                sort_by: .added_at,
-                sort_dir: .desc,
-                player_username: username
-            )
-        case .decklist:
+        guard let query = target.query(filters: filters, page: page, pageSize: Self.pageSize) else {
             // The view never instantiates this model for a decklist target.
             return .init(items: [], page: 0, page_size: Self.pageSize, total: 0)
         }

@@ -16,7 +16,11 @@ struct CollectionCardGrid: View {
     var body: some View {
         ScrollView {
             LazyVStack(alignment: .leading, spacing: 14) {
-                CollectionFilterRail(filters: $filters, onFilterTap: onFilterTap)
+                CollectionFilterRail(
+                    filters: $filters,
+                    sortOptions: SortField.collectionOptions,
+                    onFilterTap: onFilterTap
+                )
 
                 Text(summary)
                     .font(.caption)
