@@ -6,21 +6,18 @@ struct CollectionFilterRail: View {
     @Binding var filters: CollectionFilters
     /// The criteria the sort menu offers. With a single one, the menu only picks the direction.
     let sortOptions: [SortField]
-    /// `nil` hides the filter chip, for a screen that only sorts.
-    let onFilterTap: (() -> Void)?
+    let onFilterTap: () -> Void
 
     var body: some View {
         ScrollView(.horizontal) {
             HStack(spacing: 8) {
                 sortMenu
-                if let onFilterTap {
-                    chipButton(
-                        title: CollectionCopy.filterChip(activeCount: filters.activeCount),
-                        systemImage: "line.3.horizontal.decrease",
-                        isActive: filters.activeCount > 0,
-                        action: onFilterTap
-                    )
-                }
+                chipButton(
+                    title: CollectionCopy.filterChip(activeCount: filters.activeCount),
+                    systemImage: "line.3.horizontal.decrease",
+                    isActive: filters.activeCount > 0,
+                    action: onFilterTap
+                )
             }
             .padding(.vertical, 2)
         }
@@ -88,9 +85,4 @@ struct CollectionFilterRail: View {
         onFilterTap: {}
     )
     .padding()
-}
-
-#Preview("Tri seul") {
-    CollectionFilterRail(filters: .constant(CollectionFilters()), sortOptions: [.trend], onFilterTap: nil)
-        .padding()
 }

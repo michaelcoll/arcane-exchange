@@ -4,63 +4,113 @@ use crate::domain::card::{Card, CardId, CollectionEntry, CopyId};
 use crate::domain::card_offer::CardOfferSortField;
 use crate::domain::collection::{CollectionQuery, CollectionSortField, SearchQuery, SearchScope};
 use crate::domain::pagination::{Paginated, Pagination};
+use crate::domain::rarity_code::RarityCode;
 use crate::domain::set_name::{SetCode, SetName};
 use crate::domain::user::UserId;
 use crate::infrastructure::adapter_out::repository::entities::{
     CardOfferEntity, CardWithPriceEntity,
 };
 use async_trait::async_trait;
-use sqlx::{AssertSqlSafe, Pool, Postgres, query_as, query_scalar};
+use sqlx::postgres::PgArguments;
+use sqlx::{Arguments, AssertSqlSafe, Pool, Postgres, query_as_with, query_scalar_with};
 
-/// Builds the "AND ..." filter clause (search, rarity, sets, price range, player
-/// username) for the collection query, starting bind placeholders at `start_idx`.
-/// Returns (filter_clause, order_prefix, next_idx).
-fn build_filter_clause(
-    query: &CollectionQuery,
-    player_username: Option<&str>,
-    start_idx: u32,
-) -> (String, String, u32) {
-    let mut idx = start_idx;
-    let mut conditions = Vec::new();
-    let mut order_prefix = String::new();
+/// Restricts the public modes (search and its facets) to the cards actually offered for trade —
+/// see `.agents/database-schema.instructions.md`.
+const TRADABLE_JOIN: &str = r#"JOIN v_tradable_entry vte ON (vte.user_id, vte.set_code, vte.collector_number, vte.language_code, vte.foil) =
+                                             (cp.user_id, cp.set_code, cp.collector_number, cp.language_code, cp.foil)"#;
 
-    if query.search_query.is_some() {
-        conditions.push(format!(
-            "(cp.name ILIKE '%' || ${idx} || '%' OR ${idx} <% cp.name)"
-        ));
-        order_prefix = format!("word_similarity(${idx}, cp.name) DESC,");
-        idx += 1;
-    }
-    if !query.rarity.is_empty() {
-        conditions.push(format!("cp.rarity = ANY(${idx})"));
-        idx += 1;
-    }
-    if !query.sets.is_empty() {
-        conditions.push(format!("cp.set_code = ANY(${idx})"));
-        idx += 1;
-    }
-    if query.price_min.is_some() {
-        conditions.push(format!("cp.trend >= ${idx}"));
-        idx += 1;
-    }
-    if query.price_max.is_some() {
-        conditions.push(format!("cp.trend <= ${idx}"));
-        idx += 1;
-    }
-    if player_username.is_some() {
-        conditions.push(format!(
-            "cp.user_id IN (SELECT id FROM users WHERE LOWER(username) = LOWER(${idx}))"
-        ));
-        idx += 1;
+/// The filters of a card listing (text, rarity, sets, price range, player), as SQL over
+/// `mv_card_prices cp`.
+#[derive(Default)]
+struct Filters<'a> {
+    search_query: Option<&'a str>,
+    rarity: &'a [RarityCode],
+    sets: &'a [String],
+    price_min: Option<u32>,
+    price_max: Option<u32>,
+    player_username: Option<&'a str>,
+}
+
+impl<'a> Filters<'a> {
+    fn of(query: &'a CollectionQuery, player_username: Option<&'a str>) -> Self {
+        Self {
+            search_query: query.search_query.as_deref(),
+            rarity: &query.rarity,
+            sets: &query.sets,
+            price_min: query.price_min,
+            price_max: query.price_max,
+            player_username,
+        }
     }
 
-    let filter_clause = if conditions.is_empty() {
-        String::new()
-    } else {
-        format!("AND {}", conditions.join(" AND "))
-    };
+    /// The scope alone: a facet must not shrink as the user filters.
+    fn scope(scope: &'a SearchScope) -> Self {
+        Self {
+            search_query: scope.search_query.as_deref(),
+            player_username: scope.player_username.as_deref(),
+            ..Self::default()
+        }
+    }
 
-    (filter_clause, order_prefix, idx)
+    /// Appends the filters' values to `args` and returns the matching `AND ...` clause and
+    /// `ORDER BY` prefix. Each placeholder is numbered after the value it was just bound to, so
+    /// the clause and the binds can never drift apart, whatever was bound before.
+    fn bind(&self, args: &mut PgArguments) -> Result<(String, String), AppError> {
+        let mut conditions = Vec::new();
+        let mut order_prefix = String::new();
+
+        if let Some(q) = self.search_query {
+            let idx = add(args, q)?;
+            conditions.push(format!(
+                "(cp.name ILIKE '%' || ${idx} || '%' OR ${idx} <% cp.name)"
+            ));
+            order_prefix = format!("word_similarity(${idx}, cp.name) DESC,");
+        }
+        if !self.rarity.is_empty() {
+            let rarity: Vec<String> = self.rarity.iter().map(ToString::to_string).collect();
+            let idx = add(args, rarity)?;
+            conditions.push(format!("cp.rarity = ANY(${idx})"));
+        }
+        if !self.sets.is_empty() {
+            let idx = add(args, self.sets)?;
+            conditions.push(format!("cp.set_code = ANY(${idx})"));
+        }
+        if let Some(v) = self.price_min {
+            let idx = add(args, i64::from(v))?;
+            conditions.push(format!("cp.trend >= ${idx}"));
+        }
+        if let Some(v) = self.price_max {
+            let idx = add(args, i64::from(v))?;
+            conditions.push(format!("cp.trend <= ${idx}"));
+        }
+        if let Some(username) = self.player_username {
+            let idx = add(args, username)?;
+            conditions.push(format!(
+                "cp.user_id IN (SELECT id FROM users WHERE LOWER(username) = LOWER(${idx}))"
+            ));
+        }
+
+        let filter_clause = if conditions.is_empty() {
+            String::new()
+        } else {
+            format!("AND {}", conditions.join(" AND "))
+        };
+
+        Ok((filter_clause, order_prefix))
+    }
+}
+
+/// Binds `value` as the next argument and returns its placeholder number.
+fn add<'t, T>(args: &mut PgArguments, value: T) -> Result<usize, AppError>
+where
+    T: sqlx::Encode<'t, Postgres> + sqlx::Type<Postgres>,
+{
+    args.add(value).map_err(repository_error)?;
+    Ok(args.len())
+}
+
+fn repository_error(e: impl ToString) -> AppError {
+    AppError::Infra(InfraError::RepositoryError(e.to_string()))
 }
 
 pub struct CardPricesViewRepositoryAdapter {
@@ -86,15 +136,19 @@ impl CardPricesViewRepositoryAdapter {
         query: CollectionQuery,
         player_username: Option<&str>,
     ) -> Result<Paginated<Card>, AppError> {
-        let limit_idx = if user_id.is_some() { 2 } else { 1 };
-        let offset_idx = limit_idx + 1;
-        let (filter_clause, order_prefix, _) =
-            build_filter_clause(&query, player_username, offset_idx + 1);
-        let (count_filter_clause, _, _) = build_filter_clause(
-            &query,
-            player_username,
-            if user_id.is_some() { 2 } else { 1 },
-        );
+        let filters = Filters::of(&query, player_username);
+
+        // `$1` is the user, when there is one: `where_clause` below relies on it.
+        let mut args = PgArguments::default();
+        let mut count_args = PgArguments::default();
+        if let Some(uid) = user_id {
+            add(&mut args, uid.as_str())?;
+            add(&mut count_args, uid.as_str())?;
+        }
+        let limit_idx = add(&mut args, i64::from(query.pagination.limit()))?;
+        let offset_idx = add(&mut args, i64::from(query.pagination.offset()))?;
+        let (filter_clause, order_prefix) = filters.bind(&mut args)?;
+        let (count_filter_clause, _) = filters.bind(&mut count_args)?;
 
         // `reserved` is only meaningful when the result set can't mix cards from several
         // owners: the caller's own collection (`user_id` bound), or a public search scoped to
@@ -109,15 +163,10 @@ impl CardPricesViewRepositoryAdapter {
                        AND t.status IN ('ONE_ACCEPTED', 'FULLY_ACCEPTED')
                  )"#;
 
-        // Only the public modes (search) are restricted to cards actually offered for trade
-        // (`v_tradable_entry`): the caller's own private collection (`user_id` bound) is never
-        // filtered by visibility/binders/rarity — see `.agents/database-schema.instructions.md`.
-        let tradable_join = if user_id.is_some() {
-            ""
-        } else {
-            r#"JOIN v_tradable_entry vte ON (vte.user_id, vte.set_code, vte.collector_number, vte.language_code, vte.foil) =
-                                             (cp.user_id, cp.set_code, cp.collector_number, cp.language_code, cp.foil)"#
-        };
+        // Only the public modes (search) are restricted to cards actually offered for trade: the
+        // caller's own private collection (`user_id` bound) is never filtered by
+        // visibility/binders/rarity.
+        let tradable_join = if user_id.is_some() { "" } else { TRADABLE_JOIN };
 
         let (where_clause, owned_columns, group_by_clause) = if user_id.is_some() {
             (
@@ -203,43 +252,11 @@ impl CardPricesViewRepositoryAdapter {
             query.sort_dir,
         );
 
-        let offset = i64::from(query.pagination.offset());
-        let limit = i64::from(query.pagination.limit());
-
-        let mut base_query = query_as::<_, CardWithPriceEntity>(AssertSqlSafe(sql.as_str()));
-        if let Some(uid) = user_id {
-            base_query = base_query.bind(uid.as_str());
-        }
-        base_query = base_query.bind(limit).bind(offset);
-        if let Some(q) = &query.search_query {
-            base_query = base_query.bind(q.clone());
-        }
-        if !query.rarity.is_empty() {
-            base_query = base_query.bind(
-                query
-                    .rarity
-                    .iter()
-                    .map(|r| r.to_string())
-                    .collect::<Vec<_>>(),
-            );
-        }
-        if !query.sets.is_empty() {
-            base_query = base_query.bind(query.sets.clone());
-        }
-        if let Some(v) = query.price_min {
-            base_query = base_query.bind(v as i64);
-        }
-        if let Some(v) = query.price_max {
-            base_query = base_query.bind(v as i64);
-        }
-        if let Some(username) = player_username {
-            base_query = base_query.bind(username.to_string());
-        }
-
-        let entities = base_query
-            .fetch_all(&self.pool)
-            .await
-            .map_err(|e| AppError::Infra(InfraError::RepositoryError(e.to_string())))?;
+        let entities =
+            query_as_with::<_, CardWithPriceEntity, _>(AssertSqlSafe(sql.as_str()), args)
+                .fetch_all(&self.pool)
+                .await
+                .map_err(repository_error)?;
 
         let count_sql = if user_id.is_some() {
             format!("SELECT COUNT(*) FROM mv_card_prices cp {where_clause} {count_filter_clause}")
@@ -252,39 +269,10 @@ impl CardPricesViewRepositoryAdapter {
             )
         };
 
-        let mut base_count = query_scalar::<_, i64>(AssertSqlSafe(count_sql.as_str()));
-        if let Some(uid) = user_id {
-            base_count = base_count.bind(uid.as_str());
-        }
-        if let Some(q) = &query.search_query {
-            base_count = base_count.bind(q.clone());
-        }
-        if !query.rarity.is_empty() {
-            base_count = base_count.bind(
-                query
-                    .rarity
-                    .iter()
-                    .map(|r| r.to_string())
-                    .collect::<Vec<_>>(),
-            );
-        }
-        if !query.sets.is_empty() {
-            base_count = base_count.bind(query.sets.clone());
-        }
-        if let Some(v) = query.price_min {
-            base_count = base_count.bind(v as i64);
-        }
-        if let Some(v) = query.price_max {
-            base_count = base_count.bind(v as i64);
-        }
-        if let Some(username) = player_username {
-            base_count = base_count.bind(username.to_string());
-        }
-
-        let total: i64 = base_count
+        let total: i64 = query_scalar_with(AssertSqlSafe(count_sql.as_str()), count_args)
             .fetch_one(&self.pool)
             .await
-            .map_err(|e| AppError::Infra(InfraError::RepositoryError(e.to_string())))?;
+            .map_err(repository_error)?;
 
         Ok(Paginated {
             items: entities
@@ -352,14 +340,8 @@ impl CardPricesViewRepository for CardPricesViewRepositoryAdapter {
 
     #[tracing::instrument(name = "card_prices_view_repo.search_sets", skip_all, fields(sentry.op = "db"))]
     async fn search_sets(&self, scope: &SearchScope) -> Result<Vec<SetName>, AppError> {
-        // Only the scope reaches the filter clause: rarity, sets and prices are left out on
-        // purpose, so the facet doesn't shrink as the user filters.
-        let scope_query = CollectionQuery {
-            search_query: scope.search_query.clone(),
-            ..CollectionQuery::default()
-        };
-        let (filter_clause, _, _) =
-            build_filter_clause(&scope_query, scope.player_username.as_deref(), 1);
+        let mut args = PgArguments::default();
+        let (filter_clause, _) = Filters::scope(scope).bind(&mut args)?;
 
         // Same base as the search (`mv_card_prices` + `v_tradable_entry`), so a set is listed
         // exactly when the search can return one of its cards.
@@ -367,24 +349,15 @@ impl CardPricesViewRepository for CardPricesViewRepositoryAdapter {
             r#"SELECT DISTINCT sn.set_code, sn.name
                FROM mv_card_prices cp
                JOIN set_name sn ON sn.set_code = cp.set_code
-               JOIN v_tradable_entry vte ON (vte.user_id, vte.set_code, vte.collector_number, vte.language_code, vte.foil) =
-                                            (cp.user_id, cp.set_code, cp.collector_number, cp.language_code, cp.foil)
+               {TRADABLE_JOIN}
                WHERE 1 = 1 {filter_clause}
                ORDER BY sn.name, sn.set_code"#
         );
 
-        let mut base_query = query_as::<_, (String, String)>(AssertSqlSafe(sql.as_str()));
-        if let Some(q) = &scope.search_query {
-            base_query = base_query.bind(q.clone());
-        }
-        if let Some(username) = &scope.player_username {
-            base_query = base_query.bind(username.clone());
-        }
-
-        let rows = base_query
+        let rows = query_as_with::<_, (String, String), _>(AssertSqlSafe(sql.as_str()), args)
             .fetch_all(&self.pool)
             .await
-            .map_err(|e| AppError::Infra(InfraError::RepositoryError(e.to_string())))?;
+            .map_err(repository_error)?;
 
         Ok(rows
             .into_iter()
@@ -2282,6 +2255,43 @@ mod tests {
 
         assert_eq!(set_codes(&text), vec!["PUB"]);
         assert!(private_player.is_empty());
+    }
+
+    #[sqlx::test]
+    async fn search_sets_includes_the_sets_of_the_callers_own_offered_cards(pool: PgPool) {
+        // Like the search itself, the facet never leaves out the caller: whoever asks, Alice's
+        // offered cards count, including when Alice asks — for a text search or for her own
+        // collection.
+        insert_set(&pool, "OWN").await;
+        insert_set(&pool, "OTH").await;
+        insert_card(&pool, "OWN", "1", "EN", "Goblin Guide", 1).await;
+        insert_card(&pool, "OTH", "1", "EN", "Goblin King", 2).await;
+        insert_user_with_visibility(&pool, "userA", "Alice", "public").await;
+        insert_user_with_visibility(&pool, "userB", "Bob", "public").await;
+        insert_collection_entry(&pool, "OWN", "1", "EN", false, "userA", 1, 100, Utc::now()).await;
+        insert_collection_entry(&pool, "OTH", "1", "EN", false, "userB", 1, 100, Utc::now()).await;
+        insert_price(&pool, CardMarketPriceEntity::simple(1, 100)).await;
+        insert_price(&pool, CardMarketPriceEntity::simple(2, 100)).await;
+        refresh_view(&pool).await;
+
+        let adapter = CardPricesViewRepositoryAdapter::new(pool);
+        let text = adapter
+            .search_sets(&SearchScope {
+                search_query: Some("goblin".to_string()),
+                player_username: None,
+            })
+            .await
+            .unwrap();
+        let own_collection = adapter
+            .search_sets(&SearchScope {
+                search_query: None,
+                player_username: Some("alice".to_string()),
+            })
+            .await
+            .unwrap();
+
+        assert_eq!(set_codes(&text), vec!["OTH", "OWN"]);
+        assert_eq!(set_codes(&own_collection), vec!["OWN"]);
     }
 
     #[sqlx::test]

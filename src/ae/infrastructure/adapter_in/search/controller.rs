@@ -123,7 +123,9 @@ pub(crate) async fn search_card_sets(
     Query(params): Query<SearchSetsParams>,
 ) -> Result<axum::Json<Vec<SetInfoResponse>>, AppError> {
     let scope = SearchScope {
-        search_query: params.q,
+        // Blank means "no text scope", like the username. A non-blank `q` is kept as is, so
+        // the facet matches exactly what `GET /search/card` does with it.
+        search_query: params.q.filter(|q| !q.trim().is_empty()),
         player_username: normalize_player_username(params.player_username.as_deref()),
     };
 

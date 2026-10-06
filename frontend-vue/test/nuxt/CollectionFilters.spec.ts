@@ -31,3 +31,23 @@ describe('CollectionFilters rarity chips', () => {
     expect(wrapper.emitted('toggle')).toEqual([['rar', 'M']]);
   });
 });
+
+describe('CollectionFilters active sets', () => {
+  // On reload, `/search` reads the active sets from the URL before (and regardless of) the set
+  // facet: a set the facet does not list, or not yet, must stay shown as applied and removable.
+  it('keeps a set restored from the URL applied while the facet does not list it', async () => {
+    const wrapper = mount(CollectionFilters, {
+      props: {
+        active: { rar: [], sets: ['MH3'] },
+        setList: [{ code: 'LTR', name: 'The Lord of the Rings' }],
+      },
+    });
+
+    expect(wrapper.text()).not.toContain('Toutes les extensions');
+    const remove = wrapper.find('[aria-label="Retirer MH3"]');
+    expect(remove.exists()).toBe(true);
+
+    await remove.trigger('click');
+    expect(wrapper.emitted('toggle')).toEqual([['sets', 'MH3']]);
+  });
+});
