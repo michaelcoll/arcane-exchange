@@ -46,6 +46,11 @@ final class SearchResultsViewModel {
     private(set) var isLoadingMore = false
     private(set) var loadError: LoadError?
 
+    /// What the set drawer lists: the sets of every card this search can return, whatever the
+    /// filters. Empty until loaded, which disables the drawer's Sets row.
+    private(set) var sets: [SetInfo] = []
+    private var isLoadingSets = false
+
     /// Next page to request; doubles as a generation counter so a stale `loadMore` bails.
     private var nextPage: Int32 = 0
 
@@ -104,6 +109,18 @@ final class SearchResultsViewModel {
         } catch {
             loadError = Self.loadError(from: error)
         }
+    }
+
+    /// Loads the set list once per screen, since the filters never change it. A failure is
+    /// silent: the grid stays usable, and the next appearance tries again.
+    func loadSetsIfNeeded() async {
+        guard sets.isEmpty, !isLoadingSets, let query = target.setsQuery else { return }
+        isLoadingSets = true
+        defer { isLoadingSets = false }
+        guard case let .ok(response) = try? await APIClientProvider.shared.search_card_sets(query: query),
+              let sets = try? response.body.json
+        else { return }
+        self.sets = sets
     }
 
     private func fetchPage(_ page: Int32) async throws -> Components.Schemas.PaginatedCollectionResponse {

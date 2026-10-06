@@ -4,7 +4,7 @@ use crate::domain::card::{Card, CardId, CollectionEntry, CopyId};
 use crate::domain::card_image::{CardImageSource, CardImages, EnglishImage};
 use crate::domain::card_import::{CardImport, CardImportId, CardImportStatus};
 use crate::domain::card_offer::CardOfferSortField;
-use crate::domain::collection::{CollectionQuery, SearchQuery};
+use crate::domain::collection::{CollectionQuery, SearchQuery, SearchScope};
 use crate::domain::collection_stats::CollectionStats;
 use crate::domain::pagination::{Paginated, Pagination};
 use crate::domain::price::{FullPriceGuide, PriceHistoryEntry};
@@ -146,6 +146,10 @@ pub trait CardPricesViewRepository: Send + Sync {
     /// `query.player_username` is set, results are restricted to that player's cards
     /// (exact match, case-insensitive) and `owner_count` is always `1`.
     async fn search_paginated(&self, query: SearchQuery) -> Result<Paginated<Card>, AppError>;
+    /// The sets of the cards [`Self::search_paginated`] can return for `scope`, whatever the
+    /// rarity, set or price filters: the same exposure rules (`v_tradable_entry`), sorted by
+    /// set name.
+    async fn search_sets(&self, scope: &SearchScope) -> Result<Vec<SetName>, AppError>;
     /// Whether `card_id` exists in the catalog (table `card`), regardless of who owns it, or
     /// whether anyone owns it at all.
     async fn exists(&self, card_id: &CardId) -> Result<bool, AppError>;

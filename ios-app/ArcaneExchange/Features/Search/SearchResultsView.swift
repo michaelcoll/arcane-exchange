@@ -47,11 +47,12 @@ private struct SearchResultsGrid: View {
     var body: some View {
         content
             .task { await model.loadInitiallyIfNeeded() }
+            .task { await model.loadSetsIfNeeded() }
             .onChange(of: model.filters) {
                 Task { await model.load() }
             }
             .sheet(isPresented: $isShowingFilters) {
-                CollectionFiltersSheet(filters: $model.filters, sets: nil)
+                CollectionFiltersSheet(filters: $model.filters, sets: model.sets)
             }
     }
 

@@ -71,6 +71,9 @@ public protocol APIProtocol: Sendable {
     /// - Remark: HTTP `GET /search/card`.
     /// - Remark: Generated from `#/paths//search/card/get(search_cards)`.
     func search_cards(_ input: Operations.search_cards.Input) async throws -> Operations.search_cards.Output
+    /// - Remark: HTTP `GET /search/card/sets`.
+    /// - Remark: Generated from `#/paths//search/card/sets/get(search_card_sets)`.
+    func search_card_sets(_ input: Operations.search_card_sets.Input) async throws -> Operations.search_card_sets.Output
     /// - Remark: HTTP `GET /sets`.
     /// - Remark: Generated from `#/paths//sets/get(list_sets)`.
     func list_sets(_ input: Operations.list_sets.Input) async throws -> Operations.list_sets.Output
@@ -287,6 +290,17 @@ extension APIProtocol {
         headers: Operations.search_cards.Input.Headers = .init()
     ) async throws -> Operations.search_cards.Output {
         try await search_cards(Operations.search_cards.Input(
+            query: query,
+            headers: headers
+        ))
+    }
+    /// - Remark: HTTP `GET /search/card/sets`.
+    /// - Remark: Generated from `#/paths//search/card/sets/get(search_card_sets)`.
+    public func search_card_sets(
+        query: Operations.search_card_sets.Input.Query = .init(),
+        headers: Operations.search_card_sets.Input.Headers = .init()
+    ) async throws -> Operations.search_card_sets.Output {
+        try await search_card_sets(Operations.search_card_sets.Input(
             query: query,
             headers: headers
         ))

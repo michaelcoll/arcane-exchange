@@ -45,7 +45,7 @@ use crate::application::use_case::{
     GetRarityTradeFiltersUseCase, GetSetUseCase, GetTradeBindersUseCase, GetTradeUseCase,
     GetUserProfileUseCase, ImportCardUseCase, ImportPriceUseCase, ListSetsUseCase,
     ListTradesUseCase, RateTradeUseCase, RegisterUserUseCase, RemoveTradeBinderUseCase,
-    RemoveTradeCardUseCase, RunCardImportUseCase, SearchCardsUseCase,
+    RemoveTradeCardUseCase, RunCardImportUseCase, SearchCardsUseCase, SearchSetsUseCase,
     SetCollectionVisibilityUseCase, SetRarityTradeFilterUseCase, StatsUseCase,
 };
 use crate::config::Config;
@@ -100,6 +100,7 @@ pub struct AppState {
     pub auth_service: Arc<dyn AuthService>,
     pub get_collection_use_case: Arc<dyn GetCollectionUseCase>,
     pub search_cards_use_case: Arc<dyn SearchCardsUseCase>,
+    pub search_sets_use_case: Arc<dyn SearchSetsUseCase>,
     pub import_price_use_case: Arc<dyn ImportPriceUseCase>,
     pub enqueue_cardmarket_id_use_case: Arc<dyn EnqueueCardMarketIdUpdateUseCase>,
     pub enqueue_card_image_use_case: Arc<dyn EnqueueCardImageUpdateUseCase>,
@@ -256,8 +257,7 @@ fn create_app_state(
 
     let stats_service = Arc::new(StatsService::new(repos.stats));
     let collection_service = Arc::new(CollectionService::new(repos.card_prices_view.clone()));
-    let search_service: Arc<dyn SearchCardsUseCase> =
-        Arc::new(SearchService::new(repos.card_prices_view.clone()));
+    let search_service = Arc::new(SearchService::new(repos.card_prices_view.clone()));
     let collection_price_history_service: Arc<dyn GetCollectionPriceHistoryUseCase> = Arc::new(
         CollectionPriceHistoryService::new(repos.collection_price_history.clone()),
     );
@@ -322,7 +322,8 @@ fn create_app_state(
         stats_use_case: stats_service,
         auth_service,
         get_collection_use_case: collection_service,
-        search_cards_use_case: search_service,
+        search_cards_use_case: search_service.clone(),
+        search_sets_use_case: search_service,
         import_price_use_case,
         enqueue_cardmarket_id_use_case,
         enqueue_card_image_use_case,

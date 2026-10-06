@@ -4130,6 +4130,194 @@ public enum Operations {
             }
         }
     }
+    /// - Remark: HTTP `GET /search/card/sets`.
+    /// - Remark: Generated from `#/paths//search/card/sets/get(search_card_sets)`.
+    public enum search_card_sets {
+        public static let id: Swift.String = "search_card_sets"
+        public struct Input: Sendable, Hashable {
+            /// - Remark: Generated from `#/paths/search/card/sets/GET/query`.
+            public struct Query: Sendable, Hashable {
+                /// Fuzzy search on card name, as in GET /search/card
+                ///
+                /// - Remark: Generated from `#/paths/search/card/sets/GET/query/q`.
+                public var q: Swift.String?
+                /// Exact username of the owner to scope to (case-insensitive, no partial match)
+                ///
+                /// - Remark: Generated from `#/paths/search/card/sets/GET/query/player_username`.
+                public var player_username: Swift.String?
+                /// Creates a new `Query`.
+                ///
+                /// - Parameters:
+                ///   - q: Fuzzy search on card name, as in GET /search/card
+                ///   - player_username: Exact username of the owner to scope to (case-insensitive, no partial match)
+                public init(
+                    q: Swift.String? = nil,
+                    player_username: Swift.String? = nil
+                ) {
+                    self.q = q
+                    self.player_username = player_username
+                }
+            }
+            public var query: Operations.search_card_sets.Input.Query
+            /// - Remark: Generated from `#/paths/search/card/sets/GET/header`.
+            public struct Headers: Sendable, Hashable {
+                public var accept: [OpenAPIRuntime.AcceptHeaderContentType<Operations.search_card_sets.AcceptableContentType>]
+                /// Creates a new `Headers`.
+                ///
+                /// - Parameters:
+                ///   - accept:
+                public init(accept: [OpenAPIRuntime.AcceptHeaderContentType<Operations.search_card_sets.AcceptableContentType>] = .defaultValues()) {
+                    self.accept = accept
+                }
+            }
+            public var headers: Operations.search_card_sets.Input.Headers
+            /// Creates a new `Input`.
+            ///
+            /// - Parameters:
+            ///   - query:
+            ///   - headers:
+            public init(
+                query: Operations.search_card_sets.Input.Query = .init(),
+                headers: Operations.search_card_sets.Input.Headers = .init()
+            ) {
+                self.query = query
+                self.headers = headers
+            }
+        }
+        @frozen public enum Output: Sendable, Hashable {
+            public struct Ok: Sendable, Hashable {
+                /// - Remark: Generated from `#/paths/search/card/sets/GET/responses/200/content`.
+                @frozen public enum Body: Sendable, Hashable {
+                    /// - Remark: Generated from `#/paths/search/card/sets/GET/responses/200/content/application\/json`.
+                    case json([Components.Schemas.SetInfoResponse])
+                    /// The associated value of the enum case if `self` is `.json`.
+                    ///
+                    /// - Throws: An error if `self` is not `.json`.
+                    /// - SeeAlso: `.json`.
+                    public var json: [Components.Schemas.SetInfoResponse] {
+                        get throws {
+                            switch self {
+                            case let .json(body):
+                                return body
+                            }
+                        }
+                    }
+                }
+                /// Received HTTP response body
+                public var body: Operations.search_card_sets.Output.Ok.Body
+                /// Creates a new `Ok`.
+                ///
+                /// - Parameters:
+                ///   - body: Received HTTP response body
+                public init(body: Operations.search_card_sets.Output.Ok.Body) {
+                    self.body = body
+                }
+            }
+            /// Sets of the cards GET /search/card can return for this scope, sorted by name. Rarity, set and price filters are ignored, so the list stays stable while filtering
+            ///
+            /// - Remark: Generated from `#/paths//search/card/sets/get(search_card_sets)/responses/200`.
+            ///
+            /// HTTP response code: `200 ok`.
+            case ok(Operations.search_card_sets.Output.Ok)
+            /// The associated value of the enum case if `self` is `.ok`.
+            ///
+            /// - Throws: An error if `self` is not `.ok`.
+            /// - SeeAlso: `.ok`.
+            public var ok: Operations.search_card_sets.Output.Ok {
+                get throws {
+                    switch self {
+                    case let .ok(response):
+                        return response
+                    default:
+                        try throwUnexpectedResponseStatus(
+                            expectedStatus: "ok",
+                            response: self
+                        )
+                    }
+                }
+            }
+            public struct Unauthorized: Sendable, Hashable {
+                /// - Remark: Generated from `#/paths/search/card/sets/GET/responses/401/content`.
+                @frozen public enum Body: Sendable, Hashable {
+                    /// - Remark: Generated from `#/paths/search/card/sets/GET/responses/401/content/application\/json`.
+                    case json(Components.Schemas.ErrorResponse)
+                    /// The associated value of the enum case if `self` is `.json`.
+                    ///
+                    /// - Throws: An error if `self` is not `.json`.
+                    /// - SeeAlso: `.json`.
+                    public var json: Components.Schemas.ErrorResponse {
+                        get throws {
+                            switch self {
+                            case let .json(body):
+                                return body
+                            }
+                        }
+                    }
+                }
+                /// Received HTTP response body
+                public var body: Operations.search_card_sets.Output.Unauthorized.Body
+                /// Creates a new `Unauthorized`.
+                ///
+                /// - Parameters:
+                ///   - body: Received HTTP response body
+                public init(body: Operations.search_card_sets.Output.Unauthorized.Body) {
+                    self.body = body
+                }
+            }
+            /// Missing or invalid token
+            ///
+            /// - Remark: Generated from `#/paths//search/card/sets/get(search_card_sets)/responses/401`.
+            ///
+            /// HTTP response code: `401 unauthorized`.
+            case unauthorized(Operations.search_card_sets.Output.Unauthorized)
+            /// The associated value of the enum case if `self` is `.unauthorized`.
+            ///
+            /// - Throws: An error if `self` is not `.unauthorized`.
+            /// - SeeAlso: `.unauthorized`.
+            public var unauthorized: Operations.search_card_sets.Output.Unauthorized {
+                get throws {
+                    switch self {
+                    case let .unauthorized(response):
+                        return response
+                    default:
+                        try throwUnexpectedResponseStatus(
+                            expectedStatus: "unauthorized",
+                            response: self
+                        )
+                    }
+                }
+            }
+            /// Undocumented response.
+            ///
+            /// A response with a code that is not documented in the OpenAPI document.
+            case undocumented(statusCode: Swift.Int, OpenAPIRuntime.UndocumentedPayload)
+        }
+        @frozen public enum AcceptableContentType: AcceptableProtocol {
+            case json
+            case other(Swift.String)
+            public init?(rawValue: Swift.String) {
+                switch rawValue.lowercased() {
+                case "application/json":
+                    self = .json
+                default:
+                    self = .other(rawValue)
+                }
+            }
+            public var rawValue: Swift.String {
+                switch self {
+                case let .other(string):
+                    return string
+                case .json:
+                    return "application/json"
+                }
+            }
+            public static var allCases: [Self] {
+                [
+                    .json
+                ]
+            }
+        }
+    }
     /// - Remark: HTTP `GET /sets`.
     /// - Remark: Generated from `#/paths//sets/get(list_sets)`.
     public enum list_sets {

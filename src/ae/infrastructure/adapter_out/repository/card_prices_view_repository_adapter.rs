@@ -2,8 +2,9 @@ use crate::application::error::{AppError, InfraError};
 use crate::application::repository::CardPricesViewRepository;
 use crate::domain::card::{Card, CardId, CollectionEntry, CopyId};
 use crate::domain::card_offer::CardOfferSortField;
-use crate::domain::collection::{CollectionQuery, CollectionSortField, SearchQuery};
+use crate::domain::collection::{CollectionQuery, CollectionSortField, SearchQuery, SearchScope};
 use crate::domain::pagination::{Paginated, Pagination};
+use crate::domain::set_name::{SetCode, SetName};
 use crate::domain::user::UserId;
 use crate::infrastructure::adapter_out::repository::entities::{
     CardOfferEntity, CardWithPriceEntity,
@@ -347,6 +348,48 @@ impl CardPricesViewRepository for CardPricesViewRepositoryAdapter {
             query.player_username.as_deref(),
         )
         .await
+    }
+
+    #[tracing::instrument(name = "card_prices_view_repo.search_sets", skip_all, fields(sentry.op = "db"))]
+    async fn search_sets(&self, scope: &SearchScope) -> Result<Vec<SetName>, AppError> {
+        // Only the scope reaches the filter clause: rarity, sets and prices are left out on
+        // purpose, so the facet doesn't shrink as the user filters.
+        let scope_query = CollectionQuery {
+            search_query: scope.search_query.clone(),
+            ..CollectionQuery::default()
+        };
+        let (filter_clause, _, _) =
+            build_filter_clause(&scope_query, scope.player_username.as_deref(), 1);
+
+        // Same base as the search (`mv_card_prices` + `v_tradable_entry`), so a set is listed
+        // exactly when the search can return one of its cards.
+        let sql = format!(
+            r#"SELECT DISTINCT sn.set_code, sn.name
+               FROM mv_card_prices cp
+               JOIN set_name sn ON sn.set_code = cp.set_code
+               JOIN v_tradable_entry vte ON (vte.user_id, vte.set_code, vte.collector_number, vte.language_code, vte.foil) =
+                                            (cp.user_id, cp.set_code, cp.collector_number, cp.language_code, cp.foil)
+               WHERE 1 = 1 {filter_clause}
+               ORDER BY sn.name, sn.set_code"#
+        );
+
+        let mut base_query = query_as::<_, (String, String)>(AssertSqlSafe(sql.as_str()));
+        if let Some(q) = &scope.search_query {
+            base_query = base_query.bind(q.clone());
+        }
+        if let Some(username) = &scope.player_username {
+            base_query = base_query.bind(username.clone());
+        }
+
+        let rows = base_query
+            .fetch_all(&self.pool)
+            .await
+            .map_err(|e| AppError::Infra(InfraError::RepositoryError(e.to_string())))?;
+
+        Ok(rows
+            .into_iter()
+            .map(|(code, name)| SetName::new(SetCode::new(code), name))
+            .collect())
     }
 
     #[tracing::instrument(name = "card_prices_view_repo.exists", skip_all, fields(sentry.op = "db"))]
@@ -2103,6 +2146,142 @@ mod tests {
 
         assert!(result.items.is_empty());
         assert_eq!(result.total, 0);
+    }
+
+    fn set_codes(sets: &[SetName]) -> Vec<String> {
+        sets.iter().map(|s| s.code.to_string()).collect()
+    }
+
+    #[sqlx::test]
+    async fn search_sets_text_scope_lists_the_sets_of_matching_offered_cards_by_name(pool: PgPool) {
+        sqlx::query("INSERT INTO set_name (set_code, name) VALUES ('ZZZ', 'Alpha'), ('AAA', 'Zendikar'), ('MMM', 'Mirage')")
+            .execute(&pool)
+            .await
+            .unwrap();
+        insert_card(&pool, "ZZZ", "1", "EN", "Goblin Guide", 1).await;
+        insert_card(&pool, "AAA", "1", "EN", "Goblin King", 2).await;
+        insert_card(&pool, "MMM", "1", "EN", "Sol Ring", 3).await;
+        insert_user_with_visibility(&pool, "userA", "Alice", "public").await;
+        for set_code in ["ZZZ", "AAA", "MMM"] {
+            insert_collection_entry(
+                &pool,
+                set_code,
+                "1",
+                "EN",
+                false,
+                "userA",
+                1,
+                100,
+                Utc::now(),
+            )
+            .await;
+        }
+        for id in 1..=3 {
+            insert_price(&pool, CardMarketPriceEntity::simple(id, 100)).await;
+        }
+        refresh_view(&pool).await;
+
+        let adapter = CardPricesViewRepositoryAdapter::new(pool);
+        let sets = adapter
+            .search_sets(&SearchScope {
+                search_query: Some("gob".to_string()),
+                player_username: None,
+            })
+            .await
+            .unwrap();
+
+        assert_eq!(set_codes(&sets), vec!["ZZZ", "AAA"]);
+        assert_eq!(sets[0].name, "Alpha");
+    }
+
+    #[sqlx::test]
+    async fn search_sets_player_scope_lists_only_the_sets_that_player_offers(pool: PgPool) {
+        // Bob trades from "Trade Binder" with rarities R open (keeping no copy), U open but
+        // keeping 1 copy, and M closed.
+        for set_code in ["OPN", "BND", "KPT", "CLS", "OTH"] {
+            insert_set(&pool, set_code).await;
+        }
+        insert_card_with_rarity(&pool, "OPN", "1", "EN", "Offered", 1, "R").await;
+        insert_card_with_rarity(&pool, "BND", "1", "EN", "Unbinned", 2, "R").await;
+        insert_card_with_rarity(&pool, "KPT", "1", "EN", "Kept", 3, "U").await;
+        insert_card_with_rarity(&pool, "CLS", "1", "EN", "Closed", 4, "M").await;
+        insert_card_with_rarity(&pool, "OTH", "1", "EN", "Alice's", 5, "R").await;
+        insert_user_with_visibility(&pool, "userB", "Bob", "trade").await;
+        insert_user_with_visibility(&pool, "userA", "Alice", "public").await;
+        insert_trading_binder(&pool, "userB", "Trade Binder").await;
+        insert_rarity_filter(&pool, "userB", "R", true, 0).await;
+        insert_rarity_filter(&pool, "userB", "U", true, 1).await;
+        insert_rarity_filter(&pool, "userB", "M", false, 0).await;
+        for (set_code, binder) in [
+            ("OPN", Some("Trade Binder")),
+            ("BND", None),
+            ("KPT", Some("Trade Binder")),
+            ("CLS", Some("Trade Binder")),
+        ] {
+            insert_collection_entry_with_binder(
+                &pool,
+                set_code,
+                "1",
+                "EN",
+                false,
+                "userB",
+                1,
+                100,
+                Utc::now(),
+                binder,
+            )
+            .await;
+        }
+        insert_collection_entry(&pool, "OTH", "1", "EN", false, "userA", 1, 100, Utc::now()).await;
+        for id in 1..=5 {
+            insert_price(&pool, CardMarketPriceEntity::simple(id, 100)).await;
+        }
+        refresh_view(&pool).await;
+
+        let adapter = CardPricesViewRepositoryAdapter::new(pool);
+        let sets = adapter
+            .search_sets(&SearchScope {
+                search_query: None,
+                player_username: Some("bob".to_string()),
+            })
+            .await
+            .unwrap();
+
+        assert_eq!(set_codes(&sets), vec!["OPN"]);
+    }
+
+    #[sqlx::test]
+    async fn search_sets_leaves_out_the_sets_of_private_players(pool: PgPool) {
+        insert_set(&pool, "PUB").await;
+        insert_set(&pool, "PRV").await;
+        insert_card(&pool, "PUB", "1", "EN", "Goblin Guide", 1).await;
+        insert_card(&pool, "PRV", "1", "EN", "Goblin King", 2).await;
+        insert_user_with_visibility(&pool, "userA", "Alice", "public").await;
+        insert_user_with_visibility(&pool, "userB", "Bob", "private").await;
+        insert_collection_entry(&pool, "PUB", "1", "EN", false, "userA", 1, 100, Utc::now()).await;
+        insert_collection_entry(&pool, "PRV", "1", "EN", false, "userB", 1, 100, Utc::now()).await;
+        insert_price(&pool, CardMarketPriceEntity::simple(1, 100)).await;
+        insert_price(&pool, CardMarketPriceEntity::simple(2, 100)).await;
+        refresh_view(&pool).await;
+
+        let adapter = CardPricesViewRepositoryAdapter::new(pool);
+        let text = adapter
+            .search_sets(&SearchScope {
+                search_query: Some("goblin".to_string()),
+                player_username: None,
+            })
+            .await
+            .unwrap();
+        let private_player = adapter
+            .search_sets(&SearchScope {
+                search_query: None,
+                player_username: Some("Bob".to_string()),
+            })
+            .await
+            .unwrap();
+
+        assert_eq!(set_codes(&text), vec!["PUB"]);
+        assert!(private_player.is_empty());
     }
 
     #[sqlx::test]

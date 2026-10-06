@@ -34,6 +34,18 @@ pub(crate) struct SearchParams {
     pub(crate) player_username: Option<String>,
 }
 
+/// Scope of the search whose set facet is requested: the same `q` / `player_username` as
+/// `GET /search/card`, without its filters.
+#[derive(Deserialize, TS, Default)]
+#[ts(export)]
+pub(crate) struct SearchSetsParams {
+    #[ts(optional)]
+    pub(crate) q: Option<String>,
+    /// Exact username of the owner to scope to (case-insensitive, no partial match)
+    #[ts(optional)]
+    pub(crate) player_username: Option<String>,
+}
+
 impl Default for SearchParams {
     fn default() -> Self {
         Self {
