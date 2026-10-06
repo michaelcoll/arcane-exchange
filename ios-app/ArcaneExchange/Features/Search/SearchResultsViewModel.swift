@@ -32,8 +32,13 @@ final class SearchResultsViewModel {
     let target: SearchResultsRoute.Target
 
     /// The sort picked on this screen. It lives as long as the model, i.e. while the screen
-    /// stays on the navigation stack, so a round trip to a card detail keeps it.
-    var filters: CollectionFilters
+    /// stays on the navigation stack, so a round trip to a card detail keeps it. The sort is
+    /// also remembered on the device for the next search of the same kind.
+    var filters: CollectionFilters {
+        didSet { sortStore.save(filters, for: target) }
+    }
+
+    private let sortStore: SearchResultsSortStore
 
     private(set) var cards: [CollectionCard] = []
     private(set) var total = 0
@@ -48,9 +53,10 @@ final class SearchResultsViewModel {
         cards.count < total
     }
 
-    init(target: SearchResultsRoute.Target) {
+    init(target: SearchResultsRoute.Target, defaults: UserDefaults = .standard) {
         self.target = target
-        filters = target.defaultFilters
+        sortStore = SearchResultsSortStore(defaults: defaults)
+        filters = sortStore.load(for: target)
     }
 
     /// First load only. The view's `.task` re-runs each time the screen re-appears (e.g. after

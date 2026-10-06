@@ -15,6 +15,7 @@ enum SignOutCleanup {
     ) {
         guard isLoaded, !isSignedIn else { return }
         CollectionFiltersStore(defaults: defaults).clear()
+        SearchResultsSortStore(defaults: defaults).clear()
         HomeWidgetCache(defaults: widgetDefaults).clear()
     }
 }
