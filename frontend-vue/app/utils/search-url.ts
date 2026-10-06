@@ -1,4 +1,5 @@
 import type { LocationQuery } from 'vue-router';
+import type { SearchSetsParams } from '~/bindings/SearchSetsParams';
 import {
   NAME_SEARCH_CRITERIA,
   PLAYER_SEARCH_CRITERIA,
@@ -95,6 +96,20 @@ export const toSearchPageQuery = (
   ...toSearchQuery(state),
   ...(showsCriteria(state) ? toCardCriteriaQuery(criteria, searchCriteriaContext(state)) : {}),
 });
+
+/**
+ * The scope of the set facet (`GET /search/card/sets`) for a search: the submitted name, or the
+ * browsed player alone (their text filter does not narrow the sets). `null` where the search shows
+ * no criteria, so no facet.
+ */
+export const searchSetsScope = (state: SearchUrlState): SearchSetsParams | null => {
+  if (state.mode === 'name') {
+    const q = nonBlankString(state.q);
+    return q ? { q } : {};
+  }
+  if (state.mode === 'player' && state.player) return { player_username: state.player };
+  return null;
+};
 
 /** Whether the current route query already holds exactly `expected`. */
 export const isSameQuery = (current: LocationQuery, expected: Record<string, string>) =>

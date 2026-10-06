@@ -18,7 +18,7 @@ const restoredSearch = parseSearchQuery(route.query);
 const restoredCriteria = parseSearchCriteria(route.query);
 
 const { getCollectionStats } = useCollectionService();
-const { getSearch } = useSearchService();
+const { getSearch, getSearchSets } = useSearchService();
 const { autocompleteUsers } = useAutocompleteService();
 
 const mode = ref<SearchMode>('name');
@@ -325,8 +325,7 @@ watch(
   { deep: true },
 );
 
-const setList = computed(() => statsData.value?.sets ?? []);
-
+// La fourchette de prix vient encore de ma collection (`statsData`), à trancher plus tard.
 const priceMin = computed(() =>
   statsData.value?.price_trend_min != null ? Math.floor(statsData.value.price_trend_min / 100) : 0,
 );
@@ -362,6 +361,11 @@ const searchCriteria = computed<CardCriteria>(() => ({
   price_min: params.value.price_min,
   price_max: params.value.price_max,
 }));
+
+// Les sets proposés au filtre sont ceux des cartes que la recherche en cours peut renvoyer (nom
+// soumis, ou joueur seul), pas ceux de ma collection. Les sets actifs relus de l'URL restent
+// appliqués même absents de cette liste.
+const { data: setList } = await getSearchSets(() => searchSetsScope(searchUrlState.value));
 // Le lien « Rechercher » de la navigation mène à `/search` sans paramètre sans remonter la page :
 // `useQuerySync` réaligne alors l'URL sur la recherche affichée. Limite : une navigation vers
 // `/search` avec d'autres paramètres depuis `/search` même serait réalignée de la même façon (la

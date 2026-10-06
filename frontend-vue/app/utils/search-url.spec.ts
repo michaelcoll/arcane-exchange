@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import type { SearchSetsParams } from '~/bindings/SearchSetsParams';
 import type { CardCriteria } from './card-criteria-url';
 import {
   isSameQuery,
@@ -6,6 +7,7 @@ import {
   parseSearchCriteria,
   parseSearchQuery,
   saveDecklist,
+  searchSetsScope,
   toSearchPageQuery,
   toSearchQuery,
   type SearchUrlState,
@@ -145,6 +147,24 @@ describe('isSameQuery', () => {
     ['a different value', { mode: 'name', q: 'b' }],
   ])('rejects %s', (_label, current) => {
     expect(isSameQuery(current, { mode: 'name', q: 'a' })).toBe(false);
+  });
+});
+
+describe('searchSetsScope', () => {
+  it.each<[string, SearchUrlState, SearchSetsParams | null]>([
+    ['a submitted name', { mode: 'name', q: 'Sol Ring' }, { q: 'Sol Ring' }],
+    ['the name mode before any search', { mode: 'name' }, {}],
+    ['a blank name', { mode: 'name', q: '  ' }, {}],
+    ['a player', { mode: 'player', player: 'urza' }, { player_username: 'urza' }],
+    [
+      'a player with a text filter, ignored',
+      { mode: 'player', player: 'urza', filter: 'tutor' },
+      { player_username: 'urza' },
+    ],
+    ['the player mode without player', { mode: 'player' }, null],
+    ['the decklist mode', { mode: 'decklist' }, null],
+  ])('scopes %s', (_label, state, expected) => {
+    expect(searchSetsScope(state)).toEqual(expected);
   });
 });
 
