@@ -25,9 +25,8 @@ Points qui ne se lisent pas dans les YAML :
 - **Pas de build « development »** : `nuxi build` produit toujours un build de production et la config ne
   déclare aucun override `$development`. L'ancien job `build-dev` (`--configuration development`, reliquat
   d'Angular CLI) construisait en fait une app vide dans `frontend/development/` ; il a été supprimé.
-- **Répertoires de travail** : les jobs backend tournent dans `backend/` (manifeste Cargo, contexte Docker de
-  l'image `arcane-exchange-backend`), les jobs frontend dans `frontend/`. `docs/openapi.yml` reste à la racine :
-  le générateur y écrit quel que soit le dossier courant.
+- **`docs/openapi.yml` reste à la racine** alors que `check-openapi` lance le générateur depuis `backend/` : il
+  résout sa sortie depuis le manifeste du crate, pas depuis le dossier courant.
 - **iOS** : seul pipeline sur macOS, `macos-26` épinglé car `clerk-ios` >= 1.2.0 exige Xcode 26
   (`swift-tools-version: 6.2`). Simulateur uniquement — pas de signature, de provisioning ni de TestFlight. Le job
   `test` ne construit pas dans un job séparé : `xcodebuild test` build déjà l'app et son bundle de tests.

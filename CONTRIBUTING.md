@@ -1,5 +1,8 @@
 # Contributing
 
+The repository layout (one folder per app, shared files at the root) is described in
+[ARCHITECTURE.md](ARCHITECTURE.md).
+
 ## Prerequisites
 
 - [`mise`](https://mise.jdx.dev/) — the single entry point for local commands. It pins Node, pnpm, Swift and the
@@ -8,16 +11,6 @@
 - A stable **Rust** toolchain (edition 2024).
 - A **PostgreSQL 18** instance.
 - For the iOS app only: **Xcode 26**.
-
-## Repository layout
-
-- `backend/` — the Rust API (Cargo crate, SQLx migrations and offline metadata, Dockerfile).
-- `frontend/` — the Nuxt web app.
-- `ios-app/` — the SwiftUI app.
-- At the root, what is shared: `docs/` (OpenAPI contract, ERD, ADRs), the Bruno `collection/`, `mise.toml`,
-  `docker-compose.yml`, `.env`.
-
-Run `mise` tasks from anywhere in the repository: each task already runs in the right folder.
 
 ## Setup
 

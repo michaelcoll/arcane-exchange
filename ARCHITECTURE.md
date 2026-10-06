@@ -22,7 +22,9 @@ ios-app (SwiftUI)  ────┤  backend Rust (axum)     ├── (SQLx, mig
 ```
 
 Chaque application vit dans son propre dossier (`backend/`, `frontend/`, `ios-app/`) ; ce qui est
-partagé reste à la racine (`docs/`, `mise.toml`, `docker-compose.yml`, la collection Bruno).
+partagé reste à la racine (`docs/`, `mise.toml`, `docker-compose.yml`, `.env`, la collection Bruno).
+Les tâches mise tournent chacune dans le dossier de son application, quel que soit le dossier d'où
+on les lance.
 
 - **Backend** : `backend/src/ae/`, binaire `ae`, Axum + SQLx + Postgres.
 - **Web** : `frontend/`, Nuxt 4 en **SPA** (`ssr: false`) ; son serveur Nitro sert les assets

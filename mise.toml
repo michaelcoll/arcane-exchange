@@ -74,7 +74,6 @@ depends = ["rebuild-openapi-doc", "rebuild-db-doc"]
 [tasks.rebuild-openapi-doc]
 hide = true
 dir = "backend"
-# Writes to the root docs/openapi.yml whatever the current directory (resolved from the crate manifest).
 run = "cargo run --bin generate-openapi"
 
 [tasks.rebuild-db-doc]

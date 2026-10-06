@@ -1,9 +1,11 @@
 .nuxt
 .output
 .playwright-cli
-.sqlx
 example-files
 node_modules
+# `pnpm format` runs over `../**`: these keep backend/.sqlx, backend/target and docs/openapi.yml
+# (all generated) out of it.
+.sqlx
 openapi.yml
 target
 ios-app

@@ -31,9 +31,6 @@ Pour l'iOS, copier en plus `ios-app/Config/Local.xcconfig.example` vers `Local.x
 
 ## Enchaînements qui ne se devinent pas
 
-- **Un seul `mise.toml`, à la racine** : les tâches backend tournent dans `backend/` (`dir = "backend"`), les
-  tâches frontend dans `frontend/`, les tâches iOS dans `ios-app/`. Leurs globs `sources` sont relatifs à ce `dir`.
-  `mise run <tâche>` marche depuis n'importe quel sous-dossier.
 - **`mise run test-backend` régénère les bindings TypeScript** du front (`frontend/app/bindings/`) : le derive
   `ts-rs` s'exécute à la compilation des tests. Après toute modification d'un DTO ou d'un enum exposé, relancer la
   tâche est le seul moyen de remettre le front à jour.

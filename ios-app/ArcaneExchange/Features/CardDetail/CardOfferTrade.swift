@@ -82,7 +82,7 @@ enum CardOfferTrade {
 /// Resolves a set code to its human-readable name.
 ///
 /// Both card screens show the set line under the card name and both fall back to the raw
-/// code when the lookup fails (same as `frontend`'s `DetailModal.vue`).
+/// code when the lookup fails (same as `frontend/`'s `DetailModal.vue`).
 enum SetName {
     /// The set's name, or `nil` when it cannot be resolved — keep showing the code then.
     static func resolve(_ setCode: String) async -> String? {
