@@ -727,6 +727,41 @@ paths:
                 $ref: '#/components/schemas/ErrorResponse'
       security:
       - bearer_auth: []
+  /search/card/sets:
+    get:
+      tags:
+      - search
+      operationId: search_card_sets
+      parameters:
+      - name: q
+        in: query
+        description: Fuzzy search on card name, as in GET /search/card
+        required: false
+        schema:
+          type: string
+      - name: player_username
+        in: query
+        description: Exact username of the owner to scope to (case-insensitive, no partial match)
+        required: false
+        schema:
+          type: string
+      responses:
+        '200':
+          description: Sets of the cards GET /search/card can return for this scope, sorted by name. Rarity, set and price filters are ignored, so the list stays stable while filtering
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/SetInfoResponse'
+        '401':
+          description: Missing or invalid token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      security:
+      - bearer_auth: []
   /sets:
     get:
       tags:

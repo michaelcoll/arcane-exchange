@@ -124,6 +124,14 @@ impl<P> SearchQuery<P> {
     }
 }
 
+/// What a search covers, without its filters: a text query, a player, or both. The search
+/// facets are computed over this scope alone, so they stay stable while filters change.
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct SearchScope {
+    pub search_query: Option<String>,
+    pub player_username: Option<String>,
+}
+
 impl<P> From<CollectionQuery<P>> for SearchQuery<P> {
     fn from(collection_query: CollectionQuery<P>) -> Self {
         Self {

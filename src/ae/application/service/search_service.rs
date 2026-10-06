@@ -1,9 +1,10 @@
 use crate::application::error::AppError;
 use crate::application::repository::CardPricesViewRepository;
-use crate::application::use_case::SearchCardsUseCase;
+use crate::application::use_case::{SearchCardsUseCase, SearchSetsUseCase};
 use crate::domain::card::Card;
-use crate::domain::collection::SearchQuery;
+use crate::domain::collection::{SearchQuery, SearchScope};
 use crate::domain::pagination::{PageRequest, Paginated};
+use crate::domain::set_name::SetName;
 use async_trait::async_trait;
 use std::sync::Arc;
 
@@ -29,6 +30,13 @@ impl SearchCardsUseCase for SearchService {
     ) -> Result<Paginated<Card>, AppError> {
         let query = query.paginate(SEARCH_MAX_OFFSET)?;
         self.repository.search_paginated(query).await
+    }
+}
+
+#[async_trait]
+impl SearchSetsUseCase for SearchService {
+    async fn search_sets(&self, scope: SearchScope) -> Result<Vec<SetName>, AppError> {
+        self.repository.search_sets(&scope).await
     }
 }
 

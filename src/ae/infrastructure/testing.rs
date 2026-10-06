@@ -21,7 +21,8 @@ use crate::application::use_case::{
     MockGetTradeUseCase, MockGetUserProfileUseCase, MockImportCardUseCase, MockImportPriceUseCase,
     MockListSetsUseCase, MockListTradesUseCase, MockRateTradeUseCase, MockRegisterUserUseCase,
     MockRemoveTradeBinderUseCase, MockRemoveTradeCardUseCase, MockSearchCardsUseCase,
-    MockSetCollectionVisibilityUseCase, MockSetRarityTradeFilterUseCase, MockStatsUseCase,
+    MockSearchSetsUseCase, MockSetCollectionVisibilityUseCase, MockSetRarityTradeFilterUseCase,
+    MockStatsUseCase,
 };
 use crate::domain::card::CardInfo;
 use crate::domain::card_import::CardImportId;
@@ -62,6 +63,7 @@ impl AppState {
             auth_service: Arc::new(mock_auth),
             get_collection_use_case: Arc::new(MockGetCollectionUseCase::new()),
             search_cards_use_case: Arc::new(MockSearchCardsUseCase::new()),
+            search_sets_use_case: Arc::new(MockSearchSetsUseCase::new()),
             import_price_use_case: Arc::new(mock_import_price),
             enqueue_cardmarket_id_use_case: Arc::new(MockEnqueueCardMarketIdUpdateUseCase::new()),
             enqueue_card_image_use_case: Arc::new(MockEnqueueCardImageUpdateUseCase::new()),

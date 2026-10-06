@@ -94,6 +94,7 @@ extension SearchResultsRoute.Target {
         let sortBy = sortOptions.contains(filters.sortBy) ? filters.sortBy : defaultFilters.sortBy
         // Schema order rather than the set's, so the same selection always gives the same URL.
         let rarity = filters.rarities.isEmpty ? nil : RarityCode.allCases.filter(filters.rarities.contains)
+        let sets = filters.sets.isEmpty ? nil : filters.sets.sorted().joined(separator: ",")
         switch self {
         case let .card(text):
             return .init(
@@ -102,7 +103,8 @@ extension SearchResultsRoute.Target {
                 sort_by: sortBy,
                 sort_dir: filters.sortDir,
                 q: text,
-                rarity: rarity
+                rarity: rarity,
+                sets: sets
             )
         case let .player(username):
             return .init(
@@ -111,10 +113,22 @@ extension SearchResultsRoute.Target {
                 sort_by: sortBy,
                 sort_dir: filters.sortDir,
                 rarity: rarity,
+                sets: sets,
                 player_username: username
             )
         case .decklist:
             return nil
+        }
+    }
+
+    /// The scope whose sets the filter drawer lists (`GET /search/card/sets`), or `nil` for a
+    /// target the endpoint does not serve. Filters never reach it, so the list stays put while
+    /// the user filters.
+    var setsQuery: Operations.search_card_sets.Input.Query? {
+        switch self {
+        case let .card(text): .init(q: text)
+        case let .player(username): .init(player_username: username)
+        case .decklist: nil
         }
     }
 }

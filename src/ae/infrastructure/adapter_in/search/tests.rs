@@ -1,13 +1,14 @@
 use super::controller::*;
 use super::dto::*;
 use crate::application::error::{AppError, InfraError};
-use crate::application::use_case::MockSearchCardsUseCase;
+use crate::application::use_case::{MockSearchCardsUseCase, MockSearchSetsUseCase};
 use crate::domain::card::{Card, CollectionEntry};
-use crate::domain::collection::{CollectionSortField, SortDirection};
+use crate::domain::collection::{CollectionSortField, SearchScope, SortDirection};
 use crate::domain::error::FunctionalError;
 use crate::domain::language_code::LanguageCode;
 use crate::domain::pagination::{PageRequest, Paginated, Pagination};
 use crate::domain::rarity_code::RarityCode;
+use crate::domain::set_name::SetName;
 use crate::domain::user::User;
 use crate::infrastructure::AppState;
 use crate::infrastructure::adapter_in::auth_extractor::AuthenticatedUser;
@@ -679,4 +680,105 @@ async fn search_cards_with_added_at_sort_and_unknown_player_username_still_reach
     .await;
 
     assert!(result.is_ok());
+}
+
+fn make_app_state_with_search_sets(mock: MockSearchSetsUseCase) -> AppState {
+    AppState {
+        search_sets_use_case: Arc::new(mock),
+        ..AppState::for_testing()
+    }
+}
+
+#[tokio::test]
+async fn search_card_sets_passes_the_scope_with_a_trimmed_player_username() {
+    let mut mock = MockSearchSetsUseCase::new();
+    mock.expect_search_sets()
+        .withf(|scope| {
+            *scope
+                == SearchScope {
+                    search_query: Some("gob".to_string()),
+                    player_username: Some("Bob".to_string()),
+                }
+        })
+        .returning(|_| Box::pin(async { Ok(vec![]) }));
+
+    let result = search_card_sets(
+        AuthenticatedUser(User::for_testing()),
+        State(make_app_state_with_search_sets(mock)),
+        Query(SearchSetsParams {
+            q: Some("gob".to_string()),
+            player_username: Some("  Bob ".to_string()),
+        }),
+    )
+    .await;
+
+    assert!(result.is_ok());
+}
+
+#[tokio::test]
+async fn search_card_sets_treats_a_blank_player_username_as_absent() {
+    let mut mock = MockSearchSetsUseCase::new();
+    mock.expect_search_sets()
+        .withf(|scope| scope.player_username.is_none())
+        .returning(|_| Box::pin(async { Ok(vec![]) }));
+
+    let result = search_card_sets(
+        AuthenticatedUser(User::for_testing()),
+        State(make_app_state_with_search_sets(mock)),
+        Query(SearchSetsParams {
+            q: Some("gob".to_string()),
+            player_username: Some("   ".to_string()),
+        }),
+    )
+    .await;
+
+    assert!(result.is_ok());
+}
+
+#[tokio::test]
+async fn search_card_sets_returns_the_sets_in_the_use_case_order() {
+    let mut mock = MockSearchSetsUseCase::new();
+    mock.expect_search_sets().returning(|_| {
+        Box::pin(async {
+            Ok(vec![
+                SetName::new("ZZZ", "Alpha"),
+                SetName::new("AAA", "Zendikar"),
+            ])
+        })
+    });
+
+    let axum::Json(sets) = search_card_sets(
+        AuthenticatedUser(User::for_testing()),
+        State(make_app_state_with_search_sets(mock)),
+        Query(SearchSetsParams::default()),
+    )
+    .await
+    .unwrap();
+
+    let pairs: Vec<_> = sets
+        .iter()
+        .map(|s| (s.code.as_str(), s.name.as_str()))
+        .collect();
+    assert_eq!(pairs, vec![("ZZZ", "Alpha"), ("AAA", "Zendikar")]);
+}
+
+#[tokio::test]
+async fn search_card_sets_propagates_use_case_errors() {
+    let mut mock = MockSearchSetsUseCase::new();
+    mock.expect_search_sets().returning(|_| {
+        Box::pin(async {
+            Err(AppError::Infra(InfraError::RepositoryError(
+                "db down".to_string(),
+            )))
+        })
+    });
+
+    let result = search_card_sets(
+        AuthenticatedUser(User::for_testing()),
+        State(make_app_state_with_search_sets(mock)),
+        Query(SearchSetsParams::default()),
+    )
+    .await;
+
+    assert!(result.is_err());
 }

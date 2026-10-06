@@ -40,6 +40,7 @@ use utoipa::OpenApi;
         super::trade_settings::controller::get_trade_rarity_filters,
         super::trade_settings::controller::set_trade_rarity_filter,
         super::search::controller::search_cards,
+        super::search::controller::search_card_sets,
         super::card::controller::get_card_info,
         super::card::controller::get_card_price_history,
         super::card::controller::get_card_offers,

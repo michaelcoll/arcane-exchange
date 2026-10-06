@@ -5,7 +5,7 @@ use crate::application::card_import_job::CardImportJob;
 use crate::domain::card::{Card, CollectionEntry, CopyId};
 use crate::domain::card_import::{CardImport, CardImportId};
 use crate::domain::card_offer::CardOfferSortField;
-use crate::domain::collection::{CollectionQuery, SearchQuery};
+use crate::domain::collection::{CollectionQuery, SearchQuery, SearchScope};
 use crate::domain::collection_stats::CollectionStats;
 use crate::domain::pagination::{PageRequest, Paginated};
 use crate::domain::price::PriceHistoryEntry;
@@ -169,6 +169,14 @@ pub trait SearchCardsUseCase: Send + Sync {
         &self,
         query: SearchQuery<PageRequest>,
     ) -> Result<Paginated<Card>, AppError>;
+}
+
+#[async_trait]
+#[cfg_attr(test, automock)]
+pub trait SearchSetsUseCase: Send + Sync {
+    /// The sets a search over `scope` can return cards from, sorted by name, whatever its
+    /// rarity, set or price filters.
+    async fn search_sets(&self, scope: SearchScope) -> Result<Vec<SetName>, AppError>;
 }
 
 #[async_trait]

@@ -1,18 +1,31 @@
-use super::dto::SearchParams;
+use super::dto::{SearchParams, SearchSetsParams};
 use crate::application::error::AppError;
-use crate::domain::collection::{CollectionQuery, SearchQuery};
+use crate::domain::collection::{CollectionQuery, SearchQuery, SearchScope};
 use crate::domain::pagination::PageRequest;
 use crate::infrastructure::AppState;
 use crate::infrastructure::adapter_in::auth_extractor::AuthenticatedUser;
 use crate::infrastructure::adapter_in::collection::dto::{
-    CollectionCardResponse, PaginatedCollectionResponse,
+    CollectionCardResponse, PaginatedCollectionResponse, SetInfoResponse,
 };
 use axum::extract::State;
 use axum::routing::get;
 use axum_extra::extract::Query;
 
 pub fn create_search_router() -> axum::Router<AppState> {
-    axum::Router::new().nest("/card", axum::Router::new().route("/", get(search_cards)))
+    axum::Router::new().nest(
+        "/card",
+        axum::Router::new()
+            .route("/", get(search_cards))
+            .route("/sets", get(search_card_sets)),
+    )
+}
+
+/// Empty or blank usernames mean "no player scope".
+fn normalize_player_username(player_username: Option<&str>) -> Option<String> {
+    player_username
+        .map(str::trim)
+        .filter(|s| !s.is_empty())
+        .map(str::to_string)
 }
 
 #[utoipa::path(
@@ -60,12 +73,7 @@ pub(crate) async fn search_cards(
         .map(str::to_uppercase)
         .collect::<Vec<_>>();
 
-    let player_username = params
-        .player_username
-        .as_deref()
-        .map(str::trim)
-        .filter(|s| !s.is_empty())
-        .map(str::to_string);
+    let player_username = normalize_player_username(params.player_username.as_deref());
 
     let query = SearchQuery::try_new(
         CollectionQuery {
@@ -93,4 +101,35 @@ pub(crate) async fn search_cards(
         page: result.pagination.page(),
         page_size: result.pagination.page_size(),
     }))
+}
+
+#[utoipa::path(
+    get,
+    path = "/search/card/sets",
+    params(
+        ("q" = Option<String>, Query, description = "Fuzzy search on card name, as in GET /search/card"),
+        ("player_username" = Option<String>, Query, description = "Exact username of the owner to scope to (case-insensitive, no partial match)"),
+    ),
+    responses(
+        (status = 200, description = "Sets of the cards GET /search/card can return for this scope, sorted by name. Rarity, set and price filters are ignored, so the list stays stable while filtering", body = Vec<SetInfoResponse>),
+        (status = 401, description = "Missing or invalid token"),
+    ),
+    security(("bearer_auth" = [])),
+    tag = "search",
+)]
+pub(crate) async fn search_card_sets(
+    AuthenticatedUser(_user): AuthenticatedUser,
+    State(state): State<AppState>,
+    Query(params): Query<SearchSetsParams>,
+) -> Result<axum::Json<Vec<SetInfoResponse>>, AppError> {
+    let scope = SearchScope {
+        search_query: params.q,
+        player_username: normalize_player_username(params.player_username.as_deref()),
+    };
+
+    let sets = state.search_sets_use_case.search_sets(scope).await?;
+
+    Ok(axum::Json(
+        sets.into_iter().map(SetInfoResponse::from).collect(),
+    ))
 }
