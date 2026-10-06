@@ -92,15 +92,25 @@ extension SearchResultsRoute.Target {
         pageSize: Int32
     ) -> Operations.search_cards.Input.Query? {
         let sortBy = sortOptions.contains(filters.sortBy) ? filters.sortBy : defaultFilters.sortBy
+        // Schema order rather than the set's, so the same selection always gives the same URL.
+        let rarity = filters.rarities.isEmpty ? nil : RarityCode.allCases.filter(filters.rarities.contains)
         switch self {
         case let .card(text):
-            return .init(page: page, page_size: pageSize, sort_by: sortBy, sort_dir: filters.sortDir, q: text)
+            return .init(
+                page: page,
+                page_size: pageSize,
+                sort_by: sortBy,
+                sort_dir: filters.sortDir,
+                q: text,
+                rarity: rarity
+            )
         case let .player(username):
             return .init(
                 page: page,
                 page_size: pageSize,
                 sort_by: sortBy,
                 sort_dir: filters.sortDir,
+                rarity: rarity,
                 player_username: username
             )
         case .decklist:

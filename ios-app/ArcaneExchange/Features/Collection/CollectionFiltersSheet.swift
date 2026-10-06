@@ -17,7 +17,9 @@ struct CollectionFiltersSheet: View {
     }
 
     @Binding var filters: CollectionFilters
-    let sets: [SetInfo]
+    /// The sets the drawer can pick from. `nil` hides the Sets row, for a screen that does not
+    /// filter by set; an empty list keeps it, disabled, while the list loads.
+    let sets: [SetInfo]?
 
     @Environment(\.dismiss) private var dismiss
     @State private var drawer: Drawer?
@@ -26,18 +28,20 @@ struct CollectionFiltersSheet: View {
         NavigationStack {
             List {
                 Section {
-                    DrawerRow(
-                        title: "Sets",
-                        systemImage: "square.stack.3d.up",
-                        value: CollectionCopy.facetSelection(
-                            selected: filters.sets.count,
-                            total: sets.count,
-                            noneSelected: "Tous"
-                        )
-                    ) {
-                        drawer = .sets
+                    if let sets {
+                        DrawerRow(
+                            title: "Sets",
+                            systemImage: "square.stack.3d.up",
+                            value: CollectionCopy.facetSelection(
+                                selected: filters.sets.count,
+                                total: sets.count,
+                                noneSelected: "Tous"
+                            )
+                        ) {
+                            drawer = .sets
+                        }
+                        .disabled(sets.isEmpty)
                     }
-                    .disabled(sets.isEmpty)
 
                     DrawerRow(
                         title: "Raretés",
@@ -65,7 +69,7 @@ struct CollectionFiltersSheet: View {
             }
             .sheet(item: $drawer) { drawer in
                 switch drawer {
-                case .sets: CollectionSetsSheet(selection: $filters.sets, sets: sets)
+                case .sets: CollectionSetsSheet(selection: $filters.sets, sets: sets ?? [])
                 case .rarities: CollectionRaritiesSheet(selection: $filters.rarities)
                 }
             }
@@ -82,4 +86,8 @@ struct CollectionFiltersSheet: View {
             SetInfo(code: "LTR", name: "The Lord of the Rings")
         ]
     )
+}
+
+#Preview("Raretés seules") {
+    CollectionFiltersSheet(filters: .constant(CollectionFilters(rarities: [.M])), sets: nil)
 }
