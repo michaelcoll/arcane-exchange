@@ -1,10 +1,4 @@
-.github
-.idea
-ccpt_local
-collection
-example-files
 target
-.gitignore
-LICENSE
-README.md
+lcov.info
+junit.xml
 .env

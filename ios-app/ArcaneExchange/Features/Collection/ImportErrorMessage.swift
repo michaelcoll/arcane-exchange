@@ -1,5 +1,5 @@
 /// French messages for the import errors the API reports by code (ADR 0018) — mirrors
-/// `frontend-vue/app/utils/import-error.ts`. The API's technical message is never shown.
+/// `frontend/app/utils/import-error.ts`. The API's technical message is never shown.
 enum ImportErrorMessage {
     private static let messages: [String: String] = [
         "empty_file": "Le fichier est vide.",

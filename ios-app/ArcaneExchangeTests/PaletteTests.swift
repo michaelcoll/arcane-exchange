@@ -5,7 +5,7 @@ import UIKit
 @testable import ArcaneExchange
 
 /// The role colors are the web's `--primary*` / `--secondary*` / `--rarity-*` / `--down` tokens
-/// (`frontend-vue/app/assets/css/main.css`), converted from `oklch` to sRGB. Changing one
+/// (`frontend/app/assets/css/main.css`), converted from `oklch` to sRGB. Changing one
 /// side without the other breaks this suite.
 @MainActor
 struct PaletteTests {

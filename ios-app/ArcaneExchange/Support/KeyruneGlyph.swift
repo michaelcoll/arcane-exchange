@@ -2,7 +2,7 @@ import Foundation
 
 /// Keyrune icon-font glyph lookup: Magic set code -> the private-use-area codepoint
 /// that draws its symbol in the bundled `Keyrune.ttf` (mirrors `keyrune`'s `.ss-{code}`
-/// CSS classes, which frontend-vue loads from jsdelivr instead of bundling the font).
+/// CSS classes, which the web frontend loads from jsdelivr instead of bundling the font).
 ///
 /// The table itself lives in `KeyruneCodepointsA/B.swift`.
 enum KeyruneGlyph {

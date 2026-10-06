@@ -39,7 +39,7 @@ svc_lookup() {
       SVC_PORT=8080
       SVC_SCHEME="http"
       SVC_ENDPOINT="http://127.0.0.1:8080"
-      SVC_DIR="."
+      SVC_DIR="backend"
       SVC_TASK="back"
       SVC_PATTERN="target/debug/ae"
       ;;
@@ -48,7 +48,7 @@ svc_lookup() {
       SVC_PORT=3000
       SVC_SCHEME="http"
       SVC_ENDPOINT="http://127.0.0.1:3000"
-      SVC_DIR="frontend-vue"
+      SVC_DIR="frontend"
       SVC_TASK="front"
       SVC_PATTERN="nuxt"
       ;;
@@ -57,7 +57,7 @@ svc_lookup() {
       SVC_PORT=4000
       SVC_SCHEME="http"
       SVC_ENDPOINT="http://127.0.0.1:4000"
-      SVC_DIR="frontend-vue"
+      SVC_DIR="frontend"
       SVC_TASK="maquette"
       SVC_PATTERN="http-server"
       ;;

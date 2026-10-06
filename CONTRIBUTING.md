@@ -9,6 +9,16 @@
 - A **PostgreSQL 18** instance.
 - For the iOS app only: **Xcode 26**.
 
+## Repository layout
+
+- `backend/` — the Rust API (Cargo crate, SQLx migrations and offline metadata, Dockerfile).
+- `frontend/` — the Nuxt web app.
+- `ios-app/` — the SwiftUI app.
+- At the root, what is shared: `docs/` (OpenAPI contract, ERD, ADRs), the Bruno `collection/`, `mise.toml`,
+  `docker-compose.yml`, `.env`.
+
+Run `mise` tasks from anywhere in the repository: each task already runs in the right folder.
+
 ## Setup
 
 ```bash
@@ -39,14 +49,14 @@ See [`.agents/ios.instructions.md`](.agents/ios.instructions.md) for the details
 
 `mise tasks` lists every task with its description. The ones you will need most:
 
-| Task                     | What it does                                                                                     |
-| ------------------------ | ------------------------------------------------------------------------------------------------ |
-| `mise run test-backend`  | Backend tests — also regenerates the frontend TypeScript bindings (`frontend-vue/app/bindings/`) |
-| `mise run test-frontend` | Frontend tests                                                                                   |
-| `mise run sqlx-prepare`  | Regenerates the `.sqlx` metadata — required after changing any SQL query (needs a running DB)    |
-| `mise run rebuild-docs`  | Regenerates `docs/openapi.yml` and `docs/db.md`                                                  |
-| `mise run checks`        | Everything above plus the backend, frontend and iOS lints                                        |
-| `mise run format`        | Formats the codebase                                                                             |
+| Task                     | What it does                                                                                  |
+| ------------------------ | --------------------------------------------------------------------------------------------- |
+| `mise run test-backend`  | Backend tests — also regenerates the frontend TypeScript bindings (`frontend/app/bindings/`)  |
+| `mise run test-frontend` | Frontend tests                                                                                |
+| `mise run sqlx-prepare`  | Regenerates the `backend/.sqlx` metadata — required after changing any SQL query (needs a DB) |
+| `mise run rebuild-docs`  | Regenerates `docs/openapi.yml` and `docs/db.md`                                               |
+| `mise run checks`        | Everything above plus the backend, frontend and iOS lints                                     |
+| `mise run format`        | Formats the codebase                                                                          |
 
 ## Before pushing
 
@@ -55,7 +65,7 @@ gates, notably:
 
 - **`docs/openapi.yml` must be up to date** — after touching a controller or a DTO, run `mise run rebuild-docs` and
   commit the result.
-- **SQL queries are checked at compile time** — after changing one, run `mise run sqlx-prepare` and commit `.sqlx/`.
+- **SQL queries are checked at compile time** — after changing one, run `mise run sqlx-prepare` and commit `backend/.sqlx/`.
 - **ESLint fails on warnings**, and SwiftLint runs in `--strict` mode.
 
 ## Commits and pull requests

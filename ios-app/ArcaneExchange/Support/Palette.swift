@@ -1,7 +1,7 @@
 import SwiftUI
 
 /// The design system's two accents, named by role like the web's `--primary*` / `--secondary*`
-/// tokens (`frontend-vue/app/assets/css/main.css`) — same light and dark values, pinned by
+/// tokens (`frontend/app/assets/css/main.css`) — same light and dark values, pinned by
 /// `PaletteTests`. Pick one by what it means, never by its look:
 ///
 /// - **primary**: my actions, rising values, a trade's progress;

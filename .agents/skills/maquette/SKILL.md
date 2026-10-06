@@ -1,6 +1,6 @@
 ---
 name: maquette
-description: Explains how to consult the "The Arcane Exchange" UI mockup (maquette/ folder, not tracked by git) via the browser skill, to use it as a design/UX reference before implementing a screen in frontend-vue. Use when the user mentions the mockup, "maquette", "The Arcane Exchange", or asks to check/compare the design before coding a screen.
+description: Explains how to consult the "The Arcane Exchange" UI mockup (maquette/ folder, not tracked by git) via the browser skill, to use it as a design/UX reference before implementing a screen in frontend. Use when the user mentions the mockup, "maquette", "The Arcane Exchange", or asks to check/compare the design before coding a screen.
 ---
 
 You are consulting this project's UI mockup to use it as a visual/UX reference before implementing a real feature.
@@ -8,7 +8,7 @@ You are consulting this project's UI mockup to use it as a visual/UX reference b
 ## What the mockup is
 
 - A standalone UI prototype ("The Arcane Exchange"), React 18 + Babel standalone loaded from CDN, **no build step**.
-  This is not code to port as-is: the real stack is `frontend-vue` (Nuxt 4 / Vue 3 / Tailwind), not React.
+  This is not code to port as-is: the real stack is `frontend` (Nuxt 4 / Vue 3 / Tailwind), not React.
 - Lives in the `maquette/` folder at the repo root. It is in `.gitignore`: never committed, never referenced in a PR,
   don't try to version it.
 - Serves as the visual source of truth behind `../../../.agents/design-system.instructions.md` (color tokens, spacing,
@@ -27,7 +27,7 @@ You are consulting this project's UI mockup to use it as a visual/UX reference b
 - `maquette/Design System.html` is a separate page that visually documents the design tokens (colors, components)
   — useful for checking a specific style without navigating the whole prototype.
 - Use the `nuxt` and `tailwind-css-patterns` skills to help you convert the mockup's JSX/CSS into Vue/Tailwind code,
-  following the conventions already in place in `frontend-vue`.
+  following the conventions already in place in `frontend`.
 
 ## Folder structure
 
@@ -54,7 +54,7 @@ You are consulting this project's UI mockup to use it as a visual/UX reference b
 1. Before implementing a screen or component that already exists in the mockup, consult it with the **browser** skill
    (`playwright-cli`) — `snapshot` for structure, `screenshot` for visuals, `click` for interactions — and note layout,
    visual hierarchy, and behaviors (hover, transitions, empty/error states) rather than guessing.
-2. Translate into Vue/Tailwind following the conventions already in place in `frontend-vue`, not by copying the mockup's
+2. Translate into Vue/Tailwind following the conventions already in place in `frontend`, not by copying the mockup's
    JSX/CSS. Use `../../../.agents/design-system.instructions.md` for tokens (colors, spacing, radius, button/badge
    variants).
 3. If the mockup diverges from `../../../.agents/design-system.instructions.md`, flag it to the user rather than
