@@ -35,6 +35,7 @@ private struct SearchResultsGrid: View {
     let target: SearchResultsRoute.Target
 
     @State private var model: SearchResultsViewModel
+    @State private var isShowingFilters = false
 
     private let columns = [GridItem(.adaptive(minimum: 140), spacing: 14)]
 
@@ -48,6 +49,9 @@ private struct SearchResultsGrid: View {
             .task { await model.loadInitiallyIfNeeded() }
             .onChange(of: model.filters) {
                 Task { await model.load() }
+            }
+            .sheet(isPresented: $isShowingFilters) {
+                CollectionFiltersSheet(filters: $model.filters, sets: nil)
             }
     }
 
@@ -63,14 +67,49 @@ private struct SearchResultsGrid: View {
                 actions: { Button("Réessayer") { Task { await model.load() } } }
             )
         } else if model.cards.isEmpty {
-            ContentUnavailableView(
-                "Aucun résultat",
-                systemImage: "magnifyingglass",
-                description: Text("Personne ne propose de carte correspondant à cette recherche.")
-            )
+            emptyState(SearchResultsEmptyState(filters: model.filters))
         } else {
             grid
         }
+    }
+
+    /// With filters on, the rail stays above the message: the way out may be another rarity,
+    /// not only clearing them all.
+    @ViewBuilder private func emptyState(_ state: SearchResultsEmptyState) -> some View {
+        let unavailable = ContentUnavailableView(
+            label: { Label(state.title, systemImage: state.systemImage) },
+            description: {
+                if let message = state.message {
+                    Text(message)
+                }
+            },
+            actions: {
+                if state.offersClearFilters {
+                    // Clears the filters only: the sort is kept.
+                    Button("Effacer les filtres") { model.filters.clearAll() }
+                }
+            }
+        )
+        if state.offersClearFilters {
+            VStack(alignment: .leading, spacing: 14) {
+                if case let .player(username) = target {
+                    playerHeader(username)
+                }
+                rail
+                unavailable
+            }
+            .padding(.horizontal, 16)
+        } else {
+            unavailable
+        }
+    }
+
+    private var rail: some View {
+        CollectionFilterRail(
+            filters: $model.filters,
+            sortOptions: target.sortOptions,
+            onFilterTap: { isShowingFilters = true }
+        )
     }
 
     private var grid: some View {
@@ -80,7 +119,7 @@ private struct SearchResultsGrid: View {
                     playerHeader(username)
                 }
 
-                CollectionFilterRail(filters: $model.filters, sortOptions: target.sortOptions, onFilterTap: nil)
+                rail
 
                 Text(CollectionCopy.sortedSummary(total: model.total, sortBy: model.filters.sortBy))
                     .font(.caption)
