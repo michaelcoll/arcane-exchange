@@ -13,7 +13,7 @@ Un backend Rust unique sert trois clients via une seule API HTTP :
 
 ```
                        ┌──────────────────────────┐
-frontend-vue (Nuxt SPA)│                          │  Postgres
+frontend (Nuxt SPA) ───┤                          │  Postgres
 ios-app (SwiftUI)  ────┤  backend Rust (axum)     ├── (SQLx, migrations au démarrage)
                        │                          │
                        └────────────┬─────────────┘
@@ -21,18 +21,21 @@ ios-app (SwiftUI)  ────┤  backend Rust (axum)     ├── (SQLx, mig
                        Cardmarket · Scryfall · Gatherer · EdhRec · Clerk (JWKS)
 ```
 
-- **Backend** : `src/ae/`, binaire `ae`, Axum + SQLx + Postgres.
-- **Web** : `frontend-vue/`, Nuxt 4 en **SPA** (`ssr: false`) ; son serveur Nitro sert les assets
+Chaque application vit dans son propre dossier (`backend/`, `frontend/`, `ios-app/`) ; ce qui est
+partagé reste à la racine (`docs/`, `mise.toml`, `docker-compose.yml`, la collection Bruno).
+
+- **Backend** : `backend/src/ae/`, binaire `ae`, Axum + SQLx + Postgres.
+- **Web** : `frontend/`, Nuxt 4 en **SPA** (`ssr: false`) ; son serveur Nitro sert les assets
   et **proxifie `/api/v1/**` vers le backend** — le navigateur ne parle jamais au backend en direct.
   Il sert aussi les images de cartes sous `/card-images/**`, lues dans le dossier que le backend
   alimente.
 - **iOS** : `ios-app/`, SwiftUI, iOS 18+, Swift 6 strict concurrency, iPhone seulement.
-- **Base** : un seul schéma Postgres, migrations SQLx dans `migrations/`, appliquées au démarrage du
+- **Base** : un seul schéma Postgres, migrations SQLx dans `backend/migrations/`, appliquées au démarrage du
   backend (pas d'étape de déploiement séparée).
 
 ## Backend — Clean Architecture
 
-Trois couches sous `src/ae/`, dépendances strictement unidirectionnelles
+Trois couches sous `backend/src/ae/`, dépendances strictement unidirectionnelles
 (`infrastructure → application → domain`) :
 
 | Couche            | Contenu                                                                                                                          |
@@ -61,9 +64,9 @@ L'API est le point de synchronisation entre les trois applications, et elle est 
 backend**, jamais écrite à la main :
 
 - `docs/openapi.yml` est produit par le binaire `generate-openapi` à partir des annotations utoipa
-  des contrôleurs. La CI vérifie qu'il est à jour.
+  des contrôleurs ; il reste à la racine, partagé avec le client iOS. La CI vérifie qu'il est à jour.
 - Le **client Swift** (`ios-app/APIClient/`) est généré depuis ce même `docs/openapi.yml` et commité.
-- Les **types TypeScript** du front (`frontend-vue/app/bindings/`) sont générés par `ts-rs` lors de
+- Les **types TypeScript** du front (`frontend/app/bindings/`) sont générés par `ts-rs` lors de
   la compilation des tests backend.
 - `docs/db.md` est l'ERD généré du schéma.
 
@@ -95,7 +98,7 @@ régénération. Modifier un modèle côté client est toujours une erreur.
   Scryfall ; une carte sans image, ou dont l'image ne charge pas, montre un dos de carte générique
   embarqué (`public/card-back.webp` côté web, asset catalog côté iOS).
 - **SQLx en mode vérifié à la compilation** : les requêtes sont validées contre une base réelle, et
-  la métadonnée `.sqlx/` est commitée pour que les builds release/CI se fassent hors ligne.
+  la métadonnée `backend/.sqlx/` est commitée pour que les builds release/CI se fassent hors ligne.
 
 ## Traitements asynchrones
 
@@ -160,7 +163,8 @@ ses idiomes plutôt que de la transposer littéralement.
 - **CI GitHub Actions** : trois pipelines indépendants (backend, frontend, iOS), plus la publication
   d'images. Les tâches iOS sont volontairement hors des tâches globales, pour ne pas déclencher
   l'outillage Xcode à chaque commit.
-- **Déploiement** : deux images Docker (backend distroless, frontend Node/Nitro) orchestrées par
+- **Déploiement** : deux images Docker (`arcane-exchange-backend` distroless, construite depuis
+  `backend/` ; `arcane-exchange-frontend` Node/Nitro, depuis `frontend/`) orchestrées par
   `docker-compose.yml` avec Postgres. Sentry est branché côté backend et côté frontend. Le volume
   `card-images` est monté en écriture sur le backend et en lecture seule sur le frontend. Nitro
   sert les images en `immutable` sur un an pour que Cloudflare les mette en cache ; l'URL exposée

@@ -31,10 +31,13 @@ Pour l'iOS, copier en plus `ios-app/Config/Local.xcconfig.example` vers `Local.x
 
 ## Enchaînements qui ne se devinent pas
 
-- **`mise run test-backend` régénère les bindings TypeScript** du front (`frontend-vue/app/bindings/`) : le derive
+- **Un seul `mise.toml`, à la racine** : les tâches backend tournent dans `backend/` (`dir = "backend"`), les
+  tâches frontend dans `frontend/`, les tâches iOS dans `ios-app/`. Leurs globs `sources` sont relatifs à ce `dir`.
+  `mise run <tâche>` marche depuis n'importe quel sous-dossier.
+- **`mise run test-backend` régénère les bindings TypeScript** du front (`frontend/app/bindings/`) : le derive
   `ts-rs` s'exécute à la compilation des tests. Après toute modification d'un DTO ou d'un enum exposé, relancer la
   tâche est le seul moyen de remettre le front à jour.
-- **`mise run sqlx-prepare` exige une base qui tourne** et repart de zéro (`rm -fr .sqlx`). Les requêtes SQLx sont
+- **`mise run sqlx-prepare` exige une base qui tourne** et repart de zéro (`rm -fr backend/.sqlx`). Les requêtes SQLx sont
   vérifiées à la compilation, donc une requête modifiée sans `sqlx-prepare` casse le build offline et la CI.
 - **`mise run checks`** est le filet complet avant de pousser : docs régénérées, métadonnées SQLx, tests et lints
   (lint iOS compris).

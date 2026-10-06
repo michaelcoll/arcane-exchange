@@ -39,11 +39,12 @@ description = "Runs all the checks for the project"
 depends = ["rebuild-docs", "sqlx-prepare", "test-backend", "test-frontend", "lint-backend", "lint-frontend", "lint-ios"]
 
 [tasks.clean-backend]
+dir = "backend"
 run = "cargo clean"
 hide = true
 
 [tasks.clean-frontend]
-dir = "frontend-vue"
+dir = "frontend"
 run = "rm -fr .nuxt .output node_modules"
 hide = true
 
@@ -52,12 +53,13 @@ description = "Cleans the project artifacts"
 depends = ["clean-backend", "clean-frontend"]
 
 [tasks.install-frontend-deps]
-dir = "frontend-vue"
+dir = "frontend"
 depends = ["clean-frontend"]
 run = "pnpm install"
 hide = true
 
 [tasks.install-backend-deps]
+dir = "backend"
 run = "cargo fetch --locked"
 hide = true
 
@@ -71,22 +73,27 @@ depends = ["rebuild-openapi-doc", "rebuild-db-doc"]
 
 [tasks.rebuild-openapi-doc]
 hide = true
+dir = "backend"
+# Writes to the root docs/openapi.yml whatever the current directory (resolved from the crate manifest).
 run = "cargo run --bin generate-openapi"
 
 [tasks.rebuild-db-doc]
 hide = true
+# Run from the root: docs/ is shared, not backend-only.
 run = "erdify --full --ignore-tables databases,_sqlx_migrations --output docs/db.md"
 
 [tasks.sqlx-prepare]
 description = "Regenerates the .sqlx metadata — required after changing any SQL query (needs a running database)"
+dir = "backend"
 run = "rm -fr .sqlx && cargo sqlx prepare --workspace -- --tests"
 
 [tasks.test-backend]
 description = "Tests the backend — also regenerates the frontend TS bindings (ts-rs runs at compile time)"
+dir = "backend"
 # Skipped when nothing the tests read has changed since the last successful run (`outputs` defaults
 # to `{ auto = true }`, i.e. an internal state file). `mise run --force test-backend` to bypass.
 # The three crate roots are excluded because `cargo sqlx prepare` (run by `sqlx-prepare`, a sibling
-# inside `checks`) touches them on every run, which would defeat the skip.
+# inside `checks`) touches them on every run, which would defeat the skip. Globs are relative to `dir`.
 sources = [
     "src/**/*.rs",
     "!src/ae/lib.rs",
@@ -102,7 +109,7 @@ depends_post = ["format-frontend"]
 
 [tasks.test-frontend]
 description = "Tests the frontend"
-dir = "frontend-vue"
+dir = "frontend"
 # Skipped when no source changed since the last successful run — `--force` to bypass.
 # Globs are relative to `dir`.
 sources = [
@@ -116,11 +123,12 @@ sources = [
 run = "pnpm run test"
 
 [tasks.lint-clippy]
+dir = "backend"
 depends = ["sqlx-prepare"]
 # Skipped when no source changed since the last successful run — `--force` to bypass. Two things
 # are deliberately excluded, otherwise the task would never skip: `.sqlx/`, rewritten by
 # `sqlx-prepare` on every run, and the three crate roots of Cargo.toml, which `cargo sqlx prepare`
-# touches to force a recompilation.
+# touches to force a recompilation. Globs are relative to `dir`.
 sources = [
     "src/**/*.rs",
     "!src/ae/lib.rs",
@@ -134,6 +142,7 @@ run = "SQLX_OFFLINE=true cargo clippy --locked --workspace --all-features --all-
 hide = true
 
 [tasks.lint-sqlx]
+dir = "backend"
 depends = ["sqlx-prepare"]
 # Same exclusions as lint-clippy: the crate roots are touched by every `cargo sqlx prepare`.
 sources = [
@@ -154,7 +163,7 @@ depends = ["lint-clippy", "lint-sqlx"]
 
 [tasks.lint-frontend]
 description = "Lints the frontend of project (nuxi typecheck + ESLint, warnings included)"
-dir = "frontend-vue"
+dir = "frontend"
 # `pnpm lint` = `pnpm run typecheck` + `pnpm run eslint` (two separate jobs in CI). Both cover the
 # whole project, so does this list. Globs are relative to `dir`.
 sources = [
@@ -170,11 +179,12 @@ sources = [
 run = "pnpm lint"
 
 [tasks.format-backend]
+dir = "backend"
 run = "cargo fmt"
 hide = true
 
 [tasks.format-frontend]
-dir = "frontend-vue"
+dir = "frontend"
 run = "pnpm format:fix"
 hide = true
 quiet = true
@@ -186,14 +196,16 @@ alias = ["f"]
 
 [tasks.migrate]
 description = "Runs the database migrations"
+dir = "backend"
 run = "sqlx migrate run"
 
 [tasks.upgrade-backend]
+dir = "backend"
 run = "cargo update"
 hide = true
 
 [tasks.upgrade-frontend]
-dir = "frontend-vue"
+dir = "frontend"
 run = "pnpm update"
 hide = true
 
@@ -203,32 +215,35 @@ depends = ["upgrade-backend", "upgrade-frontend"]
 
 [tasks.back]
 description = "Runs the backend server"
+dir = "backend"
 run = "cargo run --bin ae"
 
 [tasks.front]
 description = "Runs the frontend development server"
-dir = "frontend-vue"
+dir = "frontend"
 run = "pnpm dev"
 
 [tasks.maquette]
 description = "Serve the static mockups of the app"
-dir = "frontend-vue"
+dir = "frontend"
 run = "pnpm serve:maquette"
 
 [tasks.build-backend]
 description = "Builds the backend"
+dir = "backend"
 run = "cargo build"
 alias = ["bb"]
 
 [tasks.build-frontend]
 description = "Builds the frontend"
-dir = "frontend-vue"
+dir = "frontend"
 depends = ["install-frontend-deps"]
 run = "pnpm build"
 alias = ["bf"]
 
 [tasks.coverage-backend]
-description = "Runs the backend tests with coverage — prints a per-file summary and writes lcov.info"
+description = "Runs the backend tests with coverage — prints a per-file summary and writes backend/lcov.info"
+dir = "backend"
 run = "cargo llvm-cov nextest --status-level slow --locked --workspace --all-features --bin ae --tests --ignore-filename-regex \"main.rs|infrastructure.rs|generate_openapi.rs\" --lcov --output-path lcov.info"
 
 [tasks.generate-ios]

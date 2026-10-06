@@ -19,16 +19,16 @@ comment:
 flags:
   rust:
     paths:
-      - "src/**"
-      - "Cargo.toml"
+      - "backend/src/**"
+      - "backend/Cargo.toml"
 
 ignore:
   - "ccpt_local/**"
   - "collection/**"
   - "example-files/**"
-  - "migrations/**"
+  - "backend/migrations/**"
   - "node_modules/**"
-  - "target/**"
-  - "src/ae/generate_openapi.rs"
-  - "src/ae/infrastructure.rs"
-  - "src/ae/main.rs"
+  - "backend/target/**"
+  - "backend/src/ae/generate_openapi.rs"
+  - "backend/src/ae/infrastructure.rs"
+  - "backend/src/ae/main.rs"

@@ -11,15 +11,22 @@ jobs:
 
     runs-on: ubuntu-latest
 
+    defaults:
+      run:
+        working-directory: backend
+
     steps:
       - uses: actions/checkout@v7
 
       - uses: actions-rust-lang/setup-rust-toolchain@v2
         with:
           components: rustfmt, clippy
+          rust-src-dir: backend
 
       - name: Rustfmt Check
         uses: actions-rust-lang/rustfmt@v1
+        with:
+          manifest-path: backend/Cargo.toml
 
       - run: SQLX_OFFLINE=true cargo clippy --locked --workspace --all-features --all-targets -- -D clippy::all
 
@@ -28,6 +35,10 @@ jobs:
     runs-on: ubuntu-latest
 
     container: rust:1-bookworm
+
+    defaults:
+      run:
+        working-directory: backend
 
     services:
       postgres:
@@ -48,6 +59,7 @@ jobs:
         with:
           components: llvm-tools
           cache-key: rust-1-bookworm
+          rust-src-dir: backend
 
       - uses: taiki-e/install-action@cargo-llvm-cov
       - uses: taiki-e/install-action@nextest
@@ -61,17 +73,23 @@ jobs:
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           report_type: coverage
-          files: lcov.info
+          files: backend/lcov.info
           disable_search: true
 
   build-offline:
     name: Build Offline
     runs-on: ubuntu-latest
 
+    defaults:
+      run:
+        working-directory: backend
+
     steps:
       - uses: actions/checkout@v7
 
       - uses: actions-rust-lang/setup-rust-toolchain@v2
+        with:
+          rust-src-dir: backend
 
       - run: SQLX_OFFLINE=true cargo build
 
@@ -83,11 +101,15 @@ jobs:
       - uses: actions/checkout@v7
 
       - uses: actions-rust-lang/setup-rust-toolchain@v2
+        with:
+          rust-src-dir: backend
 
       - name: Save current OpenAPI spec
         run: cp docs/openapi.yml docs/openapi.yml.bak
 
+      # The generator writes to the root docs/openapi.yml, resolved from the crate manifest.
       - name: Regenerate OpenAPI spec
+        working-directory: backend
         run: SQLX_OFFLINE=true cargo run --bin generate-openapi
 
       - name: Check openapi.yml is up-to-date

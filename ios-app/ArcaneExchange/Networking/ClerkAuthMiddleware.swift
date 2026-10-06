@@ -6,7 +6,7 @@ import OpenAPIRuntime
 /// Injects a fresh Clerk session token as a Bearer token on every request.
 ///
 /// The token is never cached locally — `Clerk.shared.auth.getToken()` is called
-/// on every request, mirroring `frontend-vue/app/composables/useApi.ts`, and Clerk's
+/// on every request, mirroring `frontend/app/composables/useApi.ts`, and Clerk's
 /// SDK owns refresh/caching internally. When there is no active session (e.g. calling
 /// a public endpoint before sign-in), the request is forwarded without a header.
 struct ClerkAuthMiddleware: ClientMiddleware {

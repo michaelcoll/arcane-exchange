@@ -34,7 +34,7 @@ jobs:
         id: meta-back
         uses: docker/metadata-action@v6
         with:
-          images: ghcr.io/michaelcoll/arcane-exchange
+          images: ghcr.io/michaelcoll/arcane-exchange-backend
           tags: |
             type=raw,value=latest,enable={{is_default_branch}}
             type=semver,pattern={{version}}
@@ -45,12 +45,12 @@ jobs:
         if: github.event_name == 'release'
         run: |
           TAG="${{ github.event.release.tag_name }}"
-          sed -i "s/^version = \".*\"/version = \"$TAG\"/" Cargo.toml
+          sed -i "s/^version = \".*\"/version = \"$TAG\"/" backend/Cargo.toml
 
       - name: Build and push Docker backend image
         uses: docker/build-push-action@v7
         with:
-          context: .
+          context: backend/
           platforms: linux/amd64
           pull: true
           push: true
@@ -60,7 +60,7 @@ jobs:
       - name: Restore Cargo.toml version
         if: github.event_name == 'release'
         run: |
-          sed -i 's/^version = ".*"/version = "0.1.0"/' Cargo.toml
+          sed -i 's/^version = ".*"/version = "0.1.0"/' backend/Cargo.toml
 
       - name: Create Sentry release
         if: github.event_name == 'release'
@@ -111,12 +111,12 @@ jobs:
         if: github.event_name == 'release'
         run: |
           TAG="${{ github.event.release.tag_name }}"
-          sed -i "s/\"version\": \".*\"/\"version\": \"$TAG\"/" frontend-vue/package.json
+          sed -i "s/\"version\": \".*\"/\"version\": \"$TAG\"/" frontend/package.json
 
       - name: Build and push Docker frontend image
         uses: docker/build-push-action@v7
         with:
-          context: frontend-vue/
+          context: frontend/
           platforms: linux/amd64
           pull: true
           push: true
@@ -126,7 +126,7 @@ jobs:
       - name: Restore package.json version
         if: github.event_name == 'release'
         run: |
-          sed -i 's/\"version\": \".*\"/\"version\": \"0.0.0\"/' frontend-vue/package.json
+          sed -i 's/\"version\": \".*\"/\"version\": \"0.0.0\"/' frontend/package.json
 
   publish-frontend-sourcemaps:
     runs-on: ubuntu-latest
@@ -137,19 +137,19 @@ jobs:
 
       - uses: pnpm/action-setup@v6.1.0
         with:
-          package_json_file: "frontend-vue/package.json"
+          package_json_file: "frontend/package.json"
 
       - uses: actions/setup-node@v7
         with:
           node-version: 24
           cache: pnpm
-          cache-dependency-path: frontend-vue/pnpm-lock.yaml
+          cache-dependency-path: frontend/pnpm-lock.yaml
 
       - run: pnpm install --frozen-lockfile
-        working-directory: frontend-vue
+        working-directory: frontend
 
       - name: Create Sentry release and upload source maps
-        working-directory: frontend-vue
+        working-directory: frontend
         env:
           SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
           SENTRY_ORG: ${{ vars.SENTRY_ORG }}

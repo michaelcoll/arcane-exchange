@@ -5,7 +5,7 @@ import OpenAPIRuntime
 /// Backs the ManaBox CSV import sheet: submits the file, then polls `GET
 /// /collection/import/{id}` every second until the import reaches a terminal state. A `409`
 /// (an import is already running for this user) switches to following that import instead of
-/// failing outright — mirrors `frontend-vue/app/composables/useCardImportFlow.ts`.
+/// failing outright — mirrors `frontend/app/composables/useCardImportFlow.ts`.
 @MainActor
 @Observable
 final class ImportViewModel {
