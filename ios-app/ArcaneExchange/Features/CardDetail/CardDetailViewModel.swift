@@ -38,7 +38,7 @@ final class CardDetailViewModel {
     private var openedTrades: [String: TradeDetailRoute] = [:]
 
     /// The set name once `/sets/{set_code}` resolves; falls back to the raw code
-    /// (mirrors `frontend`'s `DetailModal.vue` `setName`/`isSetKnown`).
+    /// (mirrors `frontend/`'s `DetailModal.vue` `setName`/`isSetKnown`).
     private(set) var setName: String
     private(set) var isSetKnown = false
 

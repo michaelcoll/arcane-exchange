@@ -30,9 +30,10 @@ mod pagination_frontend_sync_tests {
     use crate::application::service::search_service::SEARCH_MAX_OFFSET;
     use crate::application::service::trade_service::TRADES_MAX_OFFSET;
 
-    // The frontend stops paginating before hitting these limits (see
-    // `frontend/app/utils/pagination.ts`), so it duplicates them in TypeScript. This test
-    // guards against the two drifting apart silently.
+    // The frontend stops paginating before hitting these limits, so it duplicates them in
+    // TypeScript. This test guards against the two drifting apart silently.
+    const FRONTEND_PAGINATION_PATH: &str = "frontend/app/utils/pagination.ts";
+    // `include_str!` only takes a literal: keep it in sync with `FRONTEND_PAGINATION_PATH`.
     const FRONTEND_PAGINATION_TS: &str =
         include_str!("../../../../frontend/app/utils/pagination.ts");
 
@@ -40,33 +41,29 @@ mod pagination_frontend_sync_tests {
         let needle = format!("export const {name} = ");
         let start = FRONTEND_PAGINATION_TS
             .find(&needle)
-            .unwrap_or_else(|| panic!("`{name}` not found in frontend/app/utils/pagination.ts"))
+            .unwrap_or_else(|| panic!("`{name}` not found in {FRONTEND_PAGINATION_PATH}"))
             + needle.len();
         let rest = &FRONTEND_PAGINATION_TS[start..];
         let end = rest
             .find(';')
             .expect("expected a `;` after the constant value");
         rest[..end].replace('_', "").parse().unwrap_or_else(|e| {
-            panic!("failed to parse `{name}` value from frontend/app/utils/pagination.ts: {e}")
+            panic!("failed to parse `{name}` value from {FRONTEND_PAGINATION_PATH}: {e}")
         })
     }
 
     #[test]
     fn frontend_offset_limits_match_the_backend_constants() {
-        assert_eq!(
-            extract_const("COLLECTION_MAX_OFFSET"),
-            COLLECTION_MAX_OFFSET,
-            "COLLECTION_MAX_OFFSET drifted between the backend and frontend/app/utils/pagination.ts"
-        );
-        assert_eq!(
-            extract_const("SEARCH_MAX_OFFSET"),
-            SEARCH_MAX_OFFSET,
-            "SEARCH_MAX_OFFSET drifted between the backend and frontend/app/utils/pagination.ts"
-        );
-        assert_eq!(
-            extract_const("TRADES_MAX_OFFSET"),
-            TRADES_MAX_OFFSET,
-            "TRADES_MAX_OFFSET drifted between the backend and frontend/app/utils/pagination.ts"
-        );
+        for (name, backend_value) in [
+            ("COLLECTION_MAX_OFFSET", COLLECTION_MAX_OFFSET),
+            ("SEARCH_MAX_OFFSET", SEARCH_MAX_OFFSET),
+            ("TRADES_MAX_OFFSET", TRADES_MAX_OFFSET),
+        ] {
+            assert_eq!(
+                extract_const(name),
+                backend_value,
+                "{name} drifted between the backend and {FRONTEND_PAGINATION_PATH}"
+            );
+        }
     }
 }

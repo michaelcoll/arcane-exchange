@@ -7,7 +7,7 @@ Hi-fi design system for a Magic: The Gathering card trading platform. Aesthetic:
 `frontend/app/assets/css/main.css` (`:root`) — never invent a token, use the real names. Visual composition is done
 with **Tailwind classes directly in the Vue template** (utility-first), not with dedicated global CSS classes (`.btn`,
 `.panel`, `.chip`…). That class system exists in the mockup (`maquette/styles.css`) but has no equivalent in
-`frontend` — that's not the goal, don't recreate it. Accent colors go through the **semantic Tailwind colors**
+`frontend/` — that's not the goal, don't recreate it. Accent colors go through the **semantic Tailwind colors**
 `primary`, `secondary` and `rarity` (§1). Other tokens are applied with the arbitrary-value syntax
 (`bg-[var(--surface-2)]`, `text-[var(--ink-2)]`, `border-[var(--line)]`, `rounded-[var(--r-lg)]`…). Tailwind's default
 palette is only for neutrals (`slate`, `zinc`) and the semantic red/green (`red`, `emerald`) — **never `cyan` /
@@ -93,7 +93,7 @@ for iOS.
 ### Light theme
 
 The theme is driven by the `.dark` class on `<html>` (Tailwind `darkMode: 'class'`, see `nuxt.config.ts`) — not a
-`data-theme` attribute (that's the mockup's mechanism, not `frontend`'s). In the absence of `.dark`,
+`data-theme` attribute (that's the mockup's mechanism, not `frontend/`'s). In the absence of `.dark`,
 `:root:not(.dark)` reassigns the same set of tokens for light mode (background `#eef0f2`, white surfaces, deepened
 role colors to stay readable, subtle black borders). Always code with the tokens or the semantic colors — never a
 hardcoded color — so both themes work. There is no user-tweakable accent: `--primary` is a fixed token.
@@ -110,7 +110,7 @@ Three families (loaded via the `@nuxt/fonts` module, see `nuxt.config.ts`):
 | `--font-body`    | `font-sans`    | **Hanken Grotesk** | body copy, UI (default font)                           |
 | `--font-mono`    | `font-mono`    | **JetBrains Mono** | numbers, prices, labels, codes — enable `tabular-nums` |
 
-The mockup's helpers (`.display`, `.h1`, `.mono`, `.label`, `.kpi`…) don't exist in `frontend`: recompose the visual
+The mockup's helpers (`.display`, `.h1`, `.mono`, `.label`, `.kpi`…) don't exist in `frontend/`: recompose the visual
 effect with Tailwind classes (`text-*`, `font-*`, `tracking-*`, `uppercase`) on a case-by-case basis, not by recreating
 them as global classes.
 
@@ -128,13 +128,13 @@ mobile nav fixed at the bottom). Reference points from the mockup to respect in 
 - Mobile nav fixed at the bottom of the screen, desktop/mobile switch at the `md` breakpoint.
 - Card grids in `auto-fill`/`minmax(...)`, `sm`/`lg` sizes depending on context (dense grid vs. featured display).
 - The mockup drives gap/padding via a runtime tweak (`--d-gap`/`--d-pad`) — no need to reproduce that mechanism in
-  `frontend` without an explicit request; use fixed `gap-*`/`p-*` classes.
+  `frontend/` without an explicit request; use fixed `gap-*`/`p-*` classes.
 
 ---
 
 ## 4. Surfaces
 
-Visual patterns to compose in Tailwind (no dedicated `.panel`/`.card-surface`/`.inset` class in `frontend`):
+Visual patterns to compose in Tailwind (no dedicated `.panel`/`.card-surface`/`.inset` class in `frontend/`):
 
 | Pattern             | Indicative Tailwind composition                                                                                                          | Role                                   |
 | ------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------- |
@@ -149,7 +149,7 @@ Visual patterns to compose in Tailwind (no dedicated `.panel`/`.card-surface`/`.
 
 Inventory of the mockup's UI patterns to reimplement as Vue components styled with Tailwind. The names below (`.btn`,
 `.panel`…) are the ones from the mockup's CSS (`maquette/styles.css`) — useful for finding the reference style/behavior
-to consult, **not classes to recreate as-is** in `frontend`.
+to consult, **not classes to recreate as-is** in `frontend/`.
 
 **Buttons** `.btn` + variants `.primary`, `.violet` (→ `secondary`), `.ghost`, `.danger`; sizes `.sm` / `.lg` /
 `.block`.
@@ -158,7 +158,7 @@ to consult, **not classes to recreate as-is** in `frontend`.
 
 - `.chip` (togglable pill, `.on` state, `.vio` variant → `secondary`)
 - `.seg` — segmented control with an animated `.thumb` (`.on.cyan` / `.on.vio` in the mockup; `tone: 'primary'` /
-  `'secondary'` in `frontend`) — already implemented in Tailwind in `app/components/SegToggle.vue`; use it as a
+  `'secondary'` in `frontend/`) — already implemented in Tailwind in `app/components/SegToggle.vue`; use it as a
   composition reference for the other patterns in this list.
 - `.set-pip` — set pip (Keyrune symbols), count badge `.set-ct`
 - `.cbx` — multi-select set combobox (control, chips, popover, options)
