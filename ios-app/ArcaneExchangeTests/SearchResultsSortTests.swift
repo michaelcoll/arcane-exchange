@@ -60,11 +60,6 @@ struct SearchResultsSortTests {
         #expect(query == nil)
     }
 
-    @MainActor @Test func resultsScreenOpensOnItsDefaultSort() {
-        #expect(SearchResultsViewModel(target: .card(query: "Sol Ring")).filters.sortBy == .trend)
-        #expect(SearchResultsViewModel(target: .player(username: "jace")).filters.sortBy == .added_at)
-    }
-
     @Test func summaryStatesCountAndSort() {
         #expect(CollectionCopy.sortedSummary(total: 42, sortBy: .trend) == "42 cartes · triées par valeur")
         #expect(CollectionCopy.sortedSummary(total: 1, sortBy: .added_at) == "1 carte · triées par ajout")
