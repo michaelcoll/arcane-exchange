@@ -101,6 +101,9 @@ watch(
 const cardEnvelopeData = computed(() => toEnvelopeData(cardHistoryData.value));
 const cardHasEnoughHistory = computed(() => cardEnvelopeData.value.length >= 2);
 const cardVariation = computed(() => computeVariation(cardHistoryData.value));
+const ownedDeal = computed(() =>
+  computeDeal(props.card.collection_entry?.purchase_price, props.card.price_guide?.trend),
+);
 
 const onKeydown = (e: KeyboardEvent) => {
   if (e.key === 'Escape') emit('close');
@@ -147,17 +150,21 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
               {{ card.name }}
             </h3>
             <span
-              class="inline-flex flex-wrap items-center gap-2 text-sm text-slate-400 dark:text-slate-500"
+              class="flex min-w-0 items-center gap-2 text-sm whitespace-nowrap text-slate-400 dark:text-slate-500"
             >
               <i
-                class="ss"
+                class="ss shrink-0"
                 :class="[`ss-${card.set_code.toLowerCase()}`, setIconColorClass]"
                 aria-hidden="true"
               />
-              {{ setName }}
+              <span class="min-w-0 truncate">{{ setName }}</span>
+              <span class="font-mono text-slate-300 dark:text-slate-600" aria-hidden="true">·</span>
+              <span class="font-mono text-slate-800 dark:text-slate-100"
+                >#{{ card.collector_number }}</span
+              >
               <span
                 v-if="card.foil"
-                class="text-2xs ml-2 inline-flex [animation:foilSlide_4s_linear_infinite] items-center rounded-full [background-size:200%_100%] px-1.5 py-px font-bold tracking-wide text-zinc-900 [background:linear-gradient(110deg,#ffd84d,#4dffd0,#4db4ff,#b85dff,#ff5db8)]"
+                class="text-2xs ml-2 inline-flex shrink-0 [animation:foilSlide_4s_linear_infinite] items-center rounded-full [background-size:200%_100%] px-1.5 py-px font-bold tracking-wide text-zinc-900 [background:linear-gradient(110deg,#ffd84d,#4dffd0,#4db4ff,#b85dff,#ff5db8)]"
               >
                 ✦ Foil
               </span>
@@ -196,6 +203,40 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
                 {{ cardHistoryPending ? 'Chargement…' : "Pas encore assez d'historique" }}
               </div>
             </div>
+          </div>
+
+          <div
+            v-if="card.collection_entry"
+            class="rounded-xl border border-slate-300 bg-black/5 px-3.5 py-3 dark:border-white/10 dark:bg-zinc-900/60"
+          >
+            <span
+              class="text-2xs font-mono font-medium tracking-widest whitespace-nowrap text-slate-400 uppercase dark:text-slate-500"
+              >Dans ma collection</span
+            >
+            <dl class="mt-2 flex flex-col gap-1.5 text-sm">
+              <div class="flex items-center justify-between gap-3">
+                <dt class="text-slate-500 dark:text-slate-400">Exemplaires</dt>
+                <dd class="font-mono font-semibold">×{{ card.collection_entry.quantity }}</dd>
+              </div>
+              <div class="flex items-center justify-between gap-3">
+                <dt class="text-slate-500 dark:text-slate-400">Prix d'achat</dt>
+                <dd class="font-mono font-semibold">
+                  {{ formatPrice(card.collection_entry.purchase_price) }}
+                </dd>
+              </div>
+              <div v-if="ownedDeal" class="flex items-center justify-between gap-3">
+                <dt class="text-slate-500 dark:text-slate-400">Écart depuis l'achat</dt>
+                <dd
+                  :class="[
+                    'font-mono font-semibold',
+                    ownedDeal.kind === 'bad' ? 'text-red-500 dark:text-red-400' : 'text-primary',
+                  ]"
+                >
+                  {{ ownedDeal.deltaCents >= 0 ? '+' : '−'
+                  }}{{ formatPrice(Math.abs(ownedDeal.deltaCents)) }} · {{ ownedDeal.abs }} %
+                </dd>
+              </div>
+            </dl>
           </div>
 
           <!-- sellers -->
