@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import type { DealKind } from '~/utils/deal';
+
 const props = withDefaults(
   defineProps<{
     imageUrl?: string | null;
@@ -23,22 +25,17 @@ const emit = defineEmits(['click']);
 
 const dealInfo = computed(() => {
   if (!props.deal || props.deal === 'none') return null;
-  const u = props.purchased;
-  const t = props.trend;
-  if (u == null || t == null) return null;
-  const pct = Math.round(((t - u) / u) * 100);
-  const kind = pct >= 3 ? 'good' : pct <= -3 ? 'bad' : 'par';
-  return { pct, kind, abs: Math.abs(pct), sign: pct <= 0 ? '−' : '+' };
+  return computeDeal(props.purchased, props.trend);
 });
 
 const dealTagClass = computed(() => {
   if (!dealInfo.value) return '';
-  const kinds: Record<string, string> = {
+  const kinds: Record<DealKind, string> = {
     good: 'text-emerald-600 dark:text-emerald-400 bg-emerald-500/15',
     bad: 'text-red-500 dark:text-red-400 bg-red-500/15',
     par: 'text-slate-400 dark:text-slate-500',
   };
-  return `font-mono text-2xs font-bold px-1.5 py-px rounded ${kinds[dealInfo.value.kind] ?? ''}`;
+  return `font-mono text-2xs font-bold px-1.5 py-px rounded ${kinds[dealInfo.value.kind]}`;
 });
 </script>
 
