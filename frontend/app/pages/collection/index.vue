@@ -485,22 +485,24 @@ const onDragLeave = () => {
       </div>
     </div>
 
-    <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
-      <button
-        class="bg-primary hover:bg-primary-soft inline-flex items-center justify-center gap-2 rounded-xl border border-transparent px-4 py-2.5 text-sm leading-none font-bold whitespace-nowrap text-[var(--on-primary)] shadow-lg transition-all duration-150 hover:-translate-y-px active:translate-y-0 md:hidden"
-        @click="openImport"
-      >
-        <Icon name="lucide:upload" :size="16" />
-        Importer Manabox
-      </button>
-      <button
-        class="inline-flex cursor-pointer items-center gap-1.5 rounded-full border border-slate-200 bg-slate-100 px-3 py-1.5 text-xs font-medium whitespace-nowrap text-slate-600 transition-all duration-150 select-none hover:border-slate-300 hover:bg-slate-50 hover:text-slate-800 md:hidden dark:border-white/10 dark:bg-white/5 dark:text-slate-300 dark:hover:border-white/15 dark:hover:bg-zinc-800 dark:hover:text-slate-100"
-        @click="sheet = true"
-      >
-        <Icon name="lucide:filter" :size="13" />
-        Filtres
-      </button>
+    <div
+      class="focus-within:border-primary/40 focus-within:ring-primary/20 mb-4 flex items-center gap-2.5 rounded-2xl border border-slate-400/50 bg-black/5 py-2 pr-4 pl-4 transition-all duration-200 focus-within:bg-black/5 focus-within:ring-4 dark:border-white/15 dark:bg-black/30"
+    >
+      <Icon name="lucide:search" size="20" class="flex-none text-slate-400 dark:text-slate-500" />
+      <input
+        v-model="q"
+        placeholder="Filtrer ma collection…"
+        class="min-w-0 flex-1 border-0 bg-transparent text-base text-slate-800 outline-none placeholder:text-slate-400 dark:text-slate-100 dark:placeholder:text-slate-500"
+      />
     </div>
+
+    <button
+      class="bg-primary hover:bg-primary-soft mb-4 inline-flex w-full items-center justify-center gap-2 rounded-xl border border-transparent px-4 py-2.5 text-sm leading-none font-bold whitespace-nowrap text-[var(--on-primary)] shadow-lg transition-all duration-150 hover:-translate-y-px active:translate-y-0 md:hidden"
+      @click="openImport"
+    >
+      <Icon name="lucide:upload" :size="16" />
+      Importer Manabox
+    </button>
 
     <div class="flex items-start gap-6">
       <div class="sticky top-[86px] flex w-[210px] flex-none flex-col gap-3.5 max-md:hidden">
@@ -515,7 +517,6 @@ const onDragLeave = () => {
           class="rounded-2xl border border-slate-200 bg-white/60 p-4 shadow-lg backdrop-blur-md dark:border-white/10 dark:bg-zinc-900/60"
         >
           <CollectionFilters
-            v-model:q="q"
             :active="active"
             :set-list="setList"
             :price-min="priceMin"
@@ -529,9 +530,15 @@ const onDragLeave = () => {
       </div>
 
       <div class="min-w-0 flex-1">
-        <div class="mb-3.5 flex min-h-[22px] items-center justify-between">
-          <span v-if="statsData" class="text-sm text-slate-400 dark:text-slate-500" />
-          <div class="flex items-center gap-2.5">
+        <div class="mb-3.5 flex min-h-[22px] items-center justify-between gap-2.5">
+          <button
+            class="inline-flex cursor-pointer items-center gap-1.5 rounded-full border border-slate-200 bg-slate-100 px-3 py-1.5 text-xs font-medium whitespace-nowrap text-slate-600 transition-all duration-150 select-none hover:border-slate-300 hover:bg-slate-50 hover:text-slate-800 md:hidden dark:border-white/10 dark:bg-white/5 dark:text-slate-300 dark:hover:border-white/15 dark:hover:bg-zinc-800 dark:hover:text-slate-100"
+            @click="sheet = true"
+          >
+            <Icon name="lucide:filter" :size="13" />
+            Filtres
+          </button>
+          <div class="ml-auto flex items-center gap-2.5">
             <SegToggle
               v-if="view === 'grid'"
               v-model="size"
