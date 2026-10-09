@@ -1,6 +1,13 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
 import type { PriceHistoryEntry } from '~/bindings/PriceHistoryEntry';
-import { toEnvelopeData, computeVariation, lastNDaysRange } from './price-history';
+import {
+  toEnvelopeData,
+  computeVariation,
+  lastNDaysRange,
+  dayTicks,
+  nearestIndex,
+  formatDay,
+} from './price-history';
 
 const entry = (overrides: Partial<PriceHistoryEntry> = {}): PriceHistoryEntry => ({
   date: '2026-01-15',
@@ -35,6 +42,61 @@ describe('toEnvelopeData', () => {
 
   it('returns an empty array for no entries', () => {
     expect(toEnvelopeData([])).toEqual([]);
+  });
+
+  it('numbers the days so that gaps between entries keep their real length', () => {
+    const data = toEnvelopeData([
+      entry({ date: '2026-09-12' }),
+      entry({ date: '2026-09-25' }),
+      entry({ date: '2026-09-27' }),
+    ]);
+    const [a, b, c] = data.map((d) => d.day);
+    expect(b! - a!).toBe(13);
+    expect(c! - b!).toBe(2);
+  });
+
+  it('counts a DST change as a single day', () => {
+    const [a, b] = toEnvelopeData([entry({ date: '2026-10-24' }), entry({ date: '2026-10-26' })]);
+    expect(b!.day - a!.day).toBe(2);
+  });
+});
+
+describe('formatDay', () => {
+  it('labels a day number like its entry', () => {
+    const [point] = toEnvelopeData([entry({ date: '2026-03-05' })]);
+    expect(formatDay(point!.day)).toBe(labelFor(2026, 3, 5));
+  });
+});
+
+describe('dayTicks', () => {
+  it('spreads ticks evenly in time from the first to the last day', () => {
+    expect(dayTicks(100, 130, 6)).toEqual([100, 106, 112, 118, 124, 130]);
+  });
+
+  it('rounds ticks to whole days', () => {
+    expect(dayTicks(0, 7, 3)).toEqual([0, 4, 7]);
+  });
+
+  it('never repeats a day when the span is shorter than the tick count', () => {
+    expect(dayTicks(10, 12, 6)).toEqual([10, 11, 12]);
+  });
+
+  it('returns a single tick for a single day', () => {
+    expect(dayTicks(10, 10, 6)).toEqual([10]);
+  });
+});
+
+describe('nearestIndex', () => {
+  const days = [0, 3, 16, 18];
+
+  it('picks the entry closest in time, not by position', () => {
+    expect(nearestIndex(days, 8)).toBe(1);
+    expect(nearestIndex(days, 12)).toBe(2);
+  });
+
+  it('clamps outside the range', () => {
+    expect(nearestIndex(days, -5)).toBe(0);
+    expect(nearestIndex(days, 40)).toBe(3);
   });
 });
 
