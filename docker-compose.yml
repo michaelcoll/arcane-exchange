@@ -41,7 +41,7 @@ services:
       - /mnt/ssd/containers/config/ccpt/card-images:/data/card-images
 
   frontend:
-    image: ghcr.io/michaelcoll/arcane-exchange-frontend:1.32.0
+    image: ghcr.io/michaelcoll/arcane-exchange-frontend:1.34.0
     pull_policy: always
     restart: unless-stopped
     ports:
