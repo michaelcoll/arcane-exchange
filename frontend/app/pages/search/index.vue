@@ -109,11 +109,16 @@ const resetAndRefresh = () => {
   refresh();
 };
 
-const submitSearch = () => {
-  submittedQ.value = q.value;
-  params.value.q = q.value;
-  resetAndRefresh();
-};
+watch(
+  q,
+  useDebounceFn((v: string) => {
+    // Recherche déjà appliquée (restaurée depuis l'URL, ou vidée au changement de mode).
+    if (mode.value !== 'name' || params.value.q === v) return;
+    submittedQ.value = v;
+    params.value.q = v;
+    resetAndRefresh();
+  }, 300),
+);
 
 /* ---------- MODE: PAR JOUEUR ---------- */
 const player = ref<UserSuggestion | null>(null);
@@ -431,14 +436,13 @@ const decklist = ref(
         </button>
       </div>
 
-      <form
+      <div
         v-if="mode === 'name'"
         ref="searchAreaRef"
         class="mb-5 flex flex-wrap items-center gap-3"
-        @submit.prevent="submitSearch"
       >
         <div
-          class="focus-within:border-primary/40 focus-within:ring-primary/10 flex min-w-[240px] flex-1 items-center gap-2.5 rounded-2xl border border-slate-300 bg-black/20 py-2 pr-2 pl-4 transition-all duration-200 focus-within:bg-black/10 focus-within:ring-4 dark:border-white/15"
+          class="focus-within:border-primary/40 focus-within:ring-primary/10 flex min-w-[240px] flex-1 items-center gap-2.5 rounded-2xl border border-slate-300 bg-black/20 py-2 pr-4 pl-4 transition-all duration-200 focus-within:bg-black/10 focus-within:ring-4 dark:border-white/15"
         >
           <Icon
             name="lucide:search"
@@ -450,22 +454,8 @@ const decklist = ref(
             placeholder="Nom de la carte…"
             class="min-w-0 flex-1 border-0 bg-transparent text-base text-slate-800 outline-none placeholder:text-slate-400 dark:text-slate-100 dark:placeholder:text-slate-500"
           />
-          <button
-            type="submit"
-            class="bg-primary hover:bg-primary-soft inline-flex items-center justify-center gap-2 rounded-xl border border-transparent px-4 py-2 text-sm leading-none font-bold whitespace-nowrap text-[var(--on-primary)] shadow-lg transition-all duration-150 hover:-translate-y-px active:translate-y-0"
-          >
-            Chercher
-          </button>
         </div>
-        <button
-          type="button"
-          class="inline-flex cursor-pointer items-center gap-1.5 rounded-full border border-slate-200 bg-slate-100 px-3 py-1.5 text-xs font-medium whitespace-nowrap text-slate-600 transition-all duration-150 select-none hover:border-slate-300 hover:bg-slate-50 hover:text-slate-800 md:hidden dark:border-white/10 dark:bg-white/5 dark:text-slate-300 dark:hover:border-white/15 dark:hover:bg-zinc-800 dark:hover:text-slate-100"
-          @click="sheet = true"
-        >
-          <Icon name="lucide:filter" :size="13" />
-          Filtres
-        </button>
-      </form>
+      </div>
 
       <!-- Filter bar (mode: par joueur) -->
       <div v-else class="mb-5 flex flex-wrap items-center gap-3">
@@ -484,14 +474,6 @@ const decklist = ref(
             class="min-w-0 flex-1 border-0 bg-transparent text-base text-slate-800 outline-none placeholder:text-slate-400 dark:text-slate-100 dark:placeholder:text-slate-500"
           />
         </div>
-        <button
-          type="button"
-          class="inline-flex cursor-pointer items-center gap-1.5 rounded-full border border-slate-200 bg-slate-300 px-3 py-1.5 text-xs font-medium whitespace-nowrap text-slate-600 transition-all duration-150 select-none hover:border-slate-300 hover:bg-slate-50 hover:text-slate-800 md:hidden dark:border-white/10 dark:bg-white/5 dark:text-slate-300 dark:hover:border-white/15 dark:hover:bg-zinc-800 dark:hover:text-slate-100"
-          @click="sheet = true"
-        >
-          <Icon name="lucide:filter" :size="13" />
-          Filtres
-        </button>
       </div>
 
       <div class="flex items-start gap-6">
@@ -505,7 +487,6 @@ const decklist = ref(
             :price-max="priceMax"
             :price-lo="priceLo"
             :price-hi="priceHi"
-            :show-search="false"
             @toggle="toggle"
             @price-change="onPriceChange"
           />
@@ -515,7 +496,7 @@ const decklist = ref(
           <div class="mb-3.5 flex min-h-[22px] items-center justify-between gap-2.5">
             <span
               v-if="mode === 'player' && player"
-              class="text-sm text-slate-400 dark:text-slate-500"
+              class="text-sm text-slate-400 max-md:hidden dark:text-slate-500"
             >
               <b class="font-semibold text-slate-800 dark:text-slate-100"
                 >{{ collectionData?.total ?? 0 }} carte{{
@@ -524,7 +505,10 @@ const decklist = ref(
               >
               visible{{ (collectionData?.total ?? 0) > 1 ? 's' : '' }} sur {{ player.card_count }}
             </span>
-            <span v-else-if="submittedQ" class="text-sm text-slate-400 dark:text-slate-500">
+            <span
+              v-else-if="submittedQ"
+              class="text-sm text-slate-400 max-md:hidden dark:text-slate-500"
+            >
               <b class="font-semibold text-slate-800 dark:text-slate-100"
                 >{{ collectionData?.total ?? 0 }} résultat{{
                   (collectionData?.total ?? 0) > 1 ? 's' : ''
@@ -532,13 +516,21 @@ const decklist = ref(
               >
               pour « {{ submittedQ }} »
             </span>
+            <button
+              type="button"
+              class="inline-flex cursor-pointer items-center gap-1.5 rounded-full border border-slate-200 bg-slate-300 px-3 py-1.5 text-xs font-medium whitespace-nowrap text-slate-600 transition-all duration-150 select-none hover:border-slate-300 hover:bg-slate-50 hover:text-slate-800 md:hidden dark:border-white/10 dark:bg-white/5 dark:text-slate-300 dark:hover:border-white/15 dark:hover:bg-zinc-800 dark:hover:text-slate-100"
+              @click="sheet = true"
+            >
+              <Icon name="lucide:filter" :size="13" />
+              Filtres
+            </button>
             <SortToggle
               :model-value="{ sort_by: params.sort_by, sort_dir: params.sort_dir }"
               :options="sortOptions"
               class="ml-auto"
               @update:model-value="onSortChange"
             />
-            <SegToggle v-model="size" :options="sizeOptions" size="sm" />
+            <SegToggle v-model="size" :options="sizeOptions" size="sm" class="max-md:hidden" />
           </div>
 
           <div
@@ -633,7 +625,6 @@ const decklist = ref(
             :price-max="priceMax"
             :price-lo="priceLo"
             :price-hi="priceHi"
-            :show-search="false"
             @toggle="toggle"
             @price-change="onPriceChange"
           />

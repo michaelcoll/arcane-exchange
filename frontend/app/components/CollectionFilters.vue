@@ -4,28 +4,20 @@ import type { SetInfo } from '~/bindings/SetInfo';
 import { RARITY_LABELS, RARITY_ORDER } from '~/utils/rarity';
 import { resolveSetName } from '~/utils/set';
 
-const props = withDefaults(
-  defineProps<{
-    active: { rar: RarityCode[]; sets: string[] };
-    setList: SetInfo[];
-    priceMin?: number;
-    priceMax?: number;
-    /** Selected bounds (€), when the page restores them; the slider bounds otherwise. */
-    priceLo?: number;
-    priceHi?: number;
-    showSearch?: boolean;
-  }>(),
-  {
-    showSearch: true,
-  },
-);
+const props = defineProps<{
+  active: { rar: RarityCode[]; sets: string[] };
+  setList: SetInfo[];
+  priceMin?: number;
+  priceMax?: number;
+  /** Selected bounds (€), when the page restores them; the slider bounds otherwise. */
+  priceLo?: number;
+  priceHi?: number;
+}>();
 
 const emit = defineEmits<{
   toggle: [k: 'rar' | 'sets', v: string];
   'price-change': [lo: number, hi: number];
 }>();
-
-const q = defineModel<string>('q', { default: '' });
 
 const sliderMax = computed(() => props.priceMax ?? 150);
 
@@ -94,22 +86,6 @@ const clearSets = () => {
 
 <template>
   <div class="flex h-full flex-col gap-4">
-    <div
-      v-if="showSearch"
-      class="focus-within:border-primary/40 focus-within:ring-primary/10 flex items-center gap-2.5 rounded-xl border border-slate-400/50 bg-slate-200/50 px-3 py-2 transition-all duration-200 focus-within:bg-slate-200 focus-within:ring-4 dark:border-white/15 dark:bg-black/20 dark:focus-within:bg-black/30"
-    >
-      <Icon
-        name="lucide:search"
-        :size="16"
-        class="shrink-0 text-slate-500/80 dark:text-slate-500"
-      />
-      <input
-        v-model="q"
-        placeholder="Filtrer ma collection…"
-        class="min-w-0 flex-1 border-0 bg-transparent text-sm text-slate-800 outline-none placeholder:text-slate-400 dark:text-slate-100 dark:placeholder:text-slate-500"
-      />
-    </div>
-
     <div class="flex flex-col gap-2">
       <span
         class="text-2xs font-mono font-medium tracking-widest whitespace-nowrap text-slate-400 uppercase dark:text-slate-500"
