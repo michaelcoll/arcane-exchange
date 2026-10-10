@@ -1,28 +1,23 @@
 import ClerkKit
-import ClerkKitUI
 import SwiftUI
 
 struct ContentView: View {
     @Environment(Clerk.self) private var clerk
-    @State private var authIsPresented = false
+
+    private var phase: SessionPhase {
+        SessionPhase(isLoaded: clerk.isLoaded, isSignedIn: clerk.user != nil)
+    }
 
     var body: some View {
         Group {
-            if clerk.user != nil {
+            if phase == .signedIn {
                 RootTabView()
             } else {
-                VStack(spacing: 16) {
-                    Text("Arcane Exchange")
-                    Button("Sign in") {
-                        authIsPresented = true
-                    }
-                }
-                .padding()
-                .sheet(isPresented: $authIsPresented) {
-                    AuthView()
-                }
+                LoginView(phase: phase)
             }
         }
+        // Keyed on Clerk's two flags rather than on `phase`, which is `.signedIn` as soon as the
+        // player is known: the widgets reload once Clerk has finished loading.
         .onChange(of: [clerk.isLoaded, clerk.user != nil], initial: true) {
             SignOutCleanup.run(isLoaded: clerk.isLoaded, isSignedIn: clerk.user != nil)
             // Signing in or out changes whose data the widgets show.
