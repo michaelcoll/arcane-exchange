@@ -957,6 +957,11 @@ extension Components {
             ///
             /// - Remark: Generated from `#/components/schemas/StatsResponse/last_price_date`.
             public var last_price_date: Swift.String?
+            /// Copies offered for trade across the platform: the sum of every player's proposed
+            /// quantities, after collection visibility, trading binders and rarity filters.
+            ///
+            /// - Remark: Generated from `#/components/schemas/StatsResponse/proposed_copy_number`.
+            public var proposed_copy_number: Swift.Int32
             /// Creates a new `StatsResponse`.
             ///
             /// - Parameters:
@@ -964,22 +969,26 @@ extension Components {
             ///   - card_price_number: Number of Cardmarket prices recorded.
             ///   - db_size_mb: Database size, in MB.
             ///   - last_price_date: ISO 8601 date string (YYYY-MM-DD) of the most recent Cardmarket price — prices are dated
+            ///   - proposed_copy_number: Copies offered for trade across the platform: the sum of every player's proposed
             public init(
                 card_number: Swift.Int32,
                 card_price_number: Swift.Int32,
                 db_size_mb: Swift.Int32,
-                last_price_date: Swift.String? = nil
+                last_price_date: Swift.String? = nil,
+                proposed_copy_number: Swift.Int32
             ) {
                 self.card_number = card_number
                 self.card_price_number = card_price_number
                 self.db_size_mb = db_size_mb
                 self.last_price_date = last_price_date
+                self.proposed_copy_number = proposed_copy_number
             }
             public enum CodingKeys: String, CodingKey {
                 case card_number
                 case card_price_number
                 case db_size_mb
                 case last_price_date
+                case proposed_copy_number
             }
         }
         /// - Remark: Generated from `#/components/schemas/TradeBindersResponse`.

@@ -7,6 +7,9 @@ struct LoginView: View {
     /// Never `.signedIn`: `ContentView` shows the tabs then.
     let phase: SessionPhase
 
+    /// `nil` until the public stats answer, and for good when they do not.
+    @State private var proposedCopies: Int?
+
     var body: some View {
         ZStack(alignment: .bottom) {
             LoginBackground()
@@ -14,13 +17,19 @@ struct LoginView: View {
             // Hidden until Clerk has restored the session: a signed-in player must not see the
             // card flash before the collection.
             if phase == .signedOut {
-                LoginCard(tagline: LoginCopy.tagline)
+                LoginCard(tagline: LoginCopy.tagline(proposedCopies: proposedCopies))
                     .padding(.horizontal, 10)
                     .padding(.bottom, 10)
                     .transition(.opacity)
             }
         }
         .animation(.easeOut(duration: 0.25), value: phase)
+        // Only once nobody is signed in: a signed-in player's launch does not fetch stats for a
+        // card that never shows.
+        .task(id: phase) {
+            guard phase == .signedOut else { return }
+            proposedCopies = await LoginStats.proposedCopies()
+        }
     }
 }
 
@@ -29,11 +38,6 @@ struct LoginBackground: View {
     var body: some View {
         Color(.systemBackground)
     }
-}
-
-/// The login screen's own strings. Everything inside the Clerk auth view is Clerk's.
-enum LoginCopy {
-    static let tagline = "Des cartes vous attendent dans les classeurs des joueurs."
 }
 
 #Preview("Signed out") {

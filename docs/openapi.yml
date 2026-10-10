@@ -1855,6 +1855,7 @@ components:
       - card_number
       - card_price_number
       - db_size_mb
+      - proposed_copy_number
       properties:
         card_number:
           type: integer
@@ -1878,6 +1879,13 @@ components:
           description: |-
             ISO 8601 date string (YYYY-MM-DD) of the most recent Cardmarket price — prices are dated
             to the day. `null` until a price has been imported.
+        proposed_copy_number:
+          type: integer
+          format: int32
+          description: |-
+            Copies offered for trade across the platform: the sum of every player's proposed
+            quantities, after collection visibility, trading binders and rarity filters.
+          minimum: 0
     TradeBindersResponse:
       type: object
       required:

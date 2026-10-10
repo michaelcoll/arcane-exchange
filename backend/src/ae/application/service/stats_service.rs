@@ -22,12 +22,14 @@ impl StatsUseCase for StatsService {
         let card_price_number = self.repository.get_card_price_number().await?;
         let db_size_mb = self.repository.get_db_size().await?;
         let last_price_date = self.repository.get_last_price_date().await?;
+        let proposed_copy_number = self.repository.get_proposed_copy_number().await?;
 
         Ok(Stats {
             card_number,
             card_price_number,
             db_size_mb,
             last_price_date,
+            proposed_copy_number,
         })
     }
 }
@@ -63,6 +65,11 @@ mod tests {
             .times(1)
             .returning(|| Box::pin(async { Ok(NaiveDate::from_ymd_opt(2026, 10, 1)) }));
 
+        mock_repository
+            .expect_get_proposed_copy_number()
+            .times(1)
+            .returning(|| Box::pin(async { Ok(1248) }));
+
         let service = StatsService::new(Arc::new(mock_repository));
         let result = service.get_stats().await;
 
@@ -72,6 +79,7 @@ mod tests {
         assert_eq!(stats.card_price_number, 85);
         assert_eq!(stats.db_size_mb, 128);
         assert_eq!(stats.last_price_date, NaiveDate::from_ymd_opt(2026, 10, 1));
+        assert_eq!(stats.proposed_copy_number, 1248);
     }
 
     #[tokio::test]
@@ -217,6 +225,11 @@ mod tests {
             .times(1)
             .returning(|| Box::pin(async { Ok(None) }));
 
+        mock_repository
+            .expect_get_proposed_copy_number()
+            .times(1)
+            .returning(|| Box::pin(async { Ok(0) }));
+
         let service = StatsService::new(Arc::new(mock_repository));
         let result = service.get_stats().await;
 
@@ -252,6 +265,11 @@ mod tests {
             .times(1)
             .returning(|| Box::pin(async { Ok(None) }));
 
+        mock_repository
+            .expect_get_proposed_copy_number()
+            .times(1)
+            .returning(|| Box::pin(async { Ok(0) }));
+
         let service = StatsService::new(Arc::new(mock_repository));
         let result = service.get_stats().await;
 
@@ -285,6 +303,11 @@ mod tests {
             .expect_get_last_price_date()
             .times(2)
             .returning(|| Box::pin(async { Ok(None) }));
+
+        mock_repository
+            .expect_get_proposed_copy_number()
+            .times(2)
+            .returning(|| Box::pin(async { Ok(40) }));
 
         let service = Arc::new(StatsService::new(Arc::new(mock_repository)));
 

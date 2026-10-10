@@ -22,6 +22,10 @@ pub mod trade;
 pub mod trade_settings;
 pub mod user;
 
+/// `Cache-Control` of the public answers that follow the prices (`/stats`): prices
+/// are imported every 12 hours, and half that keeps an answer at most one import late.
+pub(crate) const PRICE_BOUND_CACHE_CONTROL: &str = "public, max-age=21600";
+
 /// Builds the card copy a request designates by its raw `set_code` / `collector_number` /
 /// `language_code` / `foil` fields. An unknown language code or an invalid collector number is a
 /// functional error (400).

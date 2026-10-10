@@ -10,6 +10,7 @@
 use super::AppState;
 use crate::application::caller::MockEdhRecCaller;
 use crate::application::service::auth_service::MockAuthService;
+use crate::application::service::stats_service::StatsService;
 use crate::application::use_case::{
     MockAbandonTradeUseCase, MockAcceptTradeUseCase, MockAddTradeBinderUseCase,
     MockAddTradeCardUseCase, MockAutocompleteUsersUseCase, MockConfirmTradeUseCase,
@@ -27,7 +28,39 @@ use crate::application::use_case::{
 use crate::domain::card::CardInfo;
 use crate::domain::card_import::CardImportId;
 use crate::domain::user::User;
+use crate::infrastructure::adapter_out::repository::stats_repository_adapter::StatsRepositoryAdapter;
+use crate::infrastructure::create_router;
+use axum::body::Body;
+use axum::http::Request;
+use axum::response::Response;
+use serde_json::Value;
+use sqlx::PgPool;
 use std::sync::Arc;
+use tower::ServiceExt;
+
+/// The whole API router, with the public endpoint `/stats` wired to the real database.
+pub(crate) fn public_app_on(pool: PgPool) -> axum::Router {
+    create_router(AppState {
+        stats_use_case: Arc::new(StatsService::new(Arc::new(StatsRepositoryAdapter::new(
+            pool,
+        )))),
+        ..AppState::for_testing()
+    })
+}
+
+/// An anonymous GET: no `Authorization` header.
+pub(crate) async fn get(app: axum::Router, uri: &str) -> Response {
+    app.oneshot(Request::get(uri).body(Body::empty()).unwrap())
+        .await
+        .unwrap()
+}
+
+pub(crate) async fn json_of(response: Response) -> Value {
+    let bytes = axum::body::to_bytes(response.into_body(), usize::MAX)
+        .await
+        .unwrap();
+    serde_json::from_slice(&bytes).unwrap()
+}
 
 impl AppState {
     pub(crate) fn for_testing() -> Self {

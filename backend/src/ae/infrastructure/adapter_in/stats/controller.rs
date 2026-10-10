@@ -1,14 +1,12 @@
 use super::dto::StatsResponse;
 use crate::application::error::AppError;
 use crate::infrastructure::AppState;
+use crate::infrastructure::adapter_in::PRICE_BOUND_CACHE_CONTROL;
 use axum::Json;
 use axum::extract::State;
 use axum::http::header;
 use axum::response::IntoResponse;
 use axum::routing::get;
-
-/// Prices are imported every 12 hours: half that keeps `last_price_date` at most one import late.
-const STATS_CACHE_CONTROL: &str = "public, max-age=21600";
 
 pub fn create_stats_router() -> axum::Router<AppState> {
     axum::Router::new().route("/", get(get_stats))
@@ -28,7 +26,7 @@ pub(crate) async fn get_stats(
 ) -> Result<impl IntoResponse, AppError> {
     let stats = state.stats_use_case.get_stats().await?;
     Ok((
-        [(header::CACHE_CONTROL, STATS_CACHE_CONTROL)],
+        [(header::CACHE_CONTROL, PRICE_BOUND_CACHE_CONTROL)],
         Json(StatsResponse::from(stats)),
     ))
 }

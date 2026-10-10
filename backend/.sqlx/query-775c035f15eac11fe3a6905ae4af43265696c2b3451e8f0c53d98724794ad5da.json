@@ -1,0 +1,21 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT COALESCE(SUM(proposed_quantity), 0)::BIGINT AS \"total!\" FROM v_tradable_entry",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "total!",
+        "type_info": "Int8",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": [
+      null
+    ]
+  },
+  "hash": "775c035f15eac11fe3a6905ae4af43265696c2b3451e8f0c53d98724794ad5da"
+}
