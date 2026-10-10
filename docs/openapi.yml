@@ -807,6 +807,25 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+  /showcase:
+    get:
+      tags:
+      - showcase
+      operationId: get_showcase
+      responses:
+        '200':
+          description: 'Front image paths of the most expensive cards held in the platform''s collections, most expensive first, at most 30, cached for 6 hours. Same format as `image_url`: relative to the frontend.'
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+              description: public, max-age=21600
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: string
   /stats:
     get:
       tags:
@@ -2097,3 +2116,5 @@ tags:
   description: Set catalog lookup (no authentication)
 - name: stats
   description: Global platform statistics (no authentication)
+- name: showcase
+  description: Showcase of the most expensive cards held on the platform (no authentication)

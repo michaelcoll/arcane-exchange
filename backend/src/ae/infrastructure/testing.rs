@@ -10,6 +10,7 @@
 use super::AppState;
 use crate::application::caller::MockEdhRecCaller;
 use crate::application::service::auth_service::MockAuthService;
+use crate::application::service::showcase_service::ShowcaseService;
 use crate::application::service::stats_service::StatsService;
 use crate::application::use_case::{
     MockAbandonTradeUseCase, MockAcceptTradeUseCase, MockAddTradeBinderUseCase,
@@ -18,16 +19,17 @@ use crate::application::use_case::{
     MockEnqueueCardMarketIdUpdateUseCase, MockGetCardImportUseCase, MockGetCardOffersUseCase,
     MockGetCardPriceHistoryUseCase, MockGetCollectionPriceHistoryUseCase,
     MockGetCollectionStatsUseCase, MockGetCollectionUseCase, MockGetCollectionVisibilityUseCase,
-    MockGetRarityTradeFiltersUseCase, MockGetSetUseCase, MockGetTradeBindersUseCase,
-    MockGetTradeUseCase, MockGetUserProfileUseCase, MockImportCardUseCase, MockImportPriceUseCase,
-    MockListSetsUseCase, MockListTradesUseCase, MockRateTradeUseCase, MockRegisterUserUseCase,
-    MockRemoveTradeBinderUseCase, MockRemoveTradeCardUseCase, MockSearchCardsUseCase,
-    MockSearchSetsUseCase, MockSetCollectionVisibilityUseCase, MockSetRarityTradeFilterUseCase,
-    MockStatsUseCase,
+    MockGetRarityTradeFiltersUseCase, MockGetSetUseCase, MockGetShowcaseUseCase,
+    MockGetTradeBindersUseCase, MockGetTradeUseCase, MockGetUserProfileUseCase,
+    MockImportCardUseCase, MockImportPriceUseCase, MockListSetsUseCase, MockListTradesUseCase,
+    MockRateTradeUseCase, MockRegisterUserUseCase, MockRemoveTradeBinderUseCase,
+    MockRemoveTradeCardUseCase, MockSearchCardsUseCase, MockSearchSetsUseCase,
+    MockSetCollectionVisibilityUseCase, MockSetRarityTradeFilterUseCase, MockStatsUseCase,
 };
 use crate::domain::card::CardInfo;
 use crate::domain::card_import::CardImportId;
 use crate::domain::user::User;
+use crate::infrastructure::adapter_out::repository::showcase_repository_adapter::ShowcaseRepositoryAdapter;
 use crate::infrastructure::adapter_out::repository::stats_repository_adapter::StatsRepositoryAdapter;
 use crate::infrastructure::create_router;
 use axum::body::Body;
@@ -38,12 +40,16 @@ use sqlx::PgPool;
 use std::sync::Arc;
 use tower::ServiceExt;
 
-/// The whole API router, with the public endpoint `/stats` wired to the real database.
+/// The whole API router, with the public endpoints (`/stats`, `/showcase`) wired to the real
+/// database.
 pub(crate) fn public_app_on(pool: PgPool) -> axum::Router {
     create_router(AppState {
         stats_use_case: Arc::new(StatsService::new(Arc::new(StatsRepositoryAdapter::new(
-            pool,
+            pool.clone(),
         )))),
+        get_showcase_use_case: Arc::new(ShowcaseService::new(Arc::new(
+            ShowcaseRepositoryAdapter::new(pool),
+        ))),
         ..AppState::for_testing()
     })
 }
@@ -93,6 +99,7 @@ impl AppState {
             import_card_use_case: Arc::new(mock_import_card),
             edh_rec_caller_adapter: Arc::new(mock_edh_rec),
             stats_use_case: Arc::new(MockStatsUseCase::new()),
+            get_showcase_use_case: Arc::new(MockGetShowcaseUseCase::new()),
             auth_service: Arc::new(mock_auth),
             get_collection_use_case: Arc::new(MockGetCollectionUseCase::new()),
             search_cards_use_case: Arc::new(MockSearchCardsUseCase::new()),

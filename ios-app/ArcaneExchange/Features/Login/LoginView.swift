@@ -12,7 +12,9 @@ struct LoginView: View {
 
     var body: some View {
         ZStack(alignment: .bottom) {
-            LoginBackground()
+            // Only a signed-out visitor fetches the showcase: while the session loads, the
+            // wall of the previous launch is enough.
+            LoginBackground(fetchesShowcase: phase == .signedOut)
                 .ignoresSafeArea()
             // Hidden until Clerk has restored the session: a signed-in player must not see the
             // card flash before the collection.
@@ -33,10 +35,31 @@ struct LoginView: View {
     }
 }
 
-/// What sits behind the sign-in card, filling the whole screen. Plain for now.
+/// What sits behind the sign-in card, filling the whole screen: the app background, and the
+/// showcase wall over it — there at once when the previous launch left it on disk, fading in
+/// when its images had to be downloaded. An unavailable showcase leaves the background plain,
+/// without any message.
 struct LoginBackground: View {
+    let fetchesShowcase: Bool
+
+    @State private var showcase = ShowcaseModel()
+
     var body: some View {
-        Color(.systemBackground)
+        ZStack {
+            Color(.systemBackground)
+            if !showcase.images.isEmpty {
+                ShowcaseWall(images: showcase.images)
+                    .transition(.opacity)
+            }
+        }
+        .animation(showcase.fadesIn ? .easeOut(duration: 0.8) : nil, value: showcase.images.isEmpty)
+        // Restoring reads the caches only, so it can run while the session is still loading.
+        .task(id: fetchesShowcase) {
+            await showcase.restore()
+            if fetchesShowcase {
+                await showcase.refresh()
+            }
+        }
     }
 }
 

@@ -6,6 +6,7 @@ use crate::domain::language_code::LanguageCode;
 use crate::domain::price::{FullPriceGuide, Price, PriceGuide, PriceHistoryEntry};
 use crate::domain::rarity_code::RarityCode;
 use crate::domain::set_name::{SetCode, SetName};
+use crate::domain::showcase::ShowcaseCard;
 use crate::domain::trade::{Trade, TradeCard, TradeCardDetail, TradeId, TradeStatus, TradeSummary};
 use crate::domain::user::{CollectionVisibility, User, UserId, UserSuggestion};
 use chrono::{DateTime, NaiveDate, Utc};
@@ -82,15 +83,46 @@ fn card_image_from_db(
     image_has_back: bool,
 ) -> Result<Option<CardImage>, InfraError> {
     image_source
-        .map(|stored| {
-            let source = CardImageSource::from_stored(stored)
-                .ok_or_else(|| invalid_db_value("image source", stored))?;
-            Ok(CardImage {
-                source,
-                has_back: image_has_back,
-            })
-        })
+        .map(|stored| downloaded_card_image_from_db(stored, image_has_back))
         .transpose()
+}
+
+/// The image of a card whose `image_source` column is set.
+fn downloaded_card_image_from_db(
+    image_source: &str,
+    image_has_back: bool,
+) -> Result<CardImage, InfraError> {
+    let source = CardImageSource::from_stored(image_source)
+        .ok_or_else(|| invalid_db_value("image source", image_source))?;
+    Ok(CardImage {
+        source,
+        has_back: image_has_back,
+    })
+}
+
+/// A card of the showcase: its image is never pending.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct ShowcaseCardEntity {
+    pub set_code: String,
+    pub collector_number: String,
+    pub language_code: String,
+    pub image_source: String,
+    pub image_has_back: bool,
+}
+
+impl TryFrom<ShowcaseCardEntity> for ShowcaseCard {
+    type Error = InfraError;
+
+    fn try_from(entity: ShowcaseCardEntity) -> Result<Self, InfraError> {
+        Ok(ShowcaseCard {
+            card_id: card_id_from_db(
+                &entity.set_code,
+                entity.collector_number,
+                &entity.language_code,
+            )?,
+            image: downloaded_card_image_from_db(&entity.image_source, entity.image_has_back)?,
+        })
+    }
 }
 
 fn rating_from_db(rating: Option<i16>) -> Result<Option<u8>, InfraError> {
