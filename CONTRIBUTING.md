@@ -72,7 +72,7 @@ gates, notably:
 
 - [`ARCHITECTURE.md`](ARCHITECTURE.md) — layers, generated contracts, background jobs, clients, deployment. Read it
   before any structural change.
-- [`CONTEXT.md`](CONTEXT.md) — the domain glossary.
+- [`GLOSSARY.md`](GLOSSARY.md) — the domain glossary.
 - [`docs/adr/`](docs/adr) — architecture decisions.
 - [`docs/openapi.yml`](docs/openapi.yml) — the HTTP API, generated from the backend.
 - [`docs/db.md`](docs/db.md) — the database schema (ERD).

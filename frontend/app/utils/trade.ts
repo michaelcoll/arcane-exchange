@@ -35,7 +35,7 @@ export const TRADE_TONE_CLASSES: Record<TradeTone, string> = {
  * non renseignée. */
 export type TradeRating = number | null;
 
-/** « Notation passée » pour une note 0 (voir **Note** dans CONTEXT.md), `n/5` sinon. */
+/** « Notation passée » pour une note 0, `n/5` sinon. */
 export const formatTradeRating = (r: TradeRating) => {
   if (r == null) return 'non notée';
   return r === 0 ? 'Notation passée' : `${r}/5`;

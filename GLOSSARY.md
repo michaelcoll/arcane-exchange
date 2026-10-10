@@ -94,6 +94,13 @@ un exemplaire : il n'entre jamais dans une collection, n'a pas de valeur et ne s
 L'import l'écarte silencieusement, comme les tokens.
 _Avoid_ : copie, fausse carte, contrefaçon
 
+**Vitrine** :
+Les cartes les plus chères présentes dans les collections de la plateforme, toutes collections
+confondues, montrées publiquement à un visiteur non connecté. Elle ne dit jamais qui possède une
+carte, ni en combien d'exemplaires, et ne tient pas compte des réglages de mise à l'échange : une
+carte d'une collection `private` peut y figurer.
+_Avoid_ : mur de cartes, cartes vedettes, sélection
+
 ### Mise à l'échange
 
 **Réglages de mise à l'échange** :
