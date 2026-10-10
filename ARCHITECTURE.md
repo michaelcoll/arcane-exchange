@@ -138,7 +138,8 @@ en plusieurs répliques en l'état.
   une source de vérité.
 - Un extracteur de requête porte l'authentification : **un handler qui le déclare est protégé, un
   handler qui ne le déclare pas est public.** Seuls la maintenance, l'autocomplétion d'utilisateurs,
-  le catalogue des sets et les statistiques globales (`GET /stats`) sont publics.
+  le catalogue des sets, les statistiques globales (`GET /stats`) et la Vitrine (`GET /showcase`)
+  sont publics.
 
 ## Clients
 

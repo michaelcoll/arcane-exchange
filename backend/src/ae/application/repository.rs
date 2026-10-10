@@ -10,6 +10,7 @@ use crate::domain::pagination::{Paginated, Pagination};
 use crate::domain::price::{FullPriceGuide, PriceHistoryEntry};
 use crate::domain::rarity_trade_filter::{RarityTradeFilter, RarityTradeFilterRule};
 use crate::domain::set_name::{SetCode, SetName};
+use crate::domain::showcase::ShowcaseCard;
 use crate::domain::trade::{
     Trade, TradeCard, TradeCardDetail, TradeId, TradeListQuery, TradeSummary, TradeTransition,
 };
@@ -173,6 +174,16 @@ pub trait StatsRepository: Send + Sync {
     async fn get_last_price_date(&self) -> Result<Option<NaiveDate>, AppError>;
     /// Sum of every player's proposed quantities, `0` when nothing is offered for trade.
     async fn get_proposed_copy_number(&self) -> Result<u32, AppError>;
+}
+
+#[async_trait]
+#[cfg_attr(test, automock)]
+pub trait ShowcaseRepository: Send + Sync {
+    /// The cards of the showcase: at most [`SHOWCASE_SIZE`](crate::domain::showcase::SHOWCASE_SIZE)
+    /// cards held in any collection, by decreasing trend price of the copy held, one per set and
+    /// collector number. Cards whose image is pending or whose copy has no trend price are left
+    /// out.
+    async fn find_most_expensive(&self) -> Result<Vec<ShowcaseCard>, AppError>;
 }
 
 #[async_trait]

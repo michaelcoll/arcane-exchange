@@ -11,6 +11,7 @@ pub mod price;
 pub mod rarity_code;
 pub mod rarity_trade_filter;
 pub mod set_name;
+pub mod showcase;
 pub mod stats;
 pub mod trade;
 pub mod user;

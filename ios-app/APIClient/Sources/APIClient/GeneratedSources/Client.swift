@@ -2322,6 +2322,72 @@ public struct Client: APIProtocol {
             }
         )
     }
+    /// - Remark: HTTP `GET /showcase`.
+    /// - Remark: Generated from `#/paths//showcase/get(get_showcase)`.
+    public func get_showcase(_ input: Operations.get_showcase.Input) async throws -> Operations.get_showcase.Output {
+        try await client.send(
+            input: input,
+            forOperation: Operations.get_showcase.id,
+            serializer: { input in
+                let path = try converter.renderedPath(
+                    template: "/showcase",
+                    parameters: []
+                )
+                var request: HTTPTypes.HTTPRequest = .init(
+                    soar_path: path,
+                    method: .get
+                )
+                suppressMutabilityWarning(&request)
+                converter.setAcceptHeader(
+                    in: &request.headerFields,
+                    contentTypes: input.headers.accept
+                )
+                return (request, nil)
+            },
+            deserializer: { response, responseBody in
+                switch response.status.code {
+                case 200:
+                    let headers: Operations.get_showcase.Output.Ok.Headers = .init(Cache_hyphen_Control: try converter.getOptionalHeaderFieldAsURI(
+                        in: response.headerFields,
+                        name: "Cache-Control",
+                        as: Swift.String.self
+                    ))
+                    let contentType = converter.extractContentTypeIfPresent(in: response.headerFields)
+                    let body: Operations.get_showcase.Output.Ok.Body
+                    let chosenContentType = try converter.bestContentType(
+                        received: contentType,
+                        options: [
+                            "application/json"
+                        ]
+                    )
+                    switch chosenContentType {
+                    case "application/json":
+                        body = try await converter.getResponseBodyAsJSON(
+                            [Swift.String].self,
+                            from: responseBody,
+                            transforming: { value in
+                                .json(value)
+                            }
+                        )
+                    default:
+                        preconditionFailure("bestContentType chose an invalid content type.")
+                    }
+                    return .ok(.init(
+                        headers: headers,
+                        body: body
+                    ))
+                default:
+                    return .undocumented(
+                        statusCode: response.status.code,
+                        .init(
+                            headerFields: response.headerFields,
+                            body: responseBody
+                        )
+                    )
+                }
+            }
+        )
+    }
     /// - Remark: HTTP `GET /stats`.
     /// - Remark: Generated from `#/paths//stats/get(get_stats)`.
     public func get_stats(_ input: Operations.get_stats.Input) async throws -> Operations.get_stats.Output {

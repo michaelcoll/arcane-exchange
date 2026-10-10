@@ -1,5 +1,5 @@
-import Foundation
 import Nuke
+import UIKit
 
 /// Nuke's shared pipeline, tuned for card artwork.
 enum ArtworkPipeline {
@@ -37,5 +37,41 @@ enum ArtworkPipeline {
         prefetcher.stopPrefetching()
     }
 
+    /// Downloads to the disk cache, without decoding, artwork a later launch will show: the
+    /// same low priority as `prefetch`, on a queue of its own that `cancelPrefetching` leaves
+    /// alone.
+    static func warmDiskCache(_ urls: [URL]) {
+        diskWarmer.startPrefetching(with: urls)
+    }
+
+    /// Loads every image of `urls` and returns, in the same order, the ones that did load, for
+    /// a view that must show them all at once rather than one placeholder at a time. Images
+    /// already in the disk cache need no network.
+    static func images(for urls: [URL], in pipeline: ImagePipeline = .shared) async -> [UIImage] {
+        await images(for: urls.map { ImageRequest(url: $0) }, in: pipeline)
+    }
+
+    /// The images of `urls` the caches already hold, in the same order. Never touches the
+    /// network: an image missing from the caches is simply left out.
+    static func cachedImages(for urls: [URL], in pipeline: ImagePipeline = .shared) async -> [UIImage] {
+        await images(for: urls.map { ImageRequest(url: $0, options: [.returnCacheDataDontLoad]) }, in: pipeline)
+    }
+
+    private static func images(for requests: [ImageRequest], in pipeline: ImagePipeline) async -> [UIImage] {
+        await withTaskGroup(of: (Int, UIImage?).self) { group in
+            for (index, request) in requests.enumerated() {
+                group.addTask {
+                    await (index, try? pipeline.image(for: request))
+                }
+            }
+            var loaded = [Int: UIImage]()
+            for await (index, image) in group {
+                loaded[index] = image
+            }
+            return requests.indices.compactMap { loaded[$0] }
+        }
+    }
+
     private static let prefetcher = ImagePrefetcher()
+    private static let diskWarmer = ImagePrefetcher(destination: .diskCache)
 }

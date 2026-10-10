@@ -15,7 +15,7 @@ enum APIClientProvider {
         client(middlewares: [ClerkAuthMiddleware()])
     }
 
-    /// A client for the public endpoints (`get_stats`), rebuilt on every access
+    /// A client for the public endpoints (`get_stats`, `get_showcase`), rebuilt on every access
     /// like `shared`. Without the auth middleware its requests carry no token, whoever is
     /// signed in.
     static var anonymous: Client {

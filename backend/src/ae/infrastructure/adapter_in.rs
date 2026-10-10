@@ -17,12 +17,13 @@ pub mod maintenance;
 pub mod openapi;
 pub mod search;
 pub mod sets;
+pub mod showcase;
 pub mod stats;
 pub mod trade;
 pub mod trade_settings;
 pub mod user;
 
-/// `Cache-Control` of the public answers that follow the prices (`/stats`): prices
+/// `Cache-Control` of the public answers that follow the prices (`/stats`, `/showcase`): prices
 /// are imported every 12 hours, and half that keeps an answer at most one import late.
 pub(crate) const PRICE_BOUND_CACHE_CONTROL: &str = "public, max-age=21600";
 

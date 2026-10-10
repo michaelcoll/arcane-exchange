@@ -20,6 +20,7 @@ pub mod rarity_trade_filter_service;
 pub mod register_user_service;
 pub mod search_service;
 pub mod set_service;
+pub mod showcase_service;
 pub mod stats_service;
 pub mod trade_binder_service;
 pub mod trade_service;

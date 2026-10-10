@@ -45,6 +45,7 @@ use utoipa::OpenApi;
         super::card::controller::get_card_price_history,
         super::card::controller::get_card_offers,
         super::stats::controller::get_stats,
+        super::showcase::controller::get_showcase,
         super::maintenance::controller::trigger_price_update,
         super::maintenance::controller::update_cardmarket_ids,
         super::user::controller::register,
@@ -123,6 +124,7 @@ use utoipa::OpenApi;
         (name = "autocomplete", description = "Public username autocomplete (no authentication)"),
         (name = "sets", description = "Set catalog lookup (no authentication)"),
         (name = "stats", description = "Global platform statistics (no authentication)"),
+        (name = "showcase", description = "Showcase of the most expensive cards held on the platform (no authentication)"),
     )
 )]
 pub struct ApiDoc;

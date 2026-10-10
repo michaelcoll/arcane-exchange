@@ -11,6 +11,7 @@ use crate::domain::pagination::{PageRequest, Paginated};
 use crate::domain::price::PriceHistoryEntry;
 use crate::domain::rarity_trade_filter::{RarityTradeFilter, RarityTradeFilterRule};
 use crate::domain::set_name::{SetCode, SetName};
+use crate::domain::showcase::ShowcaseCard;
 use crate::domain::stats::Stats;
 use crate::domain::trade::{TradeDetail, TradeId, TradeListQuery, TradeSummary};
 use crate::domain::user::{CollectionVisibility, User, UserId, UserSuggestion};
@@ -146,6 +147,14 @@ pub trait ImportPriceUseCase: Send + Sync {
 #[cfg_attr(test, automock)]
 pub trait StatsUseCase: Send + Sync {
     async fn get_stats(&self) -> Result<Stats, AppError>;
+}
+
+#[async_trait]
+#[cfg_attr(test, automock)]
+pub trait GetShowcaseUseCase: Send + Sync {
+    /// The showcase (« Vitrine »): the most expensive cards held in the platform's collections,
+    /// most expensive first, whatever the visibility of the collection they belong to.
+    async fn get_showcase(&self) -> Result<Vec<ShowcaseCard>, AppError>;
 }
 
 #[async_trait]

@@ -27,6 +27,7 @@ use crate::application::service::rarity_trade_filter_service::{
 use crate::application::service::register_user_service::RegisterUserService;
 use crate::application::service::search_service::SearchService;
 use crate::application::service::set_service::SetService;
+use crate::application::service::showcase_service::ShowcaseService;
 use crate::application::service::stats_service::StatsService;
 use crate::application::service::trade_binder_service::{
     AddTradeBinderService, GetTradeBindersService, RemoveTradeBinderService,
@@ -42,8 +43,8 @@ use crate::application::use_case::{
     EnqueueCardImageUpdateUseCase, EnqueueCardMarketIdUpdateUseCase, GetCardImportUseCase,
     GetCardOffersUseCase, GetCardPriceHistoryUseCase, GetCollectionPriceHistoryUseCase,
     GetCollectionStatsUseCase, GetCollectionUseCase, GetCollectionVisibilityUseCase,
-    GetRarityTradeFiltersUseCase, GetSetUseCase, GetTradeBindersUseCase, GetTradeUseCase,
-    GetUserProfileUseCase, ImportCardUseCase, ImportPriceUseCase, ListSetsUseCase,
+    GetRarityTradeFiltersUseCase, GetSetUseCase, GetShowcaseUseCase, GetTradeBindersUseCase,
+    GetTradeUseCase, GetUserProfileUseCase, ImportCardUseCase, ImportPriceUseCase, ListSetsUseCase,
     ListTradesUseCase, RateTradeUseCase, RegisterUserUseCase, RemoveTradeBinderUseCase,
     RemoveTradeCardUseCase, RunCardImportUseCase, SearchCardsUseCase, SearchSetsUseCase,
     SetCollectionVisibilityUseCase, SetRarityTradeFilterUseCase, StatsUseCase,
@@ -65,10 +66,12 @@ use crate::infrastructure::adapter_out::repository::cardmarket_price_repository_
 use crate::infrastructure::adapter_out::repository::collection_price_history_repository_adapter::CollectionPriceHistoryRepositoryAdapter;
 use crate::infrastructure::adapter_out::repository::collection_rarity_filters_repository_adapter::CollectionRarityFiltersRepositoryAdapter;
 use crate::infrastructure::adapter_out::repository::collection_stats_repository_adapter::CollectionStatsRepositoryAdapter;
+use crate::infrastructure::adapter_out::repository::showcase_repository_adapter::ShowcaseRepositoryAdapter;
 use crate::infrastructure::adapter_out::repository::stats_repository_adapter::StatsRepositoryAdapter;
 use crate::infrastructure::adapter_out::repository::trade_repository_adapter::TradeRepositoryAdapter;
 use crate::infrastructure::adapter_out::repository::trading_binders_repository_adapter::TradingBindersRepositoryAdapter;
 use adapter_in::maintenance::controller::create_maintenance_router;
+use adapter_in::showcase::controller::create_showcase_router;
 use adapter_in::stats::controller::create_stats_router;
 use adapter_out::caller::gatherer_caller_adapter::GathererCallerAdapter;
 use adapter_out::caller::scryfall_caller_adapter::ScryfallCallerAdapter;
@@ -97,6 +100,7 @@ pub struct AppState {
     pub import_card_use_case: Arc<dyn ImportCardUseCase>,
     pub edh_rec_caller_adapter: Arc<dyn EdhRecCaller>,
     pub stats_use_case: Arc<dyn StatsUseCase>,
+    pub get_showcase_use_case: Arc<dyn GetShowcaseUseCase>,
     pub auth_service: Arc<dyn AuthService>,
     pub get_collection_use_case: Arc<dyn GetCollectionUseCase>,
     pub search_cards_use_case: Arc<dyn SearchCardsUseCase>,
@@ -139,6 +143,7 @@ struct Repositories {
     card_market: Arc<CardMarketPriceRepositoryAdapter>,
     card_prices_view: Arc<CardPricesViewRepositoryAdapter>,
     stats: Arc<StatsRepositoryAdapter>,
+    showcase: Arc<ShowcaseRepositoryAdapter>,
     user: Arc<UserRepositoryAdapter>,
     trade: Arc<TradeRepositoryAdapter>,
     collection_price_history: Arc<CollectionPriceHistoryRepositoryAdapter>,
@@ -155,6 +160,7 @@ fn create_repositories(pool: &Pool<Postgres>) -> Repositories {
         card_market: Arc::new(CardMarketPriceRepositoryAdapter::new(pool.clone())),
         card_prices_view: Arc::new(CardPricesViewRepositoryAdapter::new(pool.clone())),
         stats: Arc::new(StatsRepositoryAdapter::new(pool.clone())),
+        showcase: Arc::new(ShowcaseRepositoryAdapter::new(pool.clone())),
         user: Arc::new(UserRepositoryAdapter::new(pool.clone())),
         trade: Arc::new(TradeRepositoryAdapter::new(pool.clone())),
         collection_price_history: Arc::new(CollectionPriceHistoryRepositoryAdapter::new(
@@ -256,6 +262,7 @@ fn create_app_state(
     ));
 
     let stats_service = Arc::new(StatsService::new(repos.stats));
+    let showcase_service = Arc::new(ShowcaseService::new(repos.showcase));
     let collection_service = Arc::new(CollectionService::new(repos.card_prices_view.clone()));
     let search_service = Arc::new(SearchService::new(repos.card_prices_view.clone()));
     let collection_price_history_service: Arc<dyn GetCollectionPriceHistoryUseCase> = Arc::new(
@@ -320,6 +327,7 @@ fn create_app_state(
         import_card_use_case: import_card_service,
         edh_rec_caller_adapter: callers.edh_rec,
         stats_use_case: stats_service,
+        get_showcase_use_case: showcase_service,
         auth_service,
         get_collection_use_case: collection_service,
         search_cards_use_case: search_service.clone(),
@@ -381,6 +389,7 @@ pub(crate) fn create_router(app_state: AppState) -> Router {
         .nest("/collection/trade-settings", create_trade_settings_router())
         .nest("/search", create_search_router())
         .nest("/sets", create_set_router())
+        .nest("/showcase", create_showcase_router())
         .nest("/stats", create_stats_router())
         .nest("/maintenance", create_maintenance_router())
         .nest("/user", create_user_router())

@@ -80,6 +80,9 @@ public protocol APIProtocol: Sendable {
     /// - Remark: HTTP `GET /sets/{set_code}`.
     /// - Remark: Generated from `#/paths//sets/{set_code}/get(get_set)`.
     func get_set(_ input: Operations.get_set.Input) async throws -> Operations.get_set.Output
+    /// - Remark: HTTP `GET /showcase`.
+    /// - Remark: Generated from `#/paths//showcase/get(get_showcase)`.
+    func get_showcase(_ input: Operations.get_showcase.Input) async throws -> Operations.get_showcase.Output
     /// - Remark: HTTP `GET /stats`.
     /// - Remark: Generated from `#/paths//stats/get(get_stats)`.
     func get_stats(_ input: Operations.get_stats.Input) async throws -> Operations.get_stats.Output
@@ -320,6 +323,11 @@ extension APIProtocol {
             path: path,
             headers: headers
         ))
+    }
+    /// - Remark: HTTP `GET /showcase`.
+    /// - Remark: Generated from `#/paths//showcase/get(get_showcase)`.
+    public func get_showcase(headers: Operations.get_showcase.Input.Headers = .init()) async throws -> Operations.get_showcase.Output {
+        try await get_showcase(Operations.get_showcase.Input(headers: headers))
     }
     /// - Remark: HTTP `GET /stats`.
     /// - Remark: Generated from `#/paths//stats/get(get_stats)`.
