@@ -4,7 +4,7 @@ Vue d'ensemble technique d'Arcane Exchange. Ce document donne les points structu
 décisions qui ne se devinent pas en lisant le code ; les détails (signatures, colonnes, endpoints)
 se lisent directement dans les sources et dans les documents générés.
 
-Pour le vocabulaire métier, voir [CONTEXT.md](CONTEXT.md) ; pour les décisions de conception,
+Pour le vocabulaire métier, voir [GLOSSARY.md](GLOSSARY.md) ; pour les décisions de conception,
 [docs/adr/](docs/adr/).
 
 ## Vue d'ensemble

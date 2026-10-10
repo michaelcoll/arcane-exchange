@@ -59,4 +59,4 @@ Les cinq labels canoniques par défaut (needs-triage, needs-info, ready-for-agen
 
 ### Domain docs
 
-Single-context: `CONTEXT.md` and `docs/adr/` at the repo root. See [domain.md](docs/agents/domain.md).
+Single-context: `GLOSSARY.md` and `docs/adr/` at the repo root. See [domain.md](docs/agents/domain.md).
