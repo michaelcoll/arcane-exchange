@@ -1,43 +1,107 @@
 use super::dto::StatsResponse;
 use crate::application::error::{AppError, InfraError};
-use crate::application::service::stats_service::StatsService;
 use crate::application::use_case::MockStatsUseCase;
 use crate::domain::stats::Stats;
-use crate::infrastructure::adapter_out::repository::common_repository_tests::insert_price;
+use crate::infrastructure::adapter_out::repository::common_repository_tests::{
+    insert_card_with_rarity, insert_collection_entry_with_binder, insert_price,
+    insert_rarity_filter, insert_trading_binder, insert_user_with_visibility,
+};
 use crate::infrastructure::adapter_out::repository::entities::CardMarketPriceEntity;
-use crate::infrastructure::adapter_out::repository::stats_repository_adapter::StatsRepositoryAdapter;
+use crate::infrastructure::testing::{get, json_of, public_app_on};
 use crate::infrastructure::{AppState, create_router};
-use axum::body::Body;
-use axum::http::{Request, StatusCode, header};
-use axum::response::Response;
+use axum::http::{StatusCode, header};
 use chrono::NaiveDate;
 use serde_json::Value;
 use sqlx::PgPool;
 use std::sync::Arc;
-use tower::ServiceExt;
 
-/// The whole API router, with the stats use case wired to the real database.
-fn app_on(pool: PgPool) -> axum::Router {
-    create_router(AppState {
-        stats_use_case: Arc::new(StatsService::new(Arc::new(StatsRepositoryAdapter::new(
-            pool,
-        )))),
-        ..AppState::for_testing()
-    })
+/// A rare card, `FDN` + `number`, in English.
+async fn insert_rare(pool: &PgPool, number: &str, cardmarket_id: i32) {
+    insert_card_with_rarity(pool, "FDN", number, "EN", "Rare", cardmarket_id, "R").await;
 }
 
-/// An anonymous GET: no `Authorization` header.
-async fn get(app: axum::Router, uri: &str) -> Response {
-    app.oneshot(Request::get(uri).body(Body::empty()).unwrap())
-        .await
-        .unwrap()
+/// `quantity` non-foil copies of the rare `FDN` + `number` in `binder` of `user_id`.
+async fn insert_copies(
+    pool: &PgPool,
+    user_id: &str,
+    number: &str,
+    quantity: i32,
+    binder: Option<&str>,
+) {
+    insert_collection_entry_with_binder(
+        pool,
+        "FDN",
+        number,
+        "EN",
+        false,
+        user_id,
+        quantity,
+        100,
+        chrono::Utc::now(),
+        binder,
+    )
+    .await;
 }
 
-async fn json_of(response: Response) -> Value {
-    let bytes = axum::body::to_bytes(response.into_body(), usize::MAX)
-        .await
-        .unwrap();
-    serde_json::from_slice(&bytes).unwrap()
+#[sqlx::test]
+async fn proposed_copies_count_public_collections_and_ignore_private_ones(pool: PgPool) {
+    insert_rare(&pool, "1", 1).await;
+    insert_user_with_visibility(&pool, "alice", "alice", "public").await;
+    insert_user_with_visibility(&pool, "bob", "bob", "public").await;
+    insert_user_with_visibility(&pool, "carol", "carol", "private").await;
+    insert_copies(&pool, "alice", "1", 3, None).await;
+    insert_copies(&pool, "bob", "1", 4, Some("Binder")).await;
+    insert_copies(&pool, "carol", "1", 5, None).await;
+
+    let response = get(public_app_on(pool), "/stats").await;
+
+    assert_eq!(response.status(), StatusCode::OK);
+    assert_eq!(json_of(response).await["proposed_copy_number"], 7);
+}
+
+#[sqlx::test]
+async fn proposed_copies_of_a_trade_collection_are_those_of_its_open_binders(pool: PgPool) {
+    insert_rare(&pool, "1", 1).await;
+    insert_user_with_visibility(&pool, "alice", "alice", "trade").await;
+    insert_rarity_filter(&pool, "alice", "R", true, 0).await;
+    insert_trading_binder(&pool, "alice", "Open").await;
+    insert_copies(&pool, "alice", "1", 2, Some("Open")).await;
+    insert_copies(&pool, "alice", "1", 8, Some("Closed")).await;
+    insert_copies(&pool, "alice", "1", 16, None).await;
+
+    let body = json_of(get(public_app_on(pool), "/stats").await).await;
+
+    assert_eq!(body["proposed_copy_number"], 2);
+}
+
+#[sqlx::test]
+async fn proposed_copies_follow_rarity_filters_and_deduct_kept_copies(pool: PgPool) {
+    insert_rare(&pool, "1", 1).await;
+    insert_rare(&pool, "2", 2).await;
+    insert_card_with_rarity(&pool, "FDN", "3", "EN", "Mythic", 3, "M").await;
+    insert_card_with_rarity(&pool, "FDN", "4", "EN", "Common", 4, "C").await;
+    insert_user_with_visibility(&pool, "alice", "alice", "trade").await;
+    insert_trading_binder(&pool, "alice", "Open").await;
+    // Rares: open, one copy kept. Mythics: closed. Commons: no filter, which means closed.
+    insert_rarity_filter(&pool, "alice", "R", true, 1).await;
+    insert_rarity_filter(&pool, "alice", "M", false, 0).await;
+    insert_copies(&pool, "alice", "1", 3, Some("Open")).await;
+    insert_copies(&pool, "alice", "2", 1, Some("Open")).await;
+    insert_copies(&pool, "alice", "3", 5, Some("Open")).await;
+    insert_copies(&pool, "alice", "4", 7, Some("Open")).await;
+
+    let body = json_of(get(public_app_on(pool), "/stats").await).await;
+
+    // 3 − 1 kept = 2 for the first rare, 1 − 1 kept = 0 for the second, nothing else.
+    assert_eq!(body["proposed_copy_number"], 2);
+}
+
+#[sqlx::test]
+async fn proposed_copies_are_zero_on_an_empty_platform(pool: PgPool) {
+    let response = get(public_app_on(pool), "/stats").await;
+
+    assert_eq!(response.status(), StatusCode::OK);
+    assert_eq!(json_of(response).await["proposed_copy_number"], 0);
 }
 
 #[sqlx::test]
@@ -46,7 +110,7 @@ async fn stats_are_served_without_authentication(pool: PgPool) {
     insert_price(&pool, CardMarketPriceEntity::simple_at(1, date, 100)).await;
     insert_price(&pool, CardMarketPriceEntity::simple_at(2, date, 100)).await;
 
-    let response = get(app_on(pool), "/stats").await;
+    let response = get(public_app_on(pool), "/stats").await;
 
     assert_eq!(response.status(), StatusCode::OK);
     let body = json_of(response).await;
@@ -63,7 +127,7 @@ async fn last_price_date_is_the_most_recent_price_date(pool: PgPool) {
     insert_price(&pool, CardMarketPriceEntity::simple_at(1, older, 100)).await;
     insert_price(&pool, CardMarketPriceEntity::simple_at(1, latest, 100)).await;
 
-    let body = json_of(get(app_on(pool), "/stats").await).await;
+    let body = json_of(get(public_app_on(pool), "/stats").await).await;
 
     assert_eq!(body["last_price_date"], "2026-10-01");
 }
@@ -75,7 +139,7 @@ async fn last_price_date_is_null_without_any_price(pool: PgPool) {
         .await
         .unwrap();
 
-    let response = get(app_on(pool), "/stats").await;
+    let response = get(public_app_on(pool), "/stats").await;
 
     assert_eq!(response.status(), StatusCode::OK);
     let body = json_of(response).await;
@@ -85,7 +149,7 @@ async fn last_price_date_is_null_without_any_price(pool: PgPool) {
 
 #[sqlx::test]
 async fn stats_are_cached_for_six_hours(pool: PgPool) {
-    let response = get(app_on(pool), "/stats").await;
+    let response = get(public_app_on(pool), "/stats").await;
 
     assert_eq!(response.status(), StatusCode::OK);
     assert_eq!(
@@ -96,7 +160,7 @@ async fn stats_are_cached_for_six_hours(pool: PgPool) {
 
 #[sqlx::test]
 async fn maintenance_stats_no_longer_exist(pool: PgPool) {
-    let response = get(app_on(pool), "/maintenance/stats").await;
+    let response = get(public_app_on(pool), "/maintenance/stats").await;
 
     assert_eq!(response.status(), StatusCode::NOT_FOUND);
 }
@@ -130,9 +194,11 @@ fn response_formats_the_last_price_date_as_an_iso_day() {
         card_price_number: 150,
         db_size_mb: 500,
         last_price_date: NaiveDate::from_ymd_opt(2026, 10, 1),
+        proposed_copy_number: 1248,
     }
     .into();
 
+    assert_eq!(response.proposed_copy_number, 1248);
     assert_eq!(response.card_number, 100);
     assert_eq!(response.card_price_number, 150);
     assert_eq!(response.db_size_mb, 500);

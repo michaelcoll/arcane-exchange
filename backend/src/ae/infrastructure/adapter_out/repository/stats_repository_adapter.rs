@@ -1,6 +1,8 @@
-use crate::application::error::AppError;
+use crate::application::error::{AppError, InfraError};
 use crate::application::repository::StatsRepository;
-use crate::infrastructure::adapter_out::repository::entities::{CountEntity, SizeEntity};
+use crate::infrastructure::adapter_out::repository::entities::{
+    CountEntity, SizeEntity, invalid_db_value,
+};
 use async_trait::async_trait;
 use chrono::NaiveDate;
 use sqlx::{Pool, Postgres};
@@ -60,6 +62,23 @@ impl StatsRepository for StatsRepositoryAdapter {
                 .await?,
         )
     }
+
+    /// Read from `v_tradable_entry`, the single source of a card's exposure to a third party:
+    /// visibility, trading binders and rarity filters are applied there, not here.
+    #[tracing::instrument(name = "stats_repo.get_proposed_copy_number", skip_all, fields(sentry.op = "db"))]
+    async fn get_proposed_copy_number(&self) -> Result<u32, AppError> {
+        let total = sqlx::query_scalar!(
+            r#"SELECT COALESCE(SUM(proposed_quantity), 0)::BIGINT AS "total!" FROM v_tradable_entry"#
+        )
+        .fetch_one(&self.pool)
+        .await?;
+
+        Ok(proposed_copy_number_from_db(total)?)
+    }
+}
+
+fn proposed_copy_number_from_db(total: i64) -> Result<u32, InfraError> {
+    u32::try_from(total).map_err(|_| invalid_db_value("proposed copy number", &total.to_string()))
 }
 
 #[cfg(test)]
@@ -70,6 +89,23 @@ mod tests {
     };
     use crate::infrastructure::adapter_out::repository::entities::CardMarketPriceEntity;
     use sqlx::PgPool;
+
+    #[test]
+    fn a_proposed_copy_total_out_of_range_is_a_repository_error() {
+        assert_eq!(proposed_copy_number_from_db(1248), Ok(1248));
+        assert_eq!(
+            proposed_copy_number_from_db(4_294_967_296),
+            Err(InfraError::RepositoryError(
+                "invalid proposed copy number from database: 4294967296".to_string()
+            ))
+        );
+        assert_eq!(
+            proposed_copy_number_from_db(-1),
+            Err(InfraError::RepositoryError(
+                "invalid proposed copy number from database: -1".to_string()
+            ))
+        );
+    }
 
     #[sqlx::test]
     async fn should_return_card_count(pool: PgPool) {

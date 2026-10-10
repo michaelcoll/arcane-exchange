@@ -86,7 +86,7 @@ private extension ClerkTheme {
 }
 
 #Preview {
-    LoginCard(tagline: LoginCopy.tagline)
+    LoginCard(tagline: LoginCopy.tagline(proposedCopies: 1248))
         .padding(10)
         .environment(Clerk.shared)
 }

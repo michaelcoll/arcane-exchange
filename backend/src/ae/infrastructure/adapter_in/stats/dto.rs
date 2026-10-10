@@ -17,6 +17,9 @@ pub struct StatsResponse {
     /// ISO 8601 date string (YYYY-MM-DD) of the most recent Cardmarket price — prices are dated
     /// to the day. `null` until a price has been imported.
     pub last_price_date: Option<String>,
+    /// Copies offered for trade across the platform: the sum of every player's proposed
+    /// quantities, after collection visibility, trading binders and rarity filters.
+    pub proposed_copy_number: u32,
 }
 
 impl From<Stats> for StatsResponse {
@@ -26,6 +29,7 @@ impl From<Stats> for StatsResponse {
             card_price_number: stats.card_price_number,
             db_size_mb: stats.db_size_mb,
             last_price_date: stats.last_price_date.map(|d| d.to_string()),
+            proposed_copy_number: stats.proposed_copy_number,
         }
     }
 }

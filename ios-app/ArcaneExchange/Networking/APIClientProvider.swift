@@ -12,10 +12,21 @@ enum APIClientProvider {
     /// `URLSessionTransport` defaults to `URLSession.shared`, so this allocates nothing
     /// meaningful — no connection pool is thrown away.
     static var shared: Client {
+        client(middlewares: [ClerkAuthMiddleware()])
+    }
+
+    /// A client for the public endpoints (`get_stats`), rebuilt on every access
+    /// like `shared`. Without the auth middleware its requests carry no token, whoever is
+    /// signed in.
+    static var anonymous: Client {
+        client(middlewares: [])
+    }
+
+    private static func client(middlewares: [any ClientMiddleware]) -> Client {
         Client(
             serverURL: AppConfig.apiBaseURL,
             transport: URLSessionTransport(),
-            middlewares: [ClerkAuthMiddleware()]
+            middlewares: middlewares
         )
     }
 }

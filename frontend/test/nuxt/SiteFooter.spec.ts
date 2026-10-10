@@ -29,6 +29,7 @@ const stats = (overrides: Partial<Stats> = {}): Stats => ({
   card_price_number: 3482916,
   db_size_mb: 1248,
   last_price_date: '2026-10-02',
+  proposed_copy_number: 1248,
   ...overrides,
 });
 

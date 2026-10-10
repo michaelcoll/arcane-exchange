@@ -21,4 +21,9 @@ export type Stats = {
    * to the day. `null` until a price has been imported.
    */
   last_price_date: string | null;
+  /**
+   * Copies offered for trade across the platform: the sum of every player's proposed
+   * quantities, after collection visibility, trading binders and rarity filters.
+   */
+  proposed_copy_number: number;
 };
