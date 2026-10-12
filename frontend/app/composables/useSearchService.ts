@@ -6,12 +6,9 @@ import type { SetInfo } from '~/bindings/SetInfo';
 export const useSearchService = () => {
   const { apiCall } = useApi();
 
-  const getSearch = (params?: MaybeRefOrGetter<SearchParams>) =>
-    useAsyncData(
-      'search',
-      () => apiCall<PaginatedCollection>('/search/card', { query: toValue(params) }),
-      { lazy: true },
-    );
+  /** One page of a search: the page adapter of its card list (see `useCardList`). */
+  const getSearch = (params: SearchParams) =>
+    apiCall<PaginatedCollection>('/search/card', { query: params });
 
   /**
    * The sets of the cards a search can return (see `searchSetsScope`), refetched when the scope

@@ -10,6 +10,7 @@ import {
 import {
   COLLECTION_CRITERIA,
   NAME_SEARCH_CRITERIA,
+  PLAYER_SEARCH_CRITERIA,
   type CriteriaContext,
 } from '~/utils/card-criteria-url';
 
@@ -455,7 +456,7 @@ describe('useCardList', () => {
   });
 
   describe('context', () => {
-    it('falls back to the default sort of a context that does not offer the current one', async () => {
+    it('opens a new context on its default sort, never sending a sort it does not offer', async () => {
       await openAt({ sort_dir: 'asc' });
       const context = ref(COLLECTION_CRITERIA);
       const scope = ref<CardListScope<Scope>>({ params: {}, query: {} });
@@ -477,15 +478,54 @@ describe('useCardList', () => {
       await expectUrl({ q: 'sol' });
     });
 
-    it('keeps a sort the new context offers too', async () => {
-      await openAt({ sort_by: 'trend', sort_dir: 'asc' });
-      const context = ref(COLLECTION_CRITERIA);
-      const { list } = await openList(3, { context });
-
-      context.value = NAME_SEARCH_CRITERIA;
+    it('opens a new context on its default sort, even when it offers the current one', async () => {
+      // A search by name, then a player is picked: their collection opens on date added.
+      const context = ref(NAME_SEARCH_CRITERIA);
+      const scope = ref<CardListScope<Scope>>({ params: {}, query: {} });
+      const { list, fetchPage } = await openList(3, { context, scope });
+      list.setSort({ sort_by: 'trend', sort_dir: 'asc' });
       await flushPromises();
 
-      expect(list.criteria).toMatchObject({ sort_by: 'trend', sort_dir: 'asc' });
+      context.value = PLAYER_SEARCH_CRITERIA;
+      scope.value = { params: { q: 'urza' }, query: { player: 'urza' } };
+      await flushPromises();
+
+      expect(fetchPage).toHaveBeenCalledTimes(3);
+      expect(fetchPage).toHaveBeenLastCalledWith(
+        expect.objectContaining({ q: 'urza', sort_by: 'added_at', sort_dir: 'desc' }),
+      );
+      expect(list.sorts.value.map((s) => s.value)).toEqual(['trend', 'added_at']);
+      await expectUrl({ player: 'urza' });
+    });
+
+    it('keeps the sort of the URL when it opens in a context that offers it', async () => {
+      await openAt({ player: 'urza', sort_by: 'trend', sort_dir: 'asc' });
+
+      const { fetchPage } = await openList(3, {
+        context: PLAYER_SEARCH_CRITERIA,
+        scope: { params: { q: 'urza' }, query: { player: 'urza' } },
+      });
+
+      expect(fetchPage).toHaveBeenCalledExactlyOnceWith(
+        expect.objectContaining({ q: 'urza', sort_by: 'trend', sort_dir: 'asc' }),
+      );
+      await expectUrl({ player: 'urza', sort_by: 'trend', sort_dir: 'asc' });
+    });
+
+    it('goes back to the default sort while no list is shown, without a request', async () => {
+      // "Change player": the player's collection is left for the player picker.
+      const context = ref(PLAYER_SEARCH_CRITERIA);
+      const scope = ref<CardListScope<Scope>>({ params: {}, query: {} });
+      const { list, fetchPage } = await openList(3, { context, scope });
+
+      context.value = NAME_SEARCH_CRITERIA;
+      scope.value = { params: null, query: { mode: 'player' } };
+      await flushPromises();
+
+      expect(fetchPage).toHaveBeenCalledTimes(1);
+      expect(list.criteria).toMatchObject({ sort_by: 'trend', sort_dir: 'desc' });
+      expect(list.cards.value).toEqual([]);
+      await expectUrl({ mode: 'player' });
     });
   });
 
