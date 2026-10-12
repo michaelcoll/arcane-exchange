@@ -27,7 +27,7 @@ _Avoid_ : variante, version foil
 Le visuel d'une Card, une image par face : le recto, et un verso pour les seules cartes à double face
 physique (transform, modale, meld). Les cartes split, aventure ou flip n'ont qu'un recto. Une Card
 sans image est en attente, jamais en erreur.
-_Avoid_ : artwork, illustration, scan, visuel Gatherer/Scryfall
+_Avoid_ : illustration, scan, visuel Gatherer/Scryfall
 
 **Source d'image** :
 L'origine retenue pour les images d'une Card, par ordre de préférence : Gatherer dans la langue de

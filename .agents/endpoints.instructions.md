@@ -6,7 +6,4 @@ All endpoints are defined and documented in the OpenAPI specification file.
 
 This document serves as a pointer to the comprehensive API documentation.
 
-## DTO
-
-- Export a DTO to TypeScript with `#[ts(export)]` alone, never `export_to`: ts-rs names the file after the TS type
-  name, which already follows `#[serde(rename = "X")]` (`CardOfferResponse` → `CardOffer.ts`)
+DTO rules (TypeScript export, `Option<Struct>` fields): [CODING_STANDARDS.md](../CODING_STANDARDS.md) › Backend.

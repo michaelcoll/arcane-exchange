@@ -4,14 +4,16 @@ Hi-fi design system for a Magic: The Gathering card trading platform. Aesthetic:
 (cyan) / secondary (violet)**, shades derived in `oklch`.
 
 **Architecture**: tokens (colors, spacing, radius, shadows, typography) are CSS custom properties defined in
-`frontend/app/assets/css/main.css` (`:root`) — never invent a token, use the real names. Visual composition is done
-with **Tailwind classes directly in the Vue template** (utility-first), not with dedicated global CSS classes (`.btn`,
-`.panel`, `.chip`…). That class system exists in the mockup (`maquette/styles.css`) but has no equivalent in
-`frontend/` — that's not the goal, don't recreate it. Accent colors go through the **semantic Tailwind colors**
-`primary`, `secondary` and `rarity` (§1). Other tokens are applied with the arbitrary-value syntax
-(`bg-[var(--surface-2)]`, `text-[var(--ink-2)]`, `border-[var(--line)]`, `rounded-[var(--r-lg)]`…). Tailwind's default
-palette is only for neutrals (`slate`, `zinc`) and the semantic red/green (`red`, `emerald`) — **never `cyan` /
-`violet`**: an ESLint rule fails `mise run lint-frontend` on any `*-cyan-*` / `*-violet-*` class in `frontend/app`.
+`frontend/app/assets/css/main.css` (`:root`) — never invent a token, use the real names. Tailwind is v3, through
+`@nuxtjs/tailwindcss`: its config lives in `nuxt.config.ts`, there is no `tailwind.config.js`.
+
+The mockup's global CSS classes (`.btn`, `.panel`, `.chip`…, `maquette/styles.css`) have no equivalent in
+`frontend/`. Tailwind's default palette is only for neutrals (`slate`, `zinc`) and the semantic red/green (`red`,
+`emerald`) — **never `cyan` / `violet`**: an ESLint rule fails `mise run lint-frontend` on any `*-cyan-*` /
+`*-violet-*` class in `frontend/app`.
+
+How to apply the tokens in a component (semantic colors, arbitrary values, fonts, theme):
+[CODING_STANDARDS.md](../CODING_STANDARDS.md) › Web.
 
 ---
 
@@ -51,8 +53,7 @@ Rarity (MTG convention): `--rarity-common`, `--rarity-uncommon`, `--rarity-rare`
 
 ### Tailwind semantic colors
 
-Declared in `nuxt.config.ts` (`theme.extend.colors`), backed by the tokens above — they follow the light/dark theme on
-their own, so **no `dark:` pair** is needed:
+Declared in `nuxt.config.ts` (`theme.extend.colors`), backed by the tokens above:
 
 | Color       | Classes                                                                                         |
 | ----------- | ----------------------------------------------------------------------------------------------- |
@@ -92,11 +93,9 @@ for iOS.
 
 ### Light theme
 
-The theme is driven by the `.dark` class on `<html>` (Tailwind `darkMode: 'class'`, see `nuxt.config.ts`) — not a
-`data-theme` attribute (that's the mockup's mechanism, not `frontend/`'s). In the absence of `.dark`,
-`:root:not(.dark)` reassigns the same set of tokens for light mode (background `#eef0f2`, white surfaces, deepened
-role colors to stay readable, subtle black borders). Always code with the tokens or the semantic colors — never a
-hardcoded color — so both themes work. There is no user-tweakable accent: `--primary` is a fixed token.
+In the absence of the `.dark` class on `<html>`, `:root:not(.dark)` reassigns the same set of tokens for light mode
+(background `#eef0f2`, white surfaces, deepened role colors to stay readable, subtle black borders): a hardcoded color
+breaks one of the two themes. There is no user-tweakable accent: `--primary` is a fixed token.
 
 ---
 
@@ -149,7 +148,7 @@ Visual patterns to compose in Tailwind (no dedicated `.panel`/`.card-surface`/`.
 
 Inventory of the mockup's UI patterns to reimplement as Vue components styled with Tailwind. The names below (`.btn`,
 `.panel`…) are the ones from the mockup's CSS (`maquette/styles.css`) — useful for finding the reference style/behavior
-to consult, **not classes to recreate as-is** in `frontend/`.
+to consult; none of them is a class in `frontend/`.
 
 **Buttons** `.btn` + variants `.primary`, `.violet` (→ `secondary`), `.ghost`, `.danger`; sizes `.sm` / `.lg` /
 `.block`.
@@ -210,15 +209,10 @@ Short, lively transitions (~.15–.3s, `cubic-bezier` curves with a slight overs
 
 ## 7. Golden Rules
 
-1. **Always** go through the real `var(--*)` tokens or the semantic Tailwind colors; never a hardcoded color/font
-   (otherwise the light theme breaks), never the default `cyan` / `violet` palette.
+1. Never a hardcoded color/font (otherwise the light theme breaks), never the default `cyan` / `violet` palette.
 2. Two accent colors max, chosen by role: `primary` (my actions, increase, trade progress) + `secondary` (other player,
    exchange, secondary series). Red/green are reserved for semantic use (decrease/discount).
-3. Numbers, prices, and labels in `--font-mono` (`font-mono`); titles in `--font-display` (`font-display`); everything
-   else in `--font-body` (`font-sans`).
-4. Glass surfaces (§4) for main containers, inset area for sub-zones — composed in Tailwind, not via global CSS classes.
-5. No emojis, no aggressive gradients — the only tolerated gradient is the neon halo (`-glow`) and the background
+3. Glass surfaces (§4) for main containers, inset area for sub-zones.
+4. No emojis, no aggressive gradients — the only tolerated gradient is the neon halo (`-glow`) and the background
    aurora.
-6. Don't create global CSS classes like `.btn`/`.panel`/`.chip`: compose each Vue component in Tailwind, relying on the
-   `var(--*)` tokens above (arbitrary values) and on already-written components (`app/components/*.vue`)
-   as a style reference.
+5. Use the already-written components (`app/components/*.vue`) as a style reference.
