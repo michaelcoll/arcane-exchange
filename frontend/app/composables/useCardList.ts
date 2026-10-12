@@ -1,4 +1,5 @@
 import { useRoute } from 'nuxt/app';
+import type { Reactive } from 'vue';
 import type { RarityCode } from '~/bindings/RarityCode';
 import type { SortBy } from '~/bindings/SortBy';
 import type { SortDir } from '~/bindings/SortDir';
@@ -168,4 +169,15 @@ export const useCardList = <T, S extends object>(options: CardListOptions<T, S>)
     loadMore,
     reload,
   };
+};
+
+/**
+ * A card list as its page holds it, unwrapped with `reactive`. The cards are spelled out so that
+ * `T` is inferred from the list a page passes on.
+ */
+export type CardList<T> = Omit<
+  Reactive<ReturnType<typeof useCardList<unknown, object>>>,
+  'cards'
+> & {
+  cards: readonly T[];
 };

@@ -1,8 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import {
   CARD_SIZE_PREF,
+  COLLECTION_GRAPH_PREF,
   COLLECTION_GRAPH_RANGE_PREF,
-  COLLECTION_VIEW_PREF,
   loadPreference,
   savePreference,
 } from './display-prefs';
@@ -33,7 +33,7 @@ describe('display preferences', () => {
 
   it('falls back to the default when nothing is stored', () => {
     expect(loadPreference(CARD_SIZE_PREF)).toBe('md');
-    expect(loadPreference(COLLECTION_VIEW_PREF)).toBe('grid');
+    expect(loadPreference(COLLECTION_GRAPH_PREF)).toBe('compact');
     expect(loadPreference(COLLECTION_GRAPH_RANGE_PREF)).toBe('30 j');
   });
 
@@ -43,9 +43,9 @@ describe('display preferences', () => {
   });
 
   it('keeps each preference under its own key', () => {
-    savePreference(COLLECTION_VIEW_PREF, 'list');
+    savePreference(COLLECTION_GRAPH_PREF, 'expanded');
     savePreference(COLLECTION_GRAPH_RANGE_PREF, '1 an');
-    expect(loadPreference(COLLECTION_VIEW_PREF)).toBe('list');
+    expect(loadPreference(COLLECTION_GRAPH_PREF)).toBe('expanded');
     expect(loadPreference(COLLECTION_GRAPH_RANGE_PREF)).toBe('1 an');
     expect(loadPreference(CARD_SIZE_PREF)).toBe('md');
   });

@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import type { CollectionCard } from '~/bindings/CollectionCard';
-import type { RarityCode } from '~/bindings/RarityCode';
 import type { CardListScope } from '~/composables/useCardList';
 
 import { useRoute } from 'nuxt/app';
@@ -37,52 +36,21 @@ const priceMax = computed(() =>
   statsData.value?.price_trend_max != null ? Math.ceil(statsData.value.price_trend_max / 100) : 150,
 );
 
-const {
-  cards,
-  loading,
-  offsetLimitReached,
-  criteria,
-  sorts,
-  priceLo,
-  priceHi,
-  toggleRarity,
-  toggleSet,
-  setSort,
-  setPriceRange,
-  loadMore,
-  reload,
-} = useCardList<CollectionCard, { q: string }>({
-  context: COLLECTION_CRITERIA,
-  fetchPage: getCollection,
-  // The scope of the collection: its text filter (debounced), which its URL carries too.
-  scope: (): CardListScope<{ q: string }> => {
-    const text = qDebounced.value;
-    return { params: { q: text }, query: text.trim() ? { q: text } : {} };
-  },
-  pageSize,
-  priceMin,
-  priceMax,
-});
-
-const sentinel = ref<HTMLElement | null>(null);
-let io: IntersectionObserver | null = null;
-
-onMounted(() => {
-  io = new IntersectionObserver(
-    ([entry]) => {
-      if (entry?.isIntersecting) loadMore();
+const list = reactive(
+  useCardList<CollectionCard, { q: string }>({
+    context: COLLECTION_CRITERIA,
+    fetchPage: getCollection,
+    // The scope of the collection: its text filter (debounced), which its URL carries too.
+    scope: (): CardListScope<{ q: string }> => {
+      const text = qDebounced.value;
+      return { params: { q: text }, query: text.trim() ? { q: text } : {} };
     },
-    { rootMargin: '300px' },
-  );
-  onUnmounted(() => io?.disconnect());
-});
+    pageSize,
+    priceMin,
+    priceMax,
+  }),
+);
 
-watch(sentinel, (el, oldEl) => {
-  if (oldEl) io?.unobserve(oldEl);
-  if (el) io?.observe(el);
-});
-
-const view = usePreference(COLLECTION_VIEW_PREF);
 const graph = usePreference(COLLECTION_GRAPH_PREF);
 const showDetail = computed(() => graph.value === 'expanded' && isDesktop.value);
 const graphRange = usePreference(COLLECTION_GRAPH_RANGE_PREF);
@@ -122,7 +90,6 @@ const totalValueCents = computed(() => {
 
 const variation = computed(() => computeVariation(priceHistoryData.value ?? []));
 
-const sheet = ref(false);
 const importOpen = ref(false);
 const importLoading = ref(false);
 const isDragging = ref(false);
@@ -137,18 +104,11 @@ const {
   start: startImportFlow,
   stopPolling: stopImportPolling,
   reset: resetImportFlow,
-} = useCardImportFlow({ importCards, getCardImport, listCardImports }, { onCompleted: reload });
+} = useCardImportFlow(
+  { importCards, getCardImport, listCardImports },
+  { onCompleted: list.reload },
+);
 const detail = ref<CollectionCard | null>(null);
-
-const bodyScrollLocked = useScrollLock(document.body);
-watch([detail, sheet, importOpen], ([d, s, i]) => {
-  bodyScrollLocked.value = !!d || s || i;
-});
-
-// The filters name what they toggle by kind.
-const active = computed(() => ({ rar: [...criteria.rarity], sets: [...criteria.sets] }));
-const toggle = (k: 'rar' | 'sets', v: string) =>
-  k === 'rar' ? toggleRarity(v as RarityCode) : toggleSet(v);
 
 const graphOptions = [
   {
@@ -381,8 +341,15 @@ const onDragLeave = () => {
       Importer Manabox
     </button>
 
-    <div class="flex items-start gap-6">
-      <div class="sticky top-[86px] flex w-[210px] flex-none flex-col gap-3.5 max-md:hidden">
+    <CardListShell
+      :list="list"
+      :set-list="setList"
+      :price-min="priceMin"
+      :price-max="priceMax"
+      :size="size"
+      :overlay-open="!!detail || importOpen"
+    >
+      <template #sidebar>
         <button
           class="bg-primary hover:bg-primary-soft inline-flex w-full items-center justify-center gap-2 rounded-xl border border-transparent px-4 py-2.5 text-sm leading-none font-bold whitespace-nowrap text-[var(--on-primary)] shadow-lg transition-all duration-150 hover:-translate-y-px active:translate-y-0"
           @click="openImport"
@@ -390,153 +357,58 @@ const onDragLeave = () => {
           <Icon name="lucide:upload" :size="16" />
           Importer Manabox
         </button>
-        <aside
-          class="rounded-2xl border border-slate-200 bg-white/60 p-4 shadow-lg backdrop-blur-md dark:border-white/10 dark:bg-zinc-900/60"
-        >
-          <CollectionFilters
-            :active="active"
-            :set-list="setList"
-            :price-min="priceMin"
-            :price-max="priceMax"
-            :price-lo="priceLo"
-            :price-hi="priceHi"
-            @toggle="toggle"
-            @price-change="setPriceRange"
-          />
-        </aside>
-      </div>
+      </template>
 
-      <div class="min-w-0 flex-1">
-        <div class="mb-3.5 flex min-h-[22px] items-center justify-between gap-2.5">
-          <button
-            class="inline-flex cursor-pointer items-center gap-1.5 rounded-full border border-slate-200 bg-slate-100 px-3 py-1.5 text-xs font-medium whitespace-nowrap text-slate-600 transition-all duration-150 select-none hover:border-slate-300 hover:bg-slate-50 hover:text-slate-800 md:hidden dark:border-white/10 dark:bg-white/5 dark:text-slate-300 dark:hover:border-white/15 dark:hover:bg-zinc-800 dark:hover:text-slate-100"
-            @click="sheet = true"
-          >
-            <Icon name="lucide:filter" :size="13" />
-            Filtres
-          </button>
-          <div class="ml-auto flex items-center gap-2.5">
-            <SegToggle
-              v-if="view === 'grid'"
-              v-model="size"
-              :options="sizeOptions"
-              size="sm"
-              class="max-md:hidden"
-            />
-            <SortToggle :model-value="criteria" :options="sorts" @update:model-value="setSort" />
-          </div>
-        </div>
-
-        <div
-          v-if="loading && cards.length === 0"
-          class="flex items-center justify-center py-16 font-mono text-sm text-slate-400 dark:text-slate-500"
-        >
-          <Icon name="lucide:loader-circle" :size="18" class="mr-2.5 animate-spin" />
-          Chargement…
-        </div>
-
-        <div
-          v-else-if="!loading && cards.length === 0"
-          class="flex flex-col items-center justify-center gap-4 py-20 text-slate-400 dark:text-slate-500"
-        >
-          <Icon name="lucide:inbox" :size="48" class="opacity-40" />
-          <p class="text-center font-mono text-base">Aucune carte dans la collection.</p>
-          <button
-            class="mt-1 flex cursor-pointer items-center gap-2 rounded-xl bg-slate-100 px-4 py-2 font-mono text-sm transition-colors hover:bg-slate-200 dark:bg-zinc-800 dark:hover:bg-zinc-700"
-            @click="openImport()"
-          >
-            <Icon name="lucide:upload" :size="14" />
-            Importer depuis Manabox
-          </button>
-        </div>
-
-        <template v-else-if="view === 'grid'">
-          <div
-            :class="[
-              'grid max-md:[grid-template-columns:repeat(auto-fill,minmax(150px,1fr))] max-md:gap-3.5',
-              size === 'sm'
-                ? '[grid-template-columns:repeat(auto-fill,minmax(130px,1fr))] gap-3'
-                : '',
-              size === 'md'
-                ? '[grid-template-columns:repeat(auto-fill,minmax(185px,1fr))] gap-4'
-                : '',
-              size === 'lg'
-                ? '[grid-template-columns:repeat(auto-fill,minmax(340px,1fr))] gap-6'
-                : '',
-            ]"
-          >
-            <CardCell
-              v-for="c in cards"
-              :key="c.scryfall_id"
-              :image-url="c.image_url"
-              :name="c.name"
-              :qty="c.collection_entry?.quantity ?? 0"
-              :purchased="c.collection_entry?.purchase_price ?? 0"
-              :trend="c.price_guide?.trend ?? 0"
-              deal="compare"
-              :foil="c.foil"
-              :size="size"
-              :reserved="c.reserved"
-              @click="detail = c"
-            />
-          </div>
-
-          <!-- Infinite scroll sentinel -->
-          <div ref="sentinel" class="h-px" />
-          <div
-            v-if="loading && cards.length > 0"
-            class="flex items-center justify-center py-8 font-mono text-sm text-slate-400 dark:text-slate-500"
-          >
-            <Icon name="lucide:loader-circle" :size="16" class="mr-2 animate-spin" />
-            Chargement…
-          </div>
-          <div
-            v-else-if="offsetLimitReached"
-            class="flex items-center justify-center py-8 text-center font-mono text-sm text-slate-400 dark:text-slate-500"
-          >
-            Affichage limité aux {{ cards.length }} premières cartes — affine tes filtres pour voir
-            le reste.
-          </div>
-        </template>
-      </div>
-    </div>
-
-    <div
-      v-if="sheet"
-      class="fixed inset-0 z-[80] animate-[fade_0.2s_ease] bg-black/60 backdrop-blur-sm"
-      @click="sheet = false"
-    >
-      <div
-        class="fixed right-0 bottom-0 left-0 z-[81] max-h-[84vh] animate-[slideup_0.3s_cubic-bezier(0.3,1,0.4,1)] overflow-auto rounded-t-3xl border-t border-slate-300 bg-white px-4 pt-5 pb-[calc(1.25rem+env(safe-area-inset-bottom))] shadow-2xl dark:border-white/15 dark:bg-zinc-900"
-        @click.stop
-      >
-        <div class="mb-4 flex items-center justify-between">
-          <h3 class="font-display text-base font-semibold tracking-tight">Filtres</h3>
-          <button
-            class="grid h-9 w-9 place-items-center rounded-lg border border-slate-200 bg-slate-100 text-slate-600 transition-all duration-150 hover:border-slate-300 hover:bg-slate-50 hover:text-slate-800 dark:border-white/10 dark:bg-white/5 dark:text-slate-300 dark:hover:border-white/15 dark:hover:bg-zinc-800 dark:hover:text-slate-100"
-            @click="sheet = false"
-          >
-            <Icon name="lucide:x" :size="16" />
-          </button>
-        </div>
-        <CollectionFilters
-          :active="active"
-          :set-list="setList"
-          :price-min="priceMin"
-          :price-max="priceMax"
-          :price-lo="priceLo"
-          :price-hi="priceHi"
-          @toggle="toggle"
-          @price-change="setPriceRange"
-        />
+      <template #toolbar="{ openFilters }">
         <button
-          class="bg-primary hover:bg-primary-soft mt-4 inline-flex w-full items-center justify-center gap-2 rounded-xl border border-transparent px-4 py-2.5 text-sm leading-none font-bold whitespace-nowrap text-[var(--on-primary)] shadow-lg transition-all duration-150 hover:-translate-y-px active:translate-y-0"
-          @click="sheet = false"
+          class="inline-flex cursor-pointer items-center gap-1.5 rounded-full border border-slate-200 bg-slate-100 px-3 py-1.5 text-xs font-medium whitespace-nowrap text-slate-600 transition-all duration-150 select-none hover:border-slate-300 hover:bg-slate-50 hover:text-slate-800 md:hidden dark:border-white/10 dark:bg-white/5 dark:text-slate-300 dark:hover:border-white/15 dark:hover:bg-zinc-800 dark:hover:text-slate-100"
+          @click="openFilters"
         >
-          Voir les résultats
+          <Icon name="lucide:filter" :size="13" />
+          Filtres
         </button>
-      </div>
-    </div>
+        <div class="ml-auto flex items-center gap-2.5">
+          <SegToggle v-model="size" :options="sizeOptions" size="sm" class="max-md:hidden" />
+          <SortToggle
+            :model-value="list.criteria"
+            :options="list.sorts"
+            @update:model-value="list.setSort"
+          />
+        </div>
+      </template>
+
+      <template #empty>
+        <Icon name="lucide:inbox" :size="48" class="opacity-40" />
+        <p class="text-center font-mono text-base">Aucune carte dans la collection.</p>
+        <button
+          class="mt-1 flex cursor-pointer items-center gap-2 rounded-xl bg-slate-100 px-4 py-2 font-mono text-sm transition-colors hover:bg-slate-200 dark:bg-zinc-800 dark:hover:bg-zinc-700"
+          @click="openImport()"
+        >
+          <Icon name="lucide:upload" :size="14" />
+          Importer depuis Manabox
+        </button>
+      </template>
+
+      <template #cell="{ card }">
+        <CardCell
+          :image-url="card.image_url"
+          :name="card.name"
+          :qty="card.collection_entry?.quantity ?? 0"
+          :purchased="card.collection_entry?.purchase_price ?? 0"
+          :trend="card.price_guide?.trend ?? 0"
+          deal="compare"
+          :foil="card.foil"
+          :size="size"
+          :reserved="card.reserved"
+          @click="detail = card"
+        />
+      </template>
+
+      <template #limit>
+        Affichage limité aux {{ list.cards.length }} premières cartes — affine tes filtres pour voir
+        le reste.
+      </template>
+    </CardListShell>
 
     <CardDetailModal v-if="detail" :card="detail" @close="detail = null" />
 
