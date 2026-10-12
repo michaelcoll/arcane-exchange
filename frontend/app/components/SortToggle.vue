@@ -10,7 +10,7 @@ interface SortOption<T> {
 
 const props = defineProps<{
   modelValue: { sort_by: T; sort_dir: SortDir };
-  options: SortOption<T>[];
+  options: readonly SortOption<T>[];
 }>();
 
 const emit = defineEmits<{

@@ -12,6 +12,42 @@ import {
   type CardCriteria,
 } from './card-criteria-url';
 
+describe('criteria contexts', () => {
+  const price = {
+    value: 'trend',
+    label: 'Prix',
+    ascLabel: 'Prix croissant',
+    descLabel: 'Prix décroissant',
+  };
+  const addedAt = {
+    value: 'added_at',
+    label: 'Date d’ajout',
+    ascLabel: 'Plus ancien d’abord',
+    descLabel: 'Plus récent d’abord',
+  };
+
+  it.each([
+    ['the collection', COLLECTION_CRITERIA],
+    ["a player's collection", PLAYER_SEARCH_CRITERIA],
+  ])('offers the price and date added sorts in %s, date added first by default', (_l, context) => {
+    expect(context.sorts).toEqual([price, addedAt]);
+    expect(context.defaultSort).toEqual({ sort_by: 'added_at', sort_dir: 'desc' });
+  });
+
+  it('offers only the price sort in the search by name', () => {
+    expect(NAME_SEARCH_CRITERIA.sorts).toEqual([price]);
+    expect(NAME_SEARCH_CRITERIA.defaultSort).toEqual({ sort_by: 'trend', sort_dir: 'desc' });
+  });
+
+  it.each([
+    ['the collection', COLLECTION_CRITERIA],
+    ['the search by name', NAME_SEARCH_CRITERIA],
+    ["a player's collection", PLAYER_SEARCH_CRITERIA],
+  ])('carries the offset depth of the endpoint behind %s', (_label, context) => {
+    expect(context.maxOffset).toBe(10_000);
+  });
+});
+
 describe('parseCardCriteria', () => {
   it('falls back to the defaults on an empty query', () => {
     expect(parseCardCriteria({}, COLLECTION_CRITERIA)).toEqual({

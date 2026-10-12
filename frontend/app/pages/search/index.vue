@@ -72,19 +72,6 @@ const params = ref({
   player_username: undefined as string | undefined,
 });
 
-const priceSortOption = {
-  value: 'trend' as SortBy,
-  label: 'Prix',
-  ascLabel: 'Prix croissant',
-  descLabel: 'Prix décroissant',
-};
-const addedAtSortOption = {
-  value: 'added_at' as SortBy,
-  label: 'Date d’ajout',
-  ascLabel: 'Plus ancien d’abord',
-  descLabel: 'Plus récent d’abord',
-};
-
 const { data: collectionData, pending, refresh } = await getSearch(params);
 const { data: statsData } = await getCollectionStats();
 
@@ -130,12 +117,10 @@ const pageTitle = computed(() =>
     : 'Cartes chez les autres joueurs',
 );
 
-// `added_at` n'a de sens que scopé à un joueur unique : hors de ce cas, seul
-// le tri prix est proposé.
-const playerScoped = computed(() => mode.value === 'player' && !!player.value);
-
-const sortOptions = computed(() =>
-  playerScoped.value ? [priceSortOption, addedAtSortOption] : [priceSortOption],
+// Le contexte de la liste affichée (tris offerts, profondeur d'offset) : la collection du joueur
+// une fois celui-ci résolu, la recherche par nom sinon.
+const criteriaContext = computed(() =>
+  mode.value === 'player' && player.value ? PLAYER_SEARCH_CRITERIA : NAME_SEARCH_CRITERIA,
 );
 
 const onSortChange = (v: { sort_by: SortBy; sort_dir: SortDir }) => {
@@ -250,7 +235,7 @@ const moreResultsExist = computed(() =>
   collectionData.value ? allCards.value.length < collectionData.value.total : false,
 );
 const withinOffsetLimit = computed(() =>
-  canLoadPage(params.value.page + 1, params.value.page_size, SEARCH_MAX_OFFSET),
+  canLoadPage(params.value.page + 1, params.value.page_size, criteriaContext.value.maxOffset),
 );
 const hasMore = computed(() => moreResultsExist.value && withinOffsetLimit.value);
 // Distinct from "no more results": there are more matches, but paging further would hit the
@@ -526,7 +511,7 @@ const decklist = ref(
             </button>
             <SortToggle
               :model-value="{ sort_by: params.sort_by, sort_dir: params.sort_dir }"
-              :options="sortOptions"
+              :options="criteriaContext.sorts"
               class="ml-auto"
               @update:model-value="onSortChange"
             />
