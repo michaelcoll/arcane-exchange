@@ -65,7 +65,7 @@ const searchOptions = [
 ];
 
 const goToPlayer = (p: Player) => {
-  navigateTo(`/search?player=${encodeURIComponent(p.username)}`);
+  navigateTo(searchRoute({ mode: 'player', player: p.username }));
 };
 
 const selectRecent = (name: string) => {
@@ -74,21 +74,17 @@ const selectRecent = (name: string) => {
 
 const decklistContent = ref('');
 
-const navigateToSearch = (searchQ: string, searchMode: string) => {
+const navigateToSearch = (searchQ: string, searchMode: SearchMode) => {
   if (searchMode === 'name' && searchQ.trim()) {
     addRecentSearch(searchQ);
   }
-  const params = new URLSearchParams();
-  if (searchQ.trim()) params.set('q', searchQ.trim());
-  if (searchMode) params.set('mode', searchMode);
-  const query = params.toString();
-  navigateTo(query ? `/search?${query}` : '/search');
+  navigateTo(searchRoute({ mode: searchMode, q: searchQ.trim() }));
 };
 
 const handleDecklistSearch = () => {
   // Une decklist vide efface la précédente : `mode=decklist` ne doit pas la réafficher.
   saveDecklist(decklistContent.value);
-  navigateTo('/search?mode=decklist');
+  navigateTo(searchRoute({ mode: 'decklist' }));
 };
 </script>
 

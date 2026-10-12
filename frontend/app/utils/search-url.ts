@@ -70,6 +70,12 @@ export const toSearchQuery = (state: SearchUrlState): Record<string, string> => 
   return query;
 };
 
+/** The route of a search, for the links to `/search` from the other pages. */
+export const searchRoute = (state: SearchUrlState) => ({
+  path: '/search',
+  query: toSearchQuery(state),
+});
+
 /**
  * The criteria context of a search: a player's collection also sorts by date added (the default
  * there); the name search across players only by price.
@@ -110,11 +116,6 @@ export const searchSetsScope = (state: SearchUrlState): SearchSetsParams | null 
   if (state.mode === 'player' && state.player) return { player_username: state.player };
   return null;
 };
-
-/** Whether the current route query already holds exactly `expected`. */
-export const isSameQuery = (current: LocationQuery, expected: Record<string, string>) =>
-  Object.keys(current).length === Object.keys(expected).length &&
-  Object.entries(expected).every(([k, v]) => current[k] === v);
 
 const DECKLIST_STORAGE_KEY = 'tae_decklist_pending';
 

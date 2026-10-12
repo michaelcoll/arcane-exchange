@@ -94,7 +94,7 @@ const removeGet = (card: TradeCard) => {
   doRemove();
 };
 
-const addGet = () => navigateTo(`/search?player=${encodeURIComponent(partner.value)}`);
+const addGet = () => navigateTo(searchRoute({ mode: 'player', player: partner.value }));
 
 const confirmExchange = () => run(() => confirmTrade(tradeId.value));
 const rate = (value: number) => run(() => rateTrade(tradeId.value, value));

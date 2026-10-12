@@ -2,6 +2,7 @@ import type { LocationQuery } from 'vue-router';
 import type { RarityCode } from '~/bindings/RarityCode';
 import type { SortBy } from '~/bindings/SortBy';
 import type { SortDir } from '~/bindings/SortDir';
+import { COLLECTION_MAX_OFFSET, SEARCH_MAX_OFFSET } from './pagination';
 import { RARITY_ORDER } from './rarity';
 
 /**
@@ -18,27 +19,56 @@ export interface CardCriteria {
   price_max?: number;
 }
 
-/** What a page offers: the sorts it lists, and the one it starts with. */
-export interface CriteriaContext {
-  sorts: readonly SortBy[];
-  defaultSort: { sort_by: SortBy; sort_dir: SortDir };
+/** A sort a card list offers: its value, and its labels (idle, then active in each direction). */
+export interface SortOption {
+  value: SortBy;
+  label: string;
+  ascLabel: string;
+  descLabel: string;
 }
 
+/**
+ * What a card list offers, declared once per context: the sorts it lists (values and labels),
+ * the one it starts with, and how deep its endpoint paginates (see `canLoadPage`).
+ */
+export interface CriteriaContext {
+  sorts: readonly SortOption[];
+  defaultSort: { sort_by: SortBy; sort_dir: SortDir };
+  maxOffset: number;
+}
+
+const PRICE_SORT: SortOption = {
+  value: 'trend',
+  label: 'Prix',
+  ascLabel: 'Prix croissant',
+  descLabel: 'Prix décroissant',
+};
+
+const ADDED_AT_SORT: SortOption = {
+  value: 'added_at',
+  label: 'Date d’ajout',
+  ascLabel: 'Plus ancien d’abord',
+  descLabel: 'Plus récent d’abord',
+};
+
 export const COLLECTION_CRITERIA: CriteriaContext = {
-  sorts: ['trend', 'added_at'],
+  sorts: [PRICE_SORT, ADDED_AT_SORT],
   defaultSort: { sort_by: 'added_at', sort_dir: 'desc' },
+  maxOffset: COLLECTION_MAX_OFFSET,
 };
 
 /** The search by name, across every player: only the price sort. */
 export const NAME_SEARCH_CRITERIA: CriteriaContext = {
-  sorts: ['trend'],
+  sorts: [PRICE_SORT],
   defaultSort: { sort_by: 'trend', sort_dir: 'desc' },
+  maxOffset: SEARCH_MAX_OFFSET,
 };
 
 /** The collection of one player: `added_at` only makes sense scoped to a single player. */
 export const PLAYER_SEARCH_CRITERIA: CriteriaContext = {
-  sorts: ['trend', 'added_at'],
+  sorts: [PRICE_SORT, ADDED_AT_SORT],
   defaultSort: { sort_by: 'added_at', sort_dir: 'desc' },
+  maxOffset: SEARCH_MAX_OFFSET,
 };
 
 const SORT_DIRS: readonly SortDir[] = ['asc', 'desc'];
@@ -77,7 +107,8 @@ export const parseCardCriteria = (query: LocationQuery, context: CriteriaContext
   const criteria = defaultCardCriteria(context);
 
   const sortBy = single(query.sort_by);
-  if (context.sorts.includes(sortBy as SortBy)) criteria.sort_by = sortBy as SortBy;
+  const sort = context.sorts.find((s) => s.value === sortBy);
+  if (sort) criteria.sort_by = sort.value;
   const sortDir = single(query.sort_dir);
   if (SORT_DIRS.includes(sortDir as SortDir)) criteria.sort_dir = sortDir as SortDir;
 

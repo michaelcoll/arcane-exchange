@@ -42,21 +42,6 @@ const params = ref({
   price_max: restored.price_max,
 });
 
-const collectionSortOptions: {
-  value: SortBy;
-  label: string;
-  ascLabel: string;
-  descLabel: string;
-}[] = [
-  { value: 'trend', label: 'Prix', ascLabel: 'Prix croissant', descLabel: 'Prix décroissant' },
-  {
-    value: 'added_at',
-    label: 'Date d’ajout',
-    ascLabel: 'Plus ancien d’abord',
-    descLabel: 'Plus récent d’abord',
-  },
-];
-
 const sortState = computed({
   get: () => ({ sort_by: params.value.sort_by, sort_dir: params.value.sort_dir }),
   set: (v: { sort_by: SortBy; sort_dir: SortDir }) => {
@@ -114,7 +99,7 @@ const moreResultsExist = computed(() =>
   collectionData.value ? allCards.value.length < collectionData.value.total : false,
 );
 const withinOffsetLimit = computed(() =>
-  canLoadPage(params.value.page + 1, params.value.page_size, COLLECTION_MAX_OFFSET),
+  canLoadPage(params.value.page + 1, params.value.page_size, COLLECTION_CRITERIA.maxOffset),
 );
 const hasMore = computed(() => moreResultsExist.value && withinOffsetLimit.value);
 // Distinct from "no more results": there are more cards, but paging further would hit the
@@ -546,7 +531,7 @@ const onDragLeave = () => {
               size="sm"
               class="max-md:hidden"
             />
-            <SortToggle v-model="sortState" :options="collectionSortOptions" />
+            <SortToggle v-model="sortState" :options="COLLECTION_CRITERIA.sorts" />
           </div>
         </div>
 

@@ -2,11 +2,11 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import type { SearchSetsParams } from '~/bindings/SearchSetsParams';
 import type { CardCriteria } from './card-criteria-url';
 import {
-  isSameQuery,
   loadDecklist,
   parseSearchCriteria,
   parseSearchQuery,
   saveDecklist,
+  searchRoute,
   searchSetsScope,
   toSearchPageQuery,
   toSearchQuery,
@@ -64,6 +64,29 @@ describe('toSearchQuery', () => {
     { mode: 'decklist' },
   ])('round-trips %j through the URL', (state) => {
     expect(parseSearchQuery(toSearchQuery(state))).toEqual(state);
+  });
+});
+
+describe('searchRoute', () => {
+  it.each<[string, SearchUrlState, Record<string, string>]>([
+    [
+      "a player's collection",
+      { mode: 'player', player: 'urza' },
+      { mode: 'player', player: 'urza' },
+    ],
+    ['a search by name', { mode: 'name', q: 'Sol Ring' }, { mode: 'name', q: 'Sol Ring' }],
+    ['the name mode without a name', { mode: 'name', q: '' }, { mode: 'name' }],
+    ['the decklist mode', { mode: 'decklist' }, { mode: 'decklist' }],
+  ])('links to %s on the search page', (_label, state, query) => {
+    expect(searchRoute(state)).toEqual({ path: '/search', query });
+  });
+
+  it.each<SearchUrlState>([
+    { mode: 'player', player: 'urza' },
+    { mode: 'name', q: 'Sol Ring' },
+    { mode: 'decklist' },
+  ])('opens the search %j it was built from', (state) => {
+    expect(parseSearchQuery(searchRoute(state).query)).toEqual(state);
   });
 });
 
@@ -133,20 +156,6 @@ describe('search criteria', () => {
     const query = toSearchPageQuery(state, criteria);
     expect(parseSearchQuery(query)).toEqual(state);
     expect(parseSearchCriteria(query)).toEqual(criteria);
-  });
-});
-
-describe('isSameQuery', () => {
-  it('matches the same parameters', () => {
-    expect(isSameQuery({ q: 'a', mode: 'name' }, { mode: 'name', q: 'a' })).toBe(true);
-  });
-
-  it.each([
-    ['a missing parameter', { mode: 'name' }],
-    ['an extra parameter', { mode: 'name', q: 'a', player: 'urza' }],
-    ['a different value', { mode: 'name', q: 'b' }],
-  ])('rejects %s', (_label, current) => {
-    expect(isSameQuery(current, { mode: 'name', q: 'a' })).toBe(false);
   });
 });
 
