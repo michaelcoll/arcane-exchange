@@ -1,15 +1,16 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import type { SearchSetsParams } from '~/bindings/SearchSetsParams';
-import type { CardCriteria } from './card-criteria-url';
+import { NAME_SEARCH_CRITERIA, PLAYER_SEARCH_CRITERIA } from './card-criteria-url';
 import {
   loadDecklist,
-  parseSearchCriteria,
   parseSearchQuery,
   saveDecklist,
+  searchCriteriaContext,
+  searchListParams,
   searchRoute,
   searchSetsScope,
-  toSearchPageQuery,
   toSearchQuery,
+  type SearchListParams,
   type SearchUrlState,
 } from './search-url';
 
@@ -90,72 +91,37 @@ describe('searchRoute', () => {
   });
 });
 
-describe('search criteria', () => {
-  it('reads the criteria of a name search, with only the price sort', () => {
-    expect(
-      parseSearchCriteria({ q: 'Sol Ring', sort_by: 'added_at', sort_dir: 'asc', rarity: 'M' }),
-    ).toEqual({ sort_by: 'trend', sort_dir: 'asc', rarity: ['M'], sets: [] });
+describe('searchCriteriaContext', () => {
+  it.each<[string, SearchUrlState, typeof NAME_SEARCH_CRITERIA]>([
+    ['a search by name', { mode: 'name', q: 'Sol Ring' }, NAME_SEARCH_CRITERIA],
+    ["a player's collection", { mode: 'player', player: 'urza' }, PLAYER_SEARCH_CRITERIA],
+    ['the player mode without player', { mode: 'player' }, NAME_SEARCH_CRITERIA],
+    ['the decklist mode', { mode: 'decklist' }, NAME_SEARCH_CRITERIA],
+  ])('gives %s its sorts', (_label, state, expected) => {
+    expect(searchCriteriaContext(state)).toBe(expected);
   });
+});
 
-  it("reads the criteria of a player's collection, sorted by date added by default", () => {
-    expect(parseSearchCriteria({ player: 'urza', price_max: '500' })).toEqual({
-      sort_by: 'added_at',
-      sort_dir: 'desc',
-      rarity: [],
-      sets: [],
-      price_max: 500,
-    });
-  });
-
-  it.each([
-    ['the decklist mode', { mode: 'decklist', rarity: 'M' }],
-    ['the player mode without a player', { mode: 'player', rarity: 'M' }],
-  ])('ignores the criteria in %s, which shows none', (_label, query) => {
-    expect(parseSearchCriteria(query)).toEqual({
-      sort_by: 'trend',
-      sort_dir: 'desc',
-      rarity: [],
-      sets: [],
-    });
-  });
-
-  it('writes the criteria next to the search, defaults omitted', () => {
-    expect(
-      toSearchPageQuery(
-        { mode: 'player', player: 'urza' },
-        { sort_by: 'trend', sort_dir: 'desc', rarity: ['R'], sets: [], price_min: 100 },
-      ),
-    ).toEqual({ mode: 'player', player: 'urza', sort_by: 'trend', rarity: 'R', price_min: '100' });
-    expect(
-      toSearchPageQuery(
-        { mode: 'name' },
-        { sort_by: 'trend', sort_dir: 'desc', rarity: [], sets: [] },
-      ),
-    ).toEqual({ mode: 'name' });
-  });
-
-  it('leaves the criteria out of a search that shows none', () => {
-    expect(
-      toSearchPageQuery(
-        { mode: 'decklist' },
-        { sort_by: 'trend', sort_dir: 'asc', rarity: ['R'], sets: ['MH3'] },
-      ),
-    ).toEqual({ mode: 'decklist' });
-  });
-
-  it('round-trips a search and its criteria through the URL', () => {
-    const state: SearchUrlState = { mode: 'name', q: 'Sol Ring' };
-    const criteria: CardCriteria = {
-      sort_by: 'trend',
-      sort_dir: 'asc',
-      rarity: ['M', 'R'],
-      sets: ['MH3'],
-      price_min: 100,
-      price_max: 2000,
-    };
-    const query = toSearchPageQuery(state, criteria);
-    expect(parseSearchQuery(query)).toEqual(state);
-    expect(parseSearchCriteria(query)).toEqual(criteria);
+describe('searchListParams', () => {
+  it.each<[string, SearchUrlState, SearchListParams | null]>([
+    ['a submitted name', { mode: 'name', q: 'Sol Ring' }, { q: 'Sol Ring' }],
+    ['the name mode before any search', { mode: 'name' }, {}],
+    ['a blank name', { mode: 'name', q: '  ' }, {}],
+    ['a player', { mode: 'player', player: 'urza' }, { player_username: 'urza' }],
+    [
+      'a player with a text filter',
+      { mode: 'player', player: 'urza', filter: 'tutor' },
+      { player_username: 'urza', q: 'tutor' },
+    ],
+    [
+      'a player, without the name searched before',
+      { mode: 'player', player: 'urza', q: 'Sol Ring' },
+      { player_username: 'urza' },
+    ],
+    ['the player mode without player: no list', { mode: 'player', filter: 'tutor' }, null],
+    ['the decklist mode: no list', { mode: 'decklist', q: 'Sol Ring', player: 'urza' }, null],
+  ])('lists %s', (_label, state, expected) => {
+    expect(searchListParams(state)).toEqual(expected);
   });
 });
 

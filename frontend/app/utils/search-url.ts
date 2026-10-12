@@ -1,12 +1,9 @@
 import type { LocationQuery } from 'vue-router';
+import type { SearchParams } from '~/bindings/SearchParams';
 import type { SearchSetsParams } from '~/bindings/SearchSetsParams';
 import {
   NAME_SEARCH_CRITERIA,
   PLAYER_SEARCH_CRITERIA,
-  defaultCardCriteria,
-  parseCardCriteria,
-  toCardCriteriaQuery,
-  type CardCriteria,
   type CriteriaContext,
 } from './card-criteria-url';
 
@@ -17,8 +14,8 @@ export const isSearchMode = (v: unknown): v is SearchMode => SEARCH_MODES.includ
 
 /**
  * The search as the URL of `/search` carries it, so that a reload replays it. Its criteria (sort,
- * rarity, set, price) sit next to it (see `toSearchPageQuery`); the card size is a display
- * preference, kept in localStorage.
+ * rarity, set, price) sit next to it (see `useCardList`); the card size is a display preference,
+ * kept in localStorage.
  *
  * - `q`: the submitted card name (`name` mode);
  * - `player`: the browsed player (`player` mode), and `filter` the text filter on their collection.
@@ -83,30 +80,24 @@ export const searchRoute = (state: SearchUrlState) => ({
 export const searchCriteriaContext = (state: SearchUrlState): CriteriaContext =>
   state.mode === 'player' && state.player ? PLAYER_SEARCH_CRITERIA : NAME_SEARCH_CRITERIA;
 
-/** Whether the search shows the criteria: by name, or in a player's collection. */
-const showsCriteria = (state: SearchUrlState) =>
-  state.mode === 'name' || (state.mode === 'player' && !!state.player);
+/** What a search adds to the request of its card list, next to the criteria. */
+export type SearchListParams = Pick<SearchParams, 'q' | 'player_username'>;
 
-/** Reads the criteria of the search from the URL; the defaults where the search shows none. */
-export const parseSearchCriteria = (query: LocationQuery): CardCriteria => {
-  const state = parseSearchQuery(query);
-  const context = searchCriteriaContext(state);
-  return showsCriteria(state) ? parseCardCriteria(query, context) : defaultCardCriteria(context);
+/**
+ * The request of the card list of a search (`GET /search/card`): the scope of its set facet, which
+ * the text filter on a browsed player's collection narrows further. `null` where the search shows
+ * no list (decklist mode, player mode before a player is chosen).
+ */
+export const searchListParams = (state: SearchUrlState): SearchListParams | null => {
+  const scope = searchSetsScope(state);
+  const filter = state.mode === 'player' ? nonBlankString(state.filter) : undefined;
+  return scope && filter ? { ...scope, q: filter } : scope;
 };
-
-/** The full URL query of `/search`: the search, and its criteria where it shows them. */
-export const toSearchPageQuery = (
-  state: SearchUrlState,
-  criteria: CardCriteria,
-): Record<string, string> => ({
-  ...toSearchQuery(state),
-  ...(showsCriteria(state) ? toCardCriteriaQuery(criteria, searchCriteriaContext(state)) : {}),
-});
 
 /**
  * The scope of the set facet (`GET /search/card/sets`) for a search: the submitted name, or the
  * browsed player alone (their text filter does not narrow the sets). `null` where the search shows
- * no criteria, so no facet.
+ * no list, so no facet.
  */
 export const searchSetsScope = (state: SearchUrlState): SearchSetsParams | null => {
   if (state.mode === 'name') {

@@ -1,27 +1,20 @@
 <script setup lang="ts">
 import type { CollectionCard } from '~/bindings/CollectionCard';
 import type { RarityCode } from '~/bindings/RarityCode';
-import type { SortBy } from '~/bindings/SortBy';
-import type { SortDir } from '~/bindings/SortDir';
 import type { UserSuggestion } from '~/bindings/UserSuggestion';
-import type { CardCriteria } from '~/utils/card-criteria-url';
-import type { SearchMode, SearchUrlState } from '~/utils/search-url';
+import type { CardListScope } from '~/composables/useCardList';
+import type { SearchListParams, SearchMode } from '~/utils/search-url';
 
 import { useRoute } from 'nuxt/app';
 
 definePageMeta({ middleware: 'auth' });
 
-const route = useRoute();
-// Critères (tri, rareté, sets, prix) relus depuis l'URL avant la première requête ; les valeurs
-// invalides sont remplacées par leur défaut puis retirées de l'URL par `useQuerySync`.
-const restoredSearch = parseSearchQuery(route.query);
-const restoredCriteria = parseSearchCriteria(route.query);
-
 const { getCollectionStats } = useCollectionService();
 const { getSearch, getSearchSets } = useSearchService();
 const { autocompleteUsers } = useAutocompleteService();
 
-const mode = ref<SearchMode>('name');
+// The search (mode, name, player, text filter), read back from the URL: home page, trade, reload.
+const search = reactive(parseSearchQuery(useRoute().query));
 
 const modeLabels: Record<SearchMode, { label: string; tone: string; kbd: string }> = {
   name: { label: 'Par nom', tone: 'primary', kbd: '1' },
@@ -31,8 +24,8 @@ const modeLabels: Record<SearchMode, { label: string; tone: string; kbd: string 
 const modeOptions = SEARCH_MODES.map((value) => ({ value, ...modeLabels[value] }));
 
 /* ---------- MODE: PAR NOM ---------- */
-const q = ref('');
-const submittedQ = ref('');
+const q = ref(search.q ?? '');
+watchDebounced(q, (v) => (search.q = v), { debounce: 300 });
 
 const searchAreaRef = ref<HTMLElement | null>(null);
 
@@ -49,230 +42,109 @@ const size = usePreference(CARD_SIZE_PREF);
 const isDesktop = useMediaQuery('(min-width: 768px)');
 const pageSize = useCardPageSize(size, isDesktop);
 
-// Le tri d'une collection de joueur relue depuis l'URL : il ne s'applique qu'une fois le joueur
-// résolu (cf. `watch(player)`), l'URL le garde d'ici là.
-const pendingPlayerSort = ref<{ sort_by: SortBy; sort_dir: SortDir } | null>(
-  restoredSearch.player
-    ? { sort_by: restoredCriteria.sort_by, sort_dir: restoredCriteria.sort_dir }
-    : null,
-);
-const initialSort = pendingPlayerSort.value
-  ? NAME_SEARCH_CRITERIA.defaultSort
-  : { sort_by: restoredCriteria.sort_by, sort_dir: restoredCriteria.sort_dir };
+/* ---------- MODE: PAR JOUEUR ---------- */
+const playerFilterQ = ref(search.filter ?? '');
+watchDebounced(playerFilterQ, (v) => (search.filter = v), { debounce: 300 });
 
-const params = ref({
-  ...initialSort,
-  page: 0,
-  page_size: pageSize.value,
-  q: '',
-  rarity: restoredCriteria.rarity,
-  sets: restoredCriteria.sets.length ? restoredCriteria.sets.join(',') : undefined,
-  price_min: restoredCriteria.price_min,
-  price_max: restoredCriteria.price_max,
-  player_username: undefined as string | undefined,
-});
+const openPlayer = (username: string) => {
+  playerFilterQ.value = '';
+  Object.assign(search, { mode: 'player', player: username, filter: undefined });
+};
 
-const { data: collectionData, pending, refresh } = await getSearch(params);
-const { data: statsData } = await getCollectionStats();
+const clearPlayer = () => {
+  search.player = undefined;
+};
 
-const allCards = ref<CollectionCard[]>([]);
+// Leaving the player mode leaves the player, and starts the search by name afresh.
+const setMode = (mode: string) => {
+  if (!isSearchMode(mode)) return;
+  if (search.mode === 'player' && mode !== 'player') {
+    clearPlayer();
+    q.value = '';
+    search.q = undefined;
+  }
+  search.mode = mode;
+};
 
+// The profile only completes the header (card count, Note): the list is loaded on the username.
+const profile = ref<UserSuggestion>();
 watch(
-  collectionData,
-  (data) => {
-    if (!data) return;
-    if (params.value.page === 0) {
-      allCards.value = [...data.items];
-    } else {
-      allCards.value.push(...data.items);
-    }
+  () => search.player,
+  async (username) => {
+    profile.value = undefined;
+    if (!username) return;
+    const suggestions = await autocompleteUsers(username).catch(() => []);
+    if (search.player !== username) return;
+    profile.value = suggestions.find((u) => u.username.toLowerCase() === username.toLowerCase());
   },
   { immediate: true },
 );
 
-const resetAndRefresh = () => {
-  allCards.value = [];
-  params.value.page = 0;
-  refresh();
-};
-
-watch(
-  q,
-  useDebounceFn((v: string) => {
-    // Recherche déjà appliquée (restaurée depuis l'URL, ou vidée au changement de mode).
-    if (mode.value !== 'name' || params.value.q === v) return;
-    submittedQ.value = v;
-    params.value.q = v;
-    resetAndRefresh();
-  }, 300),
-);
-
-/* ---------- MODE: PAR JOUEUR ---------- */
-const player = ref<UserSuggestion | null>(null);
-const playerFilterQ = ref('');
-
 const pageTitle = computed(() =>
-  mode.value === 'player' && player.value
-    ? `Collection de @${player.value.username}`
-    : 'Cartes chez les autres joueurs',
+  search.player ? `Collection de @${search.player}` : 'Cartes chez les autres joueurs',
 );
-
-// Le contexte de la liste affichée (tris offerts, profondeur d'offset) : la collection du joueur
-// une fois celui-ci résolu, la recherche par nom sinon.
-const criteriaContext = computed(() =>
-  mode.value === 'player' && player.value ? PLAYER_SEARCH_CRITERIA : NAME_SEARCH_CRITERIA,
-);
-
-const onSortChange = (v: { sort_by: SortBy; sort_dir: SortDir }) => {
-  params.value.sort_by = v.sort_by;
-  params.value.sort_dir = v.sort_dir;
-  resetAndRefresh();
-};
-
-const clearPlayer = () => {
-  player.value = null;
-};
-
-// Pseudo en cours de résolution : tant que `player` n'est pas renseigné, l'URL le garde pour
-// qu'un F5 pendant la résolution ne perde pas le joueur.
-const resolvingPlayer = ref<string | null>(null);
-// Filtre relu depuis l'URL, appliqué au joueur une fois résolu (au lieu d'être remis à zéro).
-const restoredPlayerFilter = ref('');
-
-// Réception depuis /?player=username : l'URL ne porte que le pseudo, on
-// reconstitue le reste (nb de cartes, note) via l'autocomplete.
-const resolvePlayer = async (username: string) => {
-  resolvingPlayer.value = username;
-  try {
-    const suggestions = await autocompleteUsers(username);
-    player.value = suggestions.find((u) => u.username.toLowerCase() === username.toLowerCase()) ?? {
-      username,
-      note: 5,
-      card_count: 0,
-    };
-  } catch {
-    player.value = { username, note: 5, card_count: 0 };
-  } finally {
-    resolvingPlayer.value = null;
-  }
-};
-
-// Depuis la section decklist (mockée) : bascule directement en mode « par joueur ».
-const goToPlayerCollection = (username: string) => {
-  mode.value = 'player';
-  resolvePlayer(username.replace(/^@/, ''));
-};
-
-watch(player, (p) => {
-  params.value.player_username = p?.username;
-  if (p) {
-    playerFilterQ.value = restoredPlayerFilter.value;
-    params.value.q = restoredPlayerFilter.value;
-    restoredPlayerFilter.value = '';
-    const sort = pendingPlayerSort.value ?? PLAYER_SEARCH_CRITERIA.defaultSort;
-    pendingPlayerSort.value = null;
-    params.value.sort_by = sort.sort_by;
-    params.value.sort_dir = sort.sort_dir;
-    resetAndRefresh();
-  } else {
-    // Pas de resetAndRefresh ici : retirer le joueur ne déclenche pas de requête immédiate.
-    // Le tri repasse quand même sur le prix par défaut dès maintenant, pour que la prochaine
-    // requête (quel que soit ce qui la déclenche) n'envoie jamais sort_by=added_at sans
-    // player_username.
-    params.value.sort_by = 'trend';
-    params.value.sort_dir = 'desc';
-  }
-});
 
 watch(
-  playerFilterQ,
-  useDebounceFn((v: string) => {
-    // Filtre déjà appliqué (joueur choisi ou restauré par `watch(player)`) : pas de 2e requête.
-    if (mode.value !== 'player' || !player.value || params.value.q === v) return;
-    params.value.q = v;
-    resetAndRefresh();
-  }, 300),
-);
-
-watch(mode, (m, prevM) => {
-  if (prevM === 'player' && m !== 'player') {
-    // Le tri est réinitialisé ici, avant `player.value = null` : ce dernier déclenche aussi
-    // `watch(player)` (branche `else`) dans le même flush, qui répéterait le même repli — le
-    // faire ici en premier garantit qu'aucune requête n'est jamais émise avec `sort_by=
-    // added_at` sans `player_username`, quel que soit l'ordre d'exécution des deux watchers.
-    params.value.sort_by = 'trend';
-    params.value.sort_dir = 'desc';
-    pendingPlayerSort.value = null;
-    player.value = null;
-    q.value = '';
-    submittedQ.value = '';
-    params.value.q = '';
-    params.value.player_username = undefined;
-    resetAndRefresh();
-  }
-});
-
-watch(
-  () => [mode.value, !!player.value],
+  () => [search.mode, !!search.player],
   () => nextTick(focusSearchField),
 );
 
-onMounted(() => nextTick(focusSearchField));
+const { data: statsData } = await getCollectionStats();
 
-watch(pageSize, (v) => {
-  params.value.page_size = v;
-  resetAndRefresh();
+// The price range still comes from my own collection (`statsData`), to be settled later.
+const priceMin = computed(() =>
+  statsData.value?.price_trend_min != null ? Math.floor(statsData.value.price_trend_min / 100) : 0,
+);
+const priceMax = computed(() =>
+  statsData.value?.price_trend_max != null ? Math.ceil(statsData.value.price_trend_max / 100) : 150,
+);
+
+const {
+  cards,
+  total,
+  loading,
+  offsetLimitReached,
+  criteria,
+  sorts,
+  priceLo,
+  priceHi,
+  toggleRarity,
+  toggleSet,
+  setSort,
+  setPriceRange,
+  loadMore,
+} = useCardList<CollectionCard, SearchListParams>({
+  context: () => searchCriteriaContext(search),
+  fetchPage: getSearch,
+  scope: (): CardListScope<SearchListParams> => ({
+    params: searchListParams(search),
+    query: toSearchQuery(search),
+  }),
+  pageSize,
+  priceMin,
+  priceMax,
 });
 
-watch(
-  () => params.value.page,
-  (page) => {
-    if (page > 0) refresh();
-  },
-);
-
-const moreResultsExist = computed(() =>
-  collectionData.value ? allCards.value.length < collectionData.value.total : false,
-);
-const withinOffsetLimit = computed(() =>
-  canLoadPage(params.value.page + 1, params.value.page_size, criteriaContext.value.maxOffset),
-);
-const hasMore = computed(() => moreResultsExist.value && withinOffsetLimit.value);
-// Distinct from "no more results": there are more matches, but paging further would hit the
-// backend's offset limit. Surfaced so the stop doesn't read as an empty/bugged list.
-const offsetLimitReached = computed(() => moreResultsExist.value && !withinOffsetLimit.value);
+// The sets offered are those of the cards the search can return (submitted name, or player
+// alone), not those of my collection. An active set read from the URL stays applied even when
+// this list does not offer it.
+const { data: setList } = await getSearchSets(() => searchSetsScope(search));
 
 const sentinel = ref<HTMLElement | null>(null);
 let io: IntersectionObserver | null = null;
 
 onMounted(() => {
-  // ── Restauration depuis l'URL (home, PlayerPicker, trade, F5) ──
-  const restored = restoredSearch;
-  mode.value = restored.mode;
+  nextTick(focusSearchField);
 
-  if (restored.q) {
-    q.value = restored.q;
-    submittedQ.value = restored.q;
-    params.value.q = restored.q;
-    resetAndRefresh();
-  }
-
-  if (restored.player) {
-    restoredPlayerFilter.value = restored.filter ?? '';
-    resolvePlayer(restored.player);
-  }
-
-  // ── Mode decklist : le texte est relu depuis sessionStorage, sans l'y effacer ──
-  if (restored.mode === 'decklist') {
+  // The decklist text is read back from sessionStorage, and left there.
+  if (search.mode === 'decklist') {
     const saved = loadDecklist();
     if (saved !== null) decklist.value = saved;
   }
 
   io = new IntersectionObserver(
     ([entry]) => {
-      if (entry?.isIntersecting && hasMore.value && !pending.value) {
-        params.value.page += 1;
-      }
+      if (entry?.isIntersecting) loadMore();
     },
     { rootMargin: '300px' },
   );
@@ -285,7 +157,6 @@ watch(sentinel, (el, oldEl) => {
 });
 
 const sheet = ref(false);
-const active = ref({ rar: [...restoredCriteria.rarity], sets: [...restoredCriteria.sets] });
 const detail = ref<CollectionCard | null>(null);
 
 const bodyScrollLocked = useScrollLock(document.body);
@@ -293,78 +164,10 @@ watch([detail, sheet], ([d, s]) => {
   bodyScrollLocked.value = !!d || s;
 });
 
-const toggle = (k: 'rar' | 'sets', v: string) => {
-  if (k === 'rar') {
-    const arr = active.value.rar;
-    active.value.rar = arr.includes(v as RarityCode)
-      ? arr.filter((x) => x !== v)
-      : [...arr, v as RarityCode];
-  } else {
-    const arr = active.value.sets;
-    active.value.sets = arr.includes(v) ? arr.filter((x) => x !== v) : [...arr, v];
-  }
-};
-
-watch(
-  () => [active.value.rar, active.value.sets],
-  () => {
-    params.value.rarity = active.value.rar;
-    params.value.sets = active.value.sets.length ? active.value.sets.join(',') : undefined;
-    resetAndRefresh();
-  },
-  { deep: true },
-);
-
-// La fourchette de prix vient encore de ma collection (`statsData`), à trancher plus tard.
-const priceMin = computed(() =>
-  statsData.value?.price_trend_min != null ? Math.floor(statsData.value.price_trend_min / 100) : 0,
-);
-const priceMax = computed(() =>
-  statsData.value?.price_trend_max != null ? Math.ceil(statsData.value.price_trend_max / 100) : 150,
-);
-
-const onPriceChange = useDebounceFn((lo: number, hi: number) => {
-  params.value.price_min = lo > 0 ? lo * 100 : undefined;
-  params.value.price_max = hi < priceMax.value ? hi * 100 : undefined;
-  resetAndRefresh();
-}, 300);
-// Bornes choisies (€), pour que le curseur affiche une plage relue depuis l'URL.
-const priceLo = computed(() => centsToEuros(params.value.price_min));
-const priceHi = computed(() => centsToEuros(params.value.price_max));
-
-// L'URL reflète la recherche en cours et ses critères pour qu'un F5 la relance
-// (cf. `SearchUrlState`, `toSearchPageQuery`).
-const searchUrlState = computed<SearchUrlState>(() => ({
-  mode: mode.value,
-  q: submittedQ.value,
-  player: player.value?.username ?? resolvingPlayer.value ?? undefined,
-  filter: player.value ? params.value.q : restoredPlayerFilter.value,
-}));
-const searchCriteria = computed<CardCriteria>(() => ({
-  // Joueur en cours de résolution : l'URL garde le tri relu, pas encore appliqué.
-  ...(pendingPlayerSort.value ?? {
-    sort_by: params.value.sort_by,
-    sort_dir: params.value.sort_dir,
-  }),
-  rarity: active.value.rar,
-  sets: active.value.sets,
-  price_min: params.value.price_min,
-  price_max: params.value.price_max,
-}));
-
-// Les sets proposés au filtre sont ceux des cartes que la recherche en cours peut renvoyer (nom
-// soumis, ou joueur seul), pas ceux de ma collection. Les sets actifs relus de l'URL restent
-// appliqués même absents de cette liste.
-const { data: setList } = await getSearchSets(() => searchSetsScope(searchUrlState.value));
-// Le lien « Rechercher » de la navigation mène à `/search` sans paramètre sans remonter la page :
-// `useQuerySync` réaligne alors l'URL sur la recherche affichée. Limite : une navigation vers
-// `/search` avec d'autres paramètres depuis `/search` même serait réalignée de la même façon (la
-// recherche n'est relue qu'au montage) ; aucun lien ne le fait.
-const { sync: syncQuery } = useQuerySync(() =>
-  toSearchPageQuery(searchUrlState.value, searchCriteria.value),
-);
-// Après la restauration (hook précédent) : retire de l'URL les valeurs invalides ou par défaut.
-onMounted(syncQuery);
+// The filters name what they toggle by kind.
+const active = computed(() => ({ rar: [...criteria.rarity], sets: [...criteria.sets] }));
+const toggle = (k: 'rar' | 'sets', v: string) =>
+  k === 'rar' ? toggleRarity(v as RarityCode) : toggleSet(v);
 
 const sizeOptions = [
   { value: 'sm', label: '', icon: 'lucide:grid-3x3', title: 'Petites cartes', tone: 'primary' },
@@ -383,6 +186,9 @@ const coverers = [
 const decklist = ref(
   '1x Vampiric Tutor\n1x Black Market Connections\n1x Reprieve\n1x Chronicle of Victory\n1x The Soul Stone\n1x Sire of Seven Deaths\n1x Emeritus of Woe',
 );
+
+// From the (mocked) decklist section: straight to that player's collection.
+const goToPlayerCollection = (username: string) => openPlayer(username.replace(/^@/, ''));
 </script>
 
 <template>
@@ -391,25 +197,31 @@ const decklist = ref(
       <h2 class="font-display text-xl font-semibold tracking-tight">
         {{ pageTitle }}
       </h2>
-      <SegToggle v-model="mode" :options="modeOptions" shortcuts />
+      <SegToggle
+        :model-value="search.mode"
+        :options="modeOptions"
+        shortcuts
+        @update:model-value="setMode"
+      />
     </div>
 
-    <div v-if="mode === 'name' || (mode === 'player' && player)">
+    <div v-if="search.mode === 'name' || search.player">
       <div
-        v-if="mode === 'player' && player"
+        v-if="search.player"
         class="border-secondary/30 dark:border-secondary/20 dark:bg-secondary/5 mb-5 flex flex-wrap items-center gap-4 rounded-2xl border bg-white/60 p-4 shadow-lg backdrop-blur-md"
       >
-        <PlayerAvatar :username="player.username" size="lg" />
+        <PlayerAvatar :username="search.player" size="lg" />
         <div class="flex min-w-0 flex-1 flex-col gap-1">
           <span class="text-lg font-semibold text-slate-800 dark:text-slate-100"
-            ><span class="text-slate-400 dark:text-slate-500">@</span>{{ player.username }}</span
+            ><span class="text-slate-400 dark:text-slate-500">@</span>{{ search.player }}</span
           >
           <div
+            v-if="profile"
             class="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-400 dark:text-slate-500"
           >
-            <span>{{ player.card_count }} cartes</span>
+            <span>{{ profile.card_count }} cartes</span>
             <span class="text-secondary inline-flex items-center gap-1">
-              <Icon name="lucide:star" :size="13" />{{ player.note.toFixed(1).replace('.', ',') }}
+              <Icon name="lucide:star" :size="13" />{{ profile.note.toFixed(1).replace('.', ',') }}
             </span>
           </div>
         </div>
@@ -422,7 +234,7 @@ const decklist = ref(
       </div>
 
       <div
-        v-if="mode === 'name'"
+        v-if="search.mode === 'name'"
         ref="searchAreaRef"
         class="mb-5 flex flex-wrap items-center gap-3"
       >
@@ -473,33 +285,30 @@ const decklist = ref(
             :price-lo="priceLo"
             :price-hi="priceHi"
             @toggle="toggle"
-            @price-change="onPriceChange"
+            @price-change="setPriceRange"
           />
         </aside>
 
         <div class="min-w-0 flex-1">
           <div class="mb-3.5 flex min-h-[22px] items-center justify-between gap-2.5">
             <span
-              v-if="mode === 'player' && player"
+              v-if="search.player"
               class="text-sm text-slate-400 max-md:hidden dark:text-slate-500"
             >
               <b class="font-semibold text-slate-800 dark:text-slate-100"
-                >{{ collectionData?.total ?? 0 }} carte{{
-                  (collectionData?.total ?? 0) > 1 ? 's' : ''
-                }}</b
+                >{{ total }} carte{{ total > 1 ? 's' : '' }}</b
               >
-              visible{{ (collectionData?.total ?? 0) > 1 ? 's' : '' }} sur {{ player.card_count }}
+              visible{{ total > 1 ? 's' : '' }}
+              <template v-if="profile">sur {{ profile.card_count }}</template>
             </span>
             <span
-              v-else-if="submittedQ"
+              v-else-if="search.q"
               class="text-sm text-slate-400 max-md:hidden dark:text-slate-500"
             >
               <b class="font-semibold text-slate-800 dark:text-slate-100"
-                >{{ collectionData?.total ?? 0 }} résultat{{
-                  (collectionData?.total ?? 0) > 1 ? 's' : ''
-                }}</b
+                >{{ total }} résultat{{ total > 1 ? 's' : '' }}</b
               >
-              pour « {{ submittedQ }} »
+              pour « {{ search.q }} »
             </span>
             <button
               type="button"
@@ -510,16 +319,16 @@ const decklist = ref(
               Filtres
             </button>
             <SortToggle
-              :model-value="{ sort_by: params.sort_by, sort_dir: params.sort_dir }"
-              :options="criteriaContext.sorts"
+              :model-value="criteria"
+              :options="sorts"
               class="ml-auto"
-              @update:model-value="onSortChange"
+              @update:model-value="setSort"
             />
             <SegToggle v-model="size" :options="sizeOptions" size="sm" class="max-md:hidden" />
           </div>
 
           <div
-            v-if="pending && allCards.length === 0"
+            v-if="loading && cards.length === 0"
             class="flex items-center justify-center py-16 font-mono text-sm text-slate-400 dark:text-slate-500"
           >
             <Icon name="lucide:loader-circle" :size="18" class="mr-2.5 animate-spin" />
@@ -527,7 +336,7 @@ const decklist = ref(
           </div>
 
           <div
-            v-else-if="!pending && allCards.length === 0"
+            v-else-if="cards.length === 0"
             class="flex flex-col items-center justify-center gap-4 py-20 text-slate-400 dark:text-slate-500"
           >
             <Icon name="lucide:search-x" :size="48" class="opacity-40" />
@@ -552,7 +361,7 @@ const decklist = ref(
               ]"
             >
               <CardCell
-                v-for="c in allCards"
+                v-for="c in cards"
                 :key="c.scryfall_id"
                 :image-url="c.image_url"
                 :name="c.name"
@@ -568,7 +377,7 @@ const decklist = ref(
             <!-- Infinite scroll sentinel -->
             <div ref="sentinel" class="h-px" />
             <div
-              v-if="pending && allCards.length > 0"
+              v-if="loading"
               class="flex items-center justify-center py-8 font-mono text-sm text-slate-400 dark:text-slate-500"
             >
               <Icon name="lucide:loader-circle" :size="16" class="mr-2 animate-spin" />
@@ -578,8 +387,8 @@ const decklist = ref(
               v-else-if="offsetLimitReached"
               class="flex items-center justify-center py-8 text-center font-mono text-sm text-slate-400 dark:text-slate-500"
             >
-              Affichage limité aux {{ allCards.length }} premiers résultats — affine ta recherche
-              pour voir le reste.
+              Affichage limité aux {{ cards.length }} premiers résultats — affine ta recherche pour
+              voir le reste.
             </div>
           </template>
         </div>
@@ -611,7 +420,7 @@ const decklist = ref(
             :price-lo="priceLo"
             :price-hi="priceHi"
             @toggle="toggle"
-            @price-change="onPriceChange"
+            @price-change="setPriceRange"
           />
           <button
             class="bg-primary hover:bg-primary-soft mt-4 inline-flex w-full items-center justify-center gap-2 rounded-xl border border-transparent px-4 py-2.5 text-sm leading-none font-bold whitespace-nowrap text-[var(--on-primary)] shadow-lg transition-all duration-150 hover:-translate-y-px active:translate-y-0"
@@ -627,7 +436,7 @@ const decklist = ref(
 
     <!-- MODE: PAR JOUEUR (pas encore de joueur choisi) -->
     <div
-      v-else-if="mode === 'player'"
+      v-else-if="search.mode === 'player'"
       ref="searchAreaRef"
       class="mx-auto mt-8 flex max-w-[560px] flex-col items-center gap-3.5 rounded-2xl border border-slate-200 bg-white/60 p-6 shadow-lg backdrop-blur-md dark:border-white/10 dark:bg-zinc-900/60"
     >
@@ -635,7 +444,11 @@ const decklist = ref(
         class="text-2xs font-mono font-medium tracking-widest whitespace-nowrap text-slate-400 uppercase dark:text-slate-500"
         >Quel joueur veux-tu parcourir ?</span
       >
-      <PlayerPicker v-model="player" cta="Voir ses cartes" />
+      <PlayerPicker
+        :model-value="null"
+        cta="Voir ses cartes"
+        @update:model-value="(p) => p && openPlayer(p.username)"
+      />
       <span class="text-center text-xs text-slate-400 dark:text-slate-500">
         Tu verras sa collection complète, filtrable comme la tienne.
       </span>

@@ -51,7 +51,7 @@ const toggled = <V>(values: V[], value: V) =>
  * The state of a card list (collection, search): its criteria read from and kept in the URL, the
  * cards accumulated page after page, and the loading state. The page brings its context, its page
  * adapter and its scope; any change of criteria, scope, context or page size starts over from the
- * first page.
+ * first page, and a change of context from its default sort too.
  */
 export const useCardList = <T, S extends object>(options: CardListOptions<T, S>) => {
   const route = useRoute();
@@ -62,14 +62,9 @@ export const useCardList = <T, S extends object>(options: CardListOptions<T, S>)
   // and leaves the URL at the first sync.
   const criteria = reactive(parseCardCriteria(route.query, context.value));
 
-  // In the same update as the context: a sort it does not offer never reaches the adapter.
-  watch(
-    context,
-    ({ sorts, defaultSort }) => {
-      if (!sorts.some((s) => s.value === criteria.sort_by)) Object.assign(criteria, defaultSort);
-    },
-    { flush: 'sync' },
-  );
+  // A new context opens on its default sort, in the same update as the context: a sort it does
+  // not offer never reaches the adapter.
+  watch(context, ({ defaultSort }) => Object.assign(criteria, defaultSort), { flush: 'sync' });
 
   /** The request of the first page, `null` when the page shows no list. */
   const firstPage = computed((): (CardListParams & S) | null => {
