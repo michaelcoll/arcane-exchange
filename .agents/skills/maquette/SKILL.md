@@ -12,8 +12,8 @@ You are consulting this project's UI mockup to use it as a visual/UX reference b
 - Lives in the `maquette/` folder at the repo root. It is in `.gitignore`: never committed, never referenced in a PR,
   don't try to version it.
 - Serves as the visual source of truth behind `../../../.agents/design-system.instructions.md` (color tokens, spacing,
-  components) and `../../../.agents/frontend.instructions.md` — those files partly document what's visible in the
-  mockup. Check them for the translation into Tailwind classes.
+  components) and the Web section of `../../../CODING_STANDARDS.md` — those files partly document what's visible in
+  the mockup. Check them for the translation into Tailwind classes.
 
 ## How to consult it
 

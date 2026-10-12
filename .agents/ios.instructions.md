@@ -1,7 +1,8 @@
 # iOS App Development Guide (Swift/SwiftUI)
 
 `ios-app/`, SwiftUI. Structure et rôle dans l'ensemble : [ARCHITECTURE.md](../ARCHITECTURE.md).
-Commandes : [mise.instructions.md](mise.instructions.md) · CI : [ci.instructions.md](ci.instructions.md).
+Commandes : [mise.instructions.md](mise.instructions.md) · CI : [ci.instructions.md](ci.instructions.md) · Règles de
+code : [CODING_STANDARDS.md](../CODING_STANDARDS.md) › iOS.
 
 ## Generated files (CRITICAL)
 
@@ -10,6 +11,8 @@ Commandes : [mise.instructions.md](mise.instructions.md) · CI : [ci.instruction
   `info.properties` block: plist keys go in `project.yml`.
 - A target-level setting in `project.yml` **wins over** `Config/*.xcconfig`, so per-target values belong in
   `settings.base`; shared values in `Shared.xcconfig` + `Dev`/`Release.xcconfig`.
+- The system accent is the `Primary` color asset, through `ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME` in
+  `project.yml` — rename one, rename the other.
 - `//` starts a comment in an xcconfig: a URL must be written `http:/$()/host` (see `Dev.xcconfig`).
 - **Xcode 26 required locally**, and the `metal` compiler is a downloadable component: a fresh machine builds only
   after `xcodebuild -downloadComponent MetalToolchain` (a few GB), otherwise `cannot execute tool 'metal'`.
@@ -22,27 +25,7 @@ Commandes : [mise.instructions.md](mise.instructions.md) · CI : [ci.instruction
 - The `APIClient` target builds with `-suppress-warnings` (`Package.swift`): the generator writes a `public import`
   per module in every file, one `UnusedImportAccess` warning each. It mutes **every** warning of the module, so keep
   hand-written code out of it — and check `swift build` without the flag after bumping `swift-openapi-*`.
-- A backend DTO field typed `Option<Struct>` must carry `#[schema(value_type = TheStruct, required = false)]`,
-  otherwise utoipa emits a schema the generator drops — the field silently disappears from the Swift client.
 - `APIClientProvider.shared` is rebuilt on each access **on purpose**: the base URL is editable at runtime.
-
-## Conventions
-
-- Tests use **Swift Testing**, never XCTest.
-- **Design**: do not port the mockup's HTML/CSS structure into SwiftUI — reference via the `maquette-ios` skill,
-  tokens in [design-system.instructions.md](design-system.instructions.md), adapted to iOS idioms.
-- **Colors**: accents are named by role, as on the web — `Palette.primary` / `.primaryInk` / `.onPrimary` and the
-  `secondary` counterparts (`Support/Palette.swift`), `Palette.down` for a value drop (never SwiftUI `.red`),
-  `RarityColor` for the five rarities. The asset values are the
-  web's light/dark tokens from `main.css`, pinned by `PaletteTests`: change both sides together. Never
-  `Color.accentColor`, SwiftUI `.cyan` / `.purple` for an accent, or a `Primary`/`Secondary` `ShapeStyle` member (it
-  collides with SwiftUI's `.primary` / `.secondary` label styles). The system accent is the `Primary` asset through
-  `ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME` in `project.yml` — rename one, rename the other.
-- **Images**: Nuke / NukeUI (`LazyImage`) through `ArtworkPipeline`. Never `AsyncImage` — no decoded-image cache, it
-  re-downloads on scroll-back.
-- **Prices**: `Price.euros(cents:)`, pinned to `fr_FR` whatever the device locale; the `CardDeal` thresholds mirror
-  the web client's `Card/Cell.vue` (±3 % is noise).
-- **Language**: UI strings in French, code and comments in English.
 
 ## Home-screen widgets
 
