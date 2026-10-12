@@ -9,12 +9,9 @@ import type { PriceHistoryParams } from '~/bindings/PriceHistoryParams';
 export const useCollectionService = () => {
   const { apiCall } = useApi();
 
-  const getCollection = (params?: MaybeRefOrGetter<CollectionParams>) =>
-    useAsyncData(
-      'collection',
-      () => apiCall<PaginatedCollection>('/collection', { query: toValue(params) }),
-      { lazy: true },
-    );
+  /** One page of the collection: the page adapter of its card list (see `useCardList`). */
+  const getCollection = (params: CollectionParams) =>
+    apiCall<PaginatedCollection>('/collection', { query: params });
 
   const importCards = (csv: string) =>
     apiCall<CardImportStarted>('/collection/import', {

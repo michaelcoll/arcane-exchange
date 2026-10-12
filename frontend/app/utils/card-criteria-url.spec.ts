@@ -6,9 +6,7 @@ import {
   centsToEuros,
   defaultCardCriteria,
   parseCardCriteria,
-  parseCollectionQuery,
   toCardCriteriaQuery,
-  toCollectionQuery,
   type CardCriteria,
 } from './card-criteria-url';
 
@@ -173,35 +171,5 @@ describe('centsToEuros', () => {
     [1550, 15.5],
   ])('converts %j cents', (cents, euros) => {
     expect(centsToEuros(cents)).toBe(euros);
-  });
-});
-
-describe('collection query', () => {
-  it('reads the text filter with the criteria', () => {
-    expect(parseCollectionQuery({ q: 'Sol Ring', rarity: 'M' })).toEqual({
-      ...defaultCardCriteria(COLLECTION_CRITERIA),
-      q: 'Sol Ring',
-      rarity: ['M'],
-    });
-  });
-
-  it('drops a blank text filter', () => {
-    expect(parseCollectionQuery({ q: '  ' })).toEqual({
-      ...defaultCardCriteria(COLLECTION_CRITERIA),
-      q: '',
-    });
-    expect(toCollectionQuery({ ...defaultCardCriteria(COLLECTION_CRITERIA), q: ' ' })).toEqual({});
-  });
-
-  it('round-trips through the URL', () => {
-    const state = {
-      q: 'tutor',
-      sort_by: 'trend' as const,
-      sort_dir: 'asc' as const,
-      rarity: ['M' as const],
-      sets: ['MH3'],
-      price_min: 100,
-    };
-    expect(parseCollectionQuery(toCollectionQuery(state))).toEqual(state);
   });
 });

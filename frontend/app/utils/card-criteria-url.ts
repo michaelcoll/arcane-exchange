@@ -145,24 +145,3 @@ export const toCardCriteriaQuery = (
 /** A price bound of the criteria (cents) in the unit of the price slider (euros). */
 export const centsToEuros = (cents?: number): number | undefined =>
   cents == null ? undefined : cents / 100;
-
-/**
- * The collection as its URL carries it: the text filter and the criteria. The collection is
- * private, its URL only serves its owner (reload, bookmark).
- */
-export interface CollectionUrlState extends CardCriteria {
-  q: string;
-}
-
-export const parseCollectionQuery = (query: LocationQuery): CollectionUrlState => {
-  const q = single(query.q) ?? '';
-  return { q: q.trim() ? q : '', ...parseCardCriteria(query, COLLECTION_CRITERIA) };
-};
-
-export const toCollectionQuery = ({
-  q,
-  ...criteria
-}: CollectionUrlState): Record<string, string> => ({
-  ...(q.trim() ? { q } : {}),
-  ...toCardCriteriaQuery(criteria, COLLECTION_CRITERIA),
-});
