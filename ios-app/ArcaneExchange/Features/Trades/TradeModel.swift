@@ -193,6 +193,13 @@ enum TradesCopy {
         guard let date = TradeTimestamp.date(from: iso) else { return "" }
         return date.formatted(.relative(presentation: .named))
     }
+
+    /// What the user commits to in cash, spelled out before they lock the trade. `settlement`
+    /// is `TradeBalance.settlementLabel`: `nil` when the sides are even.
+    static func settlementSentence(_ settlement: String?) -> String {
+        guard let settlement else { return "Les valeurs sont équivalentes, aucun règlement. " }
+        return "Tu t'engages à \(settlement) en main propre. "
+    }
 }
 
 /// Parses the `updated_at` the API sends.
