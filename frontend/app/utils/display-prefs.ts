@@ -19,12 +19,6 @@ const definePreference = <T extends string>(
 /** Shared by the search and the collection: the size picked on one page applies to the other. */
 export const CARD_SIZE_PREF = definePreference<CardSize>('tae_card_size', ['sm', 'md', 'lg'], 'md');
 
-export const COLLECTION_VIEW_PREF = definePreference(
-  'tae_collection_view',
-  ['grid', 'list'] as const,
-  'grid',
-);
-
 export const COLLECTION_GRAPH_PREF = definePreference(
   'tae_collection_graph',
   ['compact', 'expanded'] as const,
