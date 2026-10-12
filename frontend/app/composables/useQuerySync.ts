@@ -17,12 +17,28 @@ export const isSameQuery = (current: LocationQuery, expected: Record<string, str
 export const useQuerySync = (query: MaybeRefOrGetter<Record<string, string>>) => {
   const route = useRoute();
   const router = useRouter();
+  // The path of the page, read once: outside a page component `route` follows the navigation.
+  const { path } = route;
+
+  // A navigation to another page is pending: `currentRoute` shows this page until it settles, and
+  // a `router.replace` meanwhile would cancel it.
+  let leaving = false;
+  const stopBefore = router.beforeEach((to) => {
+    leaving = to.path !== path;
+  });
+  const stopAfter = router.afterEach(() => {
+    leaving = false;
+  });
+  tryOnScopeDispose(() => {
+    stopBefore();
+    stopAfter();
+  });
 
   const sync = () => {
     // Page being left: don't put its parameters on the next one.
-    if (router.currentRoute.value.path !== route.path) return;
+    if (leaving || router.currentRoute.value.path !== path) return;
     const expected = toValue(query);
-    if (!isSameQuery(route.query, expected)) router.replace({ path: route.path, query: expected });
+    if (!isSameQuery(route.query, expected)) router.replace({ path, query: expected });
   };
 
   watch([() => toValue(query), () => route.query], sync);

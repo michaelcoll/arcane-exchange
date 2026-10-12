@@ -1,8 +1,7 @@
 <script setup lang="ts">
 import type { CollectionCard } from '~/bindings/CollectionCard';
 import type { RarityCode } from '~/bindings/RarityCode';
-import type { SortBy } from '~/bindings/SortBy';
-import type { SortDir } from '~/bindings/SortDir';
+import type { CardListScope } from '~/composables/useCardList';
 
 import { useRoute } from 'nuxt/app';
 
@@ -17,12 +16,9 @@ const {
   getPriceHistory,
 } = useCollectionService();
 
-// Critères relus depuis l'URL (F5, favori) avant la première requête ; les valeurs invalides
-// sont remplacées par leur défaut puis retirées de l'URL par `useQuerySync`.
-const route = useRoute();
-const restored = parseCollectionQuery(route.query);
-
-const q = ref(restored.q);
+// The text filter is read back from the URL (reload, bookmark), like the criteria of the list.
+const restoredQ = useRoute().query.q;
+const q = ref(typeof restoredQ === 'string' && restoredQ.trim() ? restoredQ : '');
 const qDebounced = refDebounced(q, 200);
 
 const size = usePreference(CARD_SIZE_PREF);
@@ -30,81 +26,43 @@ const size = usePreference(CARD_SIZE_PREF);
 const isDesktop = useMediaQuery('(min-width: 768px)');
 const pageSize = useCardPageSize(size, isDesktop);
 
-const params = ref({
-  sort_by: restored.sort_by,
-  sort_dir: restored.sort_dir,
-  page: 0,
-  page_size: pageSize.value,
-  q: restored.q,
-  rarity: restored.rarity,
-  sets: restored.sets.length ? restored.sets.join(',') : undefined,
-  price_min: restored.price_min,
-  price_max: restored.price_max,
-});
-
-const sortState = computed({
-  get: () => ({ sort_by: params.value.sort_by, sort_dir: params.value.sort_dir }),
-  set: (v: { sort_by: SortBy; sort_dir: SortDir }) => {
-    params.value.sort_by = v.sort_by;
-    params.value.sort_dir = v.sort_dir;
-  },
-});
-
-const { data: collectionData, pending, refresh } = await getCollection(params);
 const { data: statsData } = await getCollectionStats();
 
-const allCards = ref<CollectionCard[]>([]);
+const setList = computed(() => statsData.value?.sets ?? []);
 
-watch(
-  collectionData,
-  (data) => {
-    if (!data) return;
-    if (params.value.page === 0) {
-      allCards.value = [...data.items];
-    } else {
-      allCards.value.push(...data.items);
-    }
+const priceMin = computed(() =>
+  statsData.value?.price_trend_min != null ? Math.floor(statsData.value.price_trend_min / 100) : 0,
+);
+const priceMax = computed(() =>
+  statsData.value?.price_trend_max != null ? Math.ceil(statsData.value.price_trend_max / 100) : 150,
+);
+
+const {
+  cards,
+  loading,
+  offsetLimitReached,
+  criteria,
+  sorts,
+  priceLo,
+  priceHi,
+  toggleRarity,
+  toggleSet,
+  setSort,
+  setPriceRange,
+  loadMore,
+  reload,
+} = useCardList<CollectionCard, { q: string }>({
+  context: COLLECTION_CRITERIA,
+  fetchPage: getCollection,
+  // The scope of the collection: its text filter (debounced), which its URL carries too.
+  scope: (): CardListScope<{ q: string }> => {
+    const text = qDebounced.value;
+    return { params: { q: text }, query: text.trim() ? { q: text } : {} };
   },
-  { immediate: true },
-);
-
-watch([() => params.value.sort_by, () => params.value.sort_dir], () => {
-  allCards.value = [];
-  params.value.page = 0;
-  refresh();
+  pageSize,
+  priceMin,
+  priceMax,
 });
-
-watch(pageSize, (v) => {
-  params.value.page_size = v;
-  allCards.value = [];
-  params.value.page = 0;
-  refresh();
-});
-
-watch(qDebounced, (val) => {
-  allCards.value = [];
-  params.value.page = 0;
-  params.value.q = val;
-  refresh();
-});
-
-watch(
-  () => params.value.page,
-  (page) => {
-    if (page > 0) refresh();
-  },
-);
-
-const moreResultsExist = computed(() =>
-  collectionData.value ? allCards.value.length < collectionData.value.total : false,
-);
-const withinOffsetLimit = computed(() =>
-  canLoadPage(params.value.page + 1, params.value.page_size, COLLECTION_CRITERIA.maxOffset),
-);
-const hasMore = computed(() => moreResultsExist.value && withinOffsetLimit.value);
-// Distinct from "no more results": there are more cards, but paging further would hit the
-// backend's offset limit. Surfaced so the stop doesn't read as an empty/bugged list.
-const offsetLimitReached = computed(() => moreResultsExist.value && !withinOffsetLimit.value);
 
 const sentinel = ref<HTMLElement | null>(null);
 let io: IntersectionObserver | null = null;
@@ -112,9 +70,7 @@ let io: IntersectionObserver | null = null;
 onMounted(() => {
   io = new IntersectionObserver(
     ([entry]) => {
-      if (entry?.isIntersecting && hasMore.value && !pending.value) {
-        params.value.page += 1;
-      }
+      if (entry?.isIntersecting) loadMore();
     },
     { rootMargin: '300px' },
   );
@@ -181,17 +137,7 @@ const {
   start: startImportFlow,
   stopPolling: stopImportPolling,
   reset: resetImportFlow,
-} = useCardImportFlow(
-  { importCards, getCardImport, listCardImports },
-  {
-    onCompleted: () => {
-      allCards.value = [];
-      params.value.page = 0;
-      refresh();
-    },
-  },
-);
-const active = ref({ rar: [...restored.rarity], sets: [...restored.sets] });
+} = useCardImportFlow({ importCards, getCardImport, listCardImports }, { onCompleted: reload });
 const detail = ref<CollectionCard | null>(null);
 
 const bodyScrollLocked = useScrollLock(document.body);
@@ -199,64 +145,10 @@ watch([detail, sheet, importOpen], ([d, s, i]) => {
   bodyScrollLocked.value = !!d || s || i;
 });
 
-const toggle = (k: 'rar' | 'sets', v: string) => {
-  if (k === 'rar') {
-    const arr = active.value.rar;
-    active.value.rar = arr.includes(v as RarityCode)
-      ? arr.filter((x) => x !== v)
-      : [...arr, v as RarityCode];
-  } else {
-    const arr = active.value.sets;
-    active.value.sets = arr.includes(v) ? arr.filter((x) => x !== v) : [...arr, v];
-  }
-};
-
-watch(
-  () => [active.value.rar, active.value.sets],
-  () => {
-    params.value.rarity = active.value.rar;
-    params.value.sets = active.value.sets.length ? active.value.sets.join(',') : undefined;
-    allCards.value = [];
-    params.value.page = 0;
-    refresh();
-  },
-  { deep: true },
-);
-
-const onPriceChange = useDebounceFn((lo: number, hi: number) => {
-  params.value.price_min = lo > 0 ? lo * 100 : undefined;
-  params.value.price_max = hi < priceMax.value ? hi * 100 : undefined;
-  allCards.value = [];
-  params.value.page = 0;
-  refresh();
-}, 300);
-
-const setList = computed(() => statsData.value?.sets ?? []);
-
-const priceMin = computed(() =>
-  statsData.value?.price_trend_min != null ? Math.floor(statsData.value.price_trend_min / 100) : 0,
-);
-const priceMax = computed(() =>
-  statsData.value?.price_trend_max != null ? Math.ceil(statsData.value.price_trend_max / 100) : 150,
-);
-// Bornes choisies (€), pour que le curseur affiche une plage relue depuis l'URL.
-const priceLo = computed(() => centsToEuros(params.value.price_min));
-const priceHi = computed(() => centsToEuros(params.value.price_max));
-
-// L'URL reflète les critères affichés (texte sur sa valeur debouncée) pour qu'un F5 les rejoue.
-const collectionQuery = computed(() =>
-  toCollectionQuery({
-    q: params.value.q,
-    sort_by: params.value.sort_by,
-    sort_dir: params.value.sort_dir,
-    rarity: active.value.rar,
-    sets: active.value.sets,
-    price_min: params.value.price_min,
-    price_max: params.value.price_max,
-  }),
-);
-const { sync: syncQuery } = useQuerySync(collectionQuery);
-onMounted(syncQuery);
+// The filters name what they toggle by kind.
+const active = computed(() => ({ rar: [...criteria.rarity], sets: [...criteria.sets] }));
+const toggle = (k: 'rar' | 'sets', v: string) =>
+  k === 'rar' ? toggleRarity(v as RarityCode) : toggleSet(v);
 
 const graphOptions = [
   {
@@ -509,7 +401,7 @@ const onDragLeave = () => {
             :price-lo="priceLo"
             :price-hi="priceHi"
             @toggle="toggle"
-            @price-change="onPriceChange"
+            @price-change="setPriceRange"
           />
         </aside>
       </div>
@@ -531,12 +423,12 @@ const onDragLeave = () => {
               size="sm"
               class="max-md:hidden"
             />
-            <SortToggle v-model="sortState" :options="COLLECTION_CRITERIA.sorts" />
+            <SortToggle :model-value="criteria" :options="sorts" @update:model-value="setSort" />
           </div>
         </div>
 
         <div
-          v-if="pending && allCards.length === 0"
+          v-if="loading && cards.length === 0"
           class="flex items-center justify-center py-16 font-mono text-sm text-slate-400 dark:text-slate-500"
         >
           <Icon name="lucide:loader-circle" :size="18" class="mr-2.5 animate-spin" />
@@ -544,7 +436,7 @@ const onDragLeave = () => {
         </div>
 
         <div
-          v-else-if="!pending && allCards.length === 0"
+          v-else-if="!loading && cards.length === 0"
           class="flex flex-col items-center justify-center gap-4 py-20 text-slate-400 dark:text-slate-500"
         >
           <Icon name="lucide:inbox" :size="48" class="opacity-40" />
@@ -574,7 +466,7 @@ const onDragLeave = () => {
             ]"
           >
             <CardCell
-              v-for="c in allCards"
+              v-for="c in cards"
               :key="c.scryfall_id"
               :image-url="c.image_url"
               :name="c.name"
@@ -592,7 +484,7 @@ const onDragLeave = () => {
           <!-- Infinite scroll sentinel -->
           <div ref="sentinel" class="h-px" />
           <div
-            v-if="pending && allCards.length > 0"
+            v-if="loading && cards.length > 0"
             class="flex items-center justify-center py-8 font-mono text-sm text-slate-400 dark:text-slate-500"
           >
             <Icon name="lucide:loader-circle" :size="16" class="mr-2 animate-spin" />
@@ -602,8 +494,8 @@ const onDragLeave = () => {
             v-else-if="offsetLimitReached"
             class="flex items-center justify-center py-8 text-center font-mono text-sm text-slate-400 dark:text-slate-500"
           >
-            Affichage limité aux {{ allCards.length }} premières cartes — affine tes filtres pour
-            voir le reste.
+            Affichage limité aux {{ cards.length }} premières cartes — affine tes filtres pour voir
+            le reste.
           </div>
         </template>
       </div>
@@ -635,7 +527,7 @@ const onDragLeave = () => {
           :price-lo="priceLo"
           :price-hi="priceHi"
           @toggle="toggle"
-          @price-change="onPriceChange"
+          @price-change="setPriceRange"
         />
         <button
           class="bg-primary hover:bg-primary-soft mt-4 inline-flex w-full items-center justify-center gap-2 rounded-xl border border-transparent px-4 py-2.5 text-sm leading-none font-bold whitespace-nowrap text-[var(--on-primary)] shadow-lg transition-all duration-150 hover:-translate-y-px active:translate-y-0"
