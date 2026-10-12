@@ -21,8 +21,8 @@
     "node": ">=24"
   },
   "dependencies": {
-    "@clerk/nuxt": "~3.1.11",
-    "@clerk/vue": "~2.5.11",
+    "@clerk/nuxt": "~3.1.12",
+    "@clerk/vue": "~2.5.12",
     "@nuxt/eslint": "~1.17.0",
     "@nuxt/fonts": "~0.14.0",
     "@nuxt/icon": "~2.5.1",
@@ -30,21 +30,21 @@
     "@sentry/nuxt": "~11.5.0",
     "@vueuse/nuxt": "~15.0.0",
     "eslint": "~10.12.0",
-    "nuxt": "~4.6.0",
+    "nuxt": "~4.6.1",
     "nuxt-security": "~2.6.0",
     "vue": "~3.5.43",
     "vue-router": "~5.4.0"
   },
   "devDependencies": {
     "@nuxt/test-utils": "~4.3.3",
-    "@types/node": "~26.6.4",
+    "@types/node": "~26.6.5",
     "@vue/test-utils": "~2.5.1",
     "eslint-config-prettier": "~10.1.8",
-    "happy-dom": "~20.14.5",
-    "prettier": "~3.9.9",
+    "happy-dom": "~20.14.6",
+    "prettier": "~3.9.10",
     "prettier-plugin-tailwindcss": "~0.8.1",
     "typescript": "~6.0.3",
     "vitest": "~5.0.3",
-    "vue-tsc": "~3.3.12"
+    "vue-tsc": "~3.3.13"
   }
 }
