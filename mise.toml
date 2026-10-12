@@ -19,17 +19,18 @@ EDHREC_BASE_URL = "https://edhrec.com"
 SCRYFALL_BASE_URL = "https://api.scryfall.com"
 
 [tools]
+"aqua:realm/SwiftLint" = "latest"
+"aqua:yonaskolb/XcodeGen" = "latest"
 "cargo:cargo-llvm-cov" = "latest"
 "cargo:cargo-nextest" = "latest"
+"cargo:erdify-rs" = "1"
 "cargo:sqlx-cli" = "latest"
+"github:nicklockwood/SwiftFormat" = "latest"
+"go:github.com/evilmartians/lefthook/v2" = "latest"
+"npm:@playwright/cli" = "latest"
+"npm:typescript-language-server" = "latest"
 node = "24"
 pnpm = "12"
-"npm:@playwright/cli" = "latest"
-"go:github.com/evilmartians/lefthook/v2" = "latest"
-"cargo:erdify-rs" = "1"
-"aqua:yonaskolb/XcodeGen" = "latest"
-"aqua:realm/SwiftLint" = "latest"
-"github:nicklockwood/SwiftFormat" = "latest"
 swift = "latest"
 
 [tasks.checks]
@@ -293,10 +294,10 @@ description = "Lints the iOS app"
 dir = "ios-app"
 # Exactly the paths passed to swiftlint, plus its config. Globs are relative to `dir`.
 sources = [
-  "ArcaneExchange/**/*.swift",
-  "ArcaneExchangeWidgets/**/*.swift",
-  "APIClient/Sources/**/*.swift",
-  ".swiftlint.yml",
+    "ArcaneExchange/**/*.swift",
+    "ArcaneExchangeWidgets/**/*.swift",
+    "APIClient/Sources/**/*.swift",
+    ".swiftlint.yml",
 ]
 run = "swiftlint lint --strict ArcaneExchange ArcaneExchangeWidgets APIClient/Sources"
 
