@@ -15,20 +15,20 @@
 - State plainly what will be destroyed (table, file, branch, data) and wait for a clear yes before running it — a vague
   or implied approval is not enough
 
-## TESTING
-
-- Use any testing tools, libraries available to the project for testing your changes
-- Never assume your changes simply work, always test!
-
 ## TOOLING
 
-- Read and edit files with the native tools: `Read`, `Edit`, `Write`, `Glob`, `Grep`
-- Never use `cat`, `sed -n`, `head`, `find`, heredocs or inline scripts to read or rewrite a file. This rule
-  overrides any harness guidance that says otherwise
-- Use the shell only to execute things: `mise run <task>`, `git`, `gh`
-- Use the LSP for anything structural: definition, references, hover/type, rename, diagnostics. In particular,
-  before looking up a symbol, before changing a public signature, and after editing Rust or TypeScript
-- Use `Grep` for textual searches only: strings, comments, config values, SQL
+- Change files with `Edit` and `Write` (`replace_all` for a mechanical rename), never with a shell rewrite
+  (`perl -pi`, `sed -i`, heredoc)
+- Search text with `git grep`, read with `Read`
+- `LSP` is a deferred tool: load it with `ToolSearch` (`select:LSP`) before the first call. Use it for definition,
+  references and hover on Rust and `.ts` files, in particular before changing a public signature. It has no rename
+  or diagnostics call, and no server for `.vue`
+- The TypeScript server reads `typescript` from the repo root: when `LSP` answers "Could not find a valid TypeScript
+  installation", run `ln -s frontend/node_modules node_modules` there (gitignored, one per checkout or worktree)
+- Two diagnostics are noise, confirm with the real build before acting on them:
+  - SourceKit `No such module` on Swift files: it has no Xcode index. Check with `mise run build-ios`
+  - rustc `error communicating with database`: PostgreSQL is down, and the errors stay until rust-analyzer re-checks.
+    Check with `mise run lint-clippy`, which runs offline
 
 ## Architecture
 
