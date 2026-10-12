@@ -1,4 +1,4 @@
-use crate::application::error::AppError;
+use crate::application::error::{AppError, InfraError};
 use crate::application::repository::{CardAvailability, TradeRepository, UserRepository};
 use crate::application::use_case::{
     AbandonTradeUseCase, AcceptTradeUseCase, AddTradeCardUseCase, ConfirmTradeUseCase,
@@ -322,6 +322,11 @@ impl GetTradeService {
     }
 }
 
+/// A trade the database constraints should have made impossible.
+fn invalid_trade(trade_id: TradeId, problem: &str) -> InfraError {
+    InfraError::RepositoryError(format!("invalid trade {trade_id} from database: {problem}"))
+}
+
 #[async_trait]
 impl GetTradeUseCase for GetTradeService {
     async fn get_trade(
@@ -333,15 +338,15 @@ impl GetTradeUseCase for GetTradeService {
         let partner = me.other();
 
         // `trade.initiator_user_id`/`respondent_user_id` are FK-constrained to `users.id`
-        // (migration 0011), so the partner always exists and always has a username
-        // (`users.username` is `NOT NULL`, migration 0009).
+        // (migration 0011) and `users.username` is `NOT NULL` (migration 0009), so a missing
+        // partner or username is corrupt data: it surfaces as an `InfraError` (500), not a panic.
         let partner_username = self
             .user_repository
             .find_by_id(trade.user_id(partner))
             .await?
-            .expect("database contains invalid trade: partner user not found")
+            .ok_or_else(|| invalid_trade(trade_id, "partner user not found"))?
             .username
-            .expect("database contains invalid user record: missing username");
+            .ok_or_else(|| invalid_trade(trade_id, "partner has no username"))?;
 
         let cards = self
             .trade_repository
@@ -1700,6 +1705,54 @@ mod tests {
         assert!(matches!(
             result,
             Err(AppError::Functional(FunctionalError::TradeAccessDenied))
+        ));
+    }
+
+    fn get_trade_service_with_partner(partner: Option<User>) -> GetTradeService {
+        let trade = make_base_trade();
+        let mut mock_trade_repository = MockTradeRepository::new();
+        mock_trade_repository
+            .expect_find_by_id()
+            .returning(move |_| {
+                let trade = trade.clone();
+                Box::pin(async move { Ok(Some(trade)) })
+            });
+        let mut mock_user_repository = MockUserRepository::new();
+        mock_user_repository
+            .expect_find_by_id()
+            .returning(move |_| {
+                let partner = partner.clone();
+                Box::pin(async move { Ok(partner) })
+            });
+
+        GetTradeService::new(
+            Arc::new(mock_trade_repository),
+            Arc::new(mock_user_repository),
+        )
+    }
+
+    #[tokio::test]
+    async fn get_trade_fails_with_infra_error_when_partner_user_is_missing() {
+        let service = get_trade_service_with_partner(None);
+
+        let result = service.get_trade(TradeId::new(), make_initiator_id()).await;
+
+        assert!(matches!(
+            result,
+            Err(AppError::Infra(InfraError::RepositoryError(_)))
+        ));
+    }
+
+    #[tokio::test]
+    async fn get_trade_fails_with_infra_error_when_partner_username_is_missing() {
+        let partner = User::new(make_respondent_id(), None, None, None);
+        let service = get_trade_service_with_partner(Some(partner));
+
+        let result = service.get_trade(TradeId::new(), make_initiator_id()).await;
+
+        assert!(matches!(
+            result,
+            Err(AppError::Infra(InfraError::RepositoryError(_)))
         ));
     }
 
