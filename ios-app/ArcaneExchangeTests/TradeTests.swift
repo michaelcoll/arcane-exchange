@@ -130,6 +130,14 @@ struct TradeCopyTests {
         #expect(TradesCopy.cardCount(3) == "3 cartes")
     }
 
+    @Test func spellsOutTheCashOwedBeforeAccepting() {
+        #expect(TradesCopy.settlementSentence("payer 21 €") == "Tu t'engages à payer 21 € en main propre. ")
+    }
+
+    @Test func saysNoCashChangesHandsWhenTheSidesAreEven() {
+        #expect(TradesCopy.settlementSentence(nil) == "Les valeurs sont équivalentes, aucun règlement. ")
+    }
+
     @Test func identifiesACardLineByItsFourKeyFields() {
         #expect(card(trend: 900).lineID == "FIN-243-fr-false")
     }

@@ -257,7 +257,7 @@ enum TradeConfirmation {
     var message: String {
         switch self {
         case let .accept(settlement):
-            Self.settlementSentence(settlement) + """
+            TradesCopy.settlementSentence(settlement) + """
             Les cartes des deux côtés seront réservées. Si l'autre partie modifie ensuite \
             l'échange, il repassera en négociation et devra être accepté à nouveau.
             """
@@ -269,12 +269,6 @@ enum TradeConfirmation {
             acceptations et relance la négociation.
             """
         }
-    }
-
-    /// What the user commits to in cash, spelled out before they lock the trade.
-    private static func settlementSentence(_ settlement: String?) -> String {
-        guard let settlement else { return "Les valeurs sont équivalentes, aucun règlement. " }
-        return "Tu t'engages à \(settlement) en main propre. "
     }
 
     var confirmLabel: String {
