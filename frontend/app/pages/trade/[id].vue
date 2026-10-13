@@ -15,9 +15,9 @@ const { showError } = useToast();
 const { data: trade, pending, error, refresh } = await getTrade(tradeId);
 
 const errorTitle = computed(() => {
-  const code = (error.value as { statusCode?: number } | null)?.statusCode;
-  if (code === 404) return "Cet échange n'existe pas";
-  if (code === 403) return "Tu n'as pas accès à cet échange";
+  const { status } = readApiError(error.value);
+  if (status === 404) return "Cet échange n'existe pas";
+  if (status === 403) return "Tu n'as pas accès à cet échange";
   return 'Impossible de charger cet échange';
 });
 
@@ -42,8 +42,7 @@ const run = async (action: () => Promise<unknown>) => {
   try {
     await action();
   } catch (e) {
-    const message = (e as { data?: { error?: string } })?.data?.error ?? 'Une erreur est survenue.';
-    showError('Action refusée', message);
+    showError('Action refusée', readApiError(e).message);
   } finally {
     await refresh();
     busy.value = false;
