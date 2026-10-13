@@ -49,6 +49,9 @@ Token names and values: [design-system.instructions.md](.agents/design-system.in
   an inline icon path: one icon set, loaded by `@nuxt/icon`.
 - **Brand logos**: render a brand logo (Discord, GitHub…) with `simple-icons:…`: Lucide ships no brand icon
   (`lucide:github` is deprecated).
+- **API errors**: read a caught API error with `readApiError` (`app/utils/api-error.ts`) and show its `message`, never
+  the raw error response (`e.data.error`, `e.statusCode`, `e.response.status`) nor an `instanceof` test: the API's
+  message is technical and in English (ADR 0018), and `useAsyncData` rewraps the error, keeping only its status and body.
 - **Test suffix**: name a test file `*.spec.ts`, never `*.test.ts`: one suffix for the whole suite.
 - **Test location**: put a test that runs in plain Node beside the file it tests, a test that needs the Nuxt runtime
   directly in `test/nuxt/`, and an end-to-end test directly in `test/e2e/`: each Vitest project (`unit`, `nuxt`,
