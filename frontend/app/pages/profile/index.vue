@@ -30,8 +30,7 @@ onMounted(async () => {
     const data = await getVisibility();
     vis.value = data.visibility;
   } catch (e) {
-    const message = (e as { data?: { error?: string } })?.data?.error ?? 'Une erreur est survenue.';
-    showError('Impossible de charger la confidentialité', message);
+    showError('Impossible de charger la confidentialité', readApiError(e).message);
   } finally {
     visLoading.value = false;
     visReady.value = true;
@@ -47,8 +46,7 @@ watch(vis, async (newValue, oldValue) => {
   try {
     await setVisibility(newValue);
   } catch (e) {
-    const message = (e as { data?: { error?: string } })?.data?.error ?? 'Une erreur est survenue.';
-    showError('Impossible de mettre à jour la confidentialité', message);
+    showError('Impossible de mettre à jour la confidentialité', readApiError(e).message);
     suppressVisWatch = true;
     vis.value = oldValue;
   } finally {

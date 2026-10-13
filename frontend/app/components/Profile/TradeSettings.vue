@@ -8,9 +8,6 @@ const { getTradeBinders, addTradeBinder, removeTradeBinder, getRarityFilters, se
   useTradeSettingsService();
 const { showError } = useToast();
 
-const errorMessage = (e: unknown) =>
-  (e as { data?: { error?: string } })?.data?.error ?? 'Une erreur est survenue.';
-
 // useAsyncData must be called synchronously during setup, not inside onMounted.
 const { data: statsData, pending: statsPending, error: statsError } = getCollectionStats();
 const binders = computed(() => statsData.value?.binders ?? []);
@@ -24,11 +21,11 @@ const {
 const rows = computed(() => filtersData.value?.rarities ?? []);
 
 watch(statsError, (e) => {
-  if (e) showError('Impossible de charger les binders', errorMessage(e));
+  if (e) showError('Impossible de charger les binders', readApiError(e).message);
 });
 
 watch(filtersError, (e) => {
-  if (e) showError('Impossible de charger tes règles de rareté', errorMessage(e));
+  if (e) showError('Impossible de charger tes règles de rareté', readApiError(e).message);
 });
 
 const selectedBinders = ref<string[]>([]);
@@ -42,7 +39,7 @@ onMounted(async () => {
     const tradeBinders = await getTradeBinders();
     selectedBinders.value = tradeBinders.binders;
   } catch (e) {
-    showError('Impossible de charger ta sélection de binders', errorMessage(e));
+    showError('Impossible de charger ta sélection de binders', readApiError(e).message);
   } finally {
     selectionLoading.value = false;
   }
@@ -63,7 +60,7 @@ const toggleBinder = async (name: string) => {
     await refreshFilters();
   } catch (e) {
     selectedBinders.value = previous;
-    showError('Impossible de mettre à jour le binder', errorMessage(e));
+    showError('Impossible de mettre à jour le binder', readApiError(e).message);
   } finally {
     binderBusy.value = null;
   }
@@ -74,7 +71,7 @@ const toggleRarity = async (rarity: string, isOpen: boolean, keptCopies: number)
   try {
     await setRarityFilter(rarity, !isOpen, keptCopies);
   } catch (e) {
-    showError('Impossible de mettre à jour la rareté', errorMessage(e));
+    showError('Impossible de mettre à jour la rareté', readApiError(e).message);
   } finally {
     await refreshFilters();
     rarityBusy.value = null;
@@ -87,7 +84,7 @@ const setKeep = async (rarity: string, isOpen: boolean, value: number) => {
   try {
     await setRarityFilter(rarity, isOpen, keep);
   } catch (e) {
-    showError('Impossible de mettre à jour la rareté', errorMessage(e));
+    showError('Impossible de mettre à jour la rareté', readApiError(e).message);
   } finally {
     await refreshFilters();
     rarityBusy.value = null;

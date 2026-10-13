@@ -92,6 +92,10 @@ describe('readApiError', () => {
     ['trade_empty', "Ajoute au moins une carte avant d'accepter cet échange."],
     ['trade_card_not_found', "Cette carte ne fait plus partie de l'échange."],
     ['card_already_reserved', 'Cette carte est déjà réservée dans un autre échange.'],
+    ['binder_not_found', "Ce binder n'existe plus dans ta collection."],
+    ['user_not_found', 'Ce joueur est introuvable.'],
+    ['card_not_found', "Cette carte est introuvable ou n'est plus disponible."],
+    ['set_not_found', 'Ce set est introuvable.'],
     ['unauthorized', 'Ta session a expiré, reconnecte-toi.'],
     ['internal', 'Erreur technique, réessaie plus tard.'],
   ])('translates %s', (code, message) => {
