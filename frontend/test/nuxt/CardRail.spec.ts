@@ -2,6 +2,7 @@ import { describe, it, expect, beforeAll } from 'vitest';
 import { config, mount } from '@vue/test-utils';
 import CardRail from '~/components/Trade/CardRail.vue';
 import type { TradeCard } from '~/bindings/TradeCard';
+import type { TradeViewSide } from '~/composables/useTradeView';
 import formatPrice from '~/utils/format-price';
 
 const card = (overrides: Partial<TradeCard> = {}): TradeCard => ({
@@ -28,10 +29,14 @@ const cards: TradeCard[] = [
   }),
 ];
 
+// Le total vient de la vue : volontairement différent de la somme des cartes (5200).
+const side: TradeViewSide = { cards, total: 9900 };
+const emptySide: TradeViewSide = { cards: [], total: 0 };
+
 const baseProps = {
   owner: 'mizzix_42',
-  side: 'receive' as const,
-  cards,
+  direction: 'receive' as const,
+  side,
   reserved: false,
   removable: false,
   emptyMessage: "Tu n'as demandé aucune carte pour l'instant.",
@@ -43,17 +48,16 @@ describe('CardRail', () => {
     config.global.stubs = { ...config.global.stubs, PlayerAvatar: true };
   });
 
-  it('names who puts the cards down and totals the side in the header', () => {
+  it('names who puts the cards down and shows the total of the side it received', () => {
     const wrapper = mount(CardRail, { props: baseProps });
     const header = wrapper.get('[data-part="header"]');
     expect(header.text()).toContain('@MIZZIX_42');
     expect(header.text()).toContain('POSE');
-    // 1200 + 2000×2
-    expect(header.text()).toContain(formatPrice(5200));
+    expect(header.text()).toContain(formatPrice(9900));
   });
 
   it('reads « JE POSE » on my own side', () => {
-    const wrapper = mount(CardRail, { props: { ...baseProps, owner: null, side: 'give' } });
+    const wrapper = mount(CardRail, { props: { ...baseProps, owner: null, direction: 'give' } });
     expect(wrapper.get('[data-part="header"]').text()).toContain('JE POSE');
   });
 
@@ -78,6 +82,17 @@ describe('CardRail', () => {
     expect(remove[1]!.attributes('aria-label')).toBe('Retirer Vampiric Tutor');
     await remove[1]!.trigger('click');
     expect(wrapper.emitted('remove')).toEqual([[cards[1]]]);
+  });
+
+  it('disables the remove badges while the view is busy', () => {
+    const idle = mount(CardRail, { props: { ...baseProps, removable: true } });
+    const busy = mount(CardRail, { props: { ...baseProps, removable: true, busy: true } });
+    const disabled = (wrapper: ReturnType<typeof mount>) =>
+      wrapper
+        .findAll('button[aria-label^="Retirer "]')
+        .map((b) => b.attributes('disabled') !== undefined);
+    expect(disabled(idle)).toEqual([false, false]);
+    expect(disabled(busy)).toEqual([true, true]);
   });
 
   it('has no remove badge when not removable', () => {
@@ -108,7 +123,7 @@ describe('CardRail', () => {
   });
 
   it('shows a wordless ghost tile when the side is empty and cannot grow', () => {
-    const wrapper = mount(CardRail, { props: { ...baseProps, cards: [] } });
+    const wrapper = mount(CardRail, { props: { ...baseProps, side: emptySide } });
     const ghost = wrapper.get('[data-part="ghost"]');
     expect(ghost.text()).toBe('');
     expect(ghost.attributes('aria-label')).toBe(baseProps.emptyMessage);
@@ -116,7 +131,7 @@ describe('CardRail', () => {
 
   it('leaves the add slot alone to explain an empty side that can grow', () => {
     const wrapper = mount(CardRail, {
-      props: { ...baseProps, cards: [], addLabel: 'Chercher chez lui' },
+      props: { ...baseProps, side: emptySide, addLabel: 'Chercher chez lui' },
     });
     expect(wrapper.find('[data-part="ghost"]').exists()).toBe(false);
     expect(wrapper.find('[data-part="add"]').exists()).toBe(true);
@@ -125,7 +140,7 @@ describe('CardRail', () => {
   it('shows values in secondary on the partner side only', () => {
     const receive = mount(CardRail, { props: baseProps }).get('[data-part="total"]');
     const give = mount(CardRail, {
-      props: { ...baseProps, owner: null, side: 'give' },
+      props: { ...baseProps, owner: null, direction: 'give' },
     }).get('[data-part="total"]');
     expect(receive.classes()).toContain('text-secondary');
     expect(give.classes()).not.toContain('text-secondary');

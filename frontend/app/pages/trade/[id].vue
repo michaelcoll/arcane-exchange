@@ -156,10 +156,11 @@ const label =
         <div class="flex flex-col gap-[18px]">
           <TradeCardRail
             :owner="view.partnerUsername"
-            side="receive"
-            :cards="view.receive.cards"
+            direction="receive"
+            :side="view.receive"
             :reserved="view.reserved"
             :removable="view.editable"
+            :busy="view.busy"
             empty-message="Tu n'as demandé aucune carte pour l'instant."
             :add-label="view.editable ? 'Chercher chez lui' : undefined"
             @remove="removeReceivedCard"
@@ -184,8 +185,8 @@ const label =
 
           <TradeCardRail
             :owner="null"
-            side="give"
-            :cards="view.give.cards"
+            direction="give"
+            :side="view.give"
             :reserved="view.reserved"
             :removable="false"
             :empty-message="`@${view.partnerUsername} n'a demandé aucune de tes cartes.`"
@@ -195,18 +196,15 @@ const label =
         <TradeRatingSection
           v-if="view.rating.visible"
           :partner="view.partnerUsername"
-          :me-rating="view.rating.mine"
-          :partner-rating="view.rating.partner"
+          :rating="view.rating"
           :busy="view.busy"
           @rate="rate"
+          @skip="skipRating"
         />
 
         <TradeActionBar
-          :status="view.status"
-          :me-accepted="view.me.accepted"
-          :me-confirmed="view.me.confirmed"
+          :action="view.primaryAction"
           :partner="view.partnerUsername"
-          :diff="view.balance.delta"
           :busy="view.busy"
           @accept="requestAccept"
           @confirm="confirmExchange"

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { TradeCard } from '~/bindings/TradeCard';
+import type { TradeViewSide } from '~/composables/useTradeView';
 
 /* Un côté de l'échange en « table de jeu », comme `TradeCardRail` côté iOS : un en-tête qui dit
  * qui pose quoi et pour combien, puis les cartes face visible, côte à côte, en grand. */
@@ -8,12 +9,15 @@ const props = withDefaults(
     /** Username de celui qui pose ces cartes ; `null` pour moi (« JE POSE »). */
     owner: string | null;
     /** `receive` (le partenaire, en secondary) ou `give` (moi, neutre). */
-    side: 'give' | 'receive';
-    cards: TradeCard[];
+    direction: 'give' | 'receive';
+    /** Le côté tel que la vue du Trade l'expose : ses cartes et leur total, déjà calculé. */
+    side: TradeViewSide;
     /** Les cartes de l'échange sont réservées. */
     reserved: boolean;
     /** Chaque tuile porte un badge « − » de retrait. */
     removable: boolean;
+    /** Une action est en cours : le retrait est désactivé. */
+    busy?: boolean;
     /** Porté en `aria-label` par la tuile fantôme d'un côté vide qu'on ne peut pas remplir. */
     emptyMessage: string;
     /** Emplacement pointillé de fin de rail, affiché seulement si fourni. */
@@ -24,10 +28,8 @@ const props = withDefaults(
 
 const emit = defineEmits<{ remove: [card: TradeCard]; add: [] }>();
 
-const total = computed(() => tradeCardsTotal(props.cards));
-
 const valueClass = computed(() =>
-  props.side === 'receive' ? 'text-secondary' : 'text-[var(--ink)]',
+  props.direction === 'receive' ? 'text-secondary' : 'text-[var(--ink)]',
 );
 
 /* Une carte verrouillée est atténuée, pas masquée : c'est toujours la carte échangée. */
@@ -44,7 +46,7 @@ const badge =
     <div data-part="header" class="flex items-center gap-[9px] px-1">
       <PlayerAvatar v-if="owner" :username="owner" class="!h-[26px] !w-[26px]" />
       <span class="min-w-0 truncate font-mono text-[10.5px] tracking-[0.13em] text-[var(--ink-3)]">
-        <span :class="side === 'receive' ? 'text-secondary' : ''">{{
+        <span :class="direction === 'receive' ? 'text-secondary' : ''">{{
           owner ? `@${owner.toUpperCase()}` : 'JE'
         }}</span>
         <span class="tracking-[0.06em] text-[var(--ink-2)]"> POSE</span>
@@ -53,7 +55,7 @@ const badge =
       <span
         data-part="total"
         :class="['font-mono text-[11px] font-medium whitespace-nowrap tabular-nums', valueClass]"
-        >{{ formatPrice(total) }}</span
+        >{{ formatPrice(side.total) }}</span
       >
     </div>
 
@@ -62,7 +64,7 @@ const badge =
       class="-ml-2 flex items-start gap-[9px] overflow-x-auto pt-2 pb-[3px] pl-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
     >
       <div
-        v-for="c in cards"
+        v-for="c in side.cards"
         :key="tradeCardKey(c)"
         data-part="tile"
         class="relative flex w-[116px] flex-none flex-col gap-[5px]"
@@ -79,8 +81,12 @@ const badge =
         <button
           v-if="removable"
           type="button"
-          :class="[badge, 'bg-red-500 text-white hover:bg-red-600']"
+          :class="[
+            badge,
+            'bg-red-500 text-white hover:bg-red-600 disabled:pointer-events-none disabled:opacity-50',
+          ]"
           :aria-label="`Retirer ${c.name}`"
+          :disabled="busy"
           @click="emit('remove', c)"
         >
           <Icon name="lucide:minus" :size="13" class="block" />
@@ -104,7 +110,7 @@ const badge =
 
       <!-- Sans emplacement d'ajout, un côté vide garde sa place avec une tuile fantôme muette. -->
       <div
-        v-if="!cards.length && !addLabel"
+        v-if="!side.cards.length && !addLabel"
         data-part="ghost"
         role="img"
         :aria-label="emptyMessage"
