@@ -72,6 +72,8 @@ watch(
   async (username) => {
     profile.value = undefined;
     if (!username) return;
+    // Ignored on purpose: without the profile the header only loses its card count and its Note,
+    // and the player's cards still load.
     const suggestions = await autocompleteUsers(username).catch(() => []);
     if (search.player !== username) return;
     profile.value = suggestions.find((u) => u.username.toLowerCase() === username.toLowerCase());
