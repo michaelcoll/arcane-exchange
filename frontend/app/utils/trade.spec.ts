@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import type { TradeCard } from '~/bindings/TradeCard';
+import type { TradeStatusParam } from '~/bindings/TradeStatusParam';
 import {
   TRADE_STATUS_META,
   TRADE_LIFECYCLE,
@@ -8,15 +9,16 @@ import {
   isTradeEditable,
   isTradeAbandonable,
   isTradeReserved,
+  isTradeBalanced,
   toTradeStatus,
   tradeAcceptLabel,
+  tradeCardKey,
   tradeCardValue,
   tradeCardsTotal,
   tradeConfirmation,
   tradeSettlementLabel,
   tradeStatusStepLabel,
   tradeStepIndex,
-  type TradeStatus,
 } from './trade';
 import formatPrice from './format-price';
 
@@ -34,7 +36,7 @@ const card = (overrides: Partial<TradeCard> = {}): TradeCard => ({
   ...overrides,
 });
 
-const ALL_STATUSES: TradeStatus[] = [
+const ALL_STATUSES: TradeStatusParam[] = [
   'PENDING',
   'ONE_ACCEPTED',
   'FULLY_ACCEPTED',
@@ -51,7 +53,7 @@ describe('isTradeEditable', () => {
     ['COMPLETED', false],
     ['CLOSED', false],
     ['ABANDONED', false],
-  ] satisfies [TradeStatus, boolean][])('%s -> %s', (status, expected) => {
+  ] satisfies [TradeStatusParam, boolean][])('%s -> %s', (status, expected) => {
     expect(isTradeEditable(status)).toBe(expected);
   });
 });
@@ -64,7 +66,7 @@ describe('isTradeReserved', () => {
     ['COMPLETED', false],
     ['CLOSED', false],
     ['ABANDONED', false],
-  ] satisfies [TradeStatus, boolean][])('%s -> %s', (status, expected) => {
+  ] satisfies [TradeStatusParam, boolean][])('%s -> %s', (status, expected) => {
     expect(isTradeReserved(status)).toBe(expected);
   });
 });
@@ -127,8 +129,48 @@ describe('isTradeAbandonable', () => {
     ['COMPLETED', false],
     ['CLOSED', false],
     ['ABANDONED', false],
-  ] satisfies [TradeStatus, boolean][])('%s -> %s', (status, expected) => {
+  ] satisfies [TradeStatusParam, boolean][])('%s -> %s', (status, expected) => {
     expect(isTradeAbandonable(status)).toBe(expected);
+  });
+});
+
+describe('isTradeBalanced', () => {
+  it('holds while the cash delta stays under 3 €, whoever owes it', () => {
+    expect(isTradeBalanced(0)).toBe(true);
+    expect(isTradeBalanced(299)).toBe(true);
+    expect(isTradeBalanced(-299)).toBe(true);
+  });
+
+  it('stops at 3 €', () => {
+    expect(isTradeBalanced(300)).toBe(false);
+    expect(isTradeBalanced(-300)).toBe(false);
+  });
+
+  it.each([0, 299, -299, 300, -300, 2100])(
+    'announces a settlement exactly when the trade is not balanced (%i)',
+    (diff) => {
+      expect(tradeSettlementLabel(diff) === null).toBe(isTradeBalanced(diff));
+    },
+  );
+});
+
+describe('tradeCardKey', () => {
+  it('tells apart two finishes of the same CardId', () => {
+    expect(tradeCardKey(card({ foil: false }))).not.toBe(tradeCardKey(card({ foil: true })));
+  });
+
+  it('tells apart two CardIds', () => {
+    const keys = [
+      card(),
+      card({ set_code: 'MH3' }),
+      card({ collector_number: '167' }),
+      card({ language_code: 'EN' }),
+    ].map(tradeCardKey);
+    expect(new Set(keys).size).toBe(4);
+  });
+
+  it('ignores what is not the CardId or the finish', () => {
+    expect(tradeCardKey(card({ quantity: 4, name: 'Autre' }))).toBe(tradeCardKey(card()));
   });
 });
 

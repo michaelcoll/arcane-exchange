@@ -1,7 +1,8 @@
 import { describe, it, expect } from 'vitest';
 import { mount } from '@vue/test-utils';
 import Lifecycle from '~/components/Trade/Lifecycle.vue';
-import { TRADE_LIFECYCLE, type TradeStatus } from '~/utils/trade';
+import type { TradeStatusParam } from '~/bindings/TradeStatusParam';
+import { TRADE_LIFECYCLE } from '~/utils/trade';
 
 describe('Lifecycle', () => {
   it.each([
@@ -10,7 +11,7 @@ describe('Lifecycle', () => {
     ['FULLY_ACCEPTED', 2],
     ['COMPLETED', 3],
     ['CLOSED', 4],
-  ] satisfies [TradeStatus, number][])(
+  ] satisfies [TradeStatusParam, number][])(
     'marks %s with %i completed steps',
     async (status, doneCount) => {
       const wrapper = mount(Lifecycle, { props: { status } });

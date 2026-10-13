@@ -16,9 +16,6 @@ const props = defineProps<{
 
 const emit = defineEmits<{ remove: [card: TradeCard]; add: [] }>();
 
-const cardKey = (c: TradeCard) =>
-  `${c.set_code}-${c.collector_number}-${c.language_code}-${c.foil}`;
-
 const totalQuantity = computed(() => props.cards.reduce((s, c) => s + c.quantity, 0));
 
 const total = computed(() => tradeCardsTotal(props.cards));
@@ -60,7 +57,7 @@ const addClasses = computed(() =>
     <div class="flex flex-col gap-2">
       <div
         v-for="c in cards"
-        :key="cardKey(c)"
+        :key="tradeCardKey(c)"
         :class="[
           'flex items-center gap-3 rounded-xl border px-3 py-2 transition-all duration-150',
           reserved

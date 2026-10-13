@@ -1,10 +1,11 @@
 import { describe, it, expect } from 'vitest';
 import { mount } from '@vue/test-utils';
 import StatusPill from '~/components/Trade/StatusPill.vue';
-import { TRADE_STATUS_META, type TradeStatus } from '~/utils/trade';
+import type { TradeStatusParam } from '~/bindings/TradeStatusParam';
+import { TRADE_STATUS_META } from '~/utils/trade';
 
 describe('StatusPill', () => {
-  it.each(Object.keys(TRADE_STATUS_META) as TradeStatus[])(
+  it.each(Object.keys(TRADE_STATUS_META) as TradeStatusParam[])(
     'renders the label for status %s',
     async (status) => {
       const wrapper = mount(StatusPill, { props: { status } });

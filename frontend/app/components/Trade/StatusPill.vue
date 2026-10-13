@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import type { TradeStatus } from '~/utils/trade';
+import type { TradeStatusParam } from '~/bindings/TradeStatusParam';
 
-const props = withDefaults(defineProps<{ status: TradeStatus; size?: 'sm' | 'md' }>(), {
+const props = withDefaults(defineProps<{ status: TradeStatusParam; size?: 'sm' | 'md' }>(), {
   size: 'md',
 });
 

@@ -1,23 +1,15 @@
 import type { TradeCard } from '~/bindings/TradeCard';
+import type { TradeStatusParam } from '~/bindings/TradeStatusParam';
 import formatPrice from './format-price';
 
-/* Statuts de la machine à états d'un échange — miroir de `TradeStatus` côté backend
- * (src/ae/domain/trade.rs). Voir .agents/trade-workflow.instructions.md. */
-export type TradeStatus =
-  'PENDING' | 'ONE_ACCEPTED' | 'FULLY_ACCEPTED' | 'COMPLETED' | 'CLOSED' | 'ABANDONED';
+/* Le statut d'un échange est typé par le contrat généré (`TradeStatusParam`, seule union de
+ * statuts que ts-rs émet) : un statut ajouté côté backend casse la compilation de
+ * `TRADE_STATUS_META`. Voir .agents/trade-workflow.instructions.md. */
 
-const ALL_TRADE_STATUSES: TradeStatus[] = [
-  'PENDING',
-  'ONE_ACCEPTED',
-  'FULLY_ACCEPTED',
-  'COMPLETED',
-  'CLOSED',
-  'ABANDONED',
-];
-
-/** Valide et rétrécit le `status: string` du binding ts-rs vers l'union locale, repli sur `PENDING`. */
-export const toTradeStatus = (raw: string): TradeStatus =>
-  (ALL_TRADE_STATUSES as string[]).includes(raw) ? (raw as TradeStatus) : 'PENDING';
+/** Valide et rétrécit le `status: string` de `TradeDetail` / `TradeSummary` vers le statut du
+ * contrat, repli sur `PENDING`. */
+export const toTradeStatus = (raw: string): TradeStatusParam =>
+  Object.hasOwn(TRADE_STATUS_META, raw) ? (raw as TradeStatusParam) : 'PENDING';
 
 export type TradeTone = 'primary' | 'secondary' | 'good' | 'down' | 'muted';
 
@@ -45,11 +37,15 @@ export const formatTradeRating = (r: TradeRating) => {
 export const tradeCardValue = (card: TradeCard): number =>
   (card.price_guide?.trend ?? 0) * card.quantity;
 
+/** Clé d'une ligne de carte dans un côté de l'échange : son CardId et sa Finition. */
+export const tradeCardKey = (card: TradeCard): string =>
+  `${card.set_code}-${card.collector_number}-${card.language_code}-${card.foil}`;
+
 /** Somme des valeurs de toutes les lignes, en centimes. */
 export const tradeCardsTotal = (cards: TradeCard[]): number =>
   cards.reduce((s, c) => s + tradeCardValue(c), 0);
 
-export const TRADE_STATUS_META: Record<TradeStatus, { label: string; tone: TradeTone }> = {
+export const TRADE_STATUS_META: Record<TradeStatusParam, { label: string; tone: TradeTone }> = {
   PENDING: { label: 'En négociation', tone: 'primary' },
   ONE_ACCEPTED: { label: '1 acceptation', tone: 'primary' },
   FULLY_ACCEPTED: { label: 'Verrouillé', tone: 'secondary' },
@@ -59,7 +55,7 @@ export const TRADE_STATUS_META: Record<TradeStatus, { label: string; tone: Trade
 };
 
 /** Étapes du stepper de cycle de vie (ABANDONED est hors parcours nominal). */
-export const TRADE_LIFECYCLE: { status: TradeStatus; label: string }[] = [
+export const TRADE_LIFECYCLE: { status: TradeStatusParam; label: string }[] = [
   { status: 'PENDING', label: 'Négociation' },
   { status: 'ONE_ACCEPTED', label: '1 acceptation' },
   { status: 'FULLY_ACCEPTED', label: 'Verrouillé' },
@@ -68,20 +64,20 @@ export const TRADE_LIFECYCLE: { status: TradeStatus; label: string }[] = [
 ];
 
 /** L'échange peut encore être modifié (ajout/retrait de cartes). */
-export const isTradeEditable = (status: TradeStatus) =>
+export const isTradeEditable = (status: TradeStatusParam) =>
   status === 'PENDING' || status === 'ONE_ACCEPTED';
 
 /** Les cartes des deux côtés sont réservées. */
-export const isTradeReserved = (status: TradeStatus) =>
+export const isTradeReserved = (status: TradeStatusParam) =>
   status === 'ONE_ACCEPTED' || status === 'FULLY_ACCEPTED';
 
 /** L'échange peut encore être abandonné : à tout moment avant COMPLETED. */
-export const isTradeAbandonable = (status: TradeStatus) =>
+export const isTradeAbandonable = (status: TradeStatusParam) =>
   isTradeEditable(status) || status === 'FULLY_ACCEPTED';
 
 /** Les cinq étapes du parcours nominal, détaillées pour l'explication « Les étapes d'un
  * échange » — mêmes textes que `TradeSteps` côté iOS. */
-export const TRADE_STEPS: { status: TradeStatus; title: string; detail: string }[] = [
+export const TRADE_STEPS: { status: TradeStatusParam; title: string; detail: string }[] = [
   {
     status: 'PENDING',
     title: 'Négociation',
@@ -115,11 +111,11 @@ export const TRADE_STEPS: { status: TradeStatus; title: string; detail: string }
 ];
 
 /** Position du statut dans `TRADE_STEPS`, -1 pour ABANDONED (hors parcours nominal). */
-export const tradeStepIndex = (status: TradeStatus) =>
+export const tradeStepIndex = (status: TradeStatusParam) =>
   TRADE_STEPS.findIndex((s) => s.status === status);
 
 /** Pastille de l'indicateur à points : « NÉGOCIATION · 1/5 », ou « ABANDONNÉ » hors parcours. */
-export const tradeStatusStepLabel = (status: TradeStatus) => {
+export const tradeStatusStepLabel = (status: TradeStatusParam) => {
   const index = tradeStepIndex(status);
   if (index < 0) return 'ABANDONNÉ';
   return `${TRADE_STEPS[index]!.title} · ${index + 1}/${TRADE_STEPS.length}`.toUpperCase();
@@ -128,10 +124,14 @@ export const tradeStatusStepLabel = (status: TradeStatus) => {
 /** En dessous de 3 €, l'échange est considéré équilibré. */
 const EVEN_THRESHOLD = 300;
 
+/** L'écart de valeur est trop faible pour appeler un règlement. `diff` = total reçu − total
+ * donné, en centimes. */
+export const isTradeBalanced = (diff: number): boolean => Math.abs(diff) < EVEN_THRESHOLD;
+
 /** Moitié « règlement » du bouton d'acceptation : « payer 21 € », « recevoir 4 € », `null` si
  * l'échange est équilibré. `diff` = total reçu − total donné, en centimes. */
 export const tradeSettlementLabel = (diff: number): string | null => {
-  if (Math.abs(diff) < EVEN_THRESHOLD) return null;
+  if (isTradeBalanced(diff)) return null;
   const amount = formatPrice(Math.abs(diff));
   return diff > 0 ? `payer ${amount}` : `recevoir ${amount}`;
 };
