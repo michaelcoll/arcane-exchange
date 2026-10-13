@@ -23,6 +23,14 @@ const UNKNOWN_TECHNICAL_MESSAGE = 'Unknown error';
  * table silently.
  */
 const MESSAGES: Record<string, string> = {
+  empty_file: 'Le fichier est vide.',
+  malformed_csv: "Ce fichier n'est pas un CSV lisible.",
+  binder_export:
+    'Ce fichier est un export de classeur. Exporte ta collection complète depuis ManaBox.',
+  unrecognized_format: "Ce fichier n'est pas un export collection ManaBox reconnu.",
+  no_valid_line: "Aucune ligne du fichier n'a pu être lue.",
+  import_already_running: 'Un import est déjà en cours.',
+  import_not_found: "Cet import n'existe pas.",
   self_trade: 'Tu ne peux pas ouvrir un échange avec toi-même.',
   trade_not_modifiable: "Cet échange n'est plus modifiable.",
   trade_not_found: "Cet échange n'existe pas.",
@@ -47,6 +55,16 @@ const MESSAGES: Record<string, string> = {
   unauthorized: 'Ta session a expiré, reconnecte-toi.',
   internal: 'Erreur technique, réessaie plus tard.',
 };
+
+/**
+ * French message of a bare code, for a failure that does not arrive as an error: a card import
+ * that failed in the background is persisted with its code. An unknown or missing code gets
+ * `fallback`, the generic message unless the caller has its own.
+ */
+export const apiErrorMessage = (
+  code: string | null | undefined,
+  fallback: string = GENERIC_MESSAGE,
+): string => (code && Object.hasOwn(MESSAGES, code) ? MESSAGES[code] : undefined) ?? fallback;
 
 type Fields = Record<string, unknown>;
 
@@ -84,7 +102,7 @@ export const readApiError = (value: unknown): ApiError => {
     text(value) ??
     UNKNOWN_TECHNICAL_MESSAGE;
 
-  const message = code && Object.hasOwn(MESSAGES, code) ? MESSAGES[code] : GENERIC_MESSAGE;
+  const message = apiErrorMessage(code);
 
   return Object.assign(new Error(message, { cause: value }), {
     name: 'ApiError',

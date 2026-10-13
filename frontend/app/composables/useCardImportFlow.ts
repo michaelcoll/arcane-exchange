@@ -1,7 +1,7 @@
 import { computed, ref } from 'vue';
 import type { CardImport } from '~/bindings/CardImport';
 import type { CardImportStarted } from '~/bindings/CardImportStarted';
-import type { ErrorResponse } from '~/bindings/ErrorResponse';
+import { readApiError } from '../utils/api-error';
 import { importErrorMessage } from '../utils/import-error';
 
 export interface CardImportServices {
@@ -96,22 +96,21 @@ export const useCardImportFlow = (
       const started = await services.importCards(csv);
       poll(started.id);
     } catch (e: unknown) {
-      const err = e as {
-        statusCode?: number;
-        response?: { status?: number };
-        data?: Partial<ErrorResponse>;
-      };
-      if (err?.statusCode === 409 || err?.response?.status === 409) {
+      // Not destructured: `status` is already the followed import in this scope.
+      const failure = readApiError(e);
+      if (failure.status === 409) {
         wasAlreadyRunning.value = true;
+        // Ignored on purpose: a listing that fails leaves no import to follow, and the message
+        // below already says what the 409 means.
         const imports = await services.listCardImports().catch(() => []);
         const active = imports.find((i) => i.status === 'pending' || i.status === 'running');
         if (active) {
           poll(active.id);
         } else {
-          error.value = 'Un import est déjà en cours.';
+          error.value = importErrorMessage('import_already_running');
         }
       } else {
-        error.value = importErrorMessage(err?.data?.code);
+        error.value = importErrorMessage(failure.code);
       }
     }
   };
