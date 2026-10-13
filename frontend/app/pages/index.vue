@@ -31,19 +31,14 @@ const { recents, addRecentSearch } = useRecentSearches(CARD_RECENT_SEARCHES_KEY)
 const { getCollectionStats, getPriceHistory } = useCollectionService();
 const { data: collectionStatsData } = await getCollectionStats();
 
-const collectionHistoryParams = ref(lastNDaysRange(30));
+const collectionHistoryParams = ref(periodDateRange('30 j'));
 const { data: collectionHistoryData, pending: collectionHistoryPending } = await getPriceHistory(
   collectionHistoryParams,
   'home-collection-price-history',
 );
 
-const collectionEnvelopeData = computed(() => toEnvelopeData(collectionHistoryData.value ?? []));
-const hasEnoughCollectionHistory = computed(() => collectionEnvelopeData.value.length >= 2);
-const collectionTotalValueCents = computed(() => {
-  const entries = collectionHistoryData.value;
-  return entries && entries.length > 0 ? entries[entries.length - 1]!.trend : 0;
-});
-const collectionVariation = computed(() => computeVariation(collectionHistoryData.value ?? []));
+const collectionHistory = computed(() => collectionHistoryData.value ?? []);
+const collectionTrend = computed(() => priceTrend(collectionHistory.value));
 
 const { listTrades } = useTradeService();
 const activeTradesParams = {
@@ -247,13 +242,7 @@ const handleDecklistSearch = () => {
       >
         <!-- graph background -->
         <div class="absolute inset-0">
-          <EnvelopeGraph v-if="hasEnoughCollectionHistory" :data="collectionEnvelopeData" />
-          <div
-            v-else
-            class="text-2xs flex h-full items-center justify-center font-mono tracking-wide text-slate-400 uppercase dark:text-slate-500"
-          >
-            {{ collectionHistoryPending ? 'Chargement…' : "Pas encore assez d'historique" }}
-          </div>
+          <PriceTrendGraph :entries="collectionHistory" :pending="collectionHistoryPending" />
         </div>
 
         <!-- scrim -->
@@ -272,23 +261,18 @@ const handleDecklistSearch = () => {
             >Ma collection · CardMarket</span
           >
           <span class="font-display text-[30px] leading-none font-semibold tracking-tight">{{
-            formatPrice(collectionTotalValueCents)
+            formatPrice(collectionTrend.lastTrendCents)
           }}</span>
           <span
             :class="[
               'font-mono text-[12.5px]',
-              collectionVariation.positive ? 'text-primary' : 'text-red-500 dark:text-red-400',
+              collectionTrend.variation.positive
+                ? 'text-primary'
+                : 'text-red-500 dark:text-red-400',
             ]"
-            >{{ collectionVariation.positive ? '▴' : '▾' }}
-            {{ formatPrice(Math.abs(collectionVariation.deltaCents)) }} ·
-            {{ collectionVariation.positive ? '+' : '−'
-            }}{{
-              Math.abs(collectionVariation.pct).toLocaleString('fr-FR', {
-                minimumFractionDigits: 1,
-                maximumFractionDigits: 1,
-              })
-            }}
-            % (30 j)</span
+            >{{ collectionTrend.variation.positive ? '▴' : '▾' }}
+            {{ formatPrice(Math.abs(collectionTrend.variation.deltaCents)) }} ·
+            {{ collectionTrend.variation.pctLabel }} (30 j)</span
           >
         </div>
 

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-type EnvelopePoint = { low: number; avg: number; trend: number; day: number; label: string };
+import type { EnvelopePoint } from '~/utils/price-history';
 
 const props = withDefaults(
   defineProps<{

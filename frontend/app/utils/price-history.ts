@@ -1,8 +1,17 @@
 import type { PriceHistoryEntry } from '~/bindings/PriceHistoryEntry';
+import type { GraphRange } from './display-prefs';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
 const dayLabelFormatter = new Intl.DateTimeFormat('fr-FR', { day: 'numeric', month: 'short' });
+
+const pctFormatter = new Intl.NumberFormat('fr-FR', {
+  minimumFractionDigits: 1,
+  maximumFractionDigits: 1,
+});
+
+/** Un point du graphe d'envelope : montants en euros, numéro de jour et libellé du jour. */
+export type EnvelopePoint = { low: number; avg: number; trend: number; day: number; label: string };
 
 /** Numéro de jour (jours depuis l'epoch) d'une date `YYYY-MM-DD`, insensible aux changements d'heure. */
 const toDayNumber = (isoDate: string) => {
@@ -52,6 +61,22 @@ export const computeVariation = (entries: PriceHistoryEntry[]) => {
   return { pct, deltaCents: last - first, positive: pct >= 0 };
 };
 
+/** Tout le modèle d'une tendance de prix, pour un Historique de prix en centimes trié par date. */
+export const priceTrend = (entries: PriceHistoryEntry[]) => {
+  const points: EnvelopePoint[] = toEnvelopeData(entries);
+  const { pct, deltaCents, positive } = computeVariation(entries);
+  return {
+    points,
+    hasEnoughHistory: points.length >= 2,
+    lastTrendCents: entries.at(-1)?.trend ?? 0,
+    variation: {
+      positive,
+      pctLabel: `${positive ? '+' : '−'}${pctFormatter.format(Math.abs(pct))} %`,
+      deltaCents,
+    },
+  };
+};
+
 const toIsoDate = (d: Date) =>
   `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 
@@ -60,4 +85,10 @@ export const lastNDaysRange = (days: number) => {
   const start = new Date(end);
   start.setDate(start.getDate() - (days - 1));
   return { start_date: toIsoDate(start), end_date: toIsoDate(end) };
+};
+
+/** Plage de dates `YYYY-MM-DD` d'une période, en heure locale, la fin étant aujourd'hui. */
+export const periodDateRange = (period: GraphRange) => {
+  if (period !== '30 j') throw new Error(`Période non gérée : ${period}`);
+  return lastNDaysRange(30);
 };
