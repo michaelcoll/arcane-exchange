@@ -9,6 +9,7 @@ import {
   isTradeEditable,
   isTradeReserved,
   toTradeStatus,
+  TRADE_STATUS_META,
   TRADE_STEPS,
   tradeAcceptLabel,
   tradeCardsTotal,
@@ -16,6 +17,8 @@ import {
   tradeSettlementLabel,
   type TradeConfirmationKind,
   type TradeRating,
+  type TradeStatusPresentation,
+  type TradeTone,
 } from '../utils/trade';
 
 /** What the view asks of the page: the calls already target the displayed Trade. */
@@ -89,7 +92,16 @@ export interface TradeViewSteps {
   currentIndex: number | null;
 }
 
-/** Une confirmation ouverte, en attente de la décision du joueur. */
+/** The status message: what is expected of me, given the status and what I already accepted or
+ * confirmed. Its tone is the one of the status. */
+export interface TradeViewBanner {
+  title: string;
+  text: string;
+  icon: string;
+  tone: TradeTone;
+}
+
+/** An open confirmation, awaiting the player's decision. */
 export interface TradeViewConfirmation {
   kind: TradeConfirmationKind;
   title: string;
@@ -101,6 +113,8 @@ export interface TradeViewConfirmation {
 /** Everything the Trade screen tells the player, from the "me / partner" point of view (ADR 0005). */
 export interface TradeView {
   status: TradeStatusParam;
+  /** The label and the tone of the status. */
+  presentation: TradeStatusPresentation;
   partnerUsername: string;
   me: TradeViewParty;
   partner: TradeViewParty;
@@ -115,7 +129,8 @@ export interface TradeView {
   primaryAction: TradePrimaryAction;
   rating: TradeViewRating;
   steps: TradeViewSteps;
-  /** Une action est en cours : les actions sont à désactiver. */
+  banner: TradeViewBanner;
+  /** An action is running: the actions are to be disabled. */
   busy: boolean;
   confirmation: TradeViewConfirmation | null;
 }
@@ -157,6 +172,60 @@ const stepsOf = (status: TradeStatusParam): TradeViewSteps => {
   };
 };
 
+/** Title, text and icon of the banner; `them` is the partner's username. */
+const bannerMessageOf = (
+  status: TradeStatusParam,
+  me: TradeViewParty,
+  them: string,
+): Omit<TradeViewBanner, 'tone'> => {
+  switch (status) {
+    case 'PENDING':
+      return {
+        icon: 'lucide:arrow-left-right',
+        title: 'Négociation ouverte',
+        text: `Ajoute ou retire des cartes des deux côtés en composant avec ${them}.`,
+      };
+    case 'ONE_ACCEPTED':
+      return me.accepted
+        ? {
+            icon: 'lucide:lock',
+            title: `En attente de ${them}`,
+            text: `Tu as accepté — les cartes sont réservées. ${them} doit accepter à son tour, ou tu peux encore modifier.`,
+          }
+        : {
+            icon: 'lucide:lock',
+            title: `${them} a accepté — à toi de jouer`,
+            text: 'Accepte à ton tour pour verrouiller, ou modifie la transaction pour relancer la négociation.',
+          };
+    case 'FULLY_ACCEPTED':
+      return {
+        icon: 'lucide:lock',
+        title: 'Transaction verrouillée',
+        text: me.confirmed
+          ? `Tu as confirmé l'échange. En attente de la confirmation de ${them}.`
+          : 'Les deux parties ont accepté. Procédez à l’échange physique en personne, puis confirme ci-dessous.',
+      };
+    case 'COMPLETED':
+      return {
+        icon: 'lucide:check',
+        title: 'Échange réalisé',
+        text: 'Les deux parties ont confirmé l’échange physique. Tu peux noter ton partenaire (optionnel).',
+      };
+    case 'CLOSED':
+      return {
+        icon: 'lucide:check',
+        title: 'Transaction clôturée',
+        text: 'Les notations ont été enregistrées. Merci d’utiliser Arcane Exchange !',
+      };
+    case 'ABANDONED':
+      return {
+        icon: 'lucide:x',
+        title: 'Échange abandonné',
+        text: 'Cet échange a été abandonné. Les cartes réservées ont été libérées.',
+      };
+  }
+};
+
 /**
  * The player's view of the Trade: the only place that knows the status rules of the Trade screen.
  * It reads neither the route, the HTTP service nor the toast: the page hands it the loaded Trade
@@ -184,6 +253,7 @@ export const useTradeView = (
 
     return {
       status,
+      presentation: TRADE_STATUS_META[status],
       partnerUsername: current.partner_username,
       me: current.me,
       partner: current.partner,
@@ -205,6 +275,10 @@ export const useTradeView = (
         partner: current.partner.rating,
       },
       steps: stepsOf(status),
+      banner: {
+        ...bannerMessageOf(status, current.me, current.partner_username),
+        tone: TRADE_STATUS_META[status].tone,
+      },
       busy: busy.value,
       confirmation: pending.value && {
         kind: pending.value.kind,

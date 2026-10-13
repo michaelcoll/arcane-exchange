@@ -1,74 +1,10 @@
 <script setup lang="ts">
-import type { TradeStatusParam } from '~/bindings/TradeStatusParam';
+import type { TradeViewBanner } from '~/composables/useTradeView';
 import type { TradeTone } from '~/utils/trade';
 
-const props = defineProps<{
-  status: TradeStatusParam;
-  /** Pseudo du partenaire, affiché dans les messages. */
-  counterparty: string;
-  /** L'utilisateur courant a accepté l'échange. */
-  accepted: boolean;
-  /** L'utilisateur courant a confirmé l'échange physique. */
-  confirmed: boolean;
-}>();
-
-const content = computed<{ tone: TradeTone; icon: string; title: string; text: string }>(() => {
-  const them = props.counterparty;
-
-  switch (props.status) {
-    case 'ONE_ACCEPTED':
-      return props.accepted
-        ? {
-            tone: 'primary',
-            icon: 'lucide:lock',
-            title: `En attente de ${them}`,
-            text: `Tu as accepté — les cartes sont réservées. ${them} doit accepter à son tour, ou tu peux encore modifier.`,
-          }
-        : {
-            tone: 'primary',
-            icon: 'lucide:lock',
-            title: `${them} a accepté — à toi de jouer`,
-            text: 'Accepte à ton tour pour verrouiller, ou modifie la transaction pour relancer la négociation.',
-          };
-    case 'FULLY_ACCEPTED':
-      return {
-        tone: 'secondary',
-        icon: 'lucide:lock',
-        title: 'Transaction verrouillée',
-        text: props.confirmed
-          ? `Tu as confirmé l'échange. En attente de la confirmation de ${them}.`
-          : 'Les deux parties ont accepté. Procédez à l’échange physique en personne, puis confirme ci-dessous.',
-      };
-    case 'COMPLETED':
-      return {
-        tone: 'good',
-        icon: 'lucide:check',
-        title: 'Échange réalisé',
-        text: 'Les deux parties ont confirmé l’échange physique. Tu peux noter ton partenaire (optionnel).',
-      };
-    case 'CLOSED':
-      return {
-        tone: 'good',
-        icon: 'lucide:check',
-        title: 'Transaction clôturée',
-        text: 'Les notations ont été enregistrées. Merci d’utiliser Arcane Exchange !',
-      };
-    case 'ABANDONED':
-      return {
-        tone: 'down',
-        icon: 'lucide:x',
-        title: 'Échange abandonné',
-        text: 'Cet échange a été abandonné. Les cartes réservées ont été libérées.',
-      };
-    default:
-      return {
-        tone: 'primary',
-        icon: 'lucide:arrow-left-right',
-        title: 'Négociation ouverte',
-        text: `Ajoute ou retire des cartes des deux côtés en composant avec ${them}.`,
-      };
-  }
-});
+/* Le message de statut de la vue du Trade, affiché tel quel : ce composant ne décide ni du texte
+ * ni du ton. */
+defineProps<{ banner: TradeViewBanner }>();
 
 const bannerClasses: Record<TradeTone, string> = {
   primary: 'border-slate-200 bg-slate-100 dark:border-white/15 dark:bg-white/5',
@@ -88,21 +24,24 @@ const iconClasses: Record<TradeTone, string> = {
 </script>
 
 <template>
-  <div :class="['flex items-start gap-3 rounded-xl border p-4', bannerClasses[content.tone]]">
+  <div
+    :data-tone="banner.tone"
+    :class="['flex items-start gap-3 rounded-xl border p-4', bannerClasses[banner.tone]]"
+  >
     <span
       :class="[
         'grid h-[34px] w-[34px] flex-none place-items-center rounded-lg border',
-        iconClasses[content.tone],
+        iconClasses[banner.tone],
       ]"
     >
-      <Icon :name="content.icon" size="17" />
+      <Icon :name="banner.icon" size="17" />
     </span>
     <div class="flex min-w-0 flex-col gap-0.5">
       <span class="text-sm font-semibold text-slate-800 dark:text-slate-100">{{
-        content.title
+        banner.title
       }}</span>
       <span class="text-xs leading-relaxed text-slate-600 dark:text-slate-300">{{
-        content.text
+        banner.text
       }}</span>
     </div>
   </div>

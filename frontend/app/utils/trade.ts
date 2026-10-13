@@ -39,7 +39,15 @@ export const tradeCardKey = (card: TradeCard): string =>
 export const tradeCardsTotal = (cards: TradeCard[]): number =>
   cards.reduce((s, c) => s + tradeCardValue(c), 0);
 
-export const TRADE_STATUS_META: Record<TradeStatusParam, { label: string; tone: TradeTone }> = {
+/** Ce qu'un statut donne à lire : son libellé et son ton. */
+export interface TradeStatusPresentation {
+  label: string;
+  tone: TradeTone;
+}
+
+/** Seul mapping statut → libellé et ton du web : la pastille, l'indicateur à points et le bandeau
+ * en tirent tous leur couleur. */
+export const TRADE_STATUS_META: Record<TradeStatusParam, TradeStatusPresentation> = {
   PENDING: { label: 'En négociation', tone: 'primary' },
   ONE_ACCEPTED: { label: '1 acceptation', tone: 'primary' },
   FULLY_ACCEPTED: { label: 'Verrouillé', tone: 'secondary' },

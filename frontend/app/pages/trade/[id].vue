@@ -144,7 +144,11 @@ const hint = 'text-xs text-slate-400 dark:text-slate-500';
           </template>
         </div>
 
-        <TradeStatusDots :status="view.status" :steps="view.steps" @help="stepsOpen = true" />
+        <TradeStatusDots
+          :presentation="view.presentation"
+          :steps="view.steps"
+          @help="stepsOpen = true"
+        />
 
         <div class="flex flex-col gap-[18px]">
           <TradeCardRail
@@ -244,13 +248,7 @@ const hint = 'text-xs text-slate-400 dark:text-slate-500';
           <TradeLifecycle v-else :steps="view.steps" />
         </div>
 
-        <TradeStatusBanner
-          class="mb-4"
-          :status="view.status"
-          :counterparty="view.partnerUsername"
-          :accepted="view.me.accepted"
-          :confirmed="view.me.confirmed"
-        />
+        <TradeStatusBanner class="mb-4" :banner="view.banner" />
 
         <div
           class="grid [grid-template-columns:1fr_auto_1fr] items-stretch gap-4 max-md:[grid-template-columns:1fr]"
