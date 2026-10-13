@@ -1,17 +1,20 @@
 <script setup lang="ts">
+import type { TradeViewBalance } from '~/composables/useTradeView';
+
 const props = defineProps<{
-  /** `getTotal - giveTotal`, en centimes : > 0 tu reçois plus (tu dois la différence), < 0 l'inverse. */
-  diff: number;
+  /** Le solde tel que la vue du Trade l'expose : le Delta cash (> 0 je reçois plus, donc je dois
+   * la différence ; < 0 l'inverse) et le fait qu'il soit équilibré, que la jauge ne redécide pas. */
+  balance: TradeViewBalance;
   giveTotal: number;
   getTotal: number;
 }>();
 
-const even = computed(() => isTradeBalanced(props.diff));
+const even = computed(() => props.balance.balanced);
 
 const verdict = computed(() => {
-  const abs = formatPrice(Math.abs(props.diff));
+  const abs = formatPrice(Math.abs(props.balance.delta));
   if (even.value) return 'Équilibré';
-  if (props.diff > 0) return `Tu dois ${abs}`;
+  if (props.balance.delta > 0) return `Tu dois ${abs}`;
   return `On te doit ${abs}`;
 });
 

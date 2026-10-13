@@ -63,16 +63,9 @@ const askAbandon = () => {
 const addGet = () =>
   navigateTo(searchRoute({ mode: 'player', player: view.value?.partnerUsername ?? '' }));
 
-const btnBase =
-  'inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm leading-none font-semibold whitespace-nowrap transition-all duration-150 hover:-translate-y-px active:translate-y-0 disabled:pointer-events-none disabled:opacity-50';
-const btnDanger = `${btnBase} border border-red-500/40 bg-transparent text-red-600 hover:bg-red-500/10 dark:border-red-400/40 dark:text-red-400 dark:hover:bg-red-400/10`;
-const btnPrimary = `${btnBase} border border-transparent bg-primary font-bold text-[var(--on-primary)] shadow-lg hover:bg-primary-soft`;
-
 const panel =
   'rounded-2xl border border-slate-200 bg-white/60 shadow-lg backdrop-blur-md dark:border-white/10 dark:bg-zinc-900/60';
 const hint = 'text-xs text-slate-400 dark:text-slate-500';
-const label =
-  'text-2xs font-mono font-medium tracking-widest whitespace-nowrap text-slate-400 uppercase dark:text-slate-500';
 </script>
 
 <template>
@@ -265,7 +258,7 @@ const label =
           <div class="flex flex-col gap-2">
             <TradeColumn
               label="Je donne"
-              :cards="view.give.cards"
+              :side="view.give"
               tone="neutral"
               :reserved="view.reserved"
               :removable="false"
@@ -278,7 +271,7 @@ const label =
 
           <div class="flex min-w-[168px] flex-col items-center justify-center gap-3.5">
             <TradeBalance
-              :diff="view.balance.delta"
+              :balance="view.balance"
               :give-total="view.give.total"
               :get-total="view.receive.total"
             />
@@ -291,146 +284,26 @@ const label =
 
           <TradeColumn
             label="Je reçois"
-            :cards="view.receive.cards"
+            :side="view.receive"
             tone="secondary"
             :reserved="view.reserved"
             :removable="view.editable"
-            add-label="Chercher dans sa collection"
+            :busy="view.busy"
+            :add-label="view.editable ? 'Chercher dans sa collection' : undefined"
             @remove="removeReceivedCard"
             @add="addGet"
           />
         </div>
 
-        <!-- ACTIONS SELON LE STATUT -->
-        <div :class="[panel, 'mt-[18px] p-4']">
-          <div
-            v-if="view.status === 'PENDING'"
-            class="flex flex-wrap items-center justify-between gap-3.5"
-          >
-            <span :class="hint">Modifiable par les deux parties · aucune carte réservée</span>
-            <div class="flex flex-wrap items-center gap-2.5">
-              <button :class="btnDanger" :disabled="view.busy" @click="requestAbandon">
-                Abandonner
-              </button>
-              <button :class="btnPrimary" :disabled="view.busy" @click="requestAccept">
-                <Icon name="lucide:check" size="16" /> Accepter l’échange
-              </button>
-            </div>
-          </div>
-
-          <div
-            v-else-if="view.status === 'ONE_ACCEPTED'"
-            class="flex flex-wrap items-center justify-between gap-3.5"
-          >
-            <span :class="[hint, 'inline-flex items-center gap-1.5']">
-              <Icon name="lucide:lock" size="12" class="text-secondary" />
-              Cartes réservées · modifiable (repasse en négociation)
-            </span>
-            <div class="flex flex-wrap items-center gap-2.5">
-              <button :class="btnDanger" :disabled="view.busy" @click="requestAbandon">
-                Abandonner
-              </button>
-              <button
-                v-if="!view.me.accepted"
-                :class="btnPrimary"
-                :disabled="view.busy"
-                @click="requestAccept"
-              >
-                <Icon name="lucide:check" size="16" /> Accepter à mon tour
-              </button>
-            </div>
-          </div>
-
-          <div
-            v-else-if="view.status === 'FULLY_ACCEPTED'"
-            class="flex flex-wrap items-center justify-between gap-3.5"
-          >
-            <span :class="hint"
-              >Échange physique en personne · confirmez chacun une fois réalisé</span
-            >
-            <div class="flex flex-wrap items-center gap-2.5">
-              <button :class="btnDanger" :disabled="view.busy" @click="requestAbandon">
-                Abandonner
-              </button>
-              <span
-                v-if="view.me.confirmed"
-                class="border-secondary/30 bg-secondary/10 text-secondary-ink inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium whitespace-nowrap"
-              >
-                <Icon name="lucide:check" size="13" /> Tu as confirmé · en attente de
-                <span class="text-secondary">{{ view.partnerUsername }}</span>
-              </span>
-              <button v-else :class="btnPrimary" :disabled="view.busy" @click="confirmExchange">
-                <Icon name="lucide:check" size="16" /> Confirmer « échange réalisé »
-              </button>
-            </div>
-          </div>
-
-          <div v-else-if="view.status === 'COMPLETED'" class="flex flex-col gap-3.5">
-            <div class="flex flex-wrap items-center justify-between gap-3.5">
-              <div class="flex flex-col gap-0.5">
-                <span :class="label"
-                  >Noter <span class="text-secondary">{{ view.partnerUsername }}</span></span
-                >
-                <span :class="hint">Optionnel · 1 à 5 étoiles</span>
-              </div>
-              <div v-if="view.rating.canRate" class="flex flex-wrap items-center gap-3.5">
-                <TradeRatingStars :value="null" @rate="rate" />
-                <button
-                  class="text-xs font-medium text-slate-500 underline-offset-2 hover:underline disabled:opacity-50 dark:text-slate-400"
-                  :disabled="view.busy"
-                  @click="skipRating"
-                >
-                  Passer la notation
-                </button>
-              </div>
-              <span
-                v-else
-                class="border-secondary/30 bg-secondary/10 text-secondary-ink inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium whitespace-nowrap"
-              >
-                <Icon
-                  :name="view.rating.mine === 0 ? 'lucide:circle-minus' : 'mdi:star'"
-                  size="13"
-                />
-                {{ view.rating.mine === 0 ? 'Notation passée' : `Tu as mis ${view.rating.mine}/5` }}
-              </span>
-            </div>
-            <div class="h-px bg-slate-200 dark:bg-white/10" />
-            <div class="flex flex-wrap items-center justify-between gap-3">
-              <span v-if="view.rating.partner != null" :class="hint">
-                <span class="text-secondary">{{ view.partnerUsername }}</span>
-                {{ view.rating.partner === 0 ? 'a passé la notation.' : 'a noté de son côté.' }}
-              </span>
-              <span v-else :class="hint">
-                En attente éventuelle de la note de
-                <span class="text-secondary">{{ view.partnerUsername }}</span
-                >.
-              </span>
-            </div>
-          </div>
-
-          <div
-            v-else-if="view.status === 'CLOSED'"
-            class="flex flex-wrap items-center gap-x-[18px] gap-y-2"
-          >
-            <span :class="hint"
-              >Ta note :
-              <span class="text-secondary font-semibold">{{
-                formatTradeRating(view.rating.mine)
-              }}</span></span
-            >
-            <span :class="hint"
-              >Note de <span class="text-secondary">{{ view.partnerUsername }}</span> :
-              <span class="text-secondary font-semibold">{{
-                formatTradeRating(view.rating.partner)
-              }}</span></span
-            >
-          </div>
-
-          <!-- ABANDONED -->
-          <div v-else class="flex flex-wrap items-center justify-between gap-3.5">
-            <span :class="hint">Cette transaction est close.</span>
-          </div>
-        </div>
+        <TradeActionPanel
+          class="mt-[18px]"
+          :view="view"
+          @accept="requestAccept"
+          @confirm="confirmExchange"
+          @abandon="requestAbandon"
+          @rate="rate"
+          @skip="skipRating"
+        />
       </div>
 
       <TradeConfirmModal
