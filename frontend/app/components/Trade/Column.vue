@@ -1,24 +1,26 @@
 <script setup lang="ts">
 import type { TradeCard } from '~/bindings/TradeCard';
+import type { TradeViewSide } from '~/composables/useTradeView';
 
 const props = defineProps<{
   label: string;
-  cards: TradeCard[];
+  /** Le côté tel que la vue du Trade l'expose : ses cartes et leur total, déjà calculé. */
+  side: TradeViewSide;
   /** `secondary` pour la colonne « Je reçois » (l'autre joueur), `neutral` pour « Je donne ». */
   tone: 'secondary' | 'neutral';
   /** Les cartes de l'échange sont réservées. */
   reserved: boolean;
   /** Cette colonne autorise le retrait d'une carte (uniquement « Je reçois »). */
   removable: boolean;
+  /** Une action est en cours : le retrait est désactivé. */
+  busy?: boolean;
   /** Bouton d'ajout affiché seulement si fourni. */
   addLabel?: string;
 }>();
 
 const emit = defineEmits<{ remove: [card: TradeCard]; add: [] }>();
 
-const totalQuantity = computed(() => props.cards.reduce((s, c) => s + c.quantity, 0));
-
-const total = computed(() => tradeCardsTotal(props.cards));
+const totalQuantity = computed(() => props.side.cards.reduce((s, c) => s + c.quantity, 0));
 
 const valueClasses = computed(() =>
   props.tone === 'secondary' ? 'text-secondary' : 'text-slate-600 dark:text-slate-300',
@@ -56,7 +58,7 @@ const addClasses = computed(() =>
 
     <div class="flex flex-col gap-2">
       <div
-        v-for="c in cards"
+        v-for="c in side.cards"
         :key="tradeCardKey(c)"
         :class="[
           'flex items-center gap-3 rounded-xl border px-3 py-2 transition-all duration-150',
@@ -84,8 +86,9 @@ const addClasses = computed(() =>
         </span>
         <button
           v-if="removable"
-          class="grid h-[26px] w-[26px] flex-none place-items-center rounded-lg border border-slate-200 bg-slate-100 text-slate-600 transition-all duration-150 hover:border-slate-300 hover:bg-slate-50 hover:text-slate-800 dark:border-white/10 dark:bg-white/5 dark:text-slate-300 dark:hover:border-white/15 dark:hover:bg-zinc-800 dark:hover:text-slate-100"
+          class="grid h-[26px] w-[26px] flex-none place-items-center rounded-lg border border-slate-200 bg-slate-100 text-slate-600 transition-all duration-150 hover:border-slate-300 hover:bg-slate-50 hover:text-slate-800 disabled:pointer-events-none disabled:opacity-50 dark:border-white/10 dark:bg-white/5 dark:text-slate-300 dark:hover:border-white/15 dark:hover:bg-zinc-800 dark:hover:text-slate-100"
           aria-label="Retirer la carte de l’échange"
+          :disabled="busy"
           @click="emit('remove', c)"
         >
           <Icon name="lucide:x" size="13" />
@@ -99,7 +102,7 @@ const addClasses = computed(() =>
         </span>
       </div>
 
-      <div v-if="!cards.length" class="px-0.5 py-2 text-xs text-slate-400 dark:text-slate-500">
+      <div v-if="!side.cards.length" class="px-0.5 py-2 text-xs text-slate-400 dark:text-slate-500">
         Aucune carte de ce côté.
       </div>
     </div>
@@ -120,7 +123,7 @@ const addClasses = computed(() =>
       <span class="text-sm text-slate-400 dark:text-slate-500">Total</span>
       <span
         :class="['font-mono text-xl font-bold tracking-tight whitespace-nowrap', totalClasses]"
-        >{{ formatPrice(total) }}</span
+        >{{ formatPrice(side.total) }}</span
       >
     </div>
   </div>

@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { mount, type VueWrapper } from '@vue/test-utils';
 import Column from '~/components/Trade/Column.vue';
 import type { TradeCard } from '~/bindings/TradeCard';
+import type { TradeViewSide } from '~/composables/useTradeView';
 import formatPrice from '~/utils/format-price';
 
 const card = (overrides: Partial<TradeCard> = {}): TradeCard => ({
@@ -33,9 +34,12 @@ const cards: TradeCard[] = [
   }),
 ];
 
+// Le total vient de la vue : volontairement différent de la somme des cartes (5200).
+const side: TradeViewSide = { cards, total: 9900 };
+
 const baseProps = {
   label: 'Je donne',
-  cards,
+  side,
   tone: 'neutral' as const,
   reserved: false,
   removable: true,
@@ -65,14 +69,14 @@ describe('Column', () => {
     expect(wrapper.text()).toContain('×2');
   });
 
-  it('sums the value of every line into the column total', () => {
+  it('shows the total of the side it received, without summing the lines again', () => {
     const wrapper = mount(Column, { props: baseProps });
-    // 1200×1 + 2000×2 = 5200 centimes
-    expect(wrapper.text()).toContain(formatPrice(5200));
+    expect(wrapper.text()).toContain(formatPrice(9900));
+    expect(wrapper.text()).not.toContain(formatPrice(5200));
   });
 
   it('shows the empty-state message when there are no cards', () => {
-    const wrapper = mount(Column, { props: { ...baseProps, cards: [] } });
+    const wrapper = mount(Column, { props: { ...baseProps, side: { cards: [], total: 0 } } });
     expect(wrapper.text()).toContain('Aucune carte de ce côté.');
   });
 
@@ -83,7 +87,7 @@ describe('Column', () => {
 
   it('pluralizes the card count for a single card', () => {
     const wrapper = mount(Column, {
-      props: { ...baseProps, cards: [card({ quantity: 1 })] },
+      props: { ...baseProps, side: { cards: [card({ quantity: 1 })], total: 1200 } },
     });
     expect(wrapper.text()).toContain('1 carte');
     expect(wrapper.text()).not.toContain('1 cartes');
@@ -95,6 +99,15 @@ describe('Column', () => {
     expect(removeButtons).toHaveLength(2);
     await removeButtons[1]!.trigger('click');
     expect(wrapper.emitted('remove')).toEqual([[cards[1]]]);
+  });
+
+  it('disables the remove buttons while the view is busy', () => {
+    const disabled = (wrapper: VueWrapper) =>
+      wrapper
+        .findAll('button[aria-label="Retirer la carte de l’échange"]')
+        .map((b) => b.attributes('disabled') !== undefined);
+    expect(disabled(mount(Column, { props: baseProps }))).toEqual([false, false]);
+    expect(disabled(mount(Column, { props: { ...baseProps, busy: true } }))).toEqual([true, true]);
   });
 
   it('emits "add" when the add-card button is clicked', async () => {
@@ -121,7 +134,7 @@ describe('Column', () => {
       const wrapper = mountSecondary();
       expect(spanWithText(wrapper, 'Je reçois').classes()).toContain('text-secondary');
       expect(spanWithText(wrapper, formatPrice(1200)).classes()).toContain('text-secondary');
-      expect(spanWithText(wrapper, formatPrice(5200)).classes()).toContain('text-secondary');
+      expect(spanWithText(wrapper, formatPrice(9900)).classes()).toContain('text-secondary');
     });
 
     it('highlights the add button in secondary on hover and focus', () => {
@@ -142,7 +155,7 @@ describe('Column', () => {
     it('shows the label and the total without any role color', () => {
       const wrapper = mount(Column, { props: baseProps });
       expect(spanWithText(wrapper, 'Je donne').attributes('class')).not.toMatch(ROLE_TEXT);
-      expect(spanWithText(wrapper, formatPrice(5200)).attributes('class')).not.toMatch(ROLE_TEXT);
+      expect(spanWithText(wrapper, formatPrice(9900)).attributes('class')).not.toMatch(ROLE_TEXT);
     });
   });
 

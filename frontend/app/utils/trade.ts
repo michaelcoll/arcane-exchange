@@ -27,12 +27,6 @@ export const TRADE_TONE_CLASSES: Record<TradeTone, string> = {
  * non renseignée. */
 export type TradeRating = number | null;
 
-/** « Notation passée » pour une note 0, `n/5` sinon. */
-export const formatTradeRating = (r: TradeRating) => {
-  if (r == null) return 'non notée';
-  return r === 0 ? 'Notation passée' : `${r}/5`;
-};
-
 /** Valeur d'une ligne de carte, en centimes : prix trend × quantité, 0 si le prix est inconnu. */
 export const tradeCardValue = (card: TradeCard): number =>
   (card.price_guide?.trend ?? 0) * card.quantity;

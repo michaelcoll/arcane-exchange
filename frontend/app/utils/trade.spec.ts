@@ -4,7 +4,6 @@ import type { TradeStatusParam } from '~/bindings/TradeStatusParam';
 import {
   TRADE_STATUS_META,
   TRADE_STEPS,
-  formatTradeRating,
   isTradeEditable,
   isTradeAbandonable,
   isTradeReserved,
@@ -213,20 +212,6 @@ describe('tradeConfirmation', () => {
       confirmLabel: 'Modifier quand même',
       tone: 'down',
     });
-  });
-});
-
-describe('formatTradeRating', () => {
-  it('reads a 0 as a skipped rating, not zero stars', () => {
-    expect(formatTradeRating(0)).toBe('Notation passée');
-  });
-
-  it('shows stars out of five', () => {
-    expect(formatTradeRating(4)).toBe('4/5');
-  });
-
-  it('marks a missing rating', () => {
-    expect(formatTradeRating(null)).toBe('non notée');
   });
 });
 
