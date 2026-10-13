@@ -89,6 +89,10 @@ export const lastNDaysRange = (days: number) => {
 
 /** Plage de dates `YYYY-MM-DD` d'une période, en heure locale, la fin étant aujourd'hui. */
 export const periodDateRange = (period: GraphRange) => {
-  if (period !== '30 j') throw new Error(`Période non gérée : ${period}`);
-  return lastNDaysRange(30);
+  if (period === '30 j') return lastNDaysRange(30);
+  const end = new Date();
+  const start = new Date(end);
+  if (period === '3 m') start.setMonth(start.getMonth() - 3);
+  else start.setFullYear(start.getFullYear() - (period === '1 an' ? 1 : 10));
+  return { start_date: toIsoDate(start), end_date: toIsoDate(end) };
 };

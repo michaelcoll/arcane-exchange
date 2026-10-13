@@ -145,6 +145,42 @@ describe('periodDateRange', () => {
     vi.setSystemTime(new Date(2026, 0, 5));
     expect(periodDateRange('30 j')).toEqual({ start_date: '2025-12-07', end_date: '2026-01-05' });
   });
+
+  it("goes back 3 calendar months for '3 m'", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date(2026, 9, 13));
+    expect(periodDateRange('3 m')).toEqual({ start_date: '2026-07-13', end_date: '2026-10-13' });
+  });
+
+  it("goes back 1 calendar year for '1 an'", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date(2026, 9, 13));
+    expect(periodDateRange('1 an')).toEqual({ start_date: '2025-10-13', end_date: '2026-10-13' });
+  });
+
+  it("goes back 10 years for 'Max'", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date(2026, 9, 13));
+    expect(periodDateRange('Max')).toEqual({ start_date: '2016-10-13', end_date: '2026-10-13' });
+  });
+
+  it("crosses the year boundary for '3 m'", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date(2026, 0, 5));
+    expect(periodDateRange('3 m')).toEqual({ start_date: '2025-10-05', end_date: '2026-01-05' });
+  });
+
+  it("rolls over to the next month when '3 m' starts on a day its month does not have", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date(2026, 4, 31));
+    expect(periodDateRange('3 m')).toEqual({ start_date: '2026-03-03', end_date: '2026-05-31' });
+  });
+
+  it("starts '1 an' on March 1st when today is February 29th", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date(2028, 1, 29));
+    expect(periodDateRange('1 an')).toEqual({ start_date: '2027-03-01', end_date: '2028-02-29' });
+  });
 });
 
 describe('toEnvelopeData', () => {
