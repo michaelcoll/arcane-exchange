@@ -1,7 +1,4 @@
 <script setup lang="ts">
-import type { TradeCard } from '~/bindings/TradeCard';
-import type { TradeRating } from '~/utils/trade';
-
 // Écran d'engagement : sur mobile, la barre d'action remplace la nav du bas (lu par app.vue).
 definePageMeta({ middleware: 'auth', hideBottomNav: true });
 
@@ -21,50 +18,38 @@ const errorTitle = computed(() => {
   return 'Impossible de charger cet échange';
 });
 
-const status = computed(() => toTradeStatus(trade.value?.status ?? 'PENDING'));
-const partner = computed(() => trade.value?.partner_username ?? '');
-const editable = computed(() => isTradeEditable(status.value));
-const reserved = computed(() => isTradeReserved(status.value));
-
-const giveTotal = computed(() => tradeCardsTotal(trade.value?.my_cards ?? []));
-const getTotal = computed(() => tradeCardsTotal(trade.value?.partner_cards ?? []));
-const diff = computed(() => getTotal.value - giveTotal.value);
-
-const meAccepted = computed(() => trade.value?.me.accepted ?? false);
-const meConfirmed = computed(() => trade.value?.me.confirmed ?? false);
-const meRating = computed<TradeRating>(() => trade.value?.me.rating ?? null);
-const partnerRating = computed<TradeRating>(() => trade.value?.partner.rating ?? null);
-
-const busy = ref(false);
-
-const run = async (action: () => Promise<unknown>) => {
-  busy.value = true;
-  try {
-    await action();
-  } catch (e) {
-    showError('Action refusée', readApiError(e).message);
-  } finally {
-    await refresh();
-    busy.value = false;
-  }
-};
-
-type Modal = { kind: 'accept' } | { kind: 'abandon' } | { kind: 'modify'; run: () => void };
-const modal = ref<Modal | null>(null);
-const confirmation = computed(() => modal.value && tradeConfirmation(modal.value.kind, diff.value));
-
-const confirmModal = () => {
-  const current = modal.value;
-  modal.value = null;
-  if (current?.kind === 'accept') run(() => acceptTrade(tradeId.value));
-  else if (current?.kind === 'abandon') run(() => abandonTrade(tradeId.value));
-  else current?.run();
-};
+/* La vue du Trade côté joueur décide de tout ce que l'écran dit et permet ; la page ne fait que
+ * la câbler aux services et l'afficher. */
+const {
+  view,
+  requestAccept,
+  requestAbandon,
+  confirmPending,
+  cancelPending,
+  removeReceivedCard,
+  confirmExchange,
+  rate,
+  skipRating,
+} = useTradeView(trade, {
+  accept: () => acceptTrade(tradeId.value),
+  abandon: () => abandonTrade(tradeId.value),
+  confirmExchange: () => confirmTrade(tradeId.value),
+  rate: (rating) => rateTrade(tradeId.value, rating),
+  removeCard: (card) =>
+    removeCard(tradeId.value, {
+      set_code: card.set_code,
+      collector_number: card.collector_number,
+      language_code: card.language_code,
+      foil: card.foil,
+      owner_username: view.value?.partnerUsername ?? '',
+    }),
+  reload: () => refresh(),
+  reportRefusal: (message) => showError('Action refusée', message),
+});
 
 /* Mobile : menu « … » de la barre de page et bottom sheet des étapes. */
 const menuOpen = ref(false);
 const stepsOpen = ref(false);
-const abandonable = computed(() => isTradeAbandonable(status.value));
 
 const openSteps = () => {
   menuOpen.value = false;
@@ -72,31 +57,11 @@ const openSteps = () => {
 };
 const askAbandon = () => {
   menuOpen.value = false;
-  modal.value = { kind: 'abandon' };
+  requestAbandon();
 };
 
-const removeGet = (card: TradeCard) => {
-  const doRemove = () =>
-    run(() =>
-      removeCard(tradeId.value, {
-        set_code: card.set_code,
-        collector_number: card.collector_number,
-        language_code: card.language_code,
-        foil: card.foil,
-        owner_username: partner.value,
-      }),
-    );
-  if (status.value === 'ONE_ACCEPTED') {
-    modal.value = { kind: 'modify', run: doRemove };
-    return;
-  }
-  doRemove();
-};
-
-const addGet = () => navigateTo(searchRoute({ mode: 'player', player: partner.value }));
-
-const confirmExchange = () => run(() => confirmTrade(tradeId.value));
-const rate = (value: number) => run(() => rateTrade(tradeId.value, value));
+const addGet = () =>
+  navigateTo(searchRoute({ mode: 'player', player: view.value?.partnerUsername ?? '' }));
 
 const btnBase =
   'inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm leading-none font-semibold whitespace-nowrap transition-all duration-150 hover:-translate-y-px active:translate-y-0 disabled:pointer-events-none disabled:opacity-50';
@@ -135,7 +100,7 @@ const label =
       >
     </div>
 
-    <template v-else-if="trade">
+    <template v-else-if="view">
       <!-- MOBILE (< md) : design de l'écran de trade iOS -->
       <div class="flex flex-col gap-5 md:hidden">
         <div class="relative grid [grid-template-columns:2.25rem_1fr_2.25rem] items-center gap-2">
@@ -147,7 +112,7 @@ const label =
             <Icon name="lucide:chevron-left" size="20" />
           </button>
           <h2 class="font-display text-secondary truncate text-center text-base font-semibold">
-            @{{ partner }}
+            @{{ view.partnerUsername }}
           </h2>
           <button
             class="grid h-9 w-9 place-items-center rounded-lg text-[var(--ink-2)] transition-colors duration-150 hover:bg-slate-400/10 hover:text-[var(--ink)]"
@@ -174,10 +139,10 @@ const label =
                 <Icon name="lucide:info" size="16" /> Les étapes d'un échange
               </button>
               <button
-                v-if="abandonable"
+                v-if="view.abandonable"
                 role="menuitem"
                 class="flex items-center gap-2.5 px-4 py-2.5 text-left text-sm text-red-600 hover:bg-red-500/10 dark:text-red-400"
-                :disabled="busy"
+                :disabled="view.busy"
                 @click="askAbandon"
               >
                 <Icon name="lucide:x" size="16" /> Abandonner l'échange
@@ -186,18 +151,18 @@ const label =
           </template>
         </div>
 
-        <TradeStatusDots :status="status" @help="stepsOpen = true" />
+        <TradeStatusDots :status="view.status" @help="stepsOpen = true" />
 
         <div class="flex flex-col gap-[18px]">
           <TradeCardRail
-            :owner="partner"
+            :owner="view.partnerUsername"
             side="receive"
-            :cards="trade.partner_cards"
-            :reserved="reserved"
-            :removable="editable"
+            :cards="view.receive.cards"
+            :reserved="view.reserved"
+            :removable="view.editable"
             empty-message="Tu n'as demandé aucune carte pour l'instant."
-            :add-label="editable ? 'Chercher chez lui' : undefined"
-            @remove="removeGet"
+            :add-label="view.editable ? 'Chercher chez lui' : undefined"
+            @remove="removeReceivedCard"
             @add="addGet"
           />
 
@@ -206,13 +171,13 @@ const label =
             <span
               :class="[
                 'inline-flex items-center gap-1.5 rounded-full border px-[13px] py-1.5 font-mono text-[11.5px] font-semibold whitespace-nowrap',
-                reserved
+                view.reserved
                   ? 'border-secondary/40 bg-secondary/15 text-secondary-ink'
                   : 'border-[var(--line-2)] bg-slate-400/10 text-[var(--ink-2)]',
               ]"
             >
-              <Icon :name="reserved ? 'lucide:lock' : 'lucide:arrow-left-right'" size="12" />
-              {{ reserved ? 'échange réservé' : 'échange' }}
+              <Icon :name="view.reserved ? 'lucide:lock' : 'lucide:arrow-left-right'" size="12" />
+              {{ view.reserved ? 'échange réservé' : 'échange' }}
             </span>
             <span class="h-px flex-1 bg-[var(--line-2)]" />
           </div>
@@ -220,37 +185,37 @@ const label =
           <TradeCardRail
             :owner="null"
             side="give"
-            :cards="trade.my_cards"
-            :reserved="reserved"
+            :cards="view.give.cards"
+            :reserved="view.reserved"
             :removable="false"
-            :empty-message="`@${partner} n'a demandé aucune de tes cartes.`"
+            :empty-message="`@${view.partnerUsername} n'a demandé aucune de tes cartes.`"
           />
         </div>
 
         <TradeRatingSection
-          v-if="status === 'COMPLETED' || status === 'CLOSED'"
-          :partner="partner"
-          :me-rating="meRating"
-          :partner-rating="partnerRating"
-          :busy="busy"
+          v-if="view.rating.visible"
+          :partner="view.partnerUsername"
+          :me-rating="view.rating.mine"
+          :partner-rating="view.rating.partner"
+          :busy="view.busy"
           @rate="rate"
         />
 
         <TradeActionBar
-          :status="status"
-          :me-accepted="meAccepted"
-          :me-confirmed="meConfirmed"
-          :partner="partner"
-          :diff="diff"
-          :busy="busy"
-          @accept="modal = { kind: 'accept' }"
+          :status="view.status"
+          :me-accepted="view.me.accepted"
+          :me-confirmed="view.me.confirmed"
+          :partner="view.partnerUsername"
+          :diff="view.balance.delta"
+          :busy="view.busy"
+          @accept="requestAccept"
           @confirm="confirmExchange"
         />
 
         <TradeStepsSheet
           v-if="stepsOpen"
-          :status="status"
-          :partner="partner"
+          :status="view.status"
+          :partner="view.partnerUsername"
           @close="stepsOpen = false"
         />
       </div>
@@ -267,33 +232,33 @@ const label =
               <Icon name="lucide:chevron-left" size="16" />
             </button>
             <div class="flex items-center gap-2.5">
-              <PlayerAvatar :username="partner" />
+              <PlayerAvatar :username="view.partnerUsername" />
               <h2 class="font-display text-base font-semibold tracking-tight">
                 Échange avec
-                <span class="text-secondary">{{ partner }}</span>
+                <span class="text-secondary">{{ view.partnerUsername }}</span>
               </h2>
             </div>
           </div>
-          <TradeStatusPill :status="status" />
+          <TradeStatusPill :status="view.status" />
         </div>
 
         <div :class="[panel, 'mb-4 px-4 pt-5 pb-4']">
           <div
-            v-if="status === 'ABANDONED'"
+            v-if="view.status === 'ABANDONED'"
             class="flex items-center justify-center gap-2.5 text-red-600 dark:text-red-400"
           >
             <Icon name="lucide:x" size="18" />
             <span class="font-semibold">Transaction abandonnée — cartes libérées</span>
           </div>
-          <TradeLifecycle v-else :status="status" />
+          <TradeLifecycle v-else :status="view.status" />
         </div>
 
         <TradeStatusBanner
           class="mb-4"
-          :status="status"
-          :counterparty="partner"
-          :accepted="meAccepted"
-          :confirmed="meConfirmed"
+          :status="view.status"
+          :counterparty="view.partnerUsername"
+          :accepted="view.me.accepted"
+          :confirmed="view.me.confirmed"
         />
 
         <div
@@ -302,19 +267,23 @@ const label =
           <div class="flex flex-col gap-2">
             <TradeColumn
               label="Je donne"
-              :cards="trade.my_cards"
+              :cards="view.give.cards"
               tone="neutral"
-              :reserved="reserved"
+              :reserved="view.reserved"
               :removable="false"
             />
             <p :class="hint">
-              Cartes demandées par <span class="text-secondary">{{ partner }}</span> · non
-              retirables depuis cet écran.
+              Cartes demandées par <span class="text-secondary">{{ view.partnerUsername }}</span> ·
+              non retirables depuis cet écran.
             </p>
           </div>
 
           <div class="flex min-w-[168px] flex-col items-center justify-center gap-3.5">
-            <TradeBalance :diff="diff" :give-total="giveTotal" :get-total="getTotal" />
+            <TradeBalance
+              :diff="view.balance.delta"
+              :give-total="view.give.total"
+              :get-total="view.receive.total"
+            />
             <span
               class="text-2xs inline-flex items-center gap-1.5 font-mono tracking-wide text-slate-400 dark:text-slate-500"
             >
@@ -324,12 +293,12 @@ const label =
 
           <TradeColumn
             label="Je reçois"
-            :cards="trade.partner_cards"
+            :cards="view.receive.cards"
             tone="secondary"
-            :reserved="reserved"
-            :removable="editable"
+            :reserved="view.reserved"
+            :removable="view.editable"
             add-label="Chercher dans sa collection"
-            @remove="removeGet"
+            @remove="removeReceivedCard"
             @add="addGet"
           />
         </div>
@@ -337,22 +306,22 @@ const label =
         <!-- ACTIONS SELON LE STATUT -->
         <div :class="[panel, 'mt-[18px] p-4']">
           <div
-            v-if="status === 'PENDING'"
+            v-if="view.status === 'PENDING'"
             class="flex flex-wrap items-center justify-between gap-3.5"
           >
             <span :class="hint">Modifiable par les deux parties · aucune carte réservée</span>
             <div class="flex flex-wrap items-center gap-2.5">
-              <button :class="btnDanger" :disabled="busy" @click="modal = { kind: 'abandon' }">
+              <button :class="btnDanger" :disabled="view.busy" @click="requestAbandon">
                 Abandonner
               </button>
-              <button :class="btnPrimary" :disabled="busy" @click="modal = { kind: 'accept' }">
+              <button :class="btnPrimary" :disabled="view.busy" @click="requestAccept">
                 <Icon name="lucide:check" size="16" /> Accepter l’échange
               </button>
             </div>
           </div>
 
           <div
-            v-else-if="status === 'ONE_ACCEPTED'"
+            v-else-if="view.status === 'ONE_ACCEPTED'"
             class="flex flex-wrap items-center justify-between gap-3.5"
           >
             <span :class="[hint, 'inline-flex items-center gap-1.5']">
@@ -360,14 +329,14 @@ const label =
               Cartes réservées · modifiable (repasse en négociation)
             </span>
             <div class="flex flex-wrap items-center gap-2.5">
-              <button :class="btnDanger" :disabled="busy" @click="modal = { kind: 'abandon' }">
+              <button :class="btnDanger" :disabled="view.busy" @click="requestAbandon">
                 Abandonner
               </button>
               <button
-                v-if="!meAccepted"
+                v-if="!view.me.accepted"
                 :class="btnPrimary"
-                :disabled="busy"
-                @click="modal = { kind: 'accept' }"
+                :disabled="view.busy"
+                @click="requestAccept"
               >
                 <Icon name="lucide:check" size="16" /> Accepter à mon tour
               </button>
@@ -375,43 +344,43 @@ const label =
           </div>
 
           <div
-            v-else-if="status === 'FULLY_ACCEPTED'"
+            v-else-if="view.status === 'FULLY_ACCEPTED'"
             class="flex flex-wrap items-center justify-between gap-3.5"
           >
             <span :class="hint"
               >Échange physique en personne · confirmez chacun une fois réalisé</span
             >
             <div class="flex flex-wrap items-center gap-2.5">
-              <button :class="btnDanger" :disabled="busy" @click="modal = { kind: 'abandon' }">
+              <button :class="btnDanger" :disabled="view.busy" @click="requestAbandon">
                 Abandonner
               </button>
               <span
-                v-if="meConfirmed"
+                v-if="view.me.confirmed"
                 class="border-secondary/30 bg-secondary/10 text-secondary-ink inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium whitespace-nowrap"
               >
                 <Icon name="lucide:check" size="13" /> Tu as confirmé · en attente de
-                <span class="text-secondary">{{ partner }}</span>
+                <span class="text-secondary">{{ view.partnerUsername }}</span>
               </span>
-              <button v-else :class="btnPrimary" :disabled="busy" @click="confirmExchange">
+              <button v-else :class="btnPrimary" :disabled="view.busy" @click="confirmExchange">
                 <Icon name="lucide:check" size="16" /> Confirmer « échange réalisé »
               </button>
             </div>
           </div>
 
-          <div v-else-if="status === 'COMPLETED'" class="flex flex-col gap-3.5">
+          <div v-else-if="view.status === 'COMPLETED'" class="flex flex-col gap-3.5">
             <div class="flex flex-wrap items-center justify-between gap-3.5">
               <div class="flex flex-col gap-0.5">
                 <span :class="label"
-                  >Noter <span class="text-secondary">{{ partner }}</span></span
+                  >Noter <span class="text-secondary">{{ view.partnerUsername }}</span></span
                 >
                 <span :class="hint">Optionnel · 1 à 5 étoiles</span>
               </div>
-              <div v-if="meRating == null" class="flex flex-wrap items-center gap-3.5">
+              <div v-if="view.rating.canRate" class="flex flex-wrap items-center gap-3.5">
                 <TradeRatingStars :value="null" @rate="rate" />
                 <button
                   class="text-xs font-medium text-slate-500 underline-offset-2 hover:underline disabled:opacity-50 dark:text-slate-400"
-                  :disabled="busy"
-                  @click="rate(0)"
+                  :disabled="view.busy"
+                  @click="skipRating"
                 >
                   Passer la notation
                 </button>
@@ -420,38 +389,41 @@ const label =
                 v-else
                 class="border-secondary/30 bg-secondary/10 text-secondary-ink inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium whitespace-nowrap"
               >
-                <Icon :name="meRating === 0 ? 'lucide:circle-minus' : 'mdi:star'" size="13" />
-                {{ meRating === 0 ? 'Notation passée' : `Tu as mis ${meRating}/5` }}
+                <Icon
+                  :name="view.rating.mine === 0 ? 'lucide:circle-minus' : 'mdi:star'"
+                  size="13"
+                />
+                {{ view.rating.mine === 0 ? 'Notation passée' : `Tu as mis ${view.rating.mine}/5` }}
               </span>
             </div>
             <div class="h-px bg-slate-200 dark:bg-white/10" />
             <div class="flex flex-wrap items-center justify-between gap-3">
-              <span v-if="partnerRating != null" :class="hint">
-                <span class="text-secondary">{{ partner }}</span>
-                {{ partnerRating === 0 ? 'a passé la notation.' : 'a noté de son côté.' }}
+              <span v-if="view.rating.partner != null" :class="hint">
+                <span class="text-secondary">{{ view.partnerUsername }}</span>
+                {{ view.rating.partner === 0 ? 'a passé la notation.' : 'a noté de son côté.' }}
               </span>
               <span v-else :class="hint">
                 En attente éventuelle de la note de
-                <span class="text-secondary">{{ partner }}</span
+                <span class="text-secondary">{{ view.partnerUsername }}</span
                 >.
               </span>
             </div>
           </div>
 
           <div
-            v-else-if="status === 'CLOSED'"
+            v-else-if="view.status === 'CLOSED'"
             class="flex flex-wrap items-center gap-x-[18px] gap-y-2"
           >
             <span :class="hint"
               >Ta note :
               <span class="text-secondary font-semibold">{{
-                formatTradeRating(meRating)
+                formatTradeRating(view.rating.mine)
               }}</span></span
             >
             <span :class="hint"
-              >Note de <span class="text-secondary">{{ partner }}</span> :
+              >Note de <span class="text-secondary">{{ view.partnerUsername }}</span> :
               <span class="text-secondary font-semibold">{{
-                formatTradeRating(partnerRating)
+                formatTradeRating(view.rating.partner)
               }}</span></span
             >
           </div>
@@ -464,13 +436,13 @@ const label =
       </div>
 
       <TradeConfirmModal
-        v-if="confirmation"
-        :title="confirmation.title"
-        :body="confirmation.body"
-        :confirm-label="confirmation.confirmLabel"
-        :tone="confirmation.tone"
-        @cancel="modal = null"
-        @confirm="confirmModal"
+        v-if="view.confirmation"
+        :title="view.confirmation.title"
+        :body="view.confirmation.body"
+        :confirm-label="view.confirmation.confirmLabel"
+        :tone="view.confirmation.tone"
+        @cancel="cancelPending"
+        @confirm="confirmPending"
       />
     </template>
   </div>
