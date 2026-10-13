@@ -1,52 +1,32 @@
 import { describe, it, expect } from 'vitest';
 import { mount } from '@vue/test-utils';
 import ActionBar from '~/components/Trade/ActionBar.vue';
-import type { TradeStatusParam } from '~/bindings/TradeStatusParam';
-import formatPrice from '~/utils/format-price';
+import type { TradePrimaryAction } from '~/composables/useTradeView';
 
-const baseProps = {
-  status: 'PENDING' as TradeStatusParam,
-  meAccepted: false,
-  meConfirmed: false,
-  partner: 'mizzix_42',
-  diff: 0,
-  busy: false,
-};
+const accept: TradePrimaryAction = { kind: 'accept', label: 'Accepter et payer 21 €' };
+
+const baseProps = { action: accept, partner: 'mizzix_42', busy: false };
 
 describe('ActionBar', () => {
-  it.each(['PENDING', 'ONE_ACCEPTED'] satisfies TradeStatusParam[])(
-    '%s, not yet accepted by me: offers to accept and emits "accept"',
-    async (status) => {
-      const wrapper = mount(ActionBar, { props: { ...baseProps, status } });
-      const button = wrapper.get('button');
-      expect(button.text()).toBe("Accepter l'échange");
-      await button.trigger('click');
-      expect(wrapper.emitted('accept')).toHaveLength(1);
-    },
-  );
-
-  it('puts what I pay on the accept button', () => {
-    const wrapper = mount(ActionBar, { props: { ...baseProps, diff: 2100 } });
-    expect(wrapper.get('button').text()).toBe(`Accepter et payer ${formatPrice(2100)}`);
+  it('accept: shows the label it received and emits "accept"', async () => {
+    const wrapper = mount(ActionBar, { props: baseProps });
+    const button = wrapper.get('button');
+    expect(button.text()).toBe('Accepter et payer 21 €');
+    await button.trigger('click');
+    expect(wrapper.emitted('accept')).toHaveLength(1);
   });
 
-  it('puts what I receive on the accept button', () => {
-    const wrapper = mount(ActionBar, { props: { ...baseProps, diff: -400 } });
-    expect(wrapper.get('button').text()).toBe(`Accepter et recevoir ${formatPrice(400)}`);
-  });
-
-  it.each(['PENDING', 'ONE_ACCEPTED'] satisfies TradeStatusParam[])(
-    '%s, already accepted by me: waits for the partner',
-    (status) => {
-      const wrapper = mount(ActionBar, { props: { ...baseProps, status, meAccepted: true } });
-      expect(wrapper.find('button').exists()).toBe(false);
-      expect(wrapper.text()).toBe('En attente de @mizzix_42');
-    },
-  );
-
-  it('FULLY_ACCEPTED: offers to confirm the exchange in secondary and emits "confirm"', async () => {
+  it('awaitingAcceptance: waits for the partner', () => {
     const wrapper = mount(ActionBar, {
-      props: { ...baseProps, status: 'FULLY_ACCEPTED', meAccepted: true },
+      props: { ...baseProps, action: { kind: 'awaitingAcceptance' } },
+    });
+    expect(wrapper.find('button').exists()).toBe(false);
+    expect(wrapper.text()).toBe('En attente de @mizzix_42');
+  });
+
+  it('confirmExchange: offers to confirm the exchange in secondary and emits "confirm"', async () => {
+    const wrapper = mount(ActionBar, {
+      props: { ...baseProps, action: { kind: 'confirmExchange' } },
     });
     const button = wrapper.get('button');
     expect(button.text()).toBe('Confirmer « échange réalisé »');
@@ -55,24 +35,24 @@ describe('ActionBar', () => {
     expect(wrapper.emitted('confirm')).toHaveLength(1);
   });
 
-  it('FULLY_ACCEPTED, confirmed by me: waits for the partner', () => {
+  it('awaitingConfirmation: waits for the partner', () => {
     const wrapper = mount(ActionBar, {
-      props: { ...baseProps, status: 'FULLY_ACCEPTED', meAccepted: true, meConfirmed: true },
+      props: { ...baseProps, action: { kind: 'awaitingConfirmation' } },
     });
     expect(wrapper.find('button').exists()).toBe(false);
     expect(wrapper.text()).toBe('Confirmé, en attente de @mizzix_42');
   });
 
-  it.each(['COMPLETED', 'CLOSED', 'ABANDONED'] satisfies TradeStatusParam[])(
-    '%s: renders no bar at all',
-    (status) => {
-      const wrapper = mount(ActionBar, { props: { ...baseProps, status, meAccepted: true } });
-      expect(wrapper.find('[data-part="bar"]').exists()).toBe(false);
+  it('none: renders no bar at all', () => {
+    const wrapper = mount(ActionBar, { props: { ...baseProps, action: { kind: 'none' } } });
+    expect(wrapper.find('[data-part="bar"]').exists()).toBe(false);
+  });
+
+  it.each([accept, { kind: 'confirmExchange' }] satisfies TradePrimaryAction[])(
+    'disables the $kind button while busy',
+    (action) => {
+      const wrapper = mount(ActionBar, { props: { ...baseProps, action, busy: true } });
+      expect(wrapper.get('button').attributes('disabled')).toBeDefined();
     },
   );
-
-  it('disables the action while busy', () => {
-    const wrapper = mount(ActionBar, { props: { ...baseProps, busy: true } });
-    expect(wrapper.get('button').attributes('disabled')).toBeDefined();
-  });
 });
