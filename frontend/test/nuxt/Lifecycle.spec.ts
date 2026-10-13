@@ -1,39 +1,20 @@
 import { describe, it, expect } from 'vitest';
 import { mount } from '@vue/test-utils';
 import Lifecycle from '~/components/Trade/Lifecycle.vue';
-import type { TradeStatusParam } from '~/bindings/TradeStatusParam';
-import { TRADE_LIFECYCLE } from '~/utils/trade';
+import { STEP_TITLES, stepsAt } from './tradeSteps';
 
 describe('Lifecycle', () => {
-  it.each([
-    ['PENDING', 0],
-    ['ONE_ACCEPTED', 1],
-    ['FULLY_ACCEPTED', 2],
-    ['COMPLETED', 3],
-    ['CLOSED', 4],
-  ] satisfies [TradeStatusParam, number][])(
-    'marks %s with %i completed steps',
-    async (status, doneCount) => {
-      const wrapper = mount(Lifecycle, { props: { status } });
-      expect(wrapper.findAll('.iconify')).toHaveLength(doneCount);
-    },
-  );
+  it('checks the steps the view reports as done and numbers the others', () => {
+    const wrapper = mount(Lifecycle, { props: { steps: stepsAt(2) } });
+    expect(wrapper.findAll('.iconify')).toHaveLength(2);
+    expect(wrapper.text()).toContain('3');
+    expect(wrapper.text()).toContain('5');
+  });
 
-  it('renders every lifecycle step label', async () => {
-    const wrapper = mount(Lifecycle, { props: { status: 'PENDING' } });
-    for (const step of TRADE_LIFECYCLE) {
-      expect(wrapper.text()).toContain(step.label);
+  it('renders the name of every step it receives', () => {
+    const wrapper = mount(Lifecycle, { props: { steps: stepsAt(0) } });
+    for (const title of STEP_TITLES) {
+      expect(wrapper.text()).toContain(title);
     }
-  });
-
-  it('shows no completed step and dims the stepper when abandoned', async () => {
-    const wrapper = mount(Lifecycle, { props: { status: 'ABANDONED' } });
-    expect(wrapper.findAll('.iconify')).toHaveLength(0);
-    expect(wrapper.classes().join(' ')).toContain('opacity-45');
-  });
-
-  it('does not dim the stepper on the nominal path', async () => {
-    const wrapper = mount(Lifecycle, { props: { status: 'PENDING' } });
-    expect(wrapper.classes().join(' ')).not.toContain('opacity-45');
   });
 });

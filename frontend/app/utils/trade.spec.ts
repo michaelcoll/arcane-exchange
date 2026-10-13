@@ -3,7 +3,6 @@ import type { TradeCard } from '~/bindings/TradeCard';
 import type { TradeStatusParam } from '~/bindings/TradeStatusParam';
 import {
   TRADE_STATUS_META,
-  TRADE_LIFECYCLE,
   TRADE_STEPS,
   formatTradeRating,
   isTradeEditable,
@@ -17,8 +16,6 @@ import {
   tradeCardsTotal,
   tradeConfirmation,
   tradeSettlementLabel,
-  tradeStatusStepLabel,
-  tradeStepIndex,
 } from './trade';
 import formatPrice from './format-price';
 
@@ -77,24 +74,6 @@ describe('TRADE_STATUS_META', () => {
       expect(TRADE_STATUS_META[status]).toBeDefined();
       expect(TRADE_STATUS_META[status].label).toBeTruthy();
       expect(TRADE_STATUS_META[status].tone).toBeTruthy();
-    }
-  });
-});
-
-describe('TRADE_LIFECYCLE', () => {
-  it('describes the nominal path in order, excluding ABANDONED', () => {
-    expect(TRADE_LIFECYCLE.map((s) => s.status)).toEqual([
-      'PENDING',
-      'ONE_ACCEPTED',
-      'FULLY_ACCEPTED',
-      'COMPLETED',
-      'CLOSED',
-    ]);
-  });
-
-  it('gives every step a non-empty label', () => {
-    for (const step of TRADE_LIFECYCLE) {
-      expect(step.label).toBeTruthy();
     }
   });
 });
@@ -251,28 +230,15 @@ describe('formatTradeRating', () => {
   });
 });
 
-describe('tradeStepIndex', () => {
-  it('locates a status on the nominal path, -1 once abandoned', () => {
-    expect(tradeStepIndex('PENDING')).toBe(0);
-    expect(tradeStepIndex('CLOSED')).toBe(4);
-    expect(tradeStepIndex('ABANDONED')).toBe(-1);
-  });
-});
-
-describe('tradeStatusStepLabel', () => {
-  it('quotes the step number on the nominal path', () => {
-    expect(tradeStatusStepLabel('PENDING')).toBe('NÉGOCIATION · 1/5');
-    expect(tradeStatusStepLabel('COMPLETED')).toBe('ÉCHANGE RÉALISÉ · 4/5');
-  });
-
-  it('has no step number once abandoned', () => {
-    expect(tradeStatusStepLabel('ABANDONED')).toBe('ABANDONNÉ');
-  });
-});
-
 describe('TRADE_STEPS', () => {
-  it('explains every lifecycle step, in order', () => {
-    expect(TRADE_STEPS.map((s) => s.status)).toEqual(TRADE_LIFECYCLE.map((s) => s.status));
+  it('explains the nominal path in order, excluding ABANDONED', () => {
+    expect(TRADE_STEPS.map((s) => s.status)).toEqual([
+      'PENDING',
+      'ONE_ACCEPTED',
+      'FULLY_ACCEPTED',
+      'COMPLETED',
+      'CLOSED',
+    ]);
     for (const step of TRADE_STEPS) {
       expect(step.title).toBeTruthy();
       expect(step.detail).toBeTruthy();

@@ -1,23 +1,16 @@
 <script setup lang="ts">
-import type { TradeStatusParam } from '~/bindings/TradeStatusParam';
+import type { TradeStepState, TradeViewSteps } from '~/composables/useTradeView';
 
-/* « Les étapes d'un échange » en bottom sheet, contenu de `TradeStepsView` côté iOS : les cinq
- * étapes de la machine à états, l'étape courante mise en avant. */
-const props = defineProps<{ status: TradeStatusParam; partner: string }>();
+/* « Les étapes d'un échange » en bottom sheet, contenu de `TradeStepsView` côté iOS : les étapes
+ * de la vue du Trade, l'étape courante mise en avant. */
+const props = defineProps<{ steps: TradeViewSteps; partner: string }>();
 
 const emit = defineEmits<{ close: [] }>();
 
-/* -1 pour un échange abandonné : aucune étape n'est alors « en cours ». */
-const current = computed(() => tradeStepIndex(props.status));
+/* `null` pour un échange abandonné : aucune étape n'est alors « en cours ». */
+const current = computed(() => props.steps.currentIndex);
 
-type StepState = 'done' | 'current' | 'upcoming';
-
-const stateOf = (i: number): StepState => {
-  if (current.value < 0 || i > current.value) return 'upcoming';
-  return i < current.value ? 'done' : 'current';
-};
-
-const nodeClasses: Record<StepState, string> = {
+const nodeClasses: Record<TradeStepState, string> = {
   done: 'border-emerald-500/40 bg-emerald-500/15 text-emerald-700 dark:border-emerald-400/40 dark:bg-emerald-400/15 dark:text-emerald-300',
   current:
     'border-transparent bg-primary text-[var(--on-primary)] shadow-[0_0_0_4px_var(--primary-fill)]',
@@ -67,7 +60,7 @@ onUnmounted(() => {
       </div>
 
       <p class="mb-[18px] text-sm text-[var(--ink-2)]">
-        <template v-if="current < 0">
+        <template v-if="current === null">
           Cet échange a été abandonné avant son terme. Voici les cinq étapes qu'il aurait
           traversées.
         </template>
@@ -81,48 +74,48 @@ onUnmounted(() => {
 
       <ol>
         <li
-          v-for="(step, i) in TRADE_STEPS"
+          v-for="(step, i) in steps.list"
           :key="step.status"
-          :data-state="stateOf(i)"
+          :data-state="step.state"
           class="flex gap-[13px]"
         >
           <div class="flex w-[26px] flex-none flex-col items-center gap-[3px]">
             <span
               :class="[
                 'grid h-[26px] w-[26px] place-items-center rounded-full border font-mono text-[11px] font-bold',
-                nodeClasses[stateOf(i)],
+                nodeClasses[step.state],
               ]"
             >
-              <Icon v-if="stateOf(i) === 'done'" name="lucide:check" :size="13" />
+              <Icon v-if="step.state === 'done'" name="lucide:check" :size="13" />
               <template v-else>{{ i + 1 }}</template>
             </span>
             <span
-              v-if="i < TRADE_STEPS.length - 1"
+              v-if="i < steps.list.length - 1"
               :class="[
                 'w-0.5 flex-1 rounded-full',
-                stateOf(i) === 'done' ? 'bg-emerald-500/45' : 'bg-slate-400/20',
+                step.state === 'done' ? 'bg-emerald-500/45' : 'bg-slate-400/20',
               ]"
             />
           </div>
           <div
-            :class="['flex flex-col gap-1 pt-0.5', i < TRADE_STEPS.length - 1 ? 'pb-[18px]' : '']"
+            :class="['flex flex-col gap-1 pt-0.5', i < steps.list.length - 1 ? 'pb-[18px]' : '']"
           >
             <span
               :class="[
                 'text-[15px] font-semibold',
-                stateOf(i) === 'upcoming' ? 'text-[var(--ink-3)]' : 'text-[var(--ink)]',
+                step.state === 'upcoming' ? 'text-[var(--ink-3)]' : 'text-[var(--ink)]',
               ]"
               >{{ step.title }}</span
             >
             <span
               :class="[
                 'text-[13px] text-[var(--ink-2)]',
-                stateOf(i) === 'upcoming' ? 'opacity-70' : '',
+                step.state === 'upcoming' ? 'opacity-70' : '',
               ]"
               >{{ step.detail }}</span
             >
             <span
-              v-if="stateOf(i) === 'current'"
+              v-if="step.state === 'current'"
               data-part="current"
               class="border-primary/30 bg-primary/10 text-primary-ink mt-[3px] inline-flex w-fit items-center gap-1.5 rounded-full border px-[9px] py-1 font-mono text-[10px] font-semibold tracking-[0.1em]"
             >
@@ -133,7 +126,7 @@ onUnmounted(() => {
       </ol>
 
       <p
-        v-if="current < 0"
+        v-if="current === null"
         class="mt-[18px] flex items-center gap-2 text-[13px] text-[var(--ink-2)]"
       >
         <Icon name="lucide:lock-open" :size="14" /> Les cartes réservées ont été libérées.
