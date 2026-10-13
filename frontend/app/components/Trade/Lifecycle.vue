@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import type { TradeStatus } from '~/utils/trade';
+import type { TradeStatusParam } from '~/bindings/TradeStatusParam';
 
-const props = defineProps<{ status: TradeStatus }>();
+const props = defineProps<{ status: TradeStatusParam }>();
 
 const abandoned = computed(() => props.status === 'ABANDONED');
 const currentIndex = computed(() => TRADE_LIFECYCLE.findIndex((s) => s.status === props.status));

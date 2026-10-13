@@ -1,11 +1,11 @@
 <script setup lang="ts">
-import type { TradeStatus } from '~/utils/trade';
+import type { TradeStatusParam } from '~/bindings/TradeStatusParam';
 
 /* Barre d'action mobile collée en bas, comme `TradeActionBar` côté iOS : une seule décision par
  * statut, jamais un mur de boutons. Abandonner vit dans le menu « … » de la barre de page.
  * Aucune barre une fois l'échange réalisé, clôturé ou abandonné. */
 const props = defineProps<{
-  status: TradeStatus;
+  status: TradeStatusParam;
   meAccepted: boolean;
   meConfirmed: boolean;
   partner: string;

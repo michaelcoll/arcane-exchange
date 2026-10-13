@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import type { TradeStatus, TradeTone } from '~/utils/trade';
+import type { TradeStatusParam } from '~/bindings/TradeStatusParam';
+import type { TradeTone } from '~/utils/trade';
 
 const props = defineProps<{
-  status: TradeStatus;
+  status: TradeStatusParam;
   /** Pseudo du partenaire, affiché dans les messages. */
   counterparty: string;
   /** L'utilisateur courant a accepté l'échange. */

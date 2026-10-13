@@ -24,9 +24,6 @@ const props = withDefaults(
 
 const emit = defineEmits<{ remove: [card: TradeCard]; add: [] }>();
 
-const cardKey = (c: TradeCard) =>
-  `${c.set_code}-${c.collector_number}-${c.language_code}-${c.foil}`;
-
 const total = computed(() => tradeCardsTotal(props.cards));
 
 const valueClass = computed(() =>
@@ -66,7 +63,7 @@ const badge =
     >
       <div
         v-for="c in cards"
-        :key="cardKey(c)"
+        :key="tradeCardKey(c)"
         data-part="tile"
         class="relative flex w-[116px] flex-none flex-col gap-[5px]"
       >

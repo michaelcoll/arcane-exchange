@@ -6,7 +6,7 @@ const props = defineProps<{
   getTotal: number;
 }>();
 
-const even = computed(() => Math.abs(props.diff) < 300);
+const even = computed(() => isTradeBalanced(props.diff));
 
 const verdict = computed(() => {
   const abs = formatPrice(Math.abs(props.diff));

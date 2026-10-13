@@ -1,9 +1,9 @@
 <script setup lang="ts">
-import type { TradeStatus } from '~/utils/trade';
+import type { TradeStatusParam } from '~/bindings/TradeStatusParam';
 
 /* « Les étapes d'un échange » en bottom sheet, contenu de `TradeStepsView` côté iOS : les cinq
  * étapes de la machine à états, l'étape courante mise en avant. */
-const props = defineProps<{ status: TradeStatus; partner: string }>();
+const props = defineProps<{ status: TradeStatusParam; partner: string }>();
 
 const emit = defineEmits<{ close: [] }>();
 

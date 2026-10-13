@@ -1,11 +1,11 @@
 import { describe, it, expect } from 'vitest';
 import { mount } from '@vue/test-utils';
 import ActionBar from '~/components/Trade/ActionBar.vue';
-import type { TradeStatus } from '~/utils/trade';
+import type { TradeStatusParam } from '~/bindings/TradeStatusParam';
 import formatPrice from '~/utils/format-price';
 
 const baseProps = {
-  status: 'PENDING' as TradeStatus,
+  status: 'PENDING' as TradeStatusParam,
   meAccepted: false,
   meConfirmed: false,
   partner: 'mizzix_42',
@@ -14,7 +14,7 @@ const baseProps = {
 };
 
 describe('ActionBar', () => {
-  it.each(['PENDING', 'ONE_ACCEPTED'] satisfies TradeStatus[])(
+  it.each(['PENDING', 'ONE_ACCEPTED'] satisfies TradeStatusParam[])(
     '%s, not yet accepted by me: offers to accept and emits "accept"',
     async (status) => {
       const wrapper = mount(ActionBar, { props: { ...baseProps, status } });
@@ -35,7 +35,7 @@ describe('ActionBar', () => {
     expect(wrapper.get('button').text()).toBe(`Accepter et recevoir ${formatPrice(400)}`);
   });
 
-  it.each(['PENDING', 'ONE_ACCEPTED'] satisfies TradeStatus[])(
+  it.each(['PENDING', 'ONE_ACCEPTED'] satisfies TradeStatusParam[])(
     '%s, already accepted by me: waits for the partner',
     (status) => {
       const wrapper = mount(ActionBar, { props: { ...baseProps, status, meAccepted: true } });
@@ -63,7 +63,7 @@ describe('ActionBar', () => {
     expect(wrapper.text()).toBe('Confirmé, en attente de @mizzix_42');
   });
 
-  it.each(['COMPLETED', 'CLOSED', 'ABANDONED'] satisfies TradeStatus[])(
+  it.each(['COMPLETED', 'CLOSED', 'ABANDONED'] satisfies TradeStatusParam[])(
     '%s: renders no bar at all',
     (status) => {
       const wrapper = mount(ActionBar, { props: { ...baseProps, status, meAccepted: true } });

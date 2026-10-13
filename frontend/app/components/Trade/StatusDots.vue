@@ -1,10 +1,10 @@
 <script setup lang="ts">
-import type { TradeStatus } from '~/utils/trade';
+import type { TradeStatusParam } from '~/bindings/TradeStatusParam';
 
 /* Où en est l'échange, comme `TradeStatusIndicator` côté iOS : les cinq étapes en points, celle
  * en cours gonflée en pastille à sa propre place. ABANDONED sort du parcours : points éteints,
  * pastille en fin de ligne, sans « n/5 ». */
-const props = defineProps<{ status: TradeStatus }>();
+const props = defineProps<{ status: TradeStatusParam }>();
 
 const emit = defineEmits<{ help: [] }>();
 
@@ -23,7 +23,7 @@ const parts = computed<Part[]>(() => {
   return [...dots('done', index.value), pill, ...dots('todo', count - index.value - 1)];
 });
 
-const pillClasses: Record<TradeStatus, string> = {
+const pillClasses: Record<TradeStatusParam, string> = {
   PENDING: 'border-primary/40 bg-primary/15 text-primary-ink',
   ONE_ACCEPTED: 'border-primary/40 bg-primary/15 text-primary-ink',
   FULLY_ACCEPTED: 'border-secondary/40 bg-secondary/15 text-secondary-ink',
