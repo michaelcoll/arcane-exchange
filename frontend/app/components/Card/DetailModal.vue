@@ -70,7 +70,7 @@ watch(
     isSetKnown.value = false;
     try {
       const [history, offers, set] = await Promise.all([
-        getCardPriceHistory(card.scryfall_id, { foil: card.foil }),
+        getCardPriceHistory(card.scryfall_id, { foil: card.foil, ...periodDateRange('30 j') }),
         getCardOffers({
           set_code: card.set_code,
           collector_number: card.collector_number,
@@ -104,9 +104,7 @@ watch(
   { immediate: true },
 );
 
-const cardEnvelopeData = computed(() => toEnvelopeData(cardHistoryData.value));
-const cardHasEnoughHistory = computed(() => cardEnvelopeData.value.length >= 2);
-const cardVariation = computed(() => computeVariation(cardHistoryData.value));
+const cardVariation = computed(() => priceTrend(cardHistoryData.value).variation);
 const ownedDeal = computed(() =>
   computeDeal(props.card.collection_entry?.purchase_price, props.card.price_guide?.trend),
 );
@@ -186,28 +184,23 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
                 >Marché · CardMarket · 30 j</span
               >
               <span
+                data-testid="card-variation"
                 :class="[
                   'font-mono text-xs',
                   cardVariation.positive ? 'text-primary' : 'text-red-500 dark:text-red-400',
                 ]"
               >
                 {{ cardVariation.positive ? '▴' : '▾' }}
-                {{ Math.abs(cardVariation.pct).toFixed(0) }} %
+                {{ cardVariation.pctLabel }}
               </span>
             </div>
             <div class="mt-2 flex items-center gap-2.5">
-              <span class="font-mono text-xl font-bold">{{
+              <span data-testid="card-trend-price" class="font-mono text-xl font-bold">{{
                 formatPrice(card.price_guide?.trend ?? 0)
               }}</span>
             </div>
             <div class="mt-2 h-[140px]">
-              <EnvelopeGraph v-if="cardHasEnoughHistory" :data="cardEnvelopeData" detail />
-              <div
-                v-else
-                class="text-2xs flex h-full items-center justify-center font-mono tracking-wide text-slate-400 uppercase dark:text-slate-500"
-              >
-                {{ cardHistoryPending ? 'Chargement…' : "Pas encore assez d'historique" }}
-              </div>
+              <PriceTrendGraph :entries="cardHistoryData" :pending="cardHistoryPending" detail />
             </div>
           </div>
 
