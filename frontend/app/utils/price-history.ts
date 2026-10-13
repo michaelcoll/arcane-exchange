@@ -10,10 +10,10 @@ const pctFormatter = new Intl.NumberFormat('fr-FR', {
   maximumFractionDigits: 1,
 });
 
-/** Un point du graphe d'envelope : montants en euros, numéro de jour et libellé du jour. */
+/** A point of the envelope graph: amounts in euros, day number and day label. */
 export type EnvelopePoint = { low: number; avg: number; trend: number; day: number; label: string };
 
-/** Numéro de jour (jours depuis l'epoch) d'une date `YYYY-MM-DD`, insensible aux changements d'heure. */
+/** Day number (days since the epoch) of a `YYYY-MM-DD` date, unaffected by clock changes. */
 const toDayNumber = (isoDate: string) => {
   const [year, month, day] = isoDate.split('-').map(Number);
   return Math.round(Date.UTC(year!, month! - 1, day) / DAY_MS);
@@ -24,7 +24,7 @@ export const formatDay = (dayNumber: number) => {
   return dayLabelFormatter.format(new Date(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()));
 };
 
-export const toEnvelopeData = (entries: PriceHistoryEntry[]) =>
+const toEnvelopeData = (entries: PriceHistoryEntry[]): EnvelopePoint[] =>
   entries.map((e) => {
     const day = toDayNumber(e.date);
     return {
@@ -36,7 +36,7 @@ export const toEnvelopeData = (entries: PriceHistoryEntry[]) =>
     };
   });
 
-/** Graduations régulièrement espacées dans le temps, arrondies au jour et sans doublon. */
+/** Ticks evenly spaced in time, rounded to the day and without duplicates. */
 export const dayTicks = (firstDay: number, lastDay: number, count: number) => {
   const span = lastDay - firstDay;
   const steps = Math.min(count - 1, span);
@@ -44,7 +44,7 @@ export const dayTicks = (firstDay: number, lastDay: number, count: number) => {
   return Array.from({ length: steps + 1 }, (_, k) => firstDay + Math.round((span * k) / steps));
 };
 
-/** Indice du jour de `days` (triés) le plus proche de `day`. */
+/** Index of the day of `days` (sorted) closest to `day`. */
 export const nearestIndex = (days: number[], day: number) => {
   let best = 0;
   for (let i = 1; i < days.length; i++) {
@@ -53,7 +53,7 @@ export const nearestIndex = (days: number[], day: number) => {
   return best;
 };
 
-export const computeVariation = (entries: PriceHistoryEntry[]) => {
+const computeVariation = (entries: PriceHistoryEntry[]) => {
   if (entries.length < 2) return { pct: 0, deltaCents: 0, positive: true };
   const first = entries[0]!.trend;
   const last = entries[entries.length - 1]!.trend;
@@ -61,9 +61,12 @@ export const computeVariation = (entries: PriceHistoryEntry[]) => {
   return { pct, deltaCents: last - first, positive: pct >= 0 };
 };
 
-/** Tout le modèle d'une tendance de prix, pour un Historique de prix en centimes trié par date. */
+/**
+ * The whole model of a price trend, for a series in cents sorted by date: the price history of a
+ * card as well as the value history of a collection, which share the same entry shape.
+ */
 export const priceTrend = (entries: PriceHistoryEntry[]) => {
-  const points: EnvelopePoint[] = toEnvelopeData(entries);
+  const points = toEnvelopeData(entries);
   const { pct, deltaCents, positive } = computeVariation(entries);
   return {
     points,
@@ -80,19 +83,15 @@ export const priceTrend = (entries: PriceHistoryEntry[]) => {
 const toIsoDate = (d: Date) =>
   `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 
-export const lastNDaysRange = (days: number) => {
-  const end = new Date();
-  const start = new Date(end);
-  start.setDate(start.getDate() - (days - 1));
-  return { start_date: toIsoDate(start), end_date: toIsoDate(end) };
-};
-
-/** Plage de dates `YYYY-MM-DD` d'une période, en heure locale, la fin étant aujourd'hui. */
+/** `YYYY-MM-DD` date range of a period, in local time, ending today. */
 export const periodDateRange = (period: GraphRange) => {
-  if (period === '30 j') return lastNDaysRange(30);
   const end = new Date();
   const start = new Date(end);
-  if (period === '3 m') start.setMonth(start.getMonth() - 3);
-  else start.setFullYear(start.getFullYear() - (period === '1 an' ? 1 : 10));
+  // '30 j' includes today: the start is 29 days earlier.
+  if (period === '30 j') start.setDate(start.getDate() - 29);
+  else if (period === '3 m') start.setMonth(start.getMonth() - 3);
+  else if (period === '1 an') start.setFullYear(start.getFullYear() - 1);
+  // 'Max' has no real lower bound yet: ten years back.
+  else start.setFullYear(start.getFullYear() - 10);
   return { start_date: toIsoDate(start), end_date: toIsoDate(end) };
 };

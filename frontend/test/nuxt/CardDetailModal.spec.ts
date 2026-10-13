@@ -3,6 +3,7 @@ import { flushPromises, mount, type VueWrapper } from '@vue/test-utils';
 import CardDetailModal from '~/components/Card/DetailModal.vue';
 import type { CollectionCard } from '~/bindings/CollectionCard';
 import type { RarityCode } from '~/bindings/RarityCode';
+import formatPrice from '~/utils/format-price';
 
 const {
   getCardPriceHistoryMock,
@@ -94,6 +95,97 @@ describe('CardDetailModal', () => {
   afterEach(() => {
     wrapper?.unmount();
     wrapper = undefined;
+    vi.useRealTimers();
+  });
+
+  it.each([false, true])(
+    'asks for the price history of the card with its finish (foil: %s) over the last 30 days',
+    async (foil) => {
+      vi.useFakeTimers({ toFake: ['Date'] });
+      vi.setSystemTime(new Date(2026, 2, 15));
+      wrapper = mount(CardDetailModal, {
+        props: { card: { ...baseCard, foil } },
+        global: { stubs },
+      });
+      await flushPromises();
+      expect(getCardPriceHistoryMock).toHaveBeenCalledTimes(1);
+      expect(getCardPriceHistoryMock).toHaveBeenCalledWith('scryfall-1', {
+        foil,
+        start_date: '2026-02-14',
+        end_date: '2026-03-15',
+      });
+    },
+  );
+
+  it('shows a rise with an up arrow and a signed, one-decimal percentage', async () => {
+    getCardPriceHistoryMock.mockResolvedValue([
+      { date: '2026-03-01', low: 90000, avg: 95000, trend: 100000 },
+      { date: '2026-03-15', low: 90000, avg: 95000, trend: 101200 },
+    ]);
+    wrapper = mount(CardDetailModal, {
+      props: { card: baseCard },
+      global: { stubs },
+    });
+    await flushPromises();
+    const variation = wrapper.find('[data-testid="card-variation"]');
+    expect(variation.text()).toBe('▴ +1,2 %');
+    expect(variation.classes()).toContain('text-primary');
+  });
+
+  it('shows a drop with a down arrow, a true minus sign and the red tone', async () => {
+    getCardPriceHistoryMock.mockResolvedValue([
+      { date: '2026-03-01', low: 700, avg: 900, trend: 1000 },
+      { date: '2026-03-15', low: 700, avg: 750, trend: 800 },
+    ]);
+    wrapper = mount(CardDetailModal, {
+      props: { card: baseCard },
+      global: { stubs },
+    });
+    await flushPromises();
+    const variation = wrapper.find('[data-testid="card-variation"]');
+    expect(variation.text()).toBe('▾ −20,0 %');
+    expect(variation.classes()).toContain('text-red-500');
+  });
+
+  it('keeps the trend price of the price guide above the graph, not the last trend of the history', async () => {
+    getCardPriceHistoryMock.mockResolvedValue([
+      { date: '2026-03-01', low: 700, avg: 900, trend: 1000 },
+      { date: '2026-03-15', low: 700, avg: 750, trend: 800 },
+    ]);
+    wrapper = mount(CardDetailModal, {
+      props: {
+        card: { ...baseCard, price_guide: { low: null, avg: null, trend: 4321 } },
+      },
+      global: { stubs },
+    });
+    await flushPromises();
+    expect(wrapper.find('[data-testid="card-trend-price"]').text()).toBe(formatPrice(4321));
+  });
+
+  it('says there is not enough history when the card has fewer than two entries', async () => {
+    wrapper = mount(CardDetailModal, {
+      props: { card: baseCard },
+      global: { stubs },
+    });
+    await flushPromises();
+    expect(wrapper.text()).toContain("Pas encore assez d'historique");
+    expect(wrapper.findComponent({ name: 'EnvelopeGraph' }).exists()).toBe(false);
+  });
+
+  it('draws the detailed graph once the card has two entries', async () => {
+    getCardPriceHistoryMock.mockResolvedValue([
+      { date: '2026-03-01', low: 700, avg: 900, trend: 1000 },
+      { date: '2026-03-15', low: 700, avg: 750, trend: 800 },
+    ]);
+    wrapper = mount(CardDetailModal, {
+      props: { card: baseCard },
+      global: { stubs },
+    });
+    await flushPromises();
+    const graph = wrapper.findComponent({ name: 'EnvelopeGraph' });
+    expect(graph.exists()).toBe(true);
+    expect(graph.props('detail')).toBe(true);
+    expect(wrapper.text()).not.toContain("Pas encore assez d'historique");
   });
 
   it('emits "close" when clicking the backdrop', async () => {
