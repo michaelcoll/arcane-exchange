@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { readApiError } from './api-error';
+import { apiErrorMessage, readApiError } from './api-error';
 
 const REQUEST = '[POST] "/api/v1/trades/42/accept"';
 
@@ -71,6 +71,16 @@ describe('readApiError', () => {
   });
 
   it.each([
+    ['empty_file', 'Le fichier est vide.'],
+    ['malformed_csv', "Ce fichier n'est pas un CSV lisible."],
+    [
+      'binder_export',
+      'Ce fichier est un export de classeur. Exporte ta collection complète depuis ManaBox.',
+    ],
+    ['unrecognized_format', "Ce fichier n'est pas un export collection ManaBox reconnu."],
+    ['no_valid_line', "Aucune ligne du fichier n'a pu être lue."],
+    ['import_already_running', 'Un import est déjà en cours.'],
+    ['import_not_found', "Cet import n'existe pas."],
     ['self_trade', 'Tu ne peux pas ouvrir un échange avec toi-même.'],
     ['trade_not_modifiable', "Cet échange n'est plus modifiable."],
     ['trade_not_found', "Cet échange n'existe pas."],
@@ -187,5 +197,23 @@ describe('readApiError', () => {
       message: 'Une erreur est survenue.',
       technicalMessage: `${REQUEST}: <no response> fetch failed`,
     });
+  });
+});
+
+describe('apiErrorMessage', () => {
+  it('translates a bare code, without an error around it', () => {
+    expect(apiErrorMessage('no_valid_line')).toBe("Aucune ligne du fichier n'a pu être lue.");
+  });
+
+  it.each([['invalid_page_size'], ['toString'], [null], [undefined]])(
+    'falls back to the generic message for %s',
+    (code) => {
+      expect(apiErrorMessage(code)).toBe('Une erreur est survenue.');
+    },
+  );
+
+  it("falls back to the caller's own generic message when it gives one", () => {
+    expect(apiErrorMessage('invalid_page_size', "L'import a échoué.")).toBe("L'import a échoué.");
+    expect(apiErrorMessage('empty_file', "L'import a échoué.")).toBe('Le fichier est vide.');
   });
 });

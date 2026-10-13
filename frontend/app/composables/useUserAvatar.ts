@@ -24,11 +24,11 @@ export const useUserAvatar = (username: MaybeRefOrGetter<string>) => {
     if (!promise) {
       promise = getUserProfile(u)
         .then((profile) => profile.avatar_url)
-        .catch((error: { statusCode?: number; response?: { status?: number } }) => {
+        .catch((error: unknown) => {
           // Seul un vrai 404 (profil sans avatar / introuvable) est mis en cache :
           // une erreur transitoire (réseau, 5xx, token expiré) ne doit pas figer
           // l'utilisateur sur les initiales pour le reste de la session.
-          if (error?.statusCode === 404 || error?.response?.status === 404) {
+          if (readApiError(error).status === 404) {
             return null;
           }
           throw error;
@@ -40,6 +40,8 @@ export const useUserAvatar = (username: MaybeRefOrGetter<string>) => {
     try {
       result = await promise;
     } catch {
+      // Ignorée volontairement : une erreur transitoire laisse les initiales, sans rien mettre
+      // en cache, pour que le prochain chargement réessaie.
       inFlight.delete(u);
       return;
     }
