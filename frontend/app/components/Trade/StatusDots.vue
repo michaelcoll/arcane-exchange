@@ -1,26 +1,34 @@
 <script setup lang="ts">
 import type { TradeStatusParam } from '~/bindings/TradeStatusParam';
+import type { TradeViewSteps } from '~/composables/useTradeView';
 
-/* Où en est l'échange, comme `TradeStatusIndicator` côté iOS : les cinq étapes en points, celle
- * en cours gonflée en pastille à sa propre place. ABANDONED sort du parcours : points éteints,
- * pastille en fin de ligne, sans « n/5 ». */
-const props = defineProps<{ status: TradeStatusParam }>();
+/* Où en est l'échange, comme `TradeStatusIndicator` côté iOS : les étapes de la vue du Trade en
+ * points, celle en cours gonflée en pastille à sa propre place. Sans étape en cours (Trade
+ * abandonné, hors parcours) : points éteints, pastille en fin de ligne, sans « n/5 ». */
+const props = defineProps<{ status: TradeStatusParam; steps: TradeViewSteps }>();
 
 const emit = defineEmits<{ help: [] }>();
 
-const index = computed(() => tradeStepIndex(props.status));
-const count = TRADE_STEPS.length;
+const count = computed(() => props.steps.list.length);
 
 type Part = { kind: 'done' | 'todo'; key: string } | { kind: 'pill'; key: string };
 
-/* Étapes franchies, pastille, étapes à venir — ou, hors parcours, cinq points éteints puis la
+/* Étapes franchies, pastille, étapes à venir — ou, hors parcours, les points éteints puis la
  * pastille. */
 const parts = computed<Part[]>(() => {
-  const dots = (kind: 'done' | 'todo', n: number) =>
-    Array.from({ length: n }, (_, i) => ({ kind, key: `${kind}-${i}` }));
-  const pill = { kind: 'pill' as const, key: 'pill' };
-  if (index.value < 0) return [...dots('todo', count), pill];
-  return [...dots('done', index.value), pill, ...dots('todo', count - index.value - 1)];
+  const pill: Part = { kind: 'pill', key: 'pill' };
+  const dots = props.steps.list.map((step): Part => {
+    if (step.state === 'current') return pill;
+    return { kind: step.state === 'done' ? 'done' : 'todo', key: step.status };
+  });
+  return props.steps.currentIndex === null ? [...dots, pill] : dots;
+});
+
+/* « NÉGOCIATION · 1/5 », ou « ABANDONNÉ » hors parcours. */
+const pillLabel = computed(() => {
+  const index = props.steps.currentIndex;
+  if (index === null) return 'ABANDONNÉ';
+  return `${props.steps.list[index]!.title} · ${index + 1}/${count.value}`.toUpperCase();
 });
 
 const pillClasses: Record<TradeStatusParam, string> = {
@@ -37,7 +45,8 @@ const pillClasses: Record<TradeStatusParam, string> = {
 
 const accessibleLabel = computed(() => {
   const label = TRADE_STATUS_META[props.status].label;
-  return index.value < 0 ? label : `${label}, étape ${index.value + 1} sur ${count}`;
+  const index = props.steps.currentIndex;
+  return index === null ? label : `${label}, étape ${index + 1} sur ${count.value}`;
 });
 </script>
 
@@ -52,7 +61,7 @@ const accessibleLabel = computed(() => {
             'rounded-full border px-[11px] py-1 font-mono text-[10px] font-medium tracking-[0.1em] whitespace-nowrap',
             pillClasses[status],
           ]"
-          >{{ tradeStatusStepLabel(status) }}</span
+          >{{ pillLabel }}</span
         >
         <!-- Le chemin parcouru reste primary quel que soit le ton du statut courant. -->
         <span

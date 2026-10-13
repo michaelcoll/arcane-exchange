@@ -54,15 +54,6 @@ export const TRADE_STATUS_META: Record<TradeStatusParam, { label: string; tone: 
   ABANDONED: { label: 'Abandonnée', tone: 'down' },
 };
 
-/** Étapes du stepper de cycle de vie (ABANDONED est hors parcours nominal). */
-export const TRADE_LIFECYCLE: { status: TradeStatusParam; label: string }[] = [
-  { status: 'PENDING', label: 'Négociation' },
-  { status: 'ONE_ACCEPTED', label: '1 acceptation' },
-  { status: 'FULLY_ACCEPTED', label: 'Verrouillé' },
-  { status: 'COMPLETED', label: 'Échange' },
-  { status: 'CLOSED', label: 'Clôturé' },
-];
-
 /** L'échange peut encore être modifié (ajout/retrait de cartes). */
 export const isTradeEditable = (status: TradeStatusParam) =>
   status === 'PENDING' || status === 'ONE_ACCEPTED';
@@ -75,8 +66,9 @@ export const isTradeReserved = (status: TradeStatusParam) =>
 export const isTradeAbandonable = (status: TradeStatusParam) =>
   isTradeEditable(status) || status === 'FULLY_ACCEPTED';
 
-/** Les cinq étapes du parcours nominal, détaillées pour l'explication « Les étapes d'un
- * échange » — mêmes textes que `TradeSteps` côté iOS. */
+/** Les cinq étapes du parcours nominal (ABANDONED en est exclu), seule liste d'étapes du web —
+ * mêmes textes que `TradeSteps` côté iOS. La vue du Trade (`useTradeView`) les situe par rapport
+ * au statut. */
 export const TRADE_STEPS: { status: TradeStatusParam; title: string; detail: string }[] = [
   {
     status: 'PENDING',
@@ -109,17 +101,6 @@ export const TRADE_STEPS: { status: TradeStatusParam; title: string; detail: str
       "Vous pouvez vous noter mutuellement. Une fois les deux notes posées ou passées, l'échange est archivé.",
   },
 ];
-
-/** Position du statut dans `TRADE_STEPS`, -1 pour ABANDONED (hors parcours nominal). */
-export const tradeStepIndex = (status: TradeStatusParam) =>
-  TRADE_STEPS.findIndex((s) => s.status === status);
-
-/** Pastille de l'indicateur à points : « NÉGOCIATION · 1/5 », ou « ABANDONNÉ » hors parcours. */
-export const tradeStatusStepLabel = (status: TradeStatusParam) => {
-  const index = tradeStepIndex(status);
-  if (index < 0) return 'ABANDONNÉ';
-  return `${TRADE_STEPS[index]!.title} · ${index + 1}/${TRADE_STEPS.length}`.toUpperCase();
-};
 
 /** En dessous de 3 €, l'échange est considéré équilibré. */
 const EVEN_THRESHOLD = 300;

@@ -151,7 +151,7 @@ const label =
           </template>
         </div>
 
-        <TradeStatusDots :status="view.status" @help="stepsOpen = true" />
+        <TradeStatusDots :status="view.status" :steps="view.steps" @help="stepsOpen = true" />
 
         <div class="flex flex-col gap-[18px]">
           <TradeCardRail
@@ -212,7 +212,7 @@ const label =
 
         <TradeStepsSheet
           v-if="stepsOpen"
-          :status="view.status"
+          :steps="view.steps"
           :partner="view.partnerUsername"
           @close="stepsOpen = false"
         />
@@ -242,13 +242,13 @@ const label =
 
         <div :class="[panel, 'mb-4 px-4 pt-5 pb-4']">
           <div
-            v-if="view.status === 'ABANDONED'"
+            v-if="view.steps.currentIndex === null"
             class="flex items-center justify-center gap-2.5 text-red-600 dark:text-red-400"
           >
             <Icon name="lucide:x" size="18" />
             <span class="font-semibold">Transaction abandonnée — cartes libérées</span>
           </div>
-          <TradeLifecycle v-else :status="view.status" />
+          <TradeLifecycle v-else :steps="view.steps" />
         </div>
 
         <TradeStatusBanner

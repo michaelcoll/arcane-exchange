@@ -9,6 +9,7 @@ import {
   isTradeEditable,
   isTradeReserved,
   toTradeStatus,
+  TRADE_STEPS,
   tradeAcceptLabel,
   tradeCardsTotal,
   tradeConfirmation,
@@ -69,6 +70,25 @@ export interface TradeViewRating {
   partner: TradeRating;
 }
 
+export type TradeStepState = 'done' | 'current' | 'upcoming';
+
+/** A step of the nominal path, located relative to the status of the Trade. */
+export interface TradeViewStep {
+  status: TradeStatusParam;
+  title: string;
+  detail: string;
+  state: TradeStepState;
+}
+
+/** The five steps of the nominal path, the same for the desktop stepper, the dot indicator and
+ * the « Les étapes d'un échange » sheet. */
+export interface TradeViewSteps {
+  list: TradeViewStep[];
+  /** Position of the current step in `list`, `null` for an abandoned Trade: it is off the path,
+   * no step is current. */
+  currentIndex: number | null;
+}
+
 /** Une confirmation ouverte, en attente de la décision du joueur. */
 export interface TradeViewConfirmation {
   kind: TradeConfirmationKind;
@@ -94,6 +114,7 @@ export interface TradeView {
   abandonable: boolean;
   primaryAction: TradePrimaryAction;
   rating: TradeViewRating;
+  steps: TradeViewSteps;
   /** Une action est en cours : les actions sont à désactiver. */
   busy: boolean;
   confirmation: TradeViewConfirmation | null;
@@ -121,6 +142,19 @@ const primaryActionOf = (
     case 'ABANDONED':
       return { kind: 'none' };
   }
+};
+
+const stepsOf = (status: TradeStatusParam): TradeViewSteps => {
+  const position = TRADE_STEPS.findIndex((step) => step.status === status);
+  const currentIndex = position < 0 ? null : position;
+  const stateAt = (i: number): TradeStepState => {
+    if (currentIndex === null || i > currentIndex) return 'upcoming';
+    return i < currentIndex ? 'done' : 'current';
+  };
+  return {
+    list: TRADE_STEPS.map((step, i) => ({ ...step, state: stateAt(i) })),
+    currentIndex,
+  };
 };
 
 /**
@@ -170,6 +204,7 @@ export const useTradeView = (
         mine: current.me.rating,
         partner: current.partner.rating,
       },
+      steps: stepsOf(status),
       busy: busy.value,
       confirmation: pending.value && {
         kind: pending.value.kind,

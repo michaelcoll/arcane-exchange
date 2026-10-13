@@ -271,6 +271,49 @@ describe('useTradeView', () => {
     });
   });
 
+  describe('les étapes', () => {
+    it('nomme les cinq étapes du parcours nominal, dans leur ordre', () => {
+      const { view } = setup();
+
+      expect(view().steps.list.map((step) => step.title)).toEqual([
+        'Négociation',
+        '1 acceptation',
+        'Verrouillé',
+        'Échange réalisé',
+        'Clôturé',
+      ]);
+    });
+
+    it.each([
+      ['PENDING', 0, ['current', 'upcoming', 'upcoming', 'upcoming', 'upcoming']],
+      ['ONE_ACCEPTED', 1, ['done', 'current', 'upcoming', 'upcoming', 'upcoming']],
+      ['FULLY_ACCEPTED', 2, ['done', 'done', 'current', 'upcoming', 'upcoming']],
+      ['COMPLETED', 3, ['done', 'done', 'done', 'current', 'upcoming']],
+      ['CLOSED', 4, ['done', 'done', 'done', 'done', 'current']],
+    ] as const)(
+      'franchit les étapes précédentes et met en cours celle de %s',
+      (status, index, states) => {
+        const { view } = setup({ status });
+
+        expect(view().steps.currentIndex).toBe(index);
+        expect(view().steps.list.map((step) => step.state)).toEqual(states);
+      },
+    );
+
+    it("n'a aucune étape en cours en ABANDONED, hors parcours", () => {
+      const { view } = setup({ status: 'ABANDONED' });
+
+      expect(view().steps.currentIndex).toBeNull();
+      expect(view().steps.list.map((step) => step.state)).toEqual([
+        'upcoming',
+        'upcoming',
+        'upcoming',
+        'upcoming',
+        'upcoming',
+      ]);
+    });
+  });
+
   describe('un Trade pas encore chargé', () => {
     it("n'a pas de vue, puis en a une dès que le Trade arrive", () => {
       const trade = ref<TradeDetail | undefined>(undefined);
