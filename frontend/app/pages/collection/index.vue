@@ -55,20 +55,7 @@ const graph = usePreference(COLLECTION_GRAPH_PREF);
 const showDetail = computed(() => graph.value === 'expanded' && isDesktop.value);
 const graphRange = usePreference(COLLECTION_GRAPH_RANGE_PREF);
 
-const toIsoDate = (d: Date) =>
-  `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-
-const dateRangeFor = (range: string) => {
-  const end = new Date();
-  const start = new Date(end);
-  if (range === '3 m') start.setMonth(start.getMonth() - 3);
-  else if (range === '1 an') start.setFullYear(start.getFullYear() - 1);
-  else if (range === 'Max') start.setFullYear(start.getFullYear() - 10);
-  else start.setDate(start.getDate() - 29);
-  return { start_date: toIsoDate(start), end_date: toIsoDate(end) };
-};
-
-const historyParams = ref(dateRangeFor(graphRange.value));
+const historyParams = ref(periodDateRange(graphRange.value));
 const {
   data: priceHistoryData,
   pending: priceHistoryPending,
@@ -76,19 +63,12 @@ const {
 } = await getPriceHistory(historyParams, 'collection-price-history');
 
 watch(graphRange, (range) => {
-  historyParams.value = dateRangeFor(range);
+  historyParams.value = periodDateRange(range);
   refreshPriceHistory();
 });
 
-const envelopeData = computed(() => toEnvelopeData(priceHistoryData.value ?? []));
-const hasEnoughHistory = computed(() => envelopeData.value.length >= 2);
-
-const totalValueCents = computed(() => {
-  const entries = priceHistoryData.value;
-  return entries && entries.length > 0 ? entries[entries.length - 1]!.trend : 0;
-});
-
-const variation = computed(() => computeVariation(priceHistoryData.value ?? []));
+const priceHistory = computed(() => priceHistoryData.value ?? []);
+const trend = computed(() => priceTrend(priceHistory.value));
 
 const importOpen = ref(false);
 const importLoading = ref(false);
@@ -197,13 +177,11 @@ const onDragLeave = () => {
           showDetail ? 'inset-0 md:inset-x-4 md:top-[100px] md:bottom-[52px]' : 'inset-0',
         ]"
       >
-        <EnvelopeGraph v-if="hasEnoughHistory" :data="envelopeData" :detail="showDetail" />
-        <div
-          v-else
-          class="text-2xs flex h-full items-center justify-center font-mono tracking-wide text-slate-400 uppercase dark:text-slate-500"
-        >
-          {{ priceHistoryPending ? 'Chargement…' : "Pas encore assez d'historique" }}
-        </div>
+        <PriceTrendGraph
+          :entries="priceHistory"
+          :pending="priceHistoryPending"
+          :detail="showDetail"
+        />
       </div>
 
       <!-- scrim (fades out in detail mode) -->
@@ -226,7 +204,7 @@ const onDragLeave = () => {
             >
             <span
               class="font-mono text-[clamp(28px,3.4vw,36px)] font-bold tracking-tight whitespace-nowrap"
-              >{{ formatPrice(totalValueCents) }}</span
+              >{{ formatPrice(trend.lastTrendCents) }}</span
             >
           </div>
           <div
@@ -239,16 +217,9 @@ const onDragLeave = () => {
             <span
               :class="[
                 'font-mono text-lg font-semibold',
-                variation.positive ? 'text-primary' : 'text-red-500 dark:text-red-400',
+                trend.variation.positive ? 'text-primary' : 'text-red-500 dark:text-red-400',
               ]"
-              >{{ variation.positive ? '▴' : '▾' }} {{ variation.positive ? '+' : '−'
-              }}{{
-                Math.abs(variation.pct).toLocaleString('fr-FR', {
-                  minimumFractionDigits: 1,
-                  maximumFractionDigits: 1,
-                })
-              }}
-              %</span
+              >{{ trend.variation.positive ? '▴' : '▾' }} {{ trend.variation.pctLabel }}</span
             >
           </div>
           <div
