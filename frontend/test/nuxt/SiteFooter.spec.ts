@@ -13,6 +13,7 @@ const { authState } = await vi.hoisted(async () => {
     authState: {
       isLoaded: ref(false) as Ref<boolean>,
       isSignedIn: ref<boolean | undefined>(undefined),
+      getToken: ref(() => Promise.resolve('secret-token')),
     },
   };
 });
@@ -22,7 +23,7 @@ const { getStatsMock } = vi.hoisted(() => ({ getStatsMock: vi.fn() }));
 mockNuxtImport('useAuth', () => () => authState);
 // Signing in wakes the register-user plugin, which has no backend to call here.
 mockNuxtImport('useUserService', () => () => ({ register: () => Promise.resolve() }));
-registerEndpoint('/api/v1/stats', () => getStatsMock());
+registerEndpoint('/api/v1/stats', (event) => getStatsMock(event.node.req.headers.authorization));
 
 const stats = (overrides: Partial<Stats> = {}): Stats => ({
   card_number: 84312,
@@ -76,6 +77,18 @@ describe('SiteFooter', () => {
         ['Taille de la base', '1 248 Mo'],
       ]);
       expect(getStatsMock).toHaveBeenCalledOnce();
+    });
+
+    it.each([
+      ['a signed-out visitor', false],
+      ['a signed-in player', true],
+    ])('asks for the stats without a bearer token, for %s', async (_who, signedIn) => {
+      signIn(true, signedIn);
+      const wrapper = await mountSuspended(SiteFooter);
+      await flushPromises();
+
+      expect(wrapper.findAll('[data-stat]')).toHaveLength(3);
+      expect(getStatsMock).toHaveBeenCalledExactlyOnceWith(undefined);
     });
 
     it('keeps the stats on mobile', async () => {

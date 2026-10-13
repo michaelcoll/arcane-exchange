@@ -24,6 +24,8 @@ const highlighted = ref(0);
 const navActive = ref(false);
 const loading = ref(false);
 const results = ref<Player[]>([]);
+// The autocomplete failed: an outage, which must not read as « no player matches ».
+const searchUnavailable = ref(false);
 const wrapRef = ref<HTMLElement | null>(null);
 const listRef = ref<HTMLElement | null>(null);
 
@@ -61,6 +63,7 @@ watch(query, (q) => {
   const trimmed = q.trim();
   if (trimmed.length < 2) {
     results.value = [];
+    searchUnavailable.value = false;
     return;
   }
 
@@ -68,8 +71,10 @@ watch(query, (q) => {
     loading.value = true;
     try {
       results.value = await autocompleteUsers(trimmed);
+      searchUnavailable.value = false;
     } catch {
       results.value = [];
+      searchUnavailable.value = true;
     } finally {
       loading.value = false;
     }
@@ -255,6 +260,15 @@ watch([highlighted, open, navActive], () => {
           >
             Recherche…
           </div>
+          <div
+            v-else-if="searchUnavailable"
+            data-search-unavailable
+            role="alert"
+            class="flex flex-col items-center gap-1.5 px-2.5 py-4 text-center text-sm text-slate-500 dark:text-slate-400"
+          >
+            <Icon name="lucide:cloud-off" :size="18" />
+            <span>Recherche de joueurs indisponible. Réessaie dans un instant.</span>
+          </div>
           <template v-else>
             <div
               v-if="recents.length > 0"
@@ -346,7 +360,7 @@ watch([highlighted, open, navActive], () => {
           <span class="rounded border border-slate-300 px-1 dark:border-white/15">⏎</span> ouvrir sa
           collection
         </span>
-        <span v-if="!isEmptyQuery" class="text-secondary font-mono text-xs"
+        <span v-if="!isEmptyQuery && !searchUnavailable" class="text-secondary font-mono text-xs"
           >{{ results.length }} joueurs</span
         >
       </div>
