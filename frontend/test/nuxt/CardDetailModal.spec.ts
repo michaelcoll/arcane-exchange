@@ -193,4 +193,37 @@ describe('CardDetailModal', () => {
     await flushPromises();
     expect(wrapper.find('i.ss').classes()).toContain(NEUTRAL_COLOR_CLASS);
   });
+
+  it('says the prices and the offers failed to load for the card on screen', async () => {
+    getCardPriceHistoryMock.mockRejectedValue(new Error('boom'));
+    wrapper = mount(CardDetailModal, {
+      props: { card: baseCard },
+      global: { stubs },
+    });
+    await flushPromises();
+    expect(showErrorMock).toHaveBeenCalledTimes(1);
+    expect(showErrorMock.mock.calls[0]?.[0]).toBe('Impossible de charger les prix et les offres');
+  });
+
+  it('stays silent when the load that fails is for a card the player has already left', async () => {
+    let failFirstLoad: (reason: unknown) => void = () => {};
+    getCardPriceHistoryMock.mockReturnValueOnce(
+      new Promise((_, reject) => {
+        failFirstLoad = reject;
+      }),
+    );
+    wrapper = mount(CardDetailModal, {
+      props: { card: baseCard },
+      global: { stubs },
+    });
+    await wrapper.setProps({
+      card: { ...baseCard, scryfall_id: 'scryfall-2', name: 'Other Card' },
+    });
+    await flushPromises();
+
+    failFirstLoad(new Error('boom'));
+    await flushPromises();
+
+    expect(showErrorMock).not.toHaveBeenCalled();
+  });
 });

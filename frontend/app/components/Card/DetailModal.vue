@@ -45,8 +45,7 @@ const startTrade = async (offer: CardOffer) => {
     });
     await navigateTo(`/trade/${id}`);
   } catch (e) {
-    const message = (e as { data?: { error?: string } })?.data?.error ?? 'Une erreur est survenue.';
-    showError('Échange impossible', message);
+    showError('Échange impossible', readApiError(e).message);
   } finally {
     startingWith.value = null;
   }
@@ -81,6 +80,8 @@ watch(
           page: 0,
           page_size: 6,
         }),
+        // Ignored on purpose: the set name only decorates the header, and the set code already
+        // shown stands in for it.
         getSet(card.set_code).catch(() => null),
       ]);
       cardHistoryData.value = history;
@@ -90,6 +91,11 @@ watch(
         setName.value = set.name;
         isSetKnown.value = true;
       }
+    } catch (e) {
+      // The card changed during the request: the failure is about a card no longer on screen.
+      if (props.card !== card) return;
+      // The price history and the offers stay empty: the toast says they failed to load.
+      showError('Impossible de charger les prix et les offres', readApiError(e).message);
     } finally {
       cardHistoryPending.value = false;
       cardOffersPending.value = false;
