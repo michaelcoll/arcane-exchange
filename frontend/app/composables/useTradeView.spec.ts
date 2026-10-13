@@ -314,6 +314,120 @@ describe('useTradeView', () => {
     });
   });
 
+  describe('la présentation du statut', () => {
+    it.each([
+      ['PENDING', 'En négociation', 'primary'],
+      ['ONE_ACCEPTED', '1 acceptation', 'primary'],
+      ['FULLY_ACCEPTED', 'Verrouillé', 'secondary'],
+      ['COMPLETED', 'Échange réalisé', 'good'],
+      ['CLOSED', 'Clôturée', 'muted'],
+      ['ABANDONED', 'Abandonnée', 'down'],
+    ] as const)('nomme %s « %s », au ton %s', (status, label, tone) => {
+      const { view } = setup({ status });
+
+      expect(view().presentation).toEqual({ label, tone });
+    });
+  });
+
+  describe('le bandeau', () => {
+    it('invite à composer le Trade en PENDING', () => {
+      const { view } = setup({ status: 'PENDING' });
+
+      expect(view().banner).toEqual({
+        tone: 'primary',
+        icon: 'lucide:arrow-left-right',
+        title: 'Négociation ouverte',
+        text: 'Ajoute ou retire des cartes des deux côtés en composant avec jace.',
+      });
+    });
+
+    it("me dit d'attendre le partenaire en ONE_ACCEPTED quand j'ai accepté", () => {
+      const { view } = setup({ status: 'ONE_ACCEPTED', me: party({ accepted: true }) });
+
+      expect(view().banner).toEqual({
+        tone: 'primary',
+        icon: 'lucide:lock',
+        title: 'En attente de jace',
+        text: 'Tu as accepté — les cartes sont réservées. jace doit accepter à son tour, ou tu peux encore modifier.',
+      });
+    });
+
+    it("me donne la main en ONE_ACCEPTED quand c'est le partenaire qui a accepté", () => {
+      const { view } = setup({ status: 'ONE_ACCEPTED', partner: party({ accepted: true }) });
+
+      expect(view().banner).toEqual({
+        tone: 'primary',
+        icon: 'lucide:lock',
+        title: 'jace a accepté — à toi de jouer',
+        text: 'Accepte à ton tour pour verrouiller, ou modifie la transaction pour relancer la négociation.',
+      });
+    });
+
+    it("demande l'échange physique en FULLY_ACCEPTED tant que je n'ai pas confirmé", () => {
+      const { view } = setup({ status: 'FULLY_ACCEPTED', me: party({ accepted: true }) });
+
+      expect(view().banner).toEqual({
+        tone: 'secondary',
+        icon: 'lucide:lock',
+        title: 'Transaction verrouillée',
+        text: 'Les deux parties ont accepté. Procédez à l’échange physique en personne, puis confirme ci-dessous.',
+      });
+    });
+
+    it("me dit d'attendre la confirmation du partenaire en FULLY_ACCEPTED quand j'ai confirmé", () => {
+      const { view } = setup({
+        status: 'FULLY_ACCEPTED',
+        me: party({ accepted: true, confirmed: true }),
+      });
+
+      expect(view().banner).toEqual({
+        tone: 'secondary',
+        icon: 'lucide:lock',
+        title: 'Transaction verrouillée',
+        text: "Tu as confirmé l'échange. En attente de la confirmation de jace.",
+      });
+    });
+
+    it('invite à noter le partenaire en COMPLETED', () => {
+      const { view } = setup({ status: 'COMPLETED' });
+
+      expect(view().banner).toEqual({
+        tone: 'good',
+        icon: 'lucide:check',
+        title: 'Échange réalisé',
+        text: 'Les deux parties ont confirmé l’échange physique. Tu peux noter ton partenaire (optionnel).',
+      });
+    });
+
+    it('annonce la clôture au ton neutre en CLOSED', () => {
+      const { view } = setup({ status: 'CLOSED' });
+
+      expect(view().banner).toEqual({
+        tone: 'muted',
+        icon: 'lucide:check',
+        title: 'Transaction clôturée',
+        text: 'Les notations ont été enregistrées. Merci d’utiliser Arcane Exchange !',
+      });
+    });
+
+    it("annonce l'abandon en ABANDONED", () => {
+      const { view } = setup({ status: 'ABANDONED' });
+
+      expect(view().banner).toEqual({
+        tone: 'down',
+        icon: 'lucide:x',
+        title: 'Échange abandonné',
+        text: 'Cet échange a été abandonné. Les cartes réservées ont été libérées.',
+      });
+    });
+
+    it.each(ALL_STATUSES)('porte en %s le ton du statut', (status) => {
+      const { view } = setup({ status });
+
+      expect(view().banner.tone).toBe(view().presentation.tone);
+    });
+  });
+
   describe('un Trade pas encore chargé', () => {
     it("n'a pas de vue, puis en a une dès que le Trade arrive", () => {
       const trade = ref<TradeDetail | undefined>(undefined);
