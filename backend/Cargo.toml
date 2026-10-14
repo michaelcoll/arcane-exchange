@@ -3,6 +3,12 @@ name = "arcane-exchange"
 version = "0.1.0"
 edition = "2024"
 
+[profile.dev]
+debug = "line-tables-only"   # garde les numéros de ligne dans les backtraces
+
+[profile.dev.package."*"]
+debug = false                # pas de debuginfo pour les dépendances
+
 [lib]
 name = "ae"
 path = "src/ae/lib.rs"
