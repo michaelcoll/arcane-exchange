@@ -9,7 +9,7 @@ import { useRoute } from 'nuxt/app';
 definePageMeta({ middleware: 'auth' });
 
 const { getCollectionStats } = useCollectionService();
-const { getSearch, getSearchSets } = useSearchService();
+const { getSearch } = useSearchService();
 const { autocompleteUsers } = useAutocompleteService();
 
 // The search (mode, name, player, text filter), read back from the URL: home page, trade, reload.
@@ -120,7 +120,7 @@ const list = reactive(
 // The sets offered are those of the cards the search can return (submitted name, or player
 // alone), not those of my collection. An active set read from the URL stays applied even when
 // this list does not offer it.
-const { data: setList } = await getSearchSets(() => searchSetsScope(search));
+const { data: setList } = await useSearchSets(() => searchSetsScope(search));
 
 onMounted(() => {
   nextTick(focusSearchField);
