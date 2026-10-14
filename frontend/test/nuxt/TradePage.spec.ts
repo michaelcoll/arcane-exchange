@@ -173,4 +173,46 @@ describe('Trade page', () => {
     const accept = desktop.findAll('button').find((b) => b.text().startsWith('Accepter'));
     expect(accept?.text()).toBe(`Accepter et payer ${formatPrice(2100)}`);
   });
+
+  describe('abandon ×', () => {
+    const abandon = 'button[aria-label="Abandonner l\'échange"]';
+    const confirmation = '[role="dialog"][aria-modal="true"]';
+
+    it.each(['PENDING', 'ONE_ACCEPTED', 'FULLY_ACCEPTED'])(
+      'is offered on desktop only while %s',
+      async (status) => {
+        const wrapper = await mountTrade(tradeIn(status));
+
+        expect(wrapper.get('[data-part="desktop"]').find(abandon).exists()).toBe(true);
+        expect(wrapper.get('[data-part="mobile"]').find(abandon).exists()).toBe(false);
+      },
+    );
+
+    it.each(['COMPLETED', 'CLOSED', 'ABANDONED'])('is not offered once %s', async (status) => {
+      const wrapper = await mountTrade(tradeIn(status));
+      expect(wrapper.find(abandon).exists()).toBe(false);
+    });
+
+    it('abandons the Trade once its confirmation is accepted', async () => {
+      tradeService.abandonTrade.mockResolvedValue(undefined);
+      const wrapper = await mountTrade(tradeIn('PENDING'));
+
+      await wrapper.get('[data-part="desktop"]').get(abandon).trigger('click');
+      const dialog = wrapper.get(confirmation);
+      expect(dialog.text()).toContain("Abandonner l'échange ?");
+      expect(tradeService.abandonTrade).not.toHaveBeenCalled();
+
+      const confirm = dialog.findAll('button').find((b) => b.text() === 'Abandonner');
+      await confirm?.trigger('click');
+      expect(tradeService.abandonTrade).toHaveBeenCalledWith('t-1');
+    });
+  });
+
+  it.each(['COMPLETED', 'CLOSED'])('shows the rating on desktop once %s', async (status) => {
+    const wrapper = await mountTrade(tradeIn(status));
+    const desktop = wrapper.get('[data-part="desktop"]');
+
+    expect(desktop.find('section[aria-labelledby="trade-rating-title"]').exists()).toBe(true);
+    expect(desktop.text()).toContain('Noter @mizzix_42');
+  });
 });

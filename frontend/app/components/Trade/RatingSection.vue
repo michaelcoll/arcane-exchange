@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import type { TradeViewRating } from '~/composables/useTradeView';
 
-/* Notation sous les rails (mobile), comme la `ratingSection` côté iOS. Elle affiche la notation de
- * la vue du Trade, qui dit si je peux encore noter ; la page ne la monte que lorsqu'elle est
- * visible. Une note 0 veut dire « notation passée », pas « zéro étoile ». */
+/* Rating under the sides (mobile and desktop), like the iOS `ratingSection`. It shows the Trade
+ * view's rating, which says whether I can still rate; the page only mounts it when it is visible.
+ * A 0 rating means "rating skipped", not "zero stars". */
 defineProps<{
   partner: string;
   rating: TradeViewRating;
