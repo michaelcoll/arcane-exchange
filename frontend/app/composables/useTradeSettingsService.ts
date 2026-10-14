@@ -29,12 +29,7 @@ export const useTradeSettingsService = () => {
       method: 'DELETE',
     });
 
-  const getRarityFilters = () =>
-    useAsyncData(
-      'collection-rarity-filters',
-      () => apiCall<RarityFilters>('/collection/trade-settings/rarities'),
-      { lazy: true },
-    );
+  const getRarityFilters = () => apiCall<RarityFilters>('/collection/trade-settings/rarities');
 
   const setRarityFilter = (rarity: string, isOpen: boolean, keptCopies: number) =>
     apiCall<undefined>('/collection/trade-settings/rarities', {
