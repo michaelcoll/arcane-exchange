@@ -114,7 +114,7 @@ impl CardRepository for CardRepositoryAdapter {
         let mut tx = self.pool.begin().await?;
 
         // A card can appear once per binder AND in both finishes (see `ImportedCard` dedup key
-        // in `parse_service`, which keeps foil), so the same `CardId` (finish aside) may show up
+        // in `manabox_csv`, which keeps foil), so the same `CardId` (finish aside) may show up
         // several times here. `INSERT ... ON CONFLICT DO UPDATE` cannot affect the same row
         // twice in one statement, so the `card` table only gets the first occurrence of each
         // catalog id — the following are identical game data anyway (only the finish differs,

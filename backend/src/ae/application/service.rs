@@ -1,19 +1,13 @@
 pub mod autocomplete_user_service;
 pub mod card_collection_service;
 pub mod card_image_enricher;
-pub mod card_import_query_service;
-pub mod card_import_worker;
 pub mod card_offer_service;
 pub mod card_price_history_service;
 pub mod cardmarket_id_enricher;
-pub mod collection_price_history_service;
-pub mod collection_service;
-pub mod collection_stats_service;
+pub mod collection;
 pub mod enrichment_queue;
 pub mod get_user_profile_service;
-pub mod import_card_service;
 pub mod import_price_service;
-mod parse_service;
 pub mod register_user_service;
 pub mod search;
 pub mod sets;
@@ -24,7 +18,7 @@ pub mod trade_settings;
 
 #[cfg(test)]
 mod pagination_frontend_sync_tests {
-    use crate::application::service::collection_service::COLLECTION_MAX_OFFSET;
+    use crate::application::service::collection::get::COLLECTION_MAX_OFFSET;
     use crate::application::service::search::search_cards::SEARCH_MAX_OFFSET;
     use crate::application::service::trade_service::TRADES_MAX_OFFSET;
 
