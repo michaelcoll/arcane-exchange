@@ -1,10 +1,9 @@
 use crate::application::error::AppError;
 use crate::application::repository::CardPricesViewRepository;
-use crate::application::use_case::{SearchCardsUseCase, SearchSetsUseCase};
+use crate::application::use_case::SearchCardsUseCase;
 use crate::domain::card::Card;
-use crate::domain::collection::{SearchQuery, SearchScope};
+use crate::domain::collection::SearchQuery;
 use crate::domain::pagination::{PageRequest, Paginated};
-use crate::domain::set_name::SetName;
 use async_trait::async_trait;
 use std::sync::Arc;
 
@@ -12,31 +11,24 @@ use std::sync::Arc;
 /// deep as the collection endpoint.
 pub(crate) const SEARCH_MAX_OFFSET: u32 = 10_000;
 
-pub struct SearchService {
+pub struct SearchCardsService {
     repository: Arc<dyn CardPricesViewRepository>,
 }
 
-impl SearchService {
+impl SearchCardsService {
     pub fn new(repository: Arc<dyn CardPricesViewRepository>) -> Self {
         Self { repository }
     }
 }
 
 #[async_trait]
-impl SearchCardsUseCase for SearchService {
+impl SearchCardsUseCase for SearchCardsService {
     async fn search_cards(
         &self,
         query: SearchQuery<PageRequest>,
     ) -> Result<Paginated<Card>, AppError> {
         let query = query.paginate(SEARCH_MAX_OFFSET)?;
         self.repository.search_paginated(query).await
-    }
-}
-
-#[async_trait]
-impl SearchSetsUseCase for SearchService {
-    async fn search_sets(&self, scope: SearchScope) -> Result<Vec<SetName>, AppError> {
-        self.repository.search_sets(&scope).await
     }
 }
 
@@ -73,7 +65,7 @@ mod tests {
 
     #[tokio::test]
     async fn search_cards_accepts_an_offset_at_the_search_limit() {
-        let service = SearchService::new(Arc::new(echoing_repository()));
+        let service = SearchCardsService::new(Arc::new(echoing_repository()));
 
         // 100 * 100 = 10 000, exactly SEARCH_MAX_OFFSET.
         let result = service.search_cards(query_for(100, 100)).await.unwrap();
@@ -85,7 +77,7 @@ mod tests {
     async fn search_cards_rejects_an_offset_beyond_the_search_limit_without_reaching_the_repository()
      {
         // No expectation set: mockall panics if the repository is called.
-        let service = SearchService::new(Arc::new(MockCardPricesViewRepository::new()));
+        let service = SearchCardsService::new(Arc::new(MockCardPricesViewRepository::new()));
 
         let result = service.search_cards(query_for(101, 100)).await;
 
@@ -100,7 +92,7 @@ mod tests {
 
     #[tokio::test]
     async fn search_cards_rejects_a_page_size_above_the_max() {
-        let service = SearchService::new(Arc::new(MockCardPricesViewRepository::new()));
+        let service = SearchCardsService::new(Arc::new(MockCardPricesViewRepository::new()));
 
         let result = service.search_cards(query_for(0, 101)).await;
 
@@ -134,7 +126,7 @@ mod tests {
                 })
             });
 
-        let service = SearchService::new(Arc::new(mock_repo));
+        let service = SearchCardsService::new(Arc::new(mock_repo));
         let query = SearchQuery {
             collection_query: CollectionQuery {
                 pagination: PageRequest {
@@ -164,7 +156,7 @@ mod tests {
             })
         });
 
-        let service = SearchService::new(Arc::new(mock_repo));
+        let service = SearchCardsService::new(Arc::new(mock_repo));
         let result = service.search_cards(SearchQuery::default()).await;
         assert!(result.is_err());
     }
