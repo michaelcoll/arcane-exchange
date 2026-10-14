@@ -13,7 +13,7 @@ const year = new Date().getFullYear();
 
 // The footer is not critical: if `/stats` fails, the stats and the pill simply stay hidden — no
 // toast, no error state.
-const { data: stats } = getStats();
+const { data: stats } = useAsyncData('stats', () => getStats(), { lazy: true });
 
 const freshness = computed(() =>
   stats.value?.last_price_date ? priceFreshness(stats.value.last_price_date) : null,

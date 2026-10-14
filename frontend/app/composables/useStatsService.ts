@@ -4,8 +4,7 @@ export const useStatsService = () => {
   const { publicApiCall } = useApi();
 
   // `GET /stats` is public: a signed-out visitor sends no bearer token.
-  const getStats = () =>
-    useAsyncData('stats', () => publicApiCall<Stats>('/stats'), { lazy: true });
+  const getStats = () => publicApiCall<Stats>('/stats');
 
   return { getStats };
 };
