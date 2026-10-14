@@ -1,7 +1,7 @@
 use crate::application::caller::{GathererCaller, GathererLookup, GathererMiss, ScryfallCaller};
+use crate::application::enrichment_queue::{Enricher, EnrichmentQueue};
 use crate::application::error::AppError;
 use crate::application::repository::{CardImageLookup, CardImageRepository, CardRepository};
-use crate::application::service::enrichment_queue::{Enricher, EnrichmentQueue};
 use crate::application::use_case::EnqueueCardImageUpdateUseCase;
 use crate::domain::card::CardId;
 use crate::domain::card_image::{
@@ -302,11 +302,11 @@ impl EnqueueCardImageUpdateUseCase for EnrichmentQueue<CardImageEnricher> {
 mod tests {
     use super::*;
     use crate::application::caller::{GathererMiss, MockGathererCaller, MockScryfallCaller};
+    use crate::application::enrichment_queue::EnrichmentWorker;
     use crate::application::error::InfraError;
     use crate::application::repository::{
         MockCardImageRepository, MockCardPricesViewRepository, MockCardRepository,
     };
-    use crate::application::service::enrichment_queue::EnrichmentWorker;
     use crate::domain::card_image::test_images::webp_of_width;
     use uuid::Uuid;
 

@@ -1,7 +1,7 @@
 use crate::application::caller::ScryfallCaller;
+use crate::application::enrichment_queue::{Enricher, EnrichmentQueue};
 use crate::application::error::AppError;
 use crate::application::repository::CardRepository;
-use crate::application::service::enrichment_queue::{Enricher, EnrichmentQueue};
 use crate::application::use_case::{
     CardCollectionPriceCalculationUseCase, EnqueueCardMarketIdUpdateUseCase,
 };
