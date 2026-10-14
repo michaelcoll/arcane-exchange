@@ -9,14 +9,14 @@ pub mod search;
 pub mod sets;
 pub mod showcase_service;
 pub mod stats_service;
-pub mod trade_service;
+pub mod trade;
 pub mod trade_settings;
 
 #[cfg(test)]
 mod pagination_frontend_sync_tests {
     use crate::application::service::collection::get::COLLECTION_MAX_OFFSET;
     use crate::application::service::search::search_cards::SEARCH_MAX_OFFSET;
-    use crate::application::service::trade_service::TRADES_MAX_OFFSET;
+    use crate::application::service::trade::list::TRADES_MAX_OFFSET;
 
     // The frontend stops paginating before hitting these limits, so it duplicates them in
     // TypeScript. This test guards against the two drifting apart silently.

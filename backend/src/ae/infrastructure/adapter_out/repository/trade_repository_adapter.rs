@@ -511,7 +511,7 @@ impl TradeRepository for TradeRepositoryAdapter {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::application::service::trade_service::TRADES_MAX_OFFSET;
+    use crate::application::service::trade::list::TRADES_MAX_OFFSET;
     use crate::domain::card_image::{CardImage, CardImageSource};
     use crate::domain::language_code::LanguageCode;
     use crate::domain::pagination::Pagination;

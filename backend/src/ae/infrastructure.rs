@@ -25,11 +25,15 @@ use crate::application::service::sets::get::GetSetService;
 use crate::application::service::sets::list::ListSetsService;
 use crate::application::service::showcase_service::ShowcaseService;
 use crate::application::service::stats_service::StatsService;
-use crate::application::service::trade_service::{
-    AbandonTradeService, AcceptTradeService, AddTradeCardService, ConfirmTradeService,
-    CreateTradeService, GetTradeService, ListTradesService, RateTradeService,
-    RemoveTradeCardService,
-};
+use crate::application::service::trade::abandon::AbandonTradeService;
+use crate::application::service::trade::accept::AcceptTradeService;
+use crate::application::service::trade::add_card::AddTradeCardService;
+use crate::application::service::trade::confirm::ConfirmTradeService;
+use crate::application::service::trade::create::CreateTradeService;
+use crate::application::service::trade::get::GetTradeService;
+use crate::application::service::trade::list::ListTradesService;
+use crate::application::service::trade::rate::RateTradeService;
+use crate::application::service::trade::remove_card::RemoveTradeCardService;
 use crate::application::service::trade_settings::add_binder::AddTradeBinderService;
 use crate::application::service::trade_settings::get_binders::GetTradeBindersService;
 use crate::application::service::trade_settings::get_rarity_filters::GetRarityTradeFiltersService;
