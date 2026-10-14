@@ -1,16 +1,14 @@
-pub mod autocomplete_user_service;
-pub mod card_offer_service;
-pub mod card_price_history_service;
+pub mod autocomplete;
+pub mod card;
 pub mod collection;
-pub mod get_user_profile_service;
 pub mod maintenance;
-pub mod register_user_service;
 pub mod search;
 pub mod sets;
-pub mod showcase_service;
-pub mod stats_service;
+pub mod showcase;
+pub mod stats;
 pub mod trade;
 pub mod trade_settings;
+pub mod user;
 
 #[cfg(test)]
 mod pagination_frontend_sync_tests {

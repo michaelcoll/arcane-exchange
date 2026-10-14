@@ -9,8 +9,8 @@
 
 use super::AppState;
 use crate::application::caller::MockEdhRecCaller;
-use crate::application::service::showcase_service::ShowcaseService;
-use crate::application::service::stats_service::StatsService;
+use crate::application::service::showcase::get::ShowcaseService;
+use crate::application::service::stats::get::StatsService;
 use crate::application::token_validator::MockTokenValidator;
 use crate::application::use_case::{
     MockAbandonTradeUseCase, MockAcceptTradeUseCase, MockAddTradeBinderUseCase,
