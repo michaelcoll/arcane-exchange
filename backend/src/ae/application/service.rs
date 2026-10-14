@@ -9,20 +9,18 @@ pub mod cardmarket_id_enricher;
 pub mod collection_price_history_service;
 pub mod collection_service;
 pub mod collection_stats_service;
-pub mod collection_visibility_service;
 pub mod enrichment_queue;
 pub mod get_user_profile_service;
 pub mod import_card_service;
 pub mod import_price_service;
 mod parse_service;
-pub mod rarity_trade_filter_service;
 pub mod register_user_service;
 pub mod search;
 pub mod sets;
 pub mod showcase_service;
 pub mod stats_service;
-pub mod trade_binder_service;
 pub mod trade_service;
+pub mod trade_settings;
 
 #[cfg(test)]
 mod pagination_frontend_sync_tests {
