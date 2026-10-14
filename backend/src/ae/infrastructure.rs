@@ -2,7 +2,6 @@ use crate::application::caller::EdhRecCaller;
 use crate::application::card_import_job::CardImportJob;
 use crate::application::error::{AppError, InfraError};
 use crate::application::repository::CardImportRepository;
-use crate::application::service::auth_service::AuthService;
 use crate::application::service::autocomplete_user_service::AutocompleteUserService;
 use crate::application::service::card_collection_service::CardCollectionService;
 use crate::application::service::card_image_enricher::CardImageEnricher;
@@ -37,6 +36,7 @@ use crate::application::service::trade_service::{
     CreateTradeService, GetTradeService, ListTradesService, RateTradeService,
     RemoveTradeCardService,
 };
+use crate::application::token_validator::TokenValidator;
 use crate::application::use_case::{
     AbandonTradeUseCase, AcceptTradeUseCase, AddTradeBinderUseCase, AddTradeCardUseCase,
     AutocompleteUsersUseCase, ConfirmTradeUseCase, CreateTradeUseCase,
@@ -61,6 +61,7 @@ use crate::infrastructure::adapter_in::user::controller::create_user_router;
 use crate::infrastructure::adapter_in::with_error_body;
 use crate::infrastructure::adapter_out::caller::cardmarket_caller_adapter::CardMarketCallerAdapter;
 use crate::infrastructure::adapter_out::caller::edhrec_caller_adapter::EdhRecCallerAdapter;
+use crate::infrastructure::adapter_out::clerk_token_validator_adapter::ClerkTokenValidatorAdapter;
 use crate::infrastructure::adapter_out::repository::card_prices_view_repository_adapter::CardPricesViewRepositoryAdapter;
 use crate::infrastructure::adapter_out::repository::cardmarket_price_repository_adapter::CardMarketPriceRepositoryAdapter;
 use crate::infrastructure::adapter_out::repository::collection_price_history_repository_adapter::CollectionPriceHistoryRepositoryAdapter;
@@ -101,7 +102,7 @@ pub struct AppState {
     pub edh_rec_caller_adapter: Arc<dyn EdhRecCaller>,
     pub stats_use_case: Arc<dyn StatsUseCase>,
     pub get_showcase_use_case: Arc<dyn GetShowcaseUseCase>,
-    pub auth_service: Arc<dyn AuthService>,
+    pub token_validator: Arc<dyn TokenValidator>,
     pub get_collection_use_case: Arc<dyn GetCollectionUseCase>,
     pub search_cards_use_case: Arc<dyn SearchCardsUseCase>,
     pub search_sets_use_case: Arc<dyn SearchSetsUseCase>,
@@ -197,14 +198,11 @@ fn create_callers(config: &Config) -> Callers {
     }
 }
 
-async fn create_auth_service(config: &Config) -> Arc<dyn AuthService> {
+async fn create_token_validator(config: &Config) -> Arc<dyn TokenValidator> {
     Arc::new(
-        crate::application::service::auth_service::ClerkAuthService::new(
-            config.clerk_frontend_api_url.clone(),
-            None,
-        )
-        .await
-        .expect("Failed to initialize Clerk Auth Service"),
+        ClerkTokenValidatorAdapter::new(config.clerk_frontend_api_url.clone(), None)
+            .await
+            .expect("Failed to initialize Clerk token validator"),
     )
 }
 
@@ -241,7 +239,7 @@ fn spawn_card_import_worker(
 fn create_app_state(
     repos: Repositories,
     callers: Callers,
-    auth_service: Arc<dyn AuthService>,
+    token_validator: Arc<dyn TokenValidator>,
     card_collection_service: Arc<CardCollectionService>,
     enqueue_cardmarket_id_use_case: Arc<dyn EnqueueCardMarketIdUpdateUseCase>,
     enqueue_card_image_use_case: Arc<dyn EnqueueCardImageUpdateUseCase>,
@@ -328,7 +326,7 @@ fn create_app_state(
         edh_rec_caller_adapter: callers.edh_rec,
         stats_use_case: stats_service,
         get_showcase_use_case: showcase_service,
-        auth_service,
+        token_validator,
         get_collection_use_case: collection_service,
         search_cards_use_case: search_service.clone(),
         search_sets_use_case: search_service,
@@ -403,7 +401,7 @@ pub(crate) fn create_router(app_state: AppState) -> Router {
 pub async fn create_infra(pool: Pool<Postgres>, config: &Config) -> Router {
     let repos = create_repositories(&pool);
     let callers = create_callers(config);
-    let auth_service = create_auth_service(config).await;
+    let token_validator = create_token_validator(config).await;
 
     let card_collection_service = Arc::new(CardCollectionService::new(
         repos.collection_price_history.clone(),
@@ -455,7 +453,7 @@ pub async fn create_infra(pool: Pool<Postgres>, config: &Config) -> Router {
     let app_state = create_app_state(
         repos,
         callers,
-        auth_service,
+        token_validator,
         card_collection_service,
         enqueue_cardmarket_id_use_case,
         enqueue_card_image_use_case,

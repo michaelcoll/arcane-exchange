@@ -1,4 +1,5 @@
 use crate::application::error::{AppError, AuthenticationError, InfraError};
+use crate::application::token_validator::TokenValidator;
 use crate::domain::user::User;
 use async_trait::async_trait;
 use jsonwebtoken::jwk::JwkSet;
@@ -15,19 +16,13 @@ struct ClerkClaims {
     azp: Option<String>,
 }
 
-#[cfg_attr(test, mockall::automock)]
-#[async_trait]
-pub trait AuthService: Send + Sync {
-    async fn validate_token(&self, token: &str) -> Result<User, AppError>;
-}
-
-pub struct ClerkAuthService {
+pub struct ClerkTokenValidatorAdapter {
     jwks: JwkSet,
     frontend_api_url: String,
 }
 
-impl ClerkAuthService {
-    /// Creates a new ClerkAuthService instance
+impl ClerkTokenValidatorAdapter {
+    /// Creates a new ClerkTokenValidatorAdapter instance
     ///
     /// # Arguments
     /// * `frontend_api_url` - The Clerk Frontend API URL (e.g. `https://musical-pup-67.clerk.accounts.dev`)
@@ -68,7 +63,7 @@ impl ClerkAuthService {
 }
 
 #[async_trait]
-impl AuthService for ClerkAuthService {
+impl TokenValidator for ClerkTokenValidatorAdapter {
     async fn validate_token(&self, token: &str) -> Result<User, AppError> {
         let header = decode_header(token).map_err(|e| {
             AuthenticationError::InvalidToken(format!("Invalid token header: {}", e))
@@ -187,7 +182,7 @@ mod tests {
             ]
         }"#;
         let jwks: JwkSet = serde_json::from_str(jwks_json).unwrap();
-        let service = ClerkAuthService {
+        let service = ClerkTokenValidatorAdapter {
             jwks,
             frontend_api_url: "https://musical-pup-67.clerk.accounts.dev".to_string(),
         };
@@ -203,7 +198,7 @@ mod tests {
     fn stores_empty_jwks_set() {
         let jwks_json = r#"{ "keys": [] }"#;
         let jwks: JwkSet = serde_json::from_str(jwks_json).unwrap();
-        let service = ClerkAuthService {
+        let service = ClerkTokenValidatorAdapter {
             jwks,
             frontend_api_url: "https://musical-pup-67.clerk.accounts.dev".to_string(),
         };
@@ -235,7 +230,7 @@ mod tests {
         }"#;
 
         let jwks: JwkSet = serde_json::from_str(jwks_json).unwrap();
-        let service = ClerkAuthService {
+        let service = ClerkTokenValidatorAdapter {
             jwks,
             frontend_api_url: "https://musical-pup-67.clerk.accounts.dev".to_string(),
         };
@@ -261,7 +256,7 @@ mod tests {
         }"#;
 
         let jwks: JwkSet = serde_json::from_str(jwks_json).unwrap();
-        let service = ClerkAuthService {
+        let service = ClerkTokenValidatorAdapter {
             jwks,
             frontend_api_url: "https://musical-pup-67.clerk.accounts.dev".to_string(),
         };
@@ -274,7 +269,7 @@ mod tests {
     fn returns_none_when_jwks_empty() {
         let jwks_json = r#"{ "keys": [] }"#;
         let jwks: JwkSet = serde_json::from_str(jwks_json).unwrap();
-        let service = ClerkAuthService {
+        let service = ClerkTokenValidatorAdapter {
             jwks,
             frontend_api_url: "https://musical-pup-67.clerk.accounts.dev".to_string(),
         };
@@ -283,7 +278,7 @@ mod tests {
         assert!(result.is_none());
     }
 
-    // Tests for ClerkAuthService::new
+    // Tests for ClerkTokenValidatorAdapter::new
     #[tokio::test]
     async fn new_successfully_creates_service_with_valid_jwks() {
         let server = MockServer::start().await;
@@ -305,7 +300,7 @@ mod tests {
             .mount(&server)
             .await;
 
-        let service = ClerkAuthService::new(
+        let service = ClerkTokenValidatorAdapter::new(
             "https://musical-pup-67.clerk.accounts.dev".to_string(),
             Some(&server.uri()),
         )
@@ -349,7 +344,7 @@ mod tests {
             .mount(&server)
             .await;
 
-        let service = ClerkAuthService::new(
+        let service = ClerkTokenValidatorAdapter::new(
             "https://musical-pup-67.clerk.accounts.dev".to_string(),
             Some(&server.uri()),
         )
@@ -382,7 +377,7 @@ mod tests {
         }"#;
 
         let jwks: JwkSet = serde_json::from_str(jwks_json).unwrap();
-        let service = ClerkAuthService {
+        let service = ClerkTokenValidatorAdapter {
             jwks,
             frontend_api_url: "https://musical-pup-67.clerk.accounts.dev".to_string(),
         };
@@ -417,7 +412,7 @@ mod tests {
         }"#;
 
         let jwks: JwkSet = serde_json::from_str(jwks_json).unwrap();
-        let service = ClerkAuthService {
+        let service = ClerkTokenValidatorAdapter {
             jwks,
             frontend_api_url: "https://musical-pup-67.clerk.accounts.dev".to_string(),
         };
@@ -444,7 +439,7 @@ mod tests {
     async fn rejects_token_with_missing_kid_in_header() {
         let jwks_json = r#"{ "keys": [] }"#;
         let jwks: JwkSet = serde_json::from_str(jwks_json).unwrap();
-        let service = ClerkAuthService {
+        let service = ClerkTokenValidatorAdapter {
             jwks,
             frontend_api_url: "https://musical-pup-67.clerk.accounts.dev".to_string(),
         };
@@ -467,7 +462,7 @@ mod tests {
     async fn rejects_token_with_unknown_kid() {
         let jwks_json = r#"{ "keys": [] }"#;
         let jwks: JwkSet = serde_json::from_str(jwks_json).unwrap();
-        let service = ClerkAuthService {
+        let service = ClerkTokenValidatorAdapter {
             jwks,
             frontend_api_url: "https://musical-pup-67.clerk.accounts.dev".to_string(),
         };
@@ -493,7 +488,7 @@ mod tests {
     async fn accepts_token_header_with_integer_oiat_field() {
         let jwks_json = r#"{ "keys": [] }"#;
         let jwks: JwkSet = serde_json::from_str(jwks_json).unwrap();
-        let service = ClerkAuthService {
+        let service = ClerkTokenValidatorAdapter {
             jwks,
             frontend_api_url: "https://musical-pup-67.clerk.accounts.dev".to_string(),
         };
@@ -519,7 +514,7 @@ mod tests {
     async fn rejects_malformed_token() {
         let jwks_json = r#"{ "keys": [] }"#;
         let jwks: JwkSet = serde_json::from_str(jwks_json).unwrap();
-        let service = ClerkAuthService {
+        let service = ClerkTokenValidatorAdapter {
             jwks,
             frontend_api_url: "https://musical-pup-67.clerk.accounts.dev".to_string(),
         };
@@ -539,7 +534,7 @@ mod tests {
     async fn rejects_token_with_invalid_base64() {
         let jwks_json = r#"{ "keys": [] }"#;
         let jwks: JwkSet = serde_json::from_str(jwks_json).unwrap();
-        let service = ClerkAuthService {
+        let service = ClerkTokenValidatorAdapter {
             jwks,
             frontend_api_url: "https://musical-pup-67.clerk.accounts.dev".to_string(),
         };
@@ -573,7 +568,7 @@ mod tests {
         }"#;
 
         let jwks: JwkSet = serde_json::from_str(jwks_json).unwrap();
-        let service = ClerkAuthService {
+        let service = ClerkTokenValidatorAdapter {
             jwks,
             frontend_api_url: "https://musical-pup-67.clerk.accounts.dev".to_string(),
         };
@@ -593,7 +588,7 @@ mod tests {
     async fn rejects_empty_token() {
         let jwks_json = r#"{ "keys": [] }"#;
         let jwks: JwkSet = serde_json::from_str(jwks_json).unwrap();
-        let service = ClerkAuthService {
+        let service = ClerkTokenValidatorAdapter {
             jwks,
             frontend_api_url: "https://musical-pup-67.clerk.accounts.dev".to_string(),
         };
@@ -613,7 +608,7 @@ mod tests {
     async fn rejects_token_with_incomplete_jwt_parts() {
         let jwks_json = r#"{ "keys": [] }"#;
         let jwks: JwkSet = serde_json::from_str(jwks_json).unwrap();
-        let service = ClerkAuthService {
+        let service = ClerkTokenValidatorAdapter {
             jwks,
             frontend_api_url: "https://musical-pup-67.clerk.accounts.dev".to_string(),
         };
@@ -635,7 +630,7 @@ mod tests {
     async fn rejects_token_with_corrupted_payload() {
         let jwks_json = r#"{ "keys": [] }"#;
         let jwks: JwkSet = serde_json::from_str(jwks_json).unwrap();
-        let service = ClerkAuthService {
+        let service = ClerkTokenValidatorAdapter {
             jwks,
             frontend_api_url: "https://musical-pup-67.clerk.accounts.dev".to_string(),
         };
@@ -668,7 +663,7 @@ mod tests {
             .mount(&server)
             .await;
 
-        let service = ClerkAuthService::new(
+        let service = ClerkTokenValidatorAdapter::new(
             "https://musical-pup-67.clerk.accounts.dev".to_string(),
             Some(&server.uri()),
         )
@@ -691,7 +686,7 @@ mod tests {
             .mount(&server)
             .await;
 
-        let result = ClerkAuthService::new(
+        let result = ClerkTokenValidatorAdapter::new(
             "https://musical-pup-67.clerk.accounts.dev".to_string(),
             Some(&server.uri()),
         )
@@ -715,7 +710,7 @@ mod tests {
             .mount(&server)
             .await;
 
-        let result = ClerkAuthService::new(
+        let result = ClerkTokenValidatorAdapter::new(
             "https://musical-pup-67.clerk.accounts.dev".to_string(),
             Some(&server.uri()),
         )
@@ -733,7 +728,7 @@ mod tests {
             .mount(&server)
             .await;
 
-        let result = ClerkAuthService::new(
+        let result = ClerkTokenValidatorAdapter::new(
             "https://musical-pup-67.clerk.accounts.dev".to_string(),
             Some(&server.uri()),
         )
@@ -763,7 +758,7 @@ mod tests {
             .mount(&server)
             .await;
 
-        let service = ClerkAuthService::new(
+        let service = ClerkTokenValidatorAdapter::new(
             "https://musical-pup-67.clerk.accounts.dev".to_string(),
             Some(&server.uri()),
         )
@@ -782,7 +777,7 @@ mod tests {
     async fn rejects_token_with_special_characters_in_payload() {
         let jwks_json = r#"{ "keys": [] }"#;
         let jwks: JwkSet = serde_json::from_str(jwks_json).unwrap();
-        let service = ClerkAuthService {
+        let service = ClerkTokenValidatorAdapter {
             jwks,
             frontend_api_url: "https://musical-pup-67.clerk.accounts.dev".to_string(),
         };
@@ -810,7 +805,7 @@ mod tests {
         }"#;
 
         let jwks: JwkSet = serde_json::from_str(jwks_json).unwrap();
-        let service = ClerkAuthService {
+        let service = ClerkTokenValidatorAdapter {
             jwks,
             frontend_api_url: "https://musical-pup-67.clerk.accounts.dev".to_string(),
         };

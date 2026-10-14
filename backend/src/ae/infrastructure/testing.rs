@@ -4,14 +4,14 @@
 //! `AppState { get_collection_use_case: Arc::new(mock), ..AppState::for_testing() }`.
 //!
 //! Most mocks have no expectation and panic if called. Four are pre-armed to succeed on any
-//! call: `import_card_use_case`, `edh_rec_caller_adapter`, `auth_service` and
+//! call: `import_card_use_case`, `edh_rec_caller_adapter`, `token_validator` and
 //! `import_price_use_case`. Override them to assert on calls.
 
 use super::AppState;
 use crate::application::caller::MockEdhRecCaller;
-use crate::application::service::auth_service::MockAuthService;
 use crate::application::service::showcase_service::ShowcaseService;
 use crate::application::service::stats_service::StatsService;
+use crate::application::token_validator::MockTokenValidator;
 use crate::application::use_case::{
     MockAbandonTradeUseCase, MockAcceptTradeUseCase, MockAddTradeBinderUseCase,
     MockAddTradeCardUseCase, MockAutocompleteUsersUseCase, MockConfirmTradeUseCase,
@@ -85,7 +85,7 @@ impl AppState {
             })
         });
 
-        let mut mock_auth = MockAuthService::new();
+        let mut mock_auth = MockTokenValidator::new();
         mock_auth
             .expect_validate_token()
             .returning(|_| Ok(User::new("test-user-id".to_string(), None, None, None)));
@@ -100,7 +100,7 @@ impl AppState {
             edh_rec_caller_adapter: Arc::new(mock_edh_rec),
             stats_use_case: Arc::new(MockStatsUseCase::new()),
             get_showcase_use_case: Arc::new(MockGetShowcaseUseCase::new()),
-            auth_service: Arc::new(mock_auth),
+            token_validator: Arc::new(mock_auth),
             get_collection_use_case: Arc::new(MockGetCollectionUseCase::new()),
             search_cards_use_case: Arc::new(MockSearchCardsUseCase::new()),
             search_sets_use_case: Arc::new(MockSearchSetsUseCase::new()),

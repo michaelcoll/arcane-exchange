@@ -5,4 +5,5 @@ pub mod error;
 pub mod imported_card;
 pub mod repository;
 pub mod service;
+pub mod token_validator;
 pub mod use_case;
