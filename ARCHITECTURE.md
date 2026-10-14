@@ -52,8 +52,21 @@ Points structurants :
   `Arc<dyn Trait>` et câblé au seul endroit qui connaît le monde concret, `infrastructure.rs`
   (`create_infra`) — c'est le point d'entrée à lire pour comprendre qui dépend de qui.
 - **`AppState`** est le conteneur d'injection : un champ par use case, partagé par tous les routeurs.
-- **Un fichier = un cas d'usage** côté `application/service/`, et un dossier par ressource HTTP côté
-  `adapter_in/` (`controller.rs`, `dto.rs`, `tests.rs`).
+- **Un dossier par ressource HTTP** côté `adapter_in/` (`controller.rs`, `dto.rs`, `tests.rs`), et
+  `application/service/` calque cette arborescence
+  ([ADR 0019](docs/adr/0019-application-services-are-grouped-by-http-resource.md)) :
+  - chaque use case a son fichier `service/<ressource>/<action>.rs`, où `<ressource>` reprend le nom
+    du dossier `adapter_in/` dont le contrôleur l'appelle ; un use case sans route va avec la
+    ressource qui le déclenche ;
+  - `<action>` est le nom du trait de use case sans le suffixe ni ce que le dossier dit déjà, en
+    snake_case (`trade/accept.rs`, `trade_settings/add_binder.rs`, `trade_settings/get_visibility.rs`) ;
+    un trait sans verbe prend `get` (`stats/get.rs`) ; la struct de service garde son nom complet ;
+  - le code partagé par les use cases d'une ressource vit dans le module parent
+    `service/<ressource>.rs`, et ses fixtures de test dans un module de test de ce parent ; un
+    helper utilisé par un seul use case reste dans le fichier de ce use case ;
+  - une ressource à un seul use case a quand même son dossier ;
+  - `service/` ne contient que des use cases : le reste (worker, file, parsing) vit à la racine
+    d'`application/`, ou devient un port et son adapter.
 - **Erreurs** : `AppError` est une façade sur trois familles — fonctionnelle (métier/validation),
   authentification, infrastructure. La famille détermine le code HTTP ; `?` traverse les couches
   grâce aux `From` par famille.
