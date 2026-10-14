@@ -17,8 +17,8 @@ pub mod import_price_service;
 mod parse_service;
 pub mod rarity_trade_filter_service;
 pub mod register_user_service;
-pub mod search_service;
-pub mod set_service;
+pub mod search;
+pub mod sets;
 pub mod showcase_service;
 pub mod stats_service;
 pub mod trade_binder_service;
@@ -27,7 +27,7 @@ pub mod trade_service;
 #[cfg(test)]
 mod pagination_frontend_sync_tests {
     use crate::application::service::collection_service::COLLECTION_MAX_OFFSET;
-    use crate::application::service::search_service::SEARCH_MAX_OFFSET;
+    use crate::application::service::search::search_cards::SEARCH_MAX_OFFSET;
     use crate::application::service::trade_service::TRADES_MAX_OFFSET;
 
     // The frontend stops paginating before hitting these limits, so it duplicates them in

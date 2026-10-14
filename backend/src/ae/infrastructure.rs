@@ -24,8 +24,10 @@ use crate::application::service::rarity_trade_filter_service::{
     GetRarityTradeFiltersService, SetRarityTradeFilterService,
 };
 use crate::application::service::register_user_service::RegisterUserService;
-use crate::application::service::search_service::SearchService;
-use crate::application::service::set_service::SetService;
+use crate::application::service::search::search_cards::SearchCardsService;
+use crate::application::service::search::search_sets::SearchSetsService;
+use crate::application::service::sets::get::GetSetService;
+use crate::application::service::sets::list::ListSetsService;
 use crate::application::service::showcase_service::ShowcaseService;
 use crate::application::service::stats_service::StatsService;
 use crate::application::service::trade_binder_service::{
@@ -262,7 +264,8 @@ fn create_app_state(
     let stats_service = Arc::new(StatsService::new(repos.stats));
     let showcase_service = Arc::new(ShowcaseService::new(repos.showcase));
     let collection_service = Arc::new(CollectionService::new(repos.card_prices_view.clone()));
-    let search_service = Arc::new(SearchService::new(repos.card_prices_view.clone()));
+    let search_cards_service = Arc::new(SearchCardsService::new(repos.card_prices_view.clone()));
+    let search_sets_service = Arc::new(SearchSetsService::new(repos.card_prices_view.clone()));
     let collection_price_history_service: Arc<dyn GetCollectionPriceHistoryUseCase> = Arc::new(
         CollectionPriceHistoryService::new(repos.collection_price_history.clone()),
     );
@@ -319,7 +322,8 @@ fn create_app_state(
     ));
     let remove_trade_card_service: Arc<dyn RemoveTradeCardUseCase> =
         Arc::new(RemoveTradeCardService::new(repos.trade, repos.user));
-    let set_service = Arc::new(SetService::new(repos.set_name));
+    let list_sets_service = Arc::new(ListSetsService::new(repos.set_name.clone()));
+    let get_set_service = Arc::new(GetSetService::new(repos.set_name));
 
     AppState {
         import_card_use_case: import_card_service,
@@ -328,8 +332,8 @@ fn create_app_state(
         get_showcase_use_case: showcase_service,
         token_validator,
         get_collection_use_case: collection_service,
-        search_cards_use_case: search_service.clone(),
-        search_sets_use_case: search_service,
+        search_cards_use_case: search_cards_service,
+        search_sets_use_case: search_sets_service,
         import_price_use_case,
         enqueue_cardmarket_id_use_case,
         enqueue_card_image_use_case,
@@ -356,8 +360,8 @@ fn create_app_state(
         remove_trade_binder_use_case: remove_trade_binder_service,
         get_rarity_trade_filters_use_case: get_rarity_trade_filters_service,
         set_rarity_trade_filter_use_case: set_rarity_trade_filter_service,
-        list_sets_use_case: set_service.clone(),
-        get_set_use_case: set_service,
+        list_sets_use_case: list_sets_service,
+        get_set_use_case: get_set_service,
         card_import_query_use_case: card_import_query_service,
     }
 }
