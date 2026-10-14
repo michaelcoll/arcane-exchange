@@ -24,17 +24,10 @@ export const useCollectionService = () => {
 
   const listCardImports = () => apiCall<CardImport[]>('/collection/import');
 
-  const getCollectionStats = () =>
-    useAsyncData('collection-stats', () => apiCall<CollectionStats>('/collection/stats'), {
-      lazy: true,
-    });
+  const getCollectionStats = () => apiCall<CollectionStats>('/collection/stats');
 
-  const getPriceHistory = (params: MaybeRefOrGetter<PriceHistoryParams>, key: string) =>
-    useAsyncData(
-      key,
-      () => apiCall<PriceHistoryEntry[]>('/collection/price-history', { query: toValue(params) }),
-      { lazy: true },
-    );
+  const getPriceHistory = (params: PriceHistoryParams) =>
+    apiCall<PriceHistoryEntry[]>('/collection/price-history', { query: params });
 
   return {
     getCollection,
