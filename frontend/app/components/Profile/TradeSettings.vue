@@ -9,7 +9,12 @@ const { getTradeBinders, addTradeBinder, removeTradeBinder, getRarityFilters, se
 const { showError } = useToast();
 
 // useAsyncData must be called synchronously during setup, not inside onMounted.
-const { data: statsData, pending: statsPending, error: statsError } = getCollectionStats();
+// Same key and options as every other reader of the stats, so they share one cache entry.
+const {
+  data: statsData,
+  pending: statsPending,
+  error: statsError,
+} = useAsyncData('collection-stats', () => getCollectionStats(), { lazy: true });
 const binders = computed(() => statsData.value?.binders ?? []);
 
 const {

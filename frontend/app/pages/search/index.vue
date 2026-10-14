@@ -90,7 +90,10 @@ watch(
   () => nextTick(focusSearchField),
 );
 
-const { data: statsData } = await getCollectionStats();
+// Same key and options as every other reader of the stats, so they share one cache entry.
+const { data: statsData } = await useAsyncData('collection-stats', () => getCollectionStats(), {
+  lazy: true,
+});
 
 // The price range still comes from my own collection (`statsData`), to be settled later.
 const priceMin = computed(() =>

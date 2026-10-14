@@ -25,7 +25,10 @@ const size = usePreference(CARD_SIZE_PREF);
 const isDesktop = useMediaQuery('(min-width: 768px)');
 const pageSize = useCardPageSize(size, isDesktop);
 
-const { data: statsData } = await getCollectionStats();
+// Same key and options as every other reader of the stats, so they share one cache entry.
+const { data: statsData } = await useAsyncData('collection-stats', () => getCollectionStats(), {
+  lazy: true,
+});
 
 const setList = computed(() => statsData.value?.sets ?? []);
 
@@ -55,17 +58,17 @@ const graph = usePreference(COLLECTION_GRAPH_PREF);
 const showDetail = computed(() => graph.value === 'expanded' && isDesktop.value);
 const graphRange = usePreference(COLLECTION_GRAPH_RANGE_PREF);
 
-const historyParams = ref(periodDateRange(graphRange.value));
 const {
   data: priceHistoryData,
   pending: priceHistoryPending,
   refresh: refreshPriceHistory,
-} = await getPriceHistory(historyParams, 'collection-price-history');
+} = await useAsyncData(
+  'collection-price-history',
+  () => getPriceHistory(periodDateRange(graphRange.value)),
+  { lazy: true },
+);
 
-watch(graphRange, (range) => {
-  historyParams.value = periodDateRange(range);
-  refreshPriceHistory();
-});
+watch(graphRange, () => refreshPriceHistory());
 
 const priceHistory = computed(() => priceHistoryData.value ?? []);
 const trend = computed(() => priceTrend(priceHistory.value));

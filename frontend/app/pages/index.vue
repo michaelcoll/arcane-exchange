@@ -29,12 +29,17 @@ watch(
 const { recents, addRecentSearch } = useRecentSearches(CARD_RECENT_SEARCHES_KEY);
 
 const { getCollectionStats, getPriceHistory } = useCollectionService();
-const { data: collectionStatsData } = await getCollectionStats();
+// Same key and options as every other reader of the stats, so they share one cache entry.
+const { data: collectionStatsData } = await useAsyncData(
+  'collection-stats',
+  () => getCollectionStats(),
+  { lazy: true },
+);
 
-const collectionHistoryParams = ref(periodDateRange('30 j'));
-const { data: collectionHistoryData, pending: collectionHistoryPending } = await getPriceHistory(
-  collectionHistoryParams,
+const { data: collectionHistoryData, pending: collectionHistoryPending } = await useAsyncData(
   'home-collection-price-history',
+  () => getPriceHistory(periodDateRange('30 j')),
+  { lazy: true },
 );
 
 const collectionHistory = computed(() => collectionHistoryData.value ?? []);
