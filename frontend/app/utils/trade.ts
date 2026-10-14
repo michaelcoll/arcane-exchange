@@ -45,8 +45,8 @@ export interface TradeStatusPresentation {
   tone: TradeTone;
 }
 
-/** Seul mapping statut → libellé et ton du web : la pastille, l'indicateur à points et le bandeau
- * en tirent tous leur couleur. */
+/** Seul mapping statut → libellé et ton du web : la pastille et l'indicateur à points en tirent
+ * leur couleur. */
 export const TRADE_STATUS_META: Record<TradeStatusParam, TradeStatusPresentation> = {
   PENDING: { label: 'En négociation', tone: 'primary' },
   ONE_ACCEPTED: { label: '1 acceptation', tone: 'primary' },

@@ -41,4 +41,14 @@ describe('StepsSheet', () => {
     await wrapper.get('button[aria-label="Fermer"]').trigger('click');
     expect(wrapper.emitted('close')).toHaveLength(2);
   });
+
+  // On desktop the dialog sits inside the backdrop, centered: a click inside it must not bubble
+  // up to the backdrop, and a click on the backdrop still closes the sheet.
+  it('closes from the backdrop, not from a click inside the dialog', async () => {
+    wrapper = mount(StepsSheet, { props: { steps: stepsAt(0), partner: 'mizzix_42' } });
+    await wrapper.get('[role="dialog"]').trigger('click');
+    expect(wrapper.emitted('close')).toBeUndefined();
+    await wrapper.trigger('click');
+    expect(wrapper.emitted('close')).toHaveLength(1);
+  });
 });

@@ -33,7 +33,7 @@ const cards: TradeCard[] = [
 const side: TradeViewSide = { cards, total: 9900 };
 const emptySide: TradeViewSide = { cards: [], total: 0 };
 
-const baseProps = {
+const commonProps = {
   owner: 'mizzix_42',
   direction: 'receive' as const,
   side,
@@ -42,11 +42,26 @@ const baseProps = {
   emptyMessage: "Tu n'as demandé aucune carte pour l'instant.",
 };
 
-describe('CardRail', () => {
-  // PlayerAvatar charge l'avatar via Clerk : hors sujet ici.
-  beforeAll(() => {
-    config.global.stubs = { ...config.global.stubs, PlayerAvatar: true };
+// PlayerAvatar loads the avatar through Clerk: out of scope here.
+beforeAll(() => {
+  config.global.stubs = { ...config.global.stubs, PlayerAvatar: true };
+});
+
+describe('CardRail layout', () => {
+  it('scrolls the tiles in a rail by default', () => {
+    const wrapper = mount(CardRail, { props: commonProps });
+    expect(wrapper.get('[data-part="tiles"]').attributes('data-layout')).toBe('rail');
   });
+
+  it('wraps the tiles in a grid when asked to', () => {
+    const wrapper = mount(CardRail, { props: { ...commonProps, layout: 'grid' } });
+    expect(wrapper.get('[data-part="tiles"]').attributes('data-layout')).toBe('grid');
+  });
+});
+
+// Only the tiles' layout changes: every behaviour holds for both variants.
+describe.each(['rail', 'grid'] as const)('CardRail (%s)', (layout) => {
+  const baseProps = { ...commonProps, layout };
 
   it('names who puts the cards down and shows the total of the side it received', () => {
     const wrapper = mount(CardRail, { props: baseProps });
@@ -67,6 +82,15 @@ describe('CardRail', () => {
     expect(tiles).toHaveLength(2);
     expect(tiles[1]!.text()).toContain('Vampiric Tutor');
     expect(tiles[1]!.text()).toContain(formatPrice(4000));
+  });
+
+  it('emits "open" with the card when its face is clicked', async () => {
+    const wrapper = mount(CardRail, { props: baseProps });
+    await wrapper
+      .findAll('[data-part="face"]')[1]!
+      .get('[title="Vampiric Tutor"]')
+      .trigger('click');
+    expect(wrapper.emitted('open')).toEqual([[cards[1]]]);
   });
 
   it('shows ×N only when the quantity is greater than 1', () => {

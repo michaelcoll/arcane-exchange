@@ -190,38 +190,19 @@ describe('useTradeView', () => {
       expect(view().receive.total).toBe(700);
     });
 
-    it('me fait payer quand je reçois plus que je ne donne', () => {
-      const { view } = setup({ my_cards: [worth(400)], partner_cards: [worth(2500)] });
-
-      expect(view().balance).toEqual({
-        delta: 2100,
-        balanced: false,
-        settlement: `payer ${formatPrice(2100)}`,
-      });
-    });
-
-    it('me fait recevoir quand je donne plus que je ne reçois', () => {
-      const { view } = setup({ my_cards: [worth(1000)], partner_cards: [worth(600)] });
-
-      expect(view().balance).toEqual({
-        delta: -400,
-        balanced: false,
-        settlement: `recevoir ${formatPrice(400)}`,
-      });
-    });
-
     it('tient le Trade pour équilibré sous 3 € d’écart, sans règlement', () => {
       const { view } = setup({ my_cards: [worth(1000)], partner_cards: [worth(1299)] });
 
-      expect(view().balance).toEqual({ delta: 299, balanced: true, settlement: null });
       expect(view().primaryAction).toEqual({ kind: 'accept', label: "Accepter l'échange" });
     });
 
     it('appelle un règlement dès 3 € d’écart', () => {
       const { view } = setup({ my_cards: [worth(1300)], partner_cards: [worth(1000)] });
 
-      expect(view().balance.balanced).toBe(false);
-      expect(view().balance.settlement).toBe(`recevoir ${formatPrice(300)}`);
+      expect(view().primaryAction).toEqual({
+        kind: 'accept',
+        label: `Accepter et recevoir ${formatPrice(300)}`,
+      });
     });
   });
 
@@ -326,105 +307,6 @@ describe('useTradeView', () => {
       const { view } = setup({ status });
 
       expect(view().presentation).toEqual({ label, tone });
-    });
-  });
-
-  describe('le bandeau', () => {
-    it('invite à composer le Trade en PENDING', () => {
-      const { view } = setup({ status: 'PENDING' });
-
-      expect(view().banner).toEqual({
-        tone: 'primary',
-        icon: 'lucide:arrow-left-right',
-        title: 'Négociation ouverte',
-        text: 'Ajoute ou retire des cartes des deux côtés en composant avec jace.',
-      });
-    });
-
-    it("me dit d'attendre le partenaire en ONE_ACCEPTED quand j'ai accepté", () => {
-      const { view } = setup({ status: 'ONE_ACCEPTED', me: party({ accepted: true }) });
-
-      expect(view().banner).toEqual({
-        tone: 'primary',
-        icon: 'lucide:lock',
-        title: 'En attente de jace',
-        text: 'Tu as accepté — les cartes sont réservées. jace doit accepter à son tour, ou tu peux encore modifier.',
-      });
-    });
-
-    it("me donne la main en ONE_ACCEPTED quand c'est le partenaire qui a accepté", () => {
-      const { view } = setup({ status: 'ONE_ACCEPTED', partner: party({ accepted: true }) });
-
-      expect(view().banner).toEqual({
-        tone: 'primary',
-        icon: 'lucide:lock',
-        title: 'jace a accepté — à toi de jouer',
-        text: 'Accepte à ton tour pour verrouiller, ou modifie la transaction pour relancer la négociation.',
-      });
-    });
-
-    it("demande l'échange physique en FULLY_ACCEPTED tant que je n'ai pas confirmé", () => {
-      const { view } = setup({ status: 'FULLY_ACCEPTED', me: party({ accepted: true }) });
-
-      expect(view().banner).toEqual({
-        tone: 'secondary',
-        icon: 'lucide:lock',
-        title: 'Transaction verrouillée',
-        text: 'Les deux parties ont accepté. Procédez à l’échange physique en personne, puis confirme ci-dessous.',
-      });
-    });
-
-    it("me dit d'attendre la confirmation du partenaire en FULLY_ACCEPTED quand j'ai confirmé", () => {
-      const { view } = setup({
-        status: 'FULLY_ACCEPTED',
-        me: party({ accepted: true, confirmed: true }),
-      });
-
-      expect(view().banner).toEqual({
-        tone: 'secondary',
-        icon: 'lucide:lock',
-        title: 'Transaction verrouillée',
-        text: "Tu as confirmé l'échange. En attente de la confirmation de jace.",
-      });
-    });
-
-    it('invite à noter le partenaire en COMPLETED', () => {
-      const { view } = setup({ status: 'COMPLETED' });
-
-      expect(view().banner).toEqual({
-        tone: 'good',
-        icon: 'lucide:check',
-        title: 'Échange réalisé',
-        text: 'Les deux parties ont confirmé l’échange physique. Tu peux noter ton partenaire (optionnel).',
-      });
-    });
-
-    it('annonce la clôture au ton neutre en CLOSED', () => {
-      const { view } = setup({ status: 'CLOSED' });
-
-      expect(view().banner).toEqual({
-        tone: 'muted',
-        icon: 'lucide:check',
-        title: 'Transaction clôturée',
-        text: 'Les notations ont été enregistrées. Merci d’utiliser Arcane Exchange !',
-      });
-    });
-
-    it("annonce l'abandon en ABANDONED", () => {
-      const { view } = setup({ status: 'ABANDONED' });
-
-      expect(view().banner).toEqual({
-        tone: 'down',
-        icon: 'lucide:x',
-        title: 'Échange abandonné',
-        text: 'Cet échange a été abandonné. Les cartes réservées ont été libérées.',
-      });
-    });
-
-    it.each(ALL_STATUSES)('porte en %s le ton du statut', (status) => {
-      const { view } = setup({ status });
-
-      expect(view().banner.tone).toBe(view().presentation.tone);
     });
   });
 

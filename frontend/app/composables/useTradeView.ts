@@ -5,7 +5,6 @@ import type { TradeStatusParam } from '~/bindings/TradeStatusParam';
 import { readApiError } from '../utils/api-error';
 import {
   isTradeAbandonable,
-  isTradeBalanced,
   isTradeEditable,
   isTradeReserved,
   toTradeStatus,
@@ -14,11 +13,9 @@ import {
   tradeAcceptLabel,
   tradeCardsTotal,
   tradeConfirmation,
-  tradeSettlementLabel,
   type TradeConfirmationKind,
   type TradeRating,
   type TradeStatusPresentation,
-  type TradeTone,
 } from '../utils/trade';
 
 /** What the view asks of the page: the calls already target the displayed Trade. */
@@ -48,14 +45,6 @@ export interface TradeViewSide {
   total: number;
 }
 
-export interface TradeViewBalance {
-  /** Delta cash: total received − total given, in cents. */
-  delta: number;
-  balanced: boolean;
-  /** « payer 21 € », « recevoir 4 € », `null` when the Trade is balanced. */
-  settlement: string | null;
-}
-
 /** The action offered to the player: a single one per status. */
 export type TradePrimaryAction =
   | { kind: 'accept'; label: string }
@@ -83,22 +72,13 @@ export interface TradeViewStep {
   state: TradeStepState;
 }
 
-/** The five steps of the nominal path, the same for the desktop stepper, the dot indicator and
- * the « Les étapes d'un échange » sheet. */
+/** The five steps of the nominal path, the same for the dot indicator and the « Les étapes d'un
+ * échange » sheet. */
 export interface TradeViewSteps {
   list: TradeViewStep[];
   /** Position of the current step in `list`, `null` for an abandoned Trade: it is off the path,
    * no step is current. */
   currentIndex: number | null;
-}
-
-/** The status message: what is expected of me, given the status and what I already accepted or
- * confirmed. Its tone is the one of the status. */
-export interface TradeViewBanner {
-  title: string;
-  text: string;
-  icon: string;
-  tone: TradeTone;
 }
 
 /** An open confirmation, awaiting the player's decision. */
@@ -120,7 +100,6 @@ export interface TradeView {
   partner: TradeViewParty;
   give: TradeViewSide;
   receive: TradeViewSide;
-  balance: TradeViewBalance;
   /** Cards can still be added or removed. */
   editable: boolean;
   /** The cards of both sides are reserved. */
@@ -129,7 +108,6 @@ export interface TradeView {
   primaryAction: TradePrimaryAction;
   rating: TradeViewRating;
   steps: TradeViewSteps;
-  banner: TradeViewBanner;
   /** An action is running: the actions are to be disabled. */
   busy: boolean;
   confirmation: TradeViewConfirmation | null;
@@ -172,60 +150,6 @@ const stepsOf = (status: TradeStatusParam): TradeViewSteps => {
   };
 };
 
-/** Title, text and icon of the banner; `them` is the partner's username. */
-const bannerMessageOf = (
-  status: TradeStatusParam,
-  me: TradeViewParty,
-  them: string,
-): Omit<TradeViewBanner, 'tone'> => {
-  switch (status) {
-    case 'PENDING':
-      return {
-        icon: 'lucide:arrow-left-right',
-        title: 'Négociation ouverte',
-        text: `Ajoute ou retire des cartes des deux côtés en composant avec ${them}.`,
-      };
-    case 'ONE_ACCEPTED':
-      return me.accepted
-        ? {
-            icon: 'lucide:lock',
-            title: `En attente de ${them}`,
-            text: `Tu as accepté — les cartes sont réservées. ${them} doit accepter à son tour, ou tu peux encore modifier.`,
-          }
-        : {
-            icon: 'lucide:lock',
-            title: `${them} a accepté — à toi de jouer`,
-            text: 'Accepte à ton tour pour verrouiller, ou modifie la transaction pour relancer la négociation.',
-          };
-    case 'FULLY_ACCEPTED':
-      return {
-        icon: 'lucide:lock',
-        title: 'Transaction verrouillée',
-        text: me.confirmed
-          ? `Tu as confirmé l'échange. En attente de la confirmation de ${them}.`
-          : 'Les deux parties ont accepté. Procédez à l’échange physique en personne, puis confirme ci-dessous.',
-      };
-    case 'COMPLETED':
-      return {
-        icon: 'lucide:check',
-        title: 'Échange réalisé',
-        text: 'Les deux parties ont confirmé l’échange physique. Tu peux noter ton partenaire (optionnel).',
-      };
-    case 'CLOSED':
-      return {
-        icon: 'lucide:check',
-        title: 'Transaction clôturée',
-        text: 'Les notations ont été enregistrées. Merci d’utiliser Arcane Exchange !',
-      };
-    case 'ABANDONED':
-      return {
-        icon: 'lucide:x',
-        title: 'Échange abandonné',
-        text: 'Cet échange a été abandonné. Les cartes réservées ont été libérées.',
-      };
-  }
-};
-
 /**
  * The player's view of the Trade: the only place that knows the status rules of the Trade screen.
  * It reads neither the route, the HTTP service nor the toast: the page hands it the loaded Trade
@@ -259,11 +183,6 @@ export const useTradeView = (
       partner: current.partner,
       give,
       receive,
-      balance: {
-        delta,
-        balanced: isTradeBalanced(delta),
-        settlement: tradeSettlementLabel(delta),
-      },
       editable: isTradeEditable(status),
       reserved: isTradeReserved(status),
       abandonable: isTradeAbandonable(status),
@@ -275,10 +194,6 @@ export const useTradeView = (
         partner: current.partner.rating,
       },
       steps: stepsOf(status),
-      banner: {
-        ...bannerMessageOf(status, current.me, current.partner_username),
-        tone: TRADE_STATUS_META[status].tone,
-      },
       busy: busy.value,
       confirmation: pending.value && {
         kind: pending.value.kind,
