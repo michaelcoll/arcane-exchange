@@ -17,7 +17,7 @@ const {
   pending: filtersPending,
   error: filtersError,
   refresh: refreshFilters,
-} = getRarityFilters();
+} = useAsyncData('collection-rarity-filters', () => getRarityFilters(), { lazy: true });
 const rows = computed(() => filtersData.value?.rarities ?? []);
 
 watch(statsError, (e) => {
