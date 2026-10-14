@@ -15,6 +15,13 @@ rustfmt, clippy, ESLint, Prettier, SwiftLint or SwiftFormat already reports is l
 
 ## Backend
 
+- **Service layout**: put each use case in `application/service/<resource>/<action>.rs`, where `<resource>` is the
+  `adapter_in/` folder whose controller calls it (or triggers it, for a use case with no route) and `<action>` is the
+  use case trait name without the suffix nor what the folder already says, in snake_case (`trade/accept.rs`,
+  `trade_settings/get_visibility.rs`; `get` for a trait with no verb, `stats/get.rs`): one use case per file,
+  one folder per resource even with a single use case, the service struct keeps its full name. Code shared by the use
+  cases of a resource goes in the parent module `service/<resource>.rs`, its shared test fixtures in a test module of
+  that parent; `service/` holds nothing but use cases (ADR 0019).
 - **Service tests**: test a service in a `mod tests` at the bottom of its own file, against the `mockall` mocks of its
   ports (`#[cfg_attr(test, automock)]` on the trait): the test needs no database and no HTTP.
 - **Controller tests**: test a controller in the `tests.rs` of its folder, driving the router with `oneshot` on an
@@ -88,7 +95,8 @@ Token names and values: [design-system.instructions.md](.agents/design-system.in
 These files keep their own rules; a review loads them too.
 
 - [`ARCHITECTURE.md`](ARCHITECTURE.md) — backend layer rules: direction of dependencies, injection as
-  `Arc<dyn Trait>` wired in `create_infra`, one file per use case, configuration read once.
+  `Arc<dyn Trait>` wired in `create_infra`, services grouped by HTTP resource with one file per use case,
+  configuration read once.
 - [`.agents/design-system.instructions.md`](.agents/design-system.instructions.md) — token reference and component
   inventory.
 - [`.agents/database-schema.instructions.md`](.agents/database-schema.instructions.md) and
