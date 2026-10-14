@@ -40,11 +40,11 @@ on les lance.
 Trois couches sous `backend/src/ae/`, dépendances strictement unidirectionnelles
 (`infrastructure → application → domain`) :
 
-| Couche            | Contenu                                                                                                                          |
-| ----------------- | -------------------------------------------------------------------------------------------------------------------------------- |
-| `domain/`         | Types métier purs, invariants, erreurs fonctionnelles. Aucune dépendance technique.                                              |
-| `application/`    | `use_case.rs` (traits = contrat entrant), `repository.rs` / `caller.rs` (traits = ports sortants), `service/` (implémentations). |
-| `infrastructure/` | `adapter_in/` (contrôleurs HTTP + DTO), `adapter_out/` (`repository/` SQLx, `caller/` HTTP).                                     |
+| Couche            | Contenu                                                                                                                                                 |
+| ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `domain/`         | Types métier purs, invariants, erreurs fonctionnelles. Aucune dépendance technique.                                                                     |
+| `application/`    | `use_case.rs` (traits = contrat entrant), `repository.rs` / `caller.rs` / `token_validator.rs` (traits = ports sortants), `service/` (implémentations). |
+| `infrastructure/` | `adapter_in/` (contrôleurs HTTP + DTO), `adapter_out/` (`repository/` SQLx, `caller/` HTTP, `clerk_token_validator_adapter.rs` JWT Clerk).              |
 
 Points structurants :
 

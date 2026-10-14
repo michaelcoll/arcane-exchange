@@ -1,4 +1,3 @@
-pub mod auth_service;
 pub mod autocomplete_user_service;
 pub mod card_collection_service;
 pub mod card_image_enricher;

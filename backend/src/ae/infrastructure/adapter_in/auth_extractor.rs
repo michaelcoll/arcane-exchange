@@ -29,7 +29,7 @@ impl FromRequestParts<AppState> for AuthenticatedUser {
                 .ok_or_else(|| unauthorized("Invalid Authorization header format".to_string()))?;
 
             let user = state
-                .auth_service
+                .token_validator
                 .validate_token(token)
                 .await
                 .map_err(|e| unauthorized(e.to_string()))?;
@@ -47,22 +47,22 @@ fn unauthorized(message: String) -> AppError {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::application::service::auth_service::{AuthService, MockAuthService};
+    use crate::application::token_validator::{MockTokenValidator, TokenValidator};
     use crate::domain::user::UserId;
     use axum::http::{Request, StatusCode};
     use axum::response::IntoResponse;
     use std::sync::Arc;
 
-    fn create_test_app_state_with_auth(auth_service: Arc<dyn AuthService>) -> AppState {
+    fn create_test_app_state_with_auth(token_validator: Arc<dyn TokenValidator>) -> AppState {
         AppState {
-            auth_service,
+            token_validator,
             ..AppState::for_testing()
         }
     }
 
     #[tokio::test]
     async fn missing_authorization_header_returns_unauthorized() {
-        let mock_auth = MockAuthService::new();
+        let mock_auth = MockTokenValidator::new();
 
         let state = create_test_app_state_with_auth(Arc::new(mock_auth));
         let request = Request::builder().body(()).unwrap();
@@ -77,7 +77,7 @@ mod tests {
 
     #[tokio::test]
     async fn invalid_authorization_format_returns_unauthorized() {
-        let mock_auth = MockAuthService::new();
+        let mock_auth = MockTokenValidator::new();
 
         let state = create_test_app_state_with_auth(Arc::new(mock_auth));
         let request = Request::builder()
@@ -100,7 +100,7 @@ mod tests {
     async fn valid_bearer_token_returns_user() {
         let expected_user = User::new("user_clerk123".to_string(), None, None, None);
 
-        let mut mock_auth = MockAuthService::new();
+        let mut mock_auth = MockTokenValidator::new();
         mock_auth
             .expect_validate_token()
             .with(mockall::predicate::eq("valid-token"))
