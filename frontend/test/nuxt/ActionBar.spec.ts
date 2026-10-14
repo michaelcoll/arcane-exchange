@@ -55,4 +55,46 @@ describe('ActionBar', () => {
       expect(wrapper.get('button').attributes('disabled')).toBeDefined();
     },
   );
+
+  describe('desktop layout', () => {
+    const abandon = 'button[aria-label="Abandonner l\'échange"]';
+    const desktop = { ...baseProps, layout: 'inline' as const, abandonable: true };
+
+    it('offers to abandon the Trade with a × that emits "abandon"', async () => {
+      const wrapper = mount(ActionBar, { props: desktop });
+      await wrapper.get(abandon).trigger('click');
+      expect(wrapper.emitted('abandon')).toHaveLength(1);
+      expect(wrapper.emitted('accept')).toBeUndefined();
+    });
+
+    it('keeps the primary action the view chose', async () => {
+      const wrapper = mount(ActionBar, { props: desktop });
+      const accept = wrapper.findAll('button').find((b) => b.text() === 'Accepter et payer 21 €');
+      await accept?.trigger('click');
+      expect(wrapper.emitted('accept')).toHaveLength(1);
+    });
+
+    it('has no × once the Trade can no longer be abandoned', () => {
+      const wrapper = mount(ActionBar, { props: { ...desktop, abandonable: false } });
+      expect(wrapper.find(abandon).exists()).toBe(false);
+    });
+
+    it('disables every button while busy', () => {
+      const wrapper = mount(ActionBar, { props: { ...desktop, busy: true } });
+      const buttons = wrapper.findAll('button');
+      expect(buttons).toHaveLength(2);
+      for (const button of buttons) expect(button.attributes('disabled')).toBeDefined();
+    });
+
+    it('is not stuck to the bottom of the screen', () => {
+      const wrapper = mount(ActionBar, { props: desktop });
+      expect(wrapper.get('[data-part="bar"]').classes()).not.toContain('fixed');
+    });
+  });
+
+  it('has no × on mobile, even when the Trade can be abandoned', () => {
+    const wrapper = mount(ActionBar, { props: { ...baseProps, abandonable: true } });
+    expect(wrapper.find('button[aria-label="Abandonner l\'échange"]').exists()).toBe(false);
+    expect(wrapper.get('[data-part="bar"]').classes()).toContain('fixed');
+  });
 });

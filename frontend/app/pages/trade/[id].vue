@@ -259,13 +259,24 @@ const addGet = () =>
           />
         </div>
 
-        <TradeActionPanel
-          :view="view"
+        <TradeRatingSection
+          v-if="view.rating.visible"
+          :partner="view.partnerUsername"
+          :rating="view.rating"
+          :busy="view.busy"
+          @rate="rate"
+          @skip="skipRating"
+        />
+
+        <TradeActionBar
+          layout="inline"
+          :action="view.primaryAction"
+          :partner="view.partnerUsername"
+          :busy="view.busy"
+          :abandonable="view.abandonable"
           @accept="requestAccept"
           @confirm="confirmExchange"
           @abandon="requestAbandon"
-          @rate="rate"
-          @skip="skipRating"
         />
       </div>
 
