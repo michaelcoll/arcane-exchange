@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import type { TradeCard } from '~/bindings/TradeCard';
+
 // Écran d'engagement : sur mobile, la barre d'action remplace la nav du bas (lu par app.vue).
 definePageMeta({ middleware: 'auth', hideBottomNav: true });
 
@@ -52,9 +54,12 @@ const {
   reportRefusal: (message) => showError('Action refusée', message),
 });
 
-/* Mobile : menu « … » de la barre de page et bottom sheet des étapes. */
+/* The page bar's "…" menu (mobile) and the steps sheet (both regions). */
 const menuOpen = ref(false);
 const stepsOpen = ref(false);
+
+/* The card whose detail modal is open, from either side and either region. */
+const detail = ref<TradeCard | null>(null);
 
 const openSteps = () => {
   menuOpen.value = false;
@@ -67,10 +72,6 @@ const askAbandon = () => {
 
 const addGet = () =>
   navigateTo(searchRoute({ mode: 'player', player: view.value?.partnerUsername ?? '' }));
-
-const panel =
-  'rounded-2xl border border-slate-200 bg-white/60 shadow-lg backdrop-blur-md dark:border-white/10 dark:bg-zinc-900/60';
-const hint = 'text-xs text-slate-400 dark:text-slate-500';
 </script>
 
 <template>
@@ -100,7 +101,7 @@ const hint = 'text-xs text-slate-400 dark:text-slate-500';
 
     <template v-else-if="view">
       <!-- MOBILE (< md) : design de l'écran de trade iOS -->
-      <div class="flex flex-col gap-5 md:hidden">
+      <div data-part="mobile" class="flex flex-col gap-5 md:hidden">
         <div class="relative grid [grid-template-columns:2.25rem_1fr_2.25rem] items-center gap-2">
           <button
             class="grid h-9 w-9 place-items-center rounded-lg text-[var(--ink-2)] transition-colors duration-150 hover:bg-slate-400/10 hover:text-[var(--ink)]"
@@ -167,23 +168,10 @@ const hint = 'text-xs text-slate-400 dark:text-slate-500';
             :add-label="view.editable ? 'Chercher chez lui' : undefined"
             @remove="removeReceivedCard"
             @add="addGet"
+            @open="detail = $event"
           />
 
-          <div class="flex items-center gap-2.5 px-0.5">
-            <span class="h-px flex-1 bg-[var(--line-2)]" />
-            <span
-              :class="[
-                'inline-flex items-center gap-1.5 rounded-full border px-[13px] py-1.5 font-mono text-[11.5px] font-semibold whitespace-nowrap',
-                view.reserved
-                  ? 'border-secondary/40 bg-secondary/15 text-secondary-ink'
-                  : 'border-[var(--line-2)] bg-slate-400/10 text-[var(--ink-2)]',
-              ]"
-            >
-              <Icon :name="view.reserved ? 'lucide:lock' : 'lucide:arrow-left-right'" size="12" />
-              {{ view.reserved ? 'échange réservé' : 'échange' }}
-            </span>
-            <span class="h-px flex-1 bg-[var(--line-2)]" />
-          </div>
+          <TradeSideSeparator :reserved="view.reserved" />
 
           <TradeCardRail
             :owner="null"
@@ -192,6 +180,7 @@ const hint = 'text-xs text-slate-400 dark:text-slate-500';
             :reserved="view.reserved"
             :removable="false"
             :empty-message="`@${view.partnerUsername} n'a demandé aucune de tes cartes.`"
+            @open="detail = $event"
           />
         </div>
 
@@ -211,95 +200,66 @@ const hint = 'text-xs text-slate-400 dark:text-slate-500';
           @accept="requestAccept"
           @confirm="confirmExchange"
         />
-
-        <TradeStepsSheet
-          v-if="stepsOpen"
-          :steps="view.steps"
-          :partner="view.partnerUsername"
-          @close="stepsOpen = false"
-        />
       </div>
 
       <!-- DESKTOP (≥ md) -->
-      <div class="max-md:hidden">
-        <div class="mb-4 flex flex-wrap items-center justify-between gap-3.5">
-          <div class="flex items-center gap-3">
+      <div data-part="desktop" class="flex flex-col gap-4 max-md:hidden">
+        <div class="flex flex-wrap items-center justify-between gap-3.5">
+          <div class="flex min-w-0 items-center gap-3">
             <button
-              class="grid h-9 w-9 place-items-center rounded-lg border border-slate-200 bg-slate-100 text-slate-600 transition-all duration-150 hover:border-slate-300 hover:bg-slate-50 hover:text-slate-800 dark:border-white/10 dark:bg-white/5 dark:text-slate-300 dark:hover:border-white/15 dark:hover:bg-zinc-800 dark:hover:text-slate-100"
+              class="grid h-9 w-9 flex-none place-items-center rounded-lg border border-slate-200 bg-slate-100 text-slate-600 transition-all duration-150 hover:border-slate-300 hover:bg-slate-50 hover:text-slate-800 dark:border-white/10 dark:bg-white/5 dark:text-slate-300 dark:hover:border-white/15 dark:hover:bg-zinc-800 dark:hover:text-slate-100"
               aria-label="Retour"
               @click="$router.back()"
             >
               <Icon name="lucide:chevron-left" size="16" />
             </button>
-            <div class="flex items-center gap-2.5">
-              <PlayerAvatar :username="view.partnerUsername" />
-              <h2 class="font-display text-base font-semibold tracking-tight">
-                Échange avec
-                <span class="text-secondary">{{ view.partnerUsername }}</span>
-              </h2>
-            </div>
+            <PlayerAvatar :username="view.partnerUsername" />
+            <h2 class="font-display text-secondary truncate text-base font-semibold tracking-tight">
+              @{{ view.partnerUsername }}
+            </h2>
           </div>
-          <TradeStatusPill :status="view.status" />
+          <TradeStatusDots
+            :presentation="view.presentation"
+            :steps="view.steps"
+            @help="stepsOpen = true"
+          />
         </div>
 
-        <div :class="[panel, 'mb-4 px-4 pt-5 pb-4']">
-          <div
-            v-if="view.steps.currentIndex === null"
-            class="flex items-center justify-center gap-2.5 text-red-600 dark:text-red-400"
-          >
-            <Icon name="lucide:x" size="18" />
-            <span class="font-semibold">Transaction abandonnée — cartes libérées</span>
-          </div>
-          <TradeLifecycle v-else :steps="view.steps" />
-        </div>
-
-        <TradeStatusBanner class="mb-4" :banner="view.banner" />
-
+        <!-- The middle column is as wide as the "échange réservé" separator, so the sides keep
+             the same width whether the cards are reserved or not. -->
         <div
-          class="grid [grid-template-columns:1fr_auto_1fr] items-stretch gap-4 max-md:[grid-template-columns:1fr]"
+          class="grid [grid-template-columns:minmax(0,1fr)_160px_minmax(0,1fr)] items-stretch gap-5"
         >
-          <div class="flex flex-col gap-2">
-            <TradeColumn
-              label="Je donne"
-              :side="view.give"
-              tone="neutral"
-              :reserved="view.reserved"
-              :removable="false"
-            />
-            <p :class="hint">
-              Cartes demandées par <span class="text-secondary">{{ view.partnerUsername }}</span> ·
-              non retirables depuis cet écran.
-            </p>
-          </div>
-
-          <div class="flex min-w-[168px] flex-col items-center justify-center gap-3.5">
-            <TradeBalance
-              :balance="view.balance"
-              :give-total="view.give.total"
-              :get-total="view.receive.total"
-            />
-            <span
-              class="text-2xs inline-flex items-center gap-1.5 font-mono tracking-wide text-slate-400 dark:text-slate-500"
-            >
-              <Icon name="lucide:info" size="13" /> Réglé hors plateforme
-            </span>
-          </div>
-
-          <TradeColumn
-            label="Je reçois"
+          <TradeCardRail
+            layout="grid"
+            :owner="view.partnerUsername"
+            direction="receive"
             :side="view.receive"
-            tone="secondary"
             :reserved="view.reserved"
             :removable="view.editable"
             :busy="view.busy"
-            :add-label="view.editable ? 'Chercher dans sa collection' : undefined"
+            empty-message="Tu n'as demandé aucune carte pour l'instant."
+            :add-label="view.editable ? 'Chercher chez lui' : undefined"
             @remove="removeReceivedCard"
             @add="addGet"
+            @open="detail = $event"
+          />
+
+          <TradeSideSeparator orientation="vertical" :reserved="view.reserved" />
+
+          <TradeCardRail
+            layout="grid"
+            :owner="null"
+            direction="give"
+            :side="view.give"
+            :reserved="view.reserved"
+            :removable="false"
+            :empty-message="`@${view.partnerUsername} n'a demandé aucune de tes cartes.`"
+            @open="detail = $event"
           />
         </div>
 
         <TradeActionPanel
-          class="mt-[18px]"
           :view="view"
           @accept="requestAccept"
           @confirm="confirmExchange"
@@ -308,6 +268,16 @@ const hint = 'text-xs text-slate-400 dark:text-slate-500';
           @skip="skipRating"
         />
       </div>
+
+      <!-- Shared by both regions: opened by the step dots or by the mobile "…" menu. -->
+      <TradeStepsSheet
+        v-if="stepsOpen"
+        :steps="view.steps"
+        :partner="view.partnerUsername"
+        @close="stepsOpen = false"
+      />
+
+      <CardDetailModal v-if="detail" :card="detail" @close="detail = null" />
 
       <TradeConfirmModal
         v-if="view.confirmation"

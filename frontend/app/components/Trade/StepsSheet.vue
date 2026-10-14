@@ -35,14 +35,16 @@ onUnmounted(() => {
 
 <template>
   <div
-    class="fixed inset-0 z-[80] animate-[fade_0.2s_ease] bg-black/60 backdrop-blur-sm"
+    class="fixed inset-0 z-[80] animate-[fade_0.2s_ease] bg-black/60 backdrop-blur-sm md:grid md:place-items-center md:p-5"
     @click="emit('close')"
   >
+    <!-- Bottom sheet on mobile; on desktop, a centered window of bounded width, like
+         `TradeConfirmModal`. -->
     <div
       role="dialog"
       aria-modal="true"
       aria-labelledby="trade-steps-title"
-      class="fixed right-0 bottom-0 left-0 z-[81] max-h-[84vh] animate-[slideup_0.3s_cubic-bezier(0.3,1,0.4,1)] overflow-auto rounded-t-3xl border-t border-slate-300 bg-white px-5 pt-5 pb-[calc(1.25rem+env(safe-area-inset-bottom))] shadow-2xl dark:border-white/15 dark:bg-zinc-900"
+      class="fixed right-0 bottom-0 left-0 z-[81] max-h-[84vh] animate-[slideup_0.3s_cubic-bezier(0.3,1,0.4,1)] overflow-auto rounded-t-3xl border-t border-slate-300 bg-white px-5 pt-5 pb-[calc(1.25rem+env(safe-area-inset-bottom))] shadow-2xl md:static md:w-full md:max-w-[520px] md:animate-[pop_0.26s_cubic-bezier(0.3,1.2,0.4,1)] md:rounded-2xl md:border md:pb-5 dark:border-white/15 dark:bg-zinc-900"
       @click.stop
     >
       <div class="mb-3 flex items-center justify-between gap-3">

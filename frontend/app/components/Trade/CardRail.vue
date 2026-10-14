@@ -22,11 +22,14 @@ const props = withDefaults(
     emptyMessage: string;
     /** Emplacement pointillé de fin de rail, affiché seulement si fourni. */
     addLabel?: string;
+    /** `rail`: the tiles scroll on one line (mobile); `grid`: they wrap onto new lines
+     * (desktop). Only the layout changes. */
+    layout?: 'rail' | 'grid';
   }>(),
-  { addLabel: undefined },
+  { addLabel: undefined, layout: 'rail' },
 );
 
-const emit = defineEmits<{ remove: [card: TradeCard]; add: [] }>();
+const emit = defineEmits<{ remove: [card: TradeCard]; add: []; open: [card: TradeCard] }>();
 
 const valueClass = computed(() =>
   props.direction === 'receive' ? 'text-secondary' : 'text-[var(--ink)]',
@@ -35,15 +38,21 @@ const valueClass = computed(() =>
 /* Une carte verrouillée est atténuée, pas masquée : c'est toujours la carte échangée. */
 const dimmed = computed(() => props.reserved && !props.removable);
 
-const placeholder =
-  'flex h-[162px] w-[116px] flex-none flex-col items-center justify-center gap-1.5 rounded-[10px] border-[1.5px] border-dashed border-[var(--line-2)] px-1.5 text-[var(--ink-3)]';
+/* In the grid, the tiles take the collection's default ("md") size: they fill columns of at least
+ * 185px, and the placeholders keep the card ratio. */
+const tileSize = computed(() => (props.layout === 'grid' ? 'w-full' : 'w-[116px]'));
+const placeholder = computed(() => [
+  'flex flex-none flex-col items-center justify-center gap-1.5 rounded-[10px] border-[1.5px] border-dashed border-[var(--line-2)] px-1.5 text-[var(--ink-3)]',
+  props.layout === 'grid' ? 'aspect-[5/7] w-full' : 'h-[162px] w-[116px]',
+]);
 const badge =
   'absolute -top-[7px] -left-[7px] z-[6] grid h-6 w-6 place-items-center rounded-full ring-2 ring-[var(--bg)]';
 </script>
 
 <template>
   <div class="flex flex-col gap-2">
-    <div data-part="header" class="flex items-center gap-[9px] px-1">
+    <!-- As tall as the partner's avatar, so both sides' tiles start on the same line. -->
+    <div data-part="header" class="flex min-h-[26px] items-center gap-[9px] px-1">
       <PlayerAvatar v-if="owner" :username="owner" class="!h-[26px] !w-[26px]" />
       <span class="min-w-0 truncate font-mono text-[10.5px] tracking-[0.13em] text-[var(--ink-3)]">
         <span :class="direction === 'receive' ? 'text-secondary' : ''">{{
@@ -61,13 +70,20 @@ const badge =
 
     <!-- Le padding haut/gauche laisse la place aux badges qui débordent du coin des tuiles. -->
     <div
-      class="-ml-2 flex items-start gap-[9px] overflow-x-auto pt-2 pb-[3px] pl-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+      data-part="tiles"
+      :data-layout="layout"
+      :class="[
+        '-ml-2 pt-2 pb-[3px] pl-2',
+        layout === 'grid'
+          ? 'grid [grid-template-columns:repeat(auto-fill,minmax(185px,1fr))] items-start gap-4'
+          : 'flex items-start gap-[9px] overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden',
+      ]"
     >
       <div
         v-for="c in side.cards"
         :key="tradeCardKey(c)"
         data-part="tile"
-        class="relative flex w-[116px] flex-none flex-col gap-[5px]"
+        :class="['relative flex flex-none flex-col gap-[5px]', tileSize]"
       >
         <div data-part="face" :class="['relative', dimmed ? 'opacity-[0.82]' : '']">
           <MtgCard
@@ -75,7 +91,9 @@ const badge =
             :image-url="c.image_url"
             :foil="c.foil"
             :qty="c.quantity > 1 ? c.quantity : undefined"
+            clickable
             class="shadow-[0_4px_8px_rgba(0,0,0,0.45)]"
+            @click="emit('open', c)"
           />
         </div>
         <button

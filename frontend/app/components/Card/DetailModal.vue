@@ -7,8 +7,16 @@ import { RARITY_COLOR_CLASS } from '~/utils/rarity';
 
 const NEUTRAL_ICON_COLOR_CLASS = 'text-[var(--ink-2)]';
 
+/** A collection or search card, or a card of a Trade, which has no rarity and no collection
+ * entry: the set icon then stays neutral and the "in my collection" block is hidden. */
+type DetailCard = Omit<
+  CollectionCard,
+  'rarity_code' | 'collection_entry' | 'owner_count' | 'reserved'
+> &
+  Partial<Pick<CollectionCard, 'rarity_code' | 'collection_entry'>>;
+
 const props = defineProps<{
-  card: CollectionCard;
+  card: DetailCard;
 }>();
 
 const { getSet } = useSetsService();
