@@ -13,16 +13,10 @@ use crate::application::service::cardmarket_id_enricher::CardMarketIdEnricher;
 use crate::application::service::collection_price_history_service::CollectionPriceHistoryService;
 use crate::application::service::collection_service::CollectionService;
 use crate::application::service::collection_stats_service::CollectionStatsService;
-use crate::application::service::collection_visibility_service::{
-    GetCollectionVisibilityService, SetCollectionVisibilityService,
-};
 use crate::application::service::enrichment_queue::EnrichmentQueue;
 use crate::application::service::get_user_profile_service::GetUserProfileService;
 use crate::application::service::import_card_service::{ImportCardService, RunCardImportService};
 use crate::application::service::import_price_service::ImportPriceService;
-use crate::application::service::rarity_trade_filter_service::{
-    GetRarityTradeFiltersService, SetRarityTradeFilterService,
-};
 use crate::application::service::register_user_service::RegisterUserService;
 use crate::application::service::search::search_cards::SearchCardsService;
 use crate::application::service::search::search_sets::SearchSetsService;
@@ -30,14 +24,18 @@ use crate::application::service::sets::get::GetSetService;
 use crate::application::service::sets::list::ListSetsService;
 use crate::application::service::showcase_service::ShowcaseService;
 use crate::application::service::stats_service::StatsService;
-use crate::application::service::trade_binder_service::{
-    AddTradeBinderService, GetTradeBindersService, RemoveTradeBinderService,
-};
 use crate::application::service::trade_service::{
     AbandonTradeService, AcceptTradeService, AddTradeCardService, ConfirmTradeService,
     CreateTradeService, GetTradeService, ListTradesService, RateTradeService,
     RemoveTradeCardService,
 };
+use crate::application::service::trade_settings::add_binder::AddTradeBinderService;
+use crate::application::service::trade_settings::get_binders::GetTradeBindersService;
+use crate::application::service::trade_settings::get_rarity_filters::GetRarityTradeFiltersService;
+use crate::application::service::trade_settings::get_visibility::GetCollectionVisibilityService;
+use crate::application::service::trade_settings::remove_binder::RemoveTradeBinderService;
+use crate::application::service::trade_settings::set_rarity_filter::SetRarityTradeFilterService;
+use crate::application::service::trade_settings::set_visibility::SetCollectionVisibilityService;
 use crate::application::token_validator::TokenValidator;
 use crate::application::use_case::{
     AbandonTradeUseCase, AcceptTradeUseCase, AddTradeBinderUseCase, AddTradeCardUseCase,
