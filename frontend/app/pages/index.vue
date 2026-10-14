@@ -51,8 +51,12 @@ const activeTradesParams = {
   page_size: 3,
   status: ['PENDING', 'ONE_ACCEPTED', 'FULLY_ACCEPTED'] as TradeStatusParam[],
 };
-const { data: activeTradesData, pending: activeTradesPending } =
-  await listTrades(activeTradesParams);
+// Not the key of the Trade list: the tile asks for something else (3 active Trades).
+const { data: activeTradesData, pending: activeTradesPending } = await useAsyncData(
+  'home-active-trades',
+  () => listTrades(activeTradesParams),
+  { lazy: true },
+);
 const activeTrades = computed(() => activeTradesData.value?.items ?? []);
 const activeTradesTotal = computed(
   () => activeTradesData.value?.total ?? activeTrades.value.length,
