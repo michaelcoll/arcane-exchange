@@ -124,7 +124,7 @@ Tout tourne dans le même processus que l'API, sans ordonnanceur externe :
   l'état de l'import. Au démarrage, les imports restés actifs d'un process précédent sont marqués en
   échec.
 - **Enrichissement des cartes** (identifiants Cardmarket via Scryfall, images de cartes) : une
-  `EnrichmentQueue` générique par source (`application/service/enrichment_queue.rs`) possède le
+  `EnrichmentQueue` générique par source (`application/enrichment_queue.rs`) possède le
   canal, l'ensemble des cartes en file (une carte n'y est jamais deux fois) et le rafraîchissement
   des vues quand la file se vide. Chaque source n'est qu'un `Enricher` (cartes en attente +
   résolution d'une carte) ; une nouvelle source coûte un `Enricher`.

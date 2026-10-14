@@ -1,13 +1,9 @@
 pub mod autocomplete_user_service;
-pub mod card_collection_service;
-pub mod card_image_enricher;
 pub mod card_offer_service;
 pub mod card_price_history_service;
-pub mod cardmarket_id_enricher;
 pub mod collection;
-pub mod enrichment_queue;
 pub mod get_user_profile_service;
-pub mod import_price_service;
+pub mod maintenance;
 pub mod register_user_service;
 pub mod search;
 pub mod sets;
