@@ -6,8 +6,6 @@ import type { PriceHistoryEntry } from '~/bindings/PriceHistoryEntry';
 export const useCardsService = () => {
   const { apiCall } = useApi();
 
-  const getCardInfo = () => apiCall('/card/card-info', { method: 'POST' });
-
   // `foil` is required: the catalog doesn't know a card's finish, so the caller must always
   // say which price series it wants.
   const getCardPriceHistory = (scryfallId: string, params: CardPriceHistoryParams) =>
@@ -17,7 +15,6 @@ export const useCardsService = () => {
     apiCall<PaginatedCardOffers>('/card/offers', { query: params });
 
   return {
-    getCardInfo,
     getCardPriceHistory,
     getCardOffers,
   };
