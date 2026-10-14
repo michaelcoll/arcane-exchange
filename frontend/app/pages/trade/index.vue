@@ -7,7 +7,9 @@ const { listTrades } = useTradeService();
 
 const params = ref({ page: 0, page_size: 20 });
 
-const { data, pending, refresh } = await listTrades(params);
+const { data, pending, refresh } = await useAsyncData('trades', () => listTrades(params.value), {
+  lazy: true,
+});
 
 const items = ref<TradeSummary[]>([]);
 

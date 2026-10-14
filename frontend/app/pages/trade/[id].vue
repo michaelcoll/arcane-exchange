@@ -9,7 +9,12 @@ const { getTrade, removeCard, acceptTrade, abandonTrade, confirmTrade, rateTrade
   useTradeService();
 const { showError } = useToast();
 
-const { data: trade, pending, error, refresh } = await getTrade(tradeId);
+const {
+  data: trade,
+  pending,
+  error,
+  refresh,
+} = await useAsyncData(`trade-${tradeId.value}`, () => getTrade(tradeId.value), { lazy: true });
 
 const errorTitle = computed(() => {
   const { status } = readApiError(error.value);

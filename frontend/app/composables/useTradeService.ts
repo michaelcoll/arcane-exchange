@@ -9,17 +9,10 @@ import type { TradeDetail } from '~/bindings/TradeDetail';
 export const useTradeService = () => {
   const { apiCall } = useApi();
 
-  const getTrade = (tradeId: MaybeRefOrGetter<string>) =>
-    useAsyncData(
-      `trade-${toValue(tradeId)}`,
-      () => apiCall<TradeDetail>(`/trades/${toValue(tradeId)}`),
-      { lazy: true },
-    );
+  const getTrade = (tradeId: string) => apiCall<TradeDetail>(`/trades/${tradeId}`);
 
-  const listTrades = (params?: MaybeRefOrGetter<Partial<ListTradesParams>>) =>
-    useAsyncData('trades', () => apiCall<PaginatedTrades>('/trades', { query: toValue(params) }), {
-      lazy: true,
-    });
+  const listTrades = (params?: Partial<ListTradesParams>) =>
+    apiCall<PaginatedTrades>('/trades', { query: params });
 
   const createTrade = (respondentUsername: string) =>
     apiCall<CreateTradeResponse>('/trades', {
