@@ -454,7 +454,7 @@ impl CardPricesViewRepository for CardPricesViewRepositoryAdapter {
 mod tests {
     use super::*;
     use crate::application::service::card_offer_service::CARD_OFFERS_MAX_OFFSET;
-    use crate::application::service::collection_service::COLLECTION_MAX_OFFSET;
+    use crate::application::service::collection::get::COLLECTION_MAX_OFFSET;
     use crate::application::service::search::search_cards::SEARCH_MAX_OFFSET;
     use crate::domain::card_image::{CardImage, CardImageSource};
     use crate::domain::collection::{CollectionSortField, SortDirection};
