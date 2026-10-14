@@ -52,6 +52,11 @@ Token names and values: [design-system.instructions.md](.agents/design-system.in
 - **API errors**: read a caught API error with `readApiError` (`app/utils/api-error.ts`) and show its `message`, never
   the raw error response (`e.data.error`, `e.statusCode`, `e.response.status`) nor an `instanceof` test: the API's
   message is technical and in English (ADR 0018), and `useAsyncData` rewraps the error, keeping only its status and body.
+- **Resource services**: make each function of a `use<Resource>Service` composable return a typed promise
+  (`Promise<T>`, `T` from `app/bindings/`) through `useApi`, and let its caller — page or component — wrap it in
+  `useAsyncData` under a key it picks; never `useAsyncData`, a cache key or a `MaybeRefOrGetter` in a service: the
+  caller alone knows its key and its reactivity. Put non-trivial reactive behaviour in a dedicated composable, as
+  `app/composables/useSearchSets.ts` does.
 - **Test suffix**: name a test file `*.spec.ts`, never `*.test.ts`: one suffix for the whole suite.
 - **Test location**: put a test that runs in plain Node beside the file it tests, a test that needs the Nuxt runtime
   directly in `test/nuxt/`, and an end-to-end test directly in `test/e2e/`: each Vitest project (`unit`, `nuxt`,
