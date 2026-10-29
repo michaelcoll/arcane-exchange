@@ -1,14 +1,19 @@
+import APIClient
 import SwiftUI
 import UniformTypeIdentifiers
 
 /// Sheet for importing a ManaBox collection export: pick a `.csv`, follow the async import's
 /// progress, then show the compte-rendu (cards imported, line errors).
 struct ImportView: View {
-    @State private var model = ImportViewModel()
+    @State private var model: ImportViewModel
     @State private var isPickingFile = false
     @State private var pickError: String?
 
     @Environment(\.dismiss) private var dismiss
+
+    init(api: any APIProtocol) {
+        _model = State(initialValue: ImportViewModel(api: api))
+    }
 
     var body: some View {
         NavigationStack {
@@ -54,7 +59,7 @@ struct ImportView: View {
                 .buttonStyle(.borderedProminent)
 
             if let error = model.loadError {
-                Text(error.message)
+                Text(error)
                     .font(.footnote)
                     .foregroundStyle(.red)
                     .multilineTextAlignment(.center)
@@ -116,7 +121,7 @@ struct ImportView: View {
 
                 if !status.errors.isEmpty {
                     List(status.errors, id: \.line) { lineError in
-                        Text(ImportErrorMessage.lineError(
+                        Text(APIErrorMessages.importLineError(
                             line: lineError.line,
                             field: lineError.field,
                             value: lineError.value
@@ -141,7 +146,7 @@ struct ImportView: View {
                 .font(.system(size: 40))
                 .foregroundStyle(.red)
 
-            Text(model.failureMessage ?? ImportErrorMessage.message(for: nil))
+            Text(model.failureMessage ?? APIErrorMessages.generic)
                 .multilineTextAlignment(.center)
                 .foregroundStyle(.secondary)
 
@@ -178,5 +183,5 @@ struct ImportView: View {
 }
 
 #Preview {
-    ImportView()
+    ImportView(api: APIClientFactory.preview)
 }

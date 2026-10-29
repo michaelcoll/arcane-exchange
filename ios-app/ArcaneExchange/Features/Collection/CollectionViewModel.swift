@@ -1,33 +1,11 @@
 import APIClient
 import Foundation
-import OpenAPIRuntime
 
 /// Backs the Collection tab: one page-by-page `GET /collection` feed, plus the set list from
 /// `GET /collection/stats` that the filter sheet needs.
 @MainActor
 @Observable
 final class CollectionViewModel {
-    /// Everything the screen needs to say about a failed load, in the user's terms.
-    enum LoadError: Equatable {
-        case unauthorized
-        case network
-        case http(Int)
-        case unexpected
-
-        var message: String {
-            switch self {
-            case .unauthorized:
-                "Session expirée. Reconnecte-toi pour accéder à ta collection."
-            case .network:
-                "Serveur injoignable. Vérifie ta connexion, et l'URL de l'API dans Réglages ▸ Arcane Exchange."
-            case let .http(status):
-                "Le serveur a répondu \(status)."
-            case .unexpected:
-                "Réponse inattendue du serveur."
-            }
-        }
-    }
-
     /// Matches the mockup's "pagination API de 20 cartes, chargées au défilement".
     private static let pageSize: Int32 = 20
 
@@ -41,7 +19,8 @@ final class CollectionViewModel {
     private(set) var sets: [SetInfo] = []
     private(set) var isLoading = false
     private(set) var isLoadingMore = false
-    private(set) var loadError: LoadError?
+    /// French message of the last failed load, ready to show.
+    private(set) var loadError: String?
 
     /// Index of the page the next `loadMore` should ask for. Doubles as a generation counter:
     /// `reload` resets it to 0, which lets an in-flight `loadMore` notice its page is stale.
@@ -51,13 +30,15 @@ final class CollectionViewModel {
     /// the sets: the second caller joins the first request instead of racing it.
     private var setsLoad: Task<Void, Never>?
 
+    private let api: any APIProtocol
     private let store: CollectionFiltersStore
 
     var hasMore: Bool {
         cards.count < total
     }
 
-    init(defaults: UserDefaults = .standard) {
+    init(api: any APIProtocol, defaults: UserDefaults = .standard) {
+        self.api = api
         store = CollectionFiltersStore(defaults: defaults)
         filters = store.load()
     }
@@ -102,7 +83,7 @@ final class CollectionViewModel {
         } catch {
             cards = []
             total = 0
-            loadError = Self.loadError(from: error)
+            loadError = APIError.read(error).message
         }
         isLoading = false
     }
@@ -127,7 +108,7 @@ final class CollectionViewModel {
             nextPage = page + 1
             ArtworkPipeline.prefetch(CardArtwork.urls(for: response.items))
         } catch {
-            loadError = Self.loadError(from: error)
+            loadError = APIError.read(error).message
         }
     }
 
@@ -151,10 +132,7 @@ final class CollectionViewModel {
     /// Only a list that actually came back prunes the set filter: a failed request says nothing
     /// about what the collection holds.
     private func fetchSets() async {
-        guard let output = try? await APIClientProvider.shared.get_collection_stats(),
-              case let .ok(response) = output,
-              let stats = try? response.body.json
-        else {
+        guard let stats = try? await api.get_collection_stats().ok.body.json else {
             return
         }
         sets = stats.sets.sorted { $0.name.localizedStandardCompare($1.name) == .orderedAscending }
@@ -171,27 +149,6 @@ final class CollectionViewModel {
             rarity: filters.rarities.isEmpty ? nil : RarityCode.allCases.filter(filters.rarities.contains),
             sets: filters.sets.isEmpty ? nil : filters.sets.sorted().joined(separator: ",")
         )
-        switch try await APIClientProvider.shared.get_collection(query: query) {
-        case let .ok(response):
-            return try response.body.json
-        case .unauthorized:
-            throw APIClientError.unauthorized
-        case .badRequest:
-            throw APIClientError.undocumented(statusCode: 400)
-        case let .undocumented(statusCode, _):
-            throw APIClientError.undocumented(statusCode: statusCode)
-        }
-    }
-
-    private static func loadError(from error: Error) -> LoadError {
-        if let apiError = error as? APIClientError {
-            switch apiError {
-            case .unauthorized: return .unauthorized
-            case let .undocumented(statusCode): return .http(statusCode)
-            }
-        }
-        // The transport wraps URLSession failures — a wrong base URL or no network lands here.
-        let underlying = (error as? ClientError)?.underlyingError ?? error
-        return underlying is URLError ? .network : .unexpected
+        return try await api.get_collection(query: query).ok.body.json
     }
 }

@@ -100,7 +100,7 @@ struct CollectionFiltersTests {
         let saved = CollectionFilters(rarities: [.U], sortBy: .added_at)
         CollectionFiltersStore(defaults: defaults).save(saved)
 
-        let model = CollectionViewModel(defaults: defaults)
+        let model = CollectionViewModel(api: FakeAPI(), defaults: defaults)
         #expect(model.filters == saved)
 
         model.filters.sortDir = .asc
