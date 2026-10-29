@@ -6,6 +6,7 @@ struct CollectionView: View {
     @State private var isShowingImport = false
     @State private var path = NavigationPath()
     @Namespace private var cardTransition
+    @Environment(\.api) private var api
 
     var body: some View {
         NavigationStack(path: $path) {
@@ -27,11 +28,11 @@ struct CollectionView: View {
                     Task { await model.reload() }
                 }
                 .navigationDestination(for: CardDetailRoute.self) { route in
-                    CardDetailView(card: route.card)
+                    CardDetailView(card: route.card, api: api)
                         .navigationTransition(.zoom(sourceID: route.card.scryfall_id, in: cardTransition))
                 }
                 .navigationDestination(for: CardOffersRoute.self) { route in
-                    CardOffersView(card: route.card)
+                    CardOffersView(card: route.card, api: api)
                 }
                 .tradeDestinations()
                 .sheet(isPresented: $isShowingFilters) {

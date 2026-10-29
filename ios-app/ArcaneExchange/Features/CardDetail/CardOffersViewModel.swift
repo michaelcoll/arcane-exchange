@@ -25,14 +25,17 @@ final class CardOffersViewModel {
     private(set) var setName: String
     private(set) var isSetKnown = false
 
-    init(card: CollectionCard) {
+    private let api: any APIProtocol
+
+    init(card: CollectionCard, api: any APIProtocol) {
         self.card = card
+        self.api = api
         setName = card.set_code.uppercased()
     }
 
     /// Resolves the human-readable set name for the card row. A failure keeps the code.
     func loadSetName() async {
-        if let name = await SetName.resolve(card.set_code) {
+        if let name = await SetName.resolve(card.set_code, api: api) {
             setName = name
             isSetKnown = true
         }
@@ -41,7 +44,7 @@ final class CardOffersViewModel {
     func load() async {
         state = .loading
         do {
-            let output = try await APIClientProvider.shared.get_card_offers(
+            let page = try await api.get_card_offers(
                 query: .init(
                     set_code: card.set_code,
                     collector_number: card.collector_number,
@@ -51,18 +54,11 @@ final class CardOffersViewModel {
                     page: 0,
                     page_size: 20
                 )
-            )
-            switch output {
-            case let .ok(response):
-                state = try .loaded(response.body.json.items)
-            case .badRequest, .notFound:
-                // Nothing to show rather than an error screen.
-                state = .loaded([])
-            case .unauthorized, .undocumented:
-                state = .failed
-            }
+            ).ok.body.json
+            state = .loaded(page.items)
         } catch {
-            state = .failed
+            // An unknown card has nobody offering it, which is not an error.
+            state = APIError.read(error).code == "card_not_found" ? .loaded([]) : .failed
         }
     }
 
@@ -80,12 +76,12 @@ final class CardOffersViewModel {
         guard startingWith == nil else { return nil }
         startingWith = offer.owner_username
         defer { startingWith = nil }
-        switch await CardOfferTrade.start(card: card, with: offer) {
-        case let .success(route):
+        do {
+            let route = try await CardOfferTrade.start(card: card, with: offer, api: api)
             openedTrades[offer.owner_username] = route
             return route
-        case let .failure(refusal):
-            startError = refusal.message
+        } catch {
+            startError = APIError.read(error).message
             return nil
         }
     }

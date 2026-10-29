@@ -42,14 +42,17 @@ final class CardDetailViewModel {
     private(set) var setName: String
     private(set) var isSetKnown = false
 
-    init(card: CollectionCard) {
+    private let api: any APIProtocol
+
+    init(card: CollectionCard, api: any APIProtocol) {
         self.card = card
+        self.api = api
         setName = card.set_code.uppercased()
     }
 
     /// Resolves the human-readable set name. A failure just keeps showing the code.
     func loadSetName() async {
-        if let name = await SetName.resolve(card.set_code) {
+        if let name = await SetName.resolve(card.set_code, api: api) {
             setName = name
             isSetKnown = true
         }
@@ -58,7 +61,7 @@ final class CardDetailViewModel {
     /// Loads just the cheapest few offers; the header count comes from the page's `total`.
     func loadOffers() async {
         do {
-            let output = try await APIClientProvider.shared.get_card_offers(
+            let page = try await api.get_card_offers(
                 query: .init(
                     set_code: card.set_code,
                     collector_number: card.collector_number,
@@ -68,19 +71,11 @@ final class CardDetailViewModel {
                     page: 0,
                     page_size: Int32(Self.previewCount)
                 )
-            )
-            switch output {
-            case let .ok(response):
-                let page = try response.body.json
-                offers = .loaded(preview: page.items, total: Int(page.total))
-            case .badRequest, .notFound:
-                // Nobody to show rather than an error.
-                offers = .loaded(preview: [], total: 0)
-            case .unauthorized, .undocumented:
-                offers = .failed
-            }
+            ).ok.body.json
+            offers = .loaded(preview: page.items, total: Int(page.total))
         } catch {
-            offers = .failed
+            // An unknown card has nobody offering it, which is not an error.
+            offers = APIError.read(error).code == "card_not_found" ? .loaded(preview: [], total: 0) : .failed
         }
     }
 
@@ -98,12 +93,12 @@ final class CardDetailViewModel {
         guard startingWith == nil else { return nil }
         startingWith = offer.owner_username
         defer { startingWith = nil }
-        switch await CardOfferTrade.start(card: card, with: offer) {
-        case let .success(route):
+        do {
+            let route = try await CardOfferTrade.start(card: card, with: offer, api: api)
             openedTrades[offer.owner_username] = route
             return route
-        case let .failure(refusal):
-            startError = refusal.message
+        } catch {
+            startError = APIError.read(error).message
             return nil
         }
     }
@@ -112,24 +107,15 @@ final class CardDetailViewModel {
     func loadHistory() async {
         history = .loading
         do {
-            let output = try await APIClientProvider.shared.get_card_price_history(
+            let entries = try await api.get_card_price_history(
                 path: .init(scryfall_id: card.scryfall_id),
                 query: .init(foil: card.foil)
-            )
-            switch output {
-            case let .ok(response):
-                let points = try PriceHistorySeries.points(from: response.body.json)
-                history = points.count >= 2 ? .ready(points) : .notEnoughData
-            case .notFound:
-                // An unknown card here just means "nothing to plot".
-                history = .notEnoughData
-            case .badRequest, .unauthorized, .undocumented:
-                // A bad date range, or a missing/malformed required param, is a real error —
-                // it must not be confused with "no data" the way a 404 is.
-                history = .failed
-            }
+            ).ok.body.json
+            let points = PriceHistorySeries.points(from: entries)
+            history = points.count >= 2 ? .ready(points) : .notEnoughData
         } catch {
-            history = .failed
+            // An unknown card here just means "nothing to plot".
+            history = APIError.read(error).code == "card_not_found" ? .notEnoughData : .failed
         }
     }
 }

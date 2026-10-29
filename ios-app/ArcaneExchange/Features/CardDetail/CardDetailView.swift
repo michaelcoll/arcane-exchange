@@ -1,3 +1,4 @@
+import APIClient
 import SwiftUI
 
 /// Pushed card screen (`ScrCard` in the iOS mockup): artwork, the price guide with its
@@ -8,9 +9,9 @@ struct CardDetailView: View {
     @State private var model: CardDetailViewModel
     @Environment(\.tradeNavigator) private var openTrade
 
-    init(card: CollectionCard) {
+    init(card: CollectionCard, api: any APIProtocol) {
         self.card = card
-        _model = State(initialValue: CardDetailViewModel(card: card))
+        _model = State(initialValue: CardDetailViewModel(card: card, api: api))
     }
 
     var body: some View {
@@ -133,7 +134,8 @@ struct CardDetailView: View {
                 reserved: true,
                 scryfall_id: "7a79190f-de60-4eb6-b925-594eb76ca8c3",
                 set_code: "SOA"
-            )
+            ),
+            api: APIClientFactory.preview
         )
     }
 }

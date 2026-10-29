@@ -1,3 +1,4 @@
+import APIClient
 import SwiftUI
 
 /// Routes pushed onto whichever `NavigationStack` shows a card list. Both carry the whole
@@ -11,6 +12,18 @@ struct CardOffersRoute: Hashable {
     let card: CollectionCard
 }
 
+/// A modifier rather than a plain extension: the card screens are built from the environment's API.
+private struct CardBrowsingDestinations: ViewModifier {
+    @Environment(\.api) private var api
+
+    func body(content: Content) -> some View {
+        content
+            .navigationDestination(for: SearchResultsRoute.self) { SearchResultsView(route: $0) }
+            .navigationDestination(for: CardDetailRoute.self) { CardDetailView(card: $0.card, api: api) }
+            .navigationDestination(for: CardOffersRoute.self) { CardOffersView(card: $0.card, api: api) }
+    }
+}
+
 extension View {
     /// Registers the card-browsing chain — a player or free-text search, a card, its owners —
     /// on the enclosing `NavigationStack`.
@@ -19,8 +32,6 @@ extension View {
     /// keeps its own registration: its card destination carries a zoom transition from the
     /// grid, which has no meaning from a rail or a search result.
     func cardBrowsingDestinations() -> some View {
-        navigationDestination(for: SearchResultsRoute.self) { SearchResultsView(route: $0) }
-            .navigationDestination(for: CardDetailRoute.self) { CardDetailView(card: $0.card) }
-            .navigationDestination(for: CardOffersRoute.self) { CardOffersView(card: $0.card) }
+        modifier(CardBrowsingDestinations())
     }
 }
