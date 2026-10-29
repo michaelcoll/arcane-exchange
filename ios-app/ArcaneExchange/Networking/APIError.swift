@@ -54,6 +54,23 @@ enum APIErrorMessages {
         code.flatMap { messages[$0] } ?? fallback
     }
 
+    private static let importFieldLabels: [String: String] = [
+        "set_code": "set",
+        "collector_number": "numéro de collection",
+        "rarity": "rareté",
+        "language_code": "langue",
+        "quantity": "quantité",
+        "purchase_price": "prix d'achat",
+        "scryfall_id": "identifiant Scryfall",
+        "added_at": "date d'ajout",
+        "proxy": "proxy"
+    ]
+
+    /// Message of one rejected line of a ManaBox import, mirrors `frontend/app/utils/import-error.ts`.
+    static func importLineError(line: Int, field: String, value: String) -> String {
+        "Ligne \(line) : \(importFieldLabels[field] ?? "valeur") invalide (\(value))"
+    }
+
     private static let messages: [String: String] = [
         "empty_file": "Le fichier est vide.",
         "malformed_csv": "Ce fichier n'est pas un CSV lisible.",

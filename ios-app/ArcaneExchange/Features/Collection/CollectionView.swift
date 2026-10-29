@@ -1,12 +1,18 @@
+import APIClient
 import SwiftUI
 
 struct CollectionView: View {
-    @State private var model = CollectionViewModel()
+    @State private var model: CollectionViewModel
+    private let api: any APIProtocol
     @State private var isShowingFilters = false
     @State private var isShowingImport = false
     @State private var path = NavigationPath()
     @Namespace private var cardTransition
-    @Environment(\.api) private var api
+
+    init(api: any APIProtocol) {
+        self.api = api
+        _model = State(initialValue: CollectionViewModel(api: api))
+    }
 
     var body: some View {
         NavigationStack(path: $path) {
@@ -39,7 +45,7 @@ struct CollectionView: View {
                     CollectionFiltersSheet(filters: $model.filters, sets: model.sets)
                 }
                 .sheet(isPresented: $isShowingImport, onDismiss: handleImportDismiss) {
-                    ImportView()
+                    ImportView(api: api)
                 }
         }
         .tradeNavigation(path: $path)
@@ -51,7 +57,7 @@ struct CollectionView: View {
                 .controlSize(.large)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
         } else if let error = model.loadError, model.cards.isEmpty {
-            CollectionErrorView(error: error) {
+            CollectionErrorView(message: error) {
                 Task { await model.reload() }
             }
         } else if model.cards.isEmpty {

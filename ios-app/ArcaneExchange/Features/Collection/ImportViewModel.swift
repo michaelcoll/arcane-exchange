@@ -9,44 +9,22 @@ import OpenAPIRuntime
 @MainActor
 @Observable
 final class ImportViewModel {
-    enum LoadError: Equatable {
-        case unauthorized
-        /// A 409 with no active import found when listing — should not normally happen (the
-        /// active import that caused the 409 has since finished), but the user is told plainly.
-        case conflict
-        case network
-        case http(Int)
-        /// The server refused the file (400); `code` is the API's error code, `nil` if unreadable.
-        case rejected(code: String?)
-        case unexpected
-
-        var message: String {
-            switch self {
-            case .unauthorized:
-                "Session expirée. Reconnecte-toi pour importer ta collection."
-            case .conflict:
-                "Un import est déjà en cours pour ton compte."
-            case .network:
-                "Serveur injoignable. Vérifie ta connexion, et l'URL de l'API dans Réglages ▸ Arcane Exchange."
-            case let .http(status):
-                "Le serveur a répondu \(status)."
-            case let .rejected(code):
-                ImportErrorMessage.message(for: code)
-            case .unexpected:
-                "Réponse inattendue du serveur."
-            }
-        }
-    }
-
     enum Step: Equatable {
         case pick
         case progress
         case done
     }
 
+    private let api: any APIProtocol
+
+    init(api: any APIProtocol) {
+        self.api = api
+    }
+
     private(set) var step: Step = .pick
     private(set) var status: Components.Schemas.CardImportResponse?
-    private(set) var loadError: LoadError?
+    /// French message of the last failure, ready to show.
+    private(set) var loadError: String?
     private(set) var wasAlreadyRunning = false
 
     private var pollTask: Task<Void, Never>?
@@ -61,7 +39,7 @@ final class ImportViewModel {
     /// Why the followed import failed, translated from its `error_code`; `nil` unless it failed.
     var failureMessage: String? {
         guard let status, status.status == "failed" else { return nil }
-        return ImportErrorMessage.message(for: status.error_code)
+        return APIErrorMessages.message(for: status.error_code, fallback: "L'import a échoué.")
     }
 
     /// Cancels any in-flight polling and returns to the picker — called when the sheet is
@@ -80,42 +58,31 @@ final class ImportViewModel {
         wasAlreadyRunning = false
 
         do {
-            switch try await postImport(csv: csv) {
-            case let .started(id):
-                poll(id: id)
-            case .conflict:
+            let body = OpenAPIRuntime.HTTPBody(csv)
+            let started = try await api.import_cards(.init(body: .plainText(body))).accepted.body.json
+            poll(id: started.id)
+        } catch {
+            let apiError = APIError.read(error)
+            if apiError.code == "import_already_running" {
                 wasAlreadyRunning = true
                 await followActiveImport()
-            case let .rejected(code):
-                loadError = .rejected(code: code)
+            } else {
+                loadError = apiError.message
             }
-        } catch let error as APIClientError {
-            switch error {
-            case .unauthorized: loadError = .unauthorized
-            case let .undocumented(statusCode): loadError = .http(statusCode)
-            }
-        } catch {
-            loadError = Self.networkOrUnexpected(error)
         }
-    }
-
-    private enum StartOutcome {
-        case started(id: String)
-        case conflict
-        case rejected(code: String?)
     }
 
     private func followActiveImport() async {
         let imports: [Components.Schemas.CardImportResponse]
         do {
-            imports = try await listImports()
+            imports = try await api.list_card_imports(.init()).ok.body.json
         } catch {
-            loadError = Self.networkOrUnexpected(error)
+            loadError = APIError.read(error).message
             return
         }
         guard let active = imports.first(where: { $0.status == "pending" || $0.status == "running" })
         else {
-            loadError = .conflict
+            loadError = APIErrorMessages.message(for: "import_already_running")
             return
         }
         poll(id: active.id)
@@ -128,7 +95,7 @@ final class ImportViewModel {
             while !Task.isCancelled {
                 guard let self else { return }
                 do {
-                    let current = try await fetchImport(id: id)
+                    let current = try await api.get_card_import(.init(path: .init(id: id))).ok.body.json
                     status = current
                     if current.status == "completed" || current.status == "failed" {
                         step = .done
@@ -137,63 +104,12 @@ final class ImportViewModel {
                         return
                     }
                 } catch {
-                    loadError = Self.networkOrUnexpected(error)
+                    loadError = APIError.read(error).message
                     step = .pick
                     return
                 }
                 try? await Task.sleep(for: .seconds(1))
             }
         }
-    }
-
-    private func postImport(csv: String) async throws -> StartOutcome {
-        let body = OpenAPIRuntime.HTTPBody(csv)
-        switch try await APIClientProvider.shared.import_cards(.init(body: .plainText(body))) {
-        case let .accepted(response):
-            return try .started(id: response.body.json.id)
-        case .conflict:
-            return .conflict
-        case let .badRequest(response):
-            return .rejected(code: try? response.body.json.code)
-        case .unauthorized:
-            throw APIClientError.unauthorized
-        case let .undocumented(statusCode, _):
-            throw APIClientError.undocumented(statusCode: statusCode)
-        }
-    }
-
-    private func fetchImport(id: String) async throws -> Components.Schemas.CardImportResponse {
-        switch try await APIClientProvider.shared.get_card_import(.init(path: .init(id: id))) {
-        case let .ok(response):
-            try response.body.json
-        case .unauthorized:
-            throw APIClientError.unauthorized
-        case .notFound:
-            throw APIClientError.undocumented(statusCode: 404)
-        case let .undocumented(statusCode, _):
-            throw APIClientError.undocumented(statusCode: statusCode)
-        }
-    }
-
-    private func listImports() async throws -> [Components.Schemas.CardImportResponse] {
-        switch try await APIClientProvider.shared.list_card_imports(.init()) {
-        case let .ok(response):
-            try response.body.json
-        case .unauthorized:
-            throw APIClientError.unauthorized
-        case let .undocumented(statusCode, _):
-            throw APIClientError.undocumented(statusCode: statusCode)
-        }
-    }
-
-    private static func networkOrUnexpected(_ error: Error) -> LoadError {
-        if let apiError = error as? APIClientError {
-            switch apiError {
-            case .unauthorized: return .unauthorized
-            case let .undocumented(statusCode): return .http(statusCode)
-            }
-        }
-        let underlying = (error as? ClientError)?.underlyingError ?? error
-        return underlying is URLError ? .network : .unexpected
     }
 }

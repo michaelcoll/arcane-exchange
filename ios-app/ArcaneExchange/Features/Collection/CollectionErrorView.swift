@@ -2,13 +2,13 @@ import SwiftUI
 
 /// Full-screen placeholder shown instead of the grid when the collection failed to load.
 struct CollectionErrorView: View {
-    let error: CollectionViewModel.LoadError
+    let message: String
     let onRetry: () -> Void
 
     var body: some View {
         ContentUnavailableView(
             label: { Label("Collection indisponible", systemImage: "exclamationmark.triangle") },
-            description: { Text(error.message) },
+            description: { Text(message) },
             actions: {
                 Button("Réessayer", action: onRetry)
             }
@@ -17,5 +17,5 @@ struct CollectionErrorView: View {
 }
 
 #Preview {
-    CollectionErrorView(error: .network, onRetry: {})
+    CollectionErrorView(message: APIErrorMessages.network, onRetry: {})
 }

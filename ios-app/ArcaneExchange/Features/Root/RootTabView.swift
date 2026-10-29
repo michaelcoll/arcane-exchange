@@ -25,7 +25,7 @@ struct RootTabView: View {
         @Bindable var router = router
         TabView(selection: $router.tab) {
             Tab("Collection", systemImage: "rectangle.stack", value: .collection) {
-                CollectionView()
+                CollectionView(api: api)
             }
 
             Tab("Échanges", systemImage: "arrow.left.arrow.right", value: .trades) {
