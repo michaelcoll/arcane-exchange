@@ -19,29 +19,43 @@ struct SearchResultsViewModelTests {
         api.onSearchCards = { _ in page([card("a"), card("b")], total: 2) }
         let model = makeModel(api)
 
-        await model.load()
+        await model.loadInitiallyIfNeeded()
 
-        #expect(model.cards.map(\.scryfall_id) == ["a", "b"])
-        #expect(model.total == 2)
-        #expect(model.loadError == nil)
+        #expect(model.paginator.items.map(\.scryfall_id) == ["a", "b"])
+        #expect(model.paginator.total == 2)
+        #expect(model.paginator.state == .idle)
         #expect(api.calls == ["search_cards"])
     }
 
-    @Test func loadsTheNextPageWhenTheLastCardsAppear() async {
+    @Test func carriesTheSearchAndTheFiltersToTheNextPage() async {
         let api = FakeAPI()
         let first = (1 ... 20).map { card("\($0)") }
+        nonisolated(unsafe) var queries: [Operations.search_cards.Input.Query] = []
         api.onSearchCards = { input in
-            input.query.page == 0 ? page(first, total: 21) : page([card("21")], total: 21)
+            queries.append(input.query)
+            return page(first, total: 21)
         }
         let model = makeModel(api)
-        await model.load()
-        #expect(model.hasMore)
+        model.filters = CollectionFilters(rarities: [.M], sets: ["MH3"])
+        await model.loadInitiallyIfNeeded()
 
-        await model.loadMoreIfNeeded(displaying: first[19])
+        await model.paginator.loadMore(after: first[19])
 
-        #expect(model.cards.count == 21)
-        #expect(!model.hasMore)
-        #expect(api.calls == ["search_cards", "search_cards"])
+        #expect(queries.map(\.page) == [0, 1])
+        #expect(queries[1].q == "Sol Ring")
+        #expect(queries[1].rarity == queries[0].rarity)
+        #expect(queries[1].sets == "MH3")
+    }
+
+    @Test func doesNotReloadOnceLoaded() async {
+        let api = FakeAPI()
+        api.onSearchCards = { _ in page([card("a")], total: 1) }
+        let model = makeModel(api)
+
+        await model.loadInitiallyIfNeeded()
+        await model.loadInitiallyIfNeeded()
+
+        #expect(api.calls == ["search_cards"])
     }
 
     @Test func showsTheTranslatedMessageOfAFailedLoad() async {
@@ -49,30 +63,10 @@ struct SearchResultsViewModelTests {
         api.onSearchCards = { _ in throw APIError(code: "internal", status: 500) }
         let model = makeModel(api)
 
-        await model.load()
+        await model.loadInitiallyIfNeeded()
 
-        #expect(model.loadError == "Erreur technique, réessaie plus tard.")
-        #expect(model.cards.isEmpty)
-    }
-
-    @Test func showsTheNetworkMessageWhenTheServerIsUnreachable() async {
-        let api = FakeAPI()
-        api.onSearchCards = { _ in throw APIError(code: nil, status: nil, isNetworkFailure: true) }
-        let model = makeModel(api)
-
-        await model.load()
-
-        #expect(model.loadError == APIErrorMessages.network)
-    }
-
-    @Test func showsTheGenericMessageForAnUnknownCode() async {
-        let api = FakeAPI()
-        api.onSearchCards = { _ in throw APIError(code: "new_backend_code", status: 409) }
-        let model = makeModel(api)
-
-        await model.load()
-
-        #expect(model.loadError == "Une erreur est survenue.")
+        #expect(model.paginator.state == .failed("Erreur technique, réessaie plus tard."))
+        #expect(model.paginator.items.isEmpty)
     }
 
     @Test func loadsTheSetsOnce() async {

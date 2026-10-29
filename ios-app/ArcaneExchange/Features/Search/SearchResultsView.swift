@@ -51,7 +51,7 @@ private struct SearchResultsGrid: View {
             .task { await model.loadInitiallyIfNeeded() }
             .task { await model.loadSetsIfNeeded() }
             .onChange(of: model.filters) {
-                Task { await model.load() }
+                Task { await model.paginator.reload() }
             }
             .sheet(isPresented: $isShowingFilters) {
                 CollectionFiltersSheet(filters: $model.filters, sets: model.sets)
@@ -59,19 +59,20 @@ private struct SearchResultsGrid: View {
     }
 
     @ViewBuilder private var content: some View {
-        if model.isLoading, model.cards.isEmpty {
+        switch model.paginator.phase {
+        case .firstLoad:
             ProgressView()
                 .controlSize(.large)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
-        } else if let error = model.loadError, model.cards.isEmpty {
+        case let .failed(error):
             ContentUnavailableView(
                 label: { Label("Recherche indisponible", systemImage: "exclamationmark.triangle") },
                 description: { Text(error) },
-                actions: { Button("Réessayer") { Task { await model.load() } } }
+                actions: { Button("Réessayer") { Task { await model.paginator.reload() } } }
             )
-        } else if model.cards.isEmpty {
+        case .empty:
             emptyState(SearchResultsEmptyState(filters: model.filters))
-        } else {
+        case .content:
             grid
         }
     }
@@ -124,22 +125,22 @@ private struct SearchResultsGrid: View {
 
                 rail
 
-                Text(CollectionCopy.sortedSummary(total: model.total, sortBy: model.filters.sortBy))
+                Text(CollectionCopy.sortedSummary(total: model.paginator.total, sortBy: model.filters.sortBy))
                     .font(.caption)
                     .textCase(.uppercase)
                     .foregroundStyle(.secondary)
 
                 LazyVGrid(columns: columns, spacing: 18) {
-                    ForEach(model.cards, id: \.self) { card in
+                    ForEach(model.paginator.items, id: \.self) { card in
                         NavigationLink(value: CardDetailRoute(card: card)) {
                             CollectionCardCell(card: card)
                         }
                         .buttonStyle(.plain)
-                        .task { await model.loadMoreIfNeeded(displaying: card) }
+                        .task { await model.paginator.loadMore(after: card) }
                     }
                 }
 
-                if model.isLoadingMore {
+                if model.paginator.state == .loadingMore {
                     ProgressView()
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 8)
