@@ -15,7 +15,7 @@ struct CollectionWidget: Widget {
         let provider = HomeWidgetProvider(
             kind: .collection,
             sample: CollectionSnapshot.sample,
-            fetch: HomeWidgetFetch.collection,
+            fetch: { try await HomeWidgetFetch.collection(api: WidgetAPI.client) },
             nextRefresh: HomeWidgetSchedule.nextCollectionRefresh(after:)
         )
         return StaticConfiguration(kind: HomeWidgetKind.collection.rawValue, provider: provider) { entry in
@@ -35,7 +35,7 @@ struct TradesWidget: Widget {
         let provider = HomeWidgetProvider(
             kind: .trades,
             sample: TradesSnapshot.sample,
-            fetch: HomeWidgetFetch.trades,
+            fetch: { try await HomeWidgetFetch.trades(api: WidgetAPI.client) },
             nextRefresh: HomeWidgetSchedule.nextTradesRefresh(after:)
         )
         return StaticConfiguration(kind: HomeWidgetKind.trades.rawValue, provider: provider) { entry in

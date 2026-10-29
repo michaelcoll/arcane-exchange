@@ -48,7 +48,8 @@ struct HomeWidgetCache {
 enum HomeWidgetLoader {
     /// Fetches a fresh snapshot and remembers it, or falls back to the last one remembered.
     ///
-    /// Signed out, the API is not called at all: the widget asks to sign in in the app.
+    /// Signed out, the API is not called at all: the widget asks to sign in in the app. A 401
+    /// gives the same state.
     static func load<Snapshot: Codable & Equatable>(
         _ kind: HomeWidgetKind,
         cache: HomeWidgetCache,
@@ -61,6 +62,10 @@ enum HomeWidgetLoader {
             cache.save(snapshot, for: kind)
             return .snapshot(snapshot)
         } catch {
+            // The session expired: the widget asks to sign in again, it never signs the app out.
+            if APIError.read(error).code == "unauthorized" {
+                return .signedOut
+            }
             return cache.load(Snapshot.self, for: kind).map { .snapshot($0) } ?? .unavailable
         }
     }
