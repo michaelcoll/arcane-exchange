@@ -165,7 +165,7 @@ final class ImportViewModel {
     private func fetchImport(id: String) async throws -> Components.Schemas.CardImportResponse {
         switch try await APIClientProvider.shared.get_card_import(.init(path: .init(id: id))) {
         case let .ok(response):
-            return try response.body.json
+            try response.body.json
         case .unauthorized:
             throw APIClientError.unauthorized
         case .notFound:
@@ -178,7 +178,7 @@ final class ImportViewModel {
     private func listImports() async throws -> [Components.Schemas.CardImportResponse] {
         switch try await APIClientProvider.shared.list_card_imports(.init()) {
         case let .ok(response):
-            return try response.body.json
+            try response.body.json
         case .unauthorized:
             throw APIClientError.unauthorized
         case let .undocumented(statusCode, _):

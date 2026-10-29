@@ -96,8 +96,7 @@ final class TradesViewModel {
     }
 
     func loadMoreIfNeeded(displaying trade: TradeSummary) async {
-        guard !isLoading, !isLoadingMore, hasMore, loadError == nil else { return }
-        guard trades.suffix(4).contains(trade) else { return }
+        guard !isLoading, !isLoadingMore, hasMore, loadError == nil, trades.suffix(4).contains(trade) else { return }
 
         let page = nextPage
         isLoadingMore = true
