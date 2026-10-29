@@ -34,6 +34,18 @@ struct TradesViewModelTests {
         #expect(api.calls == ["list_trades"])
     }
 
+    @Test func splitsAFeedOfTheSixStatusesIntoOngoingAndHistory() async {
+        let api = FakeAPI()
+        let feed = TradeStatus.allCases.map { summary($0.rawValue, status: $0) }
+        api.onListTrades = { _ in page(feed, total: Int64(feed.count)) }
+        let model = TradesViewModel(api: api)
+
+        await model.reload()
+
+        #expect(model.ongoing.map(\.id) == ["PENDING", "ONE_ACCEPTED", "FULLY_ACCEPTED", "COMPLETED"])
+        #expect(model.past.map(\.id) == ["CLOSED", "ABANDONED"])
+    }
+
     @Test func loadsAnEmptyFeed() async {
         let api = FakeAPI()
         api.onListTrades = { _ in page([], total: 0) }

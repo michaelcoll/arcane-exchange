@@ -73,9 +73,9 @@ struct TradesList: View {
     NavigationStack {
         TradesList(
             segment: $segment,
-            ongoingCount: TradeSummary.previewFeed.count { TradeStatus(apiValue: $0.status).isOngoing },
+            ongoingCount: TradeSummary.previewFeed.count { TradeStatus(apiValue: $0.status).isShownInOngoing },
             trades: TradeSummary.previewFeed.filter {
-                TradeStatus(apiValue: $0.status).isOngoing == (segment == .ongoing)
+                TradeStatus(apiValue: $0.status).isShownInOngoing == (segment == .ongoing)
             },
             isLoadingMore: false,
             onRowAppear: { _ in }

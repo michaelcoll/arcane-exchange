@@ -4,8 +4,11 @@ import Foundation
 /// The widgets' API calls: the same endpoints as the web home page's two tiles. They take the
 /// client as `any APIProtocol` (ADR 0020), so tests run them against `FakeAPI`.
 enum HomeWidgetFetch {
-    /// The trade statuses the web tile lists — the active trades.
-    private static let activeStatuses: [TradeStatusParam] = [.PENDING, .ONE_ACCEPTED, .FULLY_ACCEPTED]
+    /// The trade statuses the web tile lists — the active trades, so not the « En cours » tab's
+    /// `completed` ones.
+    private static let activeStatuses: [TradeStatusParam] = TradeStatus.allCases
+        .filter(\.isActive)
+        .compactMap { TradeStatusParam(rawValue: $0.rawValue) }
 
     static func collection(api: any APIProtocol) async throws -> CollectionSnapshot {
         let range = CollectionSnapshot.historyRange(endingAt: .now)
