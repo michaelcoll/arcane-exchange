@@ -26,36 +26,32 @@ final class TradesViewModel {
         }
     }
 
-    private static let pageSize: Int32 = 20
-
-    private let api: any APIProtocol
-
-    init(api: any APIProtocol) {
-        self.api = api
+    /// Switching to a segment with no row loaded fills it from the following pages, without
+    /// reloading page 0.
+    var segment: Segment = .ongoing {
+        didSet {
+            guard segment != oldValue else { return }
+            Task { await fillVisibleSegment() }
+        }
     }
 
-    var segment: Segment = .ongoing
+    /// The loaded trades (both segments) and their loading state.
+    let paginator: Paginator<TradeSummary>
 
-    private(set) var trades: [TradeSummary] = []
-    private(set) var total = 0
-    private(set) var isLoading = false
-    private(set) var isLoadingMore = false
-    /// French message of the last failed load, ready to show.
-    private(set) var loadError: String?
-
-    /// Next page to request; doubles as a generation counter so a stale `loadMore` bails.
-    private var nextPage: Int32 = 0
-
-    var hasMore: Bool {
-        trades.count < total
+    init(api: any APIProtocol) {
+        paginator = Paginator(fetch: { page, pageSize in
+            let query = Operations.list_trades.Input.Query(page: page, page_size: pageSize)
+            let response = try await api.list_trades(query: query).ok.body.json
+            return PaginatorPage(items: response.items, total: Int(response.total))
+        })
     }
 
     var ongoing: [TradeSummary] {
-        trades.filter { TradeStatus(apiValue: $0.status).isOngoing }
+        paginator.items.filter { TradeStatus(apiValue: $0.status).isOngoing }
     }
 
     var past: [TradeSummary] {
-        trades.filter { !TradeStatus(apiValue: $0.status).isOngoing }
+        paginator.items.filter { !TradeStatus(apiValue: $0.status).isOngoing }
     }
 
     var visibleTrades: [TradeSummary] {
@@ -65,41 +61,24 @@ final class TradesViewModel {
     /// Reloads from page 0 — the first load, pull-to-refresh, and the return from a trade
     /// whose status may just have changed.
     func reload() async {
-        isLoading = true
-        loadError = nil
-        nextPage = 0
-        do {
-            let response = try await fetchPage(0)
-            trades = response.items
-            total = Int(response.total)
-            nextPage = 1
-        } catch {
-            trades = []
-            total = 0
-            loadError = APIError.read(error).message
-        }
-        isLoading = false
+        await paginator.reload()
+        await fillVisibleSegment()
     }
 
-    func loadMoreIfNeeded(displaying trade: TradeSummary) async {
-        guard !isLoading, !isLoadingMore, hasMore, loadError == nil, trades.suffix(4).contains(trade) else { return }
-
-        let page = nextPage
-        isLoadingMore = true
-        defer { isLoadingMore = false }
-        do {
-            let response = try await fetchPage(page)
-            guard nextPage == page else { return }
-            trades.append(contentsOf: response.items)
-            total = Int(response.total)
-            nextPage = page + 1
-        } catch {
-            loadError = APIError.read(error).message
-        }
+    /// Asks for the next page when `trade` just appeared among the last rows of the displayed
+    /// segment, which may not be the last rows loaded.
+    func loadMore(after trade: TradeSummary) async {
+        await paginator.loadMore(after: trade, among: visibleTrades)
+        await fillVisibleSegment()
     }
 
-    private func fetchPage(_ page: Int32) async throws -> Components.Schemas.PaginatedTradesResponse {
-        let query = Operations.list_trades.Input.Query(page: page, page_size: Self.pageSize)
-        return try await api.list_trades(query: query).ok.body.json
+    /// Loads further pages while the displayed segment has no row and the feed has more. Called
+    /// after each page applied and on every segment change.
+    private func fillVisibleSegment() async {
+        while visibleTrades.isEmpty, paginator.state == .idle, paginator.hasMore {
+            let loaded = paginator.items.count
+            await paginator.loadMore()
+            guard paginator.items.count > loaded else { return }
+        }
     }
 }
