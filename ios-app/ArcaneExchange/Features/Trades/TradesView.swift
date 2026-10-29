@@ -1,3 +1,4 @@
+import APIClient
 import SwiftUI
 
 /// Échanges tab (`ScrTrades` in the iOS mockup): the trades the user is a party to, split
@@ -7,9 +8,13 @@ import SwiftUI
 /// the API on `.task`, which hangs and crashes the Xcode preview agent. The pieces it composes
 /// (`TradesList`, `TradeSummaryRow`, `TradeStatusPill`) carry the previews instead.
 struct TradesView: View {
-    @State private var model = TradesViewModel()
+    @State private var model: TradesViewModel
     @State private var path = NavigationPath()
     @Environment(AppRouter.self) private var router
+
+    init(api: any APIProtocol) {
+        _model = State(initialValue: TradesViewModel(api: api))
+    }
 
     var body: some View {
         NavigationStack(path: $path) {
@@ -46,7 +51,7 @@ struct TradesView: View {
         } else if let error = model.loadError, model.trades.isEmpty {
             ContentUnavailableView(
                 label: { Label("Échanges indisponibles", systemImage: "exclamationmark.triangle") },
-                description: { Text(error.message) },
+                description: { Text(error) },
                 actions: { Button("Réessayer") { Task { await model.reload() } } }
             )
         } else if model.trades.isEmpty {

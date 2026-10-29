@@ -30,6 +30,17 @@ extension EnvironmentValues {
     @Entry var tradeNavigator = TradeNavigator()
 }
 
+/// A modifier rather than a plain extension: the trade screen is built from the environment's API.
+private struct TradeDestinations: ViewModifier {
+    @Environment(\.api) private var api
+
+    func body(content: Content) -> some View {
+        content
+            .navigationDestination(for: TradeDetailRoute.self) { TradeDetailView(route: $0, api: api) }
+            .navigationDestination(for: TradeStepsRoute.self) { TradeStepsView(route: $0) }
+    }
+}
+
 extension View {
     /// Teaches a `NavigationStack` about the trade screens.
     ///
@@ -37,8 +48,7 @@ extension View {
     /// registration made outside the stack is never found, and pushing the route then lands
     /// on SwiftUI's blank "no destination" screen.
     func tradeDestinations() -> some View {
-        navigationDestination(for: TradeDetailRoute.self) { TradeDetailView(route: $0) }
-            .navigationDestination(for: TradeStepsRoute.self) { TradeStepsView(route: $0) }
+        modifier(TradeDestinations())
     }
 
     /// Lets anything under this stack push a trade through `\.tradeNavigator`.

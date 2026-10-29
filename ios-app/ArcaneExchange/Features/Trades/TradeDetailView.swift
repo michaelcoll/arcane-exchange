@@ -1,3 +1,4 @@
+import APIClient
 import ClerkKit
 import SwiftUI
 
@@ -15,9 +16,9 @@ struct TradeDetailView: View {
     @State private var model: TradeDetailViewModel
     @State private var confirmation: TradeConfirmation?
 
-    init(route: TradeDetailRoute) {
+    init(route: TradeDetailRoute, api: any APIProtocol) {
         self.route = route
-        _model = State(initialValue: TradeDetailViewModel(tradeID: route.id))
+        _model = State(initialValue: TradeDetailViewModel(tradeID: route.id, api: api))
     }
 
     var body: some View {
@@ -64,8 +65,8 @@ struct TradeDetailView: View {
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
         } else if let error = model.loadError, model.trade == nil {
             ContentUnavailableView(
-                label: { Label(error.title, systemImage: "exclamationmark.triangle") },
-                description: { Text(error.message) },
+                label: { Label("Impossible de charger cet échange", systemImage: "exclamationmark.triangle") },
+                description: { Text(error) },
                 actions: { Button("Réessayer") { Task { await model.load() } } }
             )
         } else {

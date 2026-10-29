@@ -1,3 +1,4 @@
+import APIClient
 import SwiftUI
 
 /// Root navigation for a signed-in user.
@@ -17,6 +18,7 @@ struct RootTabView: View {
 
     /// Holds the selected tab, so a widget tap can switch it.
     @Environment(AppRouter.self) private var router
+    @Environment(\.api) private var api
     @State private var searchText = ""
 
     var body: some View {
@@ -27,7 +29,7 @@ struct RootTabView: View {
             }
 
             Tab("Échanges", systemImage: "arrow.left.arrow.right", value: .trades) {
-                TradesView()
+                TradesView(api: api)
             }
 
             Tab("Rechercher", systemImage: "magnifyingglass", value: .search, role: .search) {

@@ -1,4 +1,3 @@
-import ClerkKit
 import Foundation
 import HTTPTypes
 import OpenAPIRuntime
@@ -10,6 +9,8 @@ import OpenAPIRuntime
 /// SDK owns refresh/caching internally. When there is no active session (e.g. calling
 /// a public endpoint before sign-in), the request is forwarded without a header.
 struct ClerkAuthMiddleware: ClientMiddleware {
+    let token: @Sendable () async -> String?
+
     func intercept(
         _ request: HTTPRequest,
         body: HTTPBody?,
@@ -18,7 +19,7 @@ struct ClerkAuthMiddleware: ClientMiddleware {
         next: @Sendable (HTTPRequest, HTTPBody?, URL) async throws -> (HTTPResponse, HTTPBody?)
     ) async throws -> (HTTPResponse, HTTPBody?) {
         var request = request
-        if let token = try? await Clerk.shared.auth.getToken() {
+        if let token = await token() {
             request.headerFields[.authorization] = "Bearer \(token)"
         }
         return try await next(request, body, baseURL)

@@ -1,6 +1,5 @@
 import APIClient
 import Foundation
-import OpenAPIRuntime
 
 /// Backs the Échanges tab: one page-by-page `GET /trades` feed, split into the "En cours" and
 /// "Historique" segments the mockup shows.
@@ -11,26 +10,6 @@ import OpenAPIRuntime
 @MainActor
 @Observable
 final class TradesViewModel {
-    enum LoadError: Equatable {
-        case unauthorized
-        case network
-        case http(Int)
-        case unexpected
-
-        var message: String {
-            switch self {
-            case .unauthorized:
-                "Session expirée. Reconnecte-toi pour voir tes échanges."
-            case .network:
-                "Serveur injoignable. Vérifie ta connexion, et l'URL de l'API dans Réglages ▸ Arcane Exchange."
-            case let .http(status):
-                "Le serveur a répondu \(status)."
-            case .unexpected:
-                "Réponse inattendue du serveur."
-            }
-        }
-    }
-
     enum Segment: String, CaseIterable, Identifiable {
         case ongoing
         case past
@@ -49,13 +28,20 @@ final class TradesViewModel {
 
     private static let pageSize: Int32 = 20
 
+    private let api: any APIProtocol
+
+    init(api: any APIProtocol) {
+        self.api = api
+    }
+
     var segment: Segment = .ongoing
 
     private(set) var trades: [TradeSummary] = []
     private(set) var total = 0
     private(set) var isLoading = false
     private(set) var isLoadingMore = false
-    private(set) var loadError: LoadError?
+    /// French message of the last failed load, ready to show.
+    private(set) var loadError: String?
 
     /// Next page to request; doubles as a generation counter so a stale `loadMore` bails.
     private var nextPage: Int32 = 0
@@ -90,7 +76,7 @@ final class TradesViewModel {
         } catch {
             trades = []
             total = 0
-            loadError = Self.loadError(from: error)
+            loadError = APIError.read(error).message
         }
         isLoading = false
     }
@@ -108,32 +94,12 @@ final class TradesViewModel {
             total = Int(response.total)
             nextPage = page + 1
         } catch {
-            loadError = Self.loadError(from: error)
+            loadError = APIError.read(error).message
         }
     }
 
     private func fetchPage(_ page: Int32) async throws -> Components.Schemas.PaginatedTradesResponse {
         let query = Operations.list_trades.Input.Query(page: page, page_size: Self.pageSize)
-        switch try await APIClientProvider.shared.list_trades(query: query) {
-        case let .ok(response):
-            return try response.body.json
-        case .unauthorized:
-            throw APIClientError.unauthorized
-        case .badRequest:
-            throw APIClientError.undocumented(statusCode: 400)
-        case let .undocumented(statusCode, _):
-            throw APIClientError.undocumented(statusCode: statusCode)
-        }
-    }
-
-    private static func loadError(from error: Error) -> LoadError {
-        if let apiError = error as? APIClientError {
-            switch apiError {
-            case .unauthorized: return .unauthorized
-            case let .undocumented(statusCode): return .http(statusCode)
-            }
-        }
-        let underlying = (error as? ClientError)?.underlyingError ?? error
-        return underlying is URLError ? .network : .unexpected
+        return try await api.list_trades(query: query).ok.body.json
     }
 }
