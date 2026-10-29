@@ -81,17 +81,13 @@ enum TradeStatus: String, CaseIterable, Hashable, Codable {
         }
     }
 
-    /// Cards can still be added or removed.
-    var isEditable: Bool {
-        self == .pending || self == .oneAccepted
-    }
-
     /// Cards on both sides are locked out of any other trade.
     var isReserved: Bool {
         self == .oneAccepted || self == .fullyAccepted
     }
 
-    /// Still live — what the "En cours" segment of the list shows.
+    /// What the "En cours" segment of the list shows. Not "can be abandoned": that is
+    /// `TradeActions.canAbandon`.
     var isOngoing: Bool {
         self != .closed && self != .abandoned
     }

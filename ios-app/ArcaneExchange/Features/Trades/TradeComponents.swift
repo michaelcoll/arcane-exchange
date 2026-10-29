@@ -28,9 +28,7 @@ struct TradeRatingStars: View {
 /// area can read as a single, focused commitment rather than a toolbar of options. Nothing at
 /// all once the trade is closed or abandoned.
 struct TradeActionBar: View {
-    let status: TradeStatus
-    let meAccepted: Bool
-    let meConfirmed: Bool
+    let action: TradePrimaryAction
     let partnerUsername: String
     let acceptLabel: String
     let isBusy: Bool
@@ -40,7 +38,7 @@ struct TradeActionBar: View {
     let onConfirm: () -> Void
 
     var body: some View {
-        if isReady, status.isOngoing {
+        if isReady, action != .none {
             primaryAction
                 .disabled(isBusy)
                 .padding(.horizontal, 16)
@@ -50,35 +48,33 @@ struct TradeActionBar: View {
     }
 
     @ViewBuilder private var primaryAction: some View {
-        switch status {
-        case .pending, .oneAccepted:
-            if meAccepted {
-                waitingLabel("En attente de ", systemImage: "clock", tint: .secondary)
-            } else {
-                Button(acceptLabel, systemImage: "checkmark", action: onAccept)
-                    .buttonStyle(.borderedProminent)
-                    .controlSize(.large)
-                    .foregroundStyle(Palette.onPrimary)
-                    .frame(maxWidth: .infinity)
-            }
+        switch action {
+        case .accept:
+            Button(acceptLabel, systemImage: "checkmark", action: onAccept)
+                .buttonStyle(.borderedProminent)
+                .controlSize(.large)
+                .foregroundStyle(Palette.onPrimary)
+                .frame(maxWidth: .infinity)
 
-        case .fullyAccepted:
-            if meConfirmed {
-                waitingLabel(
-                    "Confirmé, en attente de ",
-                    systemImage: "checkmark",
-                    tint: Palette.secondary
-                )
-            } else {
-                Button("Confirmer « échange réalisé »", systemImage: "checkmark", action: onConfirm)
-                    .buttonStyle(.borderedProminent)
-                    .controlSize(.large)
-                    .tint(Palette.secondary)
-                    .foregroundStyle(Palette.onSecondary)
-                    .frame(maxWidth: .infinity)
-            }
+        case .awaitingAcceptance:
+            waitingLabel("En attente de ", systemImage: "clock", tint: .secondary)
 
-        default:
+        case .confirmExchange:
+            Button("Confirmer « échange réalisé »", systemImage: "checkmark", action: onConfirm)
+                .buttonStyle(.borderedProminent)
+                .controlSize(.large)
+                .tint(Palette.secondary)
+                .foregroundStyle(Palette.onSecondary)
+                .frame(maxWidth: .infinity)
+
+        case .awaitingConfirmation:
+            waitingLabel(
+                "Confirmé, en attente de ",
+                systemImage: "checkmark",
+                tint: Palette.secondary
+            )
+
+        case .none:
             EmptyView()
         }
     }
@@ -104,9 +100,7 @@ struct TradeActionBar: View {
 #Preview("Barre d'action") {
     VStack(spacing: 20) {
         TradeActionBar(
-            status: .pending,
-            meAccepted: false,
-            meConfirmed: false,
+            action: .accept,
             partnerUsername: "mizzix_42",
             acceptLabel: "Accepter et payer 21 €",
             isBusy: false,
@@ -115,9 +109,7 @@ struct TradeActionBar: View {
             onConfirm: {}
         )
         TradeActionBar(
-            status: .oneAccepted,
-            meAccepted: true,
-            meConfirmed: false,
+            action: .awaitingAcceptance,
             partnerUsername: "mizzix_42",
             acceptLabel: "Accepter",
             isBusy: false,
@@ -126,9 +118,7 @@ struct TradeActionBar: View {
             onConfirm: {}
         )
         TradeActionBar(
-            status: .fullyAccepted,
-            meAccepted: true,
-            meConfirmed: false,
+            action: .confirmExchange,
             partnerUsername: "mizzix_42",
             acceptLabel: "Accepter",
             isBusy: false,
@@ -137,9 +127,7 @@ struct TradeActionBar: View {
             onConfirm: {}
         )
         TradeActionBar(
-            status: .fullyAccepted,
-            meAccepted: true,
-            meConfirmed: true,
+            action: .awaitingConfirmation,
             partnerUsername: "mizzix_42",
             acceptLabel: "Accepter",
             isBusy: false,

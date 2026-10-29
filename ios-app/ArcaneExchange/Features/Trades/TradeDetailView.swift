@@ -80,7 +80,7 @@ struct TradeDetailView: View {
                         )
                     )
                     rails
-                    if model.status == .completed || model.status == .closed {
+                    if model.actions.showsRating {
                         ratingSection
                     }
                 }
@@ -89,9 +89,7 @@ struct TradeDetailView: View {
             }
             .safeAreaInset(edge: .bottom) {
                 TradeActionBar(
-                    status: model.status,
-                    meAccepted: model.meAccepted,
-                    meConfirmed: model.meConfirmed,
+                    action: model.actions.primaryAction,
                     partnerUsername: model.partnerUsername,
                     acceptLabel: acceptLabel,
                     isBusy: model.isBusy,
@@ -120,7 +118,7 @@ struct TradeDetailView: View {
                 NavigationLink(value: TradeStepsRoute(status: model.status, partnerUsername: model.partnerUsername)) {
                     Label("Les étapes d'un échange", systemImage: "info.circle")
                 }
-                if model.status.isOngoing {
+                if model.actions.canAbandon {
                     Button("Abandonner l'échange", systemImage: "xmark", role: .destructive) {
                         confirmation = .abandon
                     }
@@ -159,7 +157,7 @@ struct TradeDetailView: View {
     }
 
     private var removeHandler: ((TradeCard) -> Void)? {
-        guard model.status.isEditable else { return nil }
+        guard model.actions.canEdit else { return nil }
         return { card in removeCard(card) }
     }
 
@@ -167,7 +165,7 @@ struct TradeDetailView: View {
     /// partner's tradable collection, and asking for a card from there lands back on this
     /// trade with the card added.
     private var addSlot: TradeRailAddSlot? {
-        guard model.status.isEditable, !model.partnerUsername.isEmpty else { return nil }
+        guard model.actions.canEdit, !model.partnerUsername.isEmpty else { return nil }
         return TradeRailAddSlot(
             label: "Chercher chez lui",
             route: SearchResultsRoute(target: .player(username: model.partnerUsername))
@@ -186,7 +184,7 @@ struct TradeDetailView: View {
                 )
                 .font(.footnote.weight(.medium))
                 .foregroundStyle(Palette.secondary)
-            } else {
+            } else if model.actions.canRate {
                 TradeRatingStars { rating in Task { await model.rate(rating) } }
                 Button("Passer la notation") { Task { await model.rate(0) } }
                     .font(.footnote)
@@ -220,7 +218,7 @@ struct TradeDetailView: View {
     /// Removing a card while one party has already accepted restarts the negotiation, so it
     /// gets the same warning as accepting.
     private func removeCard(_ card: TradeCard) {
-        if model.status == .oneAccepted {
+        if model.actions.warnsOnRemove {
             confirmation = .modify(card: card)
         } else {
             Task { await model.removePartnerCard(card) }
