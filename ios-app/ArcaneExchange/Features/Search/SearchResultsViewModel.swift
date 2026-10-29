@@ -1,32 +1,11 @@
 import APIClient
 import Foundation
-import OpenAPIRuntime
 
 /// One page-by-page `GET /search/card` feed, scoped either to a free-text query or to a
 /// single player's tradable collection. Modelled on `CollectionViewModel`.
 @MainActor
 @Observable
 final class SearchResultsViewModel {
-    enum LoadError: Equatable {
-        case unauthorized
-        case network
-        case http(Int)
-        case unexpected
-
-        var message: String {
-            switch self {
-            case .unauthorized:
-                "Session expirée. Reconnecte-toi pour lancer une recherche."
-            case .network:
-                "Serveur injoignable. Vérifie ta connexion, et l'URL de l'API dans Réglages ▸ Arcane Exchange."
-            case let .http(status):
-                "Le serveur a répondu \(status)."
-            case .unexpected:
-                "Réponse inattendue du serveur."
-            }
-        }
-    }
-
     private static let pageSize: Int32 = 20
 
     let target: SearchResultsRoute.Target
@@ -38,13 +17,15 @@ final class SearchResultsViewModel {
         didSet { sortStore.save(filters, for: target) }
     }
 
+    private let api: any APIProtocol
     private let sortStore: SearchResultsSortStore
 
     private(set) var cards: [CollectionCard] = []
     private(set) var total = 0
     private(set) var isLoading = false
     private(set) var isLoadingMore = false
-    private(set) var loadError: LoadError?
+    /// French message of the last failed load, ready to show.
+    private(set) var loadError: String?
 
     /// What the set drawer lists: the sets of every card this search can return, whatever the
     /// filters. Empty until loaded, which disables the drawer's Sets row.
@@ -63,8 +44,9 @@ final class SearchResultsViewModel {
         cards.count < total
     }
 
-    init(target: SearchResultsRoute.Target, defaults: UserDefaults = .standard) {
+    init(target: SearchResultsRoute.Target, api: any APIProtocol, defaults: UserDefaults = .standard) {
         self.target = target
+        self.api = api
         sortStore = SearchResultsSortStore(defaults: defaults)
         filters = sortStore.load(for: target)
     }
@@ -96,7 +78,7 @@ final class SearchResultsViewModel {
             guard generation == current else { return }
             cards = []
             total = 0
-            loadError = Self.loadError(from: error)
+            loadError = APIError.read(error).message
         }
         isLoading = false
     }
@@ -117,7 +99,7 @@ final class SearchResultsViewModel {
             ArtworkPipeline.prefetch(CardArtwork.urls(for: response.items))
         } catch {
             guard generation == current else { return }
-            loadError = Self.loadError(from: error)
+            loadError = APIError.read(error).message
         }
     }
 
@@ -127,9 +109,7 @@ final class SearchResultsViewModel {
         guard sets.isEmpty, !isLoadingSets, let query = target.setsQuery else { return }
         isLoadingSets = true
         defer { isLoadingSets = false }
-        guard case let .ok(response) = try? await APIClientProvider.shared.search_card_sets(query: query),
-              let sets = try? response.body.json
-        else { return }
+        guard let sets = try? await api.search_card_sets(query: query).ok.body.json else { return }
         self.sets = sets
     }
 
@@ -139,26 +119,6 @@ final class SearchResultsViewModel {
             return .init(items: [], page: 0, page_size: Self.pageSize, total: 0)
         }
 
-        switch try await APIClientProvider.shared.search_cards(query: query) {
-        case let .ok(response):
-            return try response.body.json
-        case .unauthorized:
-            throw APIClientError.unauthorized
-        case .badRequest:
-            throw APIClientError.undocumented(statusCode: 400)
-        case let .undocumented(statusCode, _):
-            throw APIClientError.undocumented(statusCode: statusCode)
-        }
-    }
-
-    private static func loadError(from error: Error) -> LoadError {
-        if let apiError = error as? APIClientError {
-            switch apiError {
-            case .unauthorized: return .unauthorized
-            case let .undocumented(statusCode): return .http(statusCode)
-            }
-        }
-        let underlying = (error as? ClientError)?.underlyingError ?? error
-        return underlying is URLError ? .network : .unexpected
+        return try await api.search_cards(query: query).ok.body.json
     }
 }

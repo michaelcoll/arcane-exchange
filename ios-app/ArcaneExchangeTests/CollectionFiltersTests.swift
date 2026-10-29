@@ -60,17 +60,12 @@ struct CollectionFiltersTests {
 
     // MARK: Persistence
 
-    /// A domain of its own per test: none reads `.standard` or another test's writes.
-    private static func freshDefaults() -> UserDefaults {
-        UserDefaults(suiteName: "CollectionFiltersTests.\(UUID().uuidString)")!
-    }
-
     @Test func startsFromTheDefaultsWhenNothingWasSaved() {
-        #expect(CollectionFiltersStore(defaults: Self.freshDefaults()).load() == CollectionFilters())
+        #expect(CollectionFiltersStore(defaults: isolatedDefaults()).load() == CollectionFilters())
     }
 
     @Test func restoresTheSortAndTheFiltersSaved() {
-        let defaults = Self.freshDefaults()
+        let defaults = isolatedDefaults()
         let saved = CollectionFilters(rarities: [.R, .M], sets: ["MH3"], sortBy: .added_at, sortDir: .asc)
         CollectionFiltersStore(defaults: defaults).save(saved)
 
@@ -79,14 +74,14 @@ struct CollectionFiltersTests {
 
     /// A payload from another app version must not crash the tab — it falls back to defaults.
     @Test func ignoresAnUnreadablePayload() {
-        let defaults = Self.freshDefaults()
+        let defaults = isolatedDefaults()
         defaults.set(Data("{\"sortBy\":\"nope\"}".utf8), forKey: CollectionFiltersStore.storageKey)
 
         #expect(CollectionFiltersStore(defaults: defaults).load() == CollectionFilters())
     }
 
     @Test func forgetsEverythingOnClear() {
-        let defaults = Self.freshDefaults()
+        let defaults = isolatedDefaults()
         let store = CollectionFiltersStore(defaults: defaults)
         store.save(CollectionFilters(rarities: [.C], sets: ["EOE"], sortBy: .added_at, sortDir: .asc))
         store.clear()
@@ -96,7 +91,7 @@ struct CollectionFiltersTests {
 
     @MainActor
     @Test func theViewModelRestoresAndSavesItsFilters() {
-        let defaults = Self.freshDefaults()
+        let defaults = isolatedDefaults()
         let saved = CollectionFilters(rarities: [.U], sortBy: .added_at)
         CollectionFiltersStore(defaults: defaults).save(saved)
 

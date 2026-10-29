@@ -1,6 +1,5 @@
 import APIClient
 import Foundation
-import OpenAPIRuntime
 
 /// Backs the Rechercher tab: a debounced live preview for card and player search, plus the
 /// two device-only recents lists. The full paginated card grid is `SearchResultsViewModel`,
@@ -32,9 +31,11 @@ final class SearchViewModel {
     private(set) var recentQueries: [String]
     private(set) var recentPlayers: [UserSuggestion]
 
+    private let api: any APIProtocol
     private let defaults: UserDefaults
 
-    init(defaults: UserDefaults = .standard) {
+    init(api: any APIProtocol, defaults: UserDefaults = .standard) {
+        self.api = api
         self.defaults = defaults
         recentQueries = Self.decode([String].self, from: defaults, key: SearchRecents.storageKey) ?? []
         recentPlayers = Self.decode([UserSuggestion].self, from: defaults, key: RecentPlayers.storageKey) ?? []
@@ -57,20 +58,14 @@ final class SearchViewModel {
         defer { isLoadingCardPreview = false }
 
         do {
-            let output = try await APIClientProvider.shared.search_cards(query: .init(
+            let output = try await api.search_cards(query: .init(
                 page: 0,
                 page_size: Self.previewPageSize,
                 sort_by: .trend,
                 sort_dir: .desc,
                 q: query
             ))
-            switch output {
-            case let .ok(response):
-                cardPreview = try response.body.json.items
-            case .unauthorized, .badRequest, .undocumented:
-                cardPreview = []
-                cardPreviewFailed = true
-            }
+            cardPreview = try output.ok.body.json.items
         } catch {
             cardPreview = []
             cardPreviewFailed = true
@@ -94,13 +89,7 @@ final class SearchViewModel {
         defer { isLoadingPlayers = false }
 
         do {
-            switch try await APIClientProvider.shared.autocomplete_user(query: .init(q: query)) {
-            case let .ok(response):
-                playerSuggestions = try response.body.json
-            case .undocumented:
-                playerSuggestions = []
-                playerLookupFailed = true
-            }
+            playerSuggestions = try await api.autocomplete_user(query: .init(q: query)).ok.body.json
         } catch {
             playerSuggestions = []
             playerLookupFailed = true

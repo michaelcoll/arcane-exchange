@@ -43,8 +43,8 @@ struct SearchResultsFiltersTests {
     }
 
     @MainActor @Test func aNewSearchStartsWithoutFilters() {
-        #expect(SearchResultsViewModel(target: .card(query: "Sol Ring")).filters.activeCount == 0)
-        #expect(SearchResultsViewModel(target: .player(username: "jace")).filters.activeCount == 0)
+        #expect(SearchResultsViewModel(target: .card(query: "Sol Ring"), api: FakeAPI()).filters.activeCount == 0)
+        #expect(SearchResultsViewModel(target: .player(username: "jace"), api: FakeAPI()).filters.activeCount == 0)
     }
 
     @Test func withoutFiltersAnEmptyListKeepsTheNoOfferMessage() {

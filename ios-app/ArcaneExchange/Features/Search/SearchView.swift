@@ -1,3 +1,4 @@
+import APIClient
 import SwiftUI
 
 /// Rechercher tab (`ScrSearch` in the iOS mockup): a mode switch — carte / decklist / joueur —
@@ -7,10 +8,15 @@ import SwiftUI
 struct SearchView: View {
     @Binding var searchText: String
 
-    @State private var model = SearchViewModel()
+    @State private var model: SearchViewModel
     @State private var mode: SearchMode = .card
     @State private var deckList = ""
     @Namespace private var modeThumb
+
+    init(searchText: Binding<String>, api: any APIProtocol) {
+        _searchText = searchText
+        _model = State(initialValue: SearchViewModel(api: api))
+    }
 
     /// Heterogeneous on purpose: the stack pushes `SearchResultsRoute`, then from the results
     /// grid a `CardDetailRoute`, then a `CardOffersRoute`. A typed `[SearchResultsRoute]` path
@@ -301,5 +307,5 @@ private struct CardPreviewRow: View {
 }
 
 #Preview {
-    SearchView(searchText: .constant(""))
+    SearchView(searchText: .constant(""), api: APIClientFactory.preview)
 }
