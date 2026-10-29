@@ -197,6 +197,20 @@ struct HomeWidgetFetchTests {
         #expect(api.calls == ["list_trades"])
     }
 
+    @Test func filtersTheTradesOnExactlyTheActiveStatuses() async throws {
+        var sent: [TradeStatusParam]?
+        let api = FakeAPI()
+        api.onListTrades = { input in
+            sent = input.query.status
+            return .ok(.init(body: .json(.init(items: [], page: 0, page_size: 3, total: 0))))
+        }
+
+        _ = try await HomeWidgetFetch.trades(api: api)
+
+        #expect(Set(sent ?? []) == [.PENDING, .ONE_ACCEPTED, .FULLY_ACCEPTED])
+        #expect(sent?.count == 3)
+    }
+
     @Test func buildsTheCollectionSnapshotFromTheHistoryAndTheStats() async throws {
         let api = FakeAPI()
         let entry = PriceHistoryEntry(avg: 90, date: "2026-10-01", low: 80, trend: 100)

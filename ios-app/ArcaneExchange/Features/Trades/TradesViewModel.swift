@@ -47,11 +47,11 @@ final class TradesViewModel {
     }
 
     var ongoing: [TradeSummary] {
-        paginator.items.filter { TradeStatus(apiValue: $0.status).isOngoing }
+        paginator.items.filter { TradeStatus(apiValue: $0.status).isShownInOngoing }
     }
 
     var past: [TradeSummary] {
-        paginator.items.filter { !TradeStatus(apiValue: $0.status).isOngoing }
+        paginator.items.filter { !TradeStatus(apiValue: $0.status).isShownInOngoing }
     }
 
     var visibleTrades: [TradeSummary] {

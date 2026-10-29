@@ -31,10 +31,14 @@ struct TradeStatusTests {
         #expect(!TradeStatus.completed.isReserved)
     }
 
-    @Test func theArchiveHoldsClosedAndAbandonedTradesOnly() {
-        #expect(!TradeStatus.closed.isOngoing)
-        #expect(!TradeStatus.abandoned.isOngoing)
-        #expect(TradeStatus.completed.isOngoing)
+    @Test func anActiveTradeIsNeitherCompletedNorInAnEndState() {
+        #expect(TradeStatus.allCases.filter(\.isActive) == [.pending, .oneAccepted, .fullyAccepted])
+    }
+
+    /// A completed trade still waits for the parties' ratings, so it stays in « En cours ».
+    @Test func theOngoingTabAlsoHoldsCompletedTrades() {
+        #expect(TradeStatus.allCases.filter(\.isShownInOngoing)
+            == [.pending, .oneAccepted, .fullyAccepted, .completed])
     }
 
     @Test func abandonedIsNotAStepOfTheLifecycle() {

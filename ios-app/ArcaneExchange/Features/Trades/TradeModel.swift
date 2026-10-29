@@ -86,10 +86,17 @@ enum TradeStatus: String, CaseIterable, Hashable, Codable {
         self == .oneAccepted || self == .fullyAccepted
     }
 
-    /// What the "En cours" segment of the list shows. Not "can be abandoned": that is
-    /// `TradeActions.canAbandon`.
-    var isOngoing: Bool {
-        self != .closed && self != .abandoned
+    /// A Trade actif (GLOSSARY.md), as on the backend: not yet completed. The home widget's
+    /// `status` filter is built from it. Not "can be abandoned": that is `TradeActions.canAbandon`.
+    var isActive: Bool {
+        self == .pending || self == .oneAccepted || self == .fullyAccepted
+    }
+
+    /// What the "En cours" segment of the list shows: the active trades, plus `completed` ones,
+    /// which still wait for the parties' ratings. So the widget's count can differ from the tab's.
+    /// Based on the status alone: the trade summary does not carry the parties' rating state.
+    var isShownInOngoing: Bool {
+        isActive || self == .completed
     }
 
     /// The nominal path, `abandoned` excluded: it is a dead end, not a step.
