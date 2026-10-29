@@ -27,9 +27,9 @@ code : [CODING_STANDARDS.md](../CODING_STANDARDS.md) › iOS.
   hand-written code out of it — and check `swift build` without the flag after bumping `swift-openapi-*`.
 - New code goes through `APIClientFactory` (`Networking/`, ADR-0020): view models take `any APIProtocol` in their
   initializer (views read it from `\.api`), read only the success of an `Output` (`.ok`, `.noContent`) and catch with
-  `APIError.read`. Tests use `FakeAPI` (`ArcaneExchangeTests/Fakes/`). `APIClientProvider.shared` is the legacy access,
-  being migrated away.
-- `APIClientProvider.shared` is rebuilt on each access **on purpose**: the base URL is editable at runtime.
+  `APIError.read`. Tests use `FakeAPI` (`ArcaneExchangeTests/Fakes/`). The app builds its client once, in `ArcaneExchangeApp`.
+- `APIClientFactory` takes the base URL as a closure (`AppConfig.apiBaseURL` by default), read on each request: the
+  base URL is editable at runtime, so never capture it once.
 
 ## Home-screen widgets
 
