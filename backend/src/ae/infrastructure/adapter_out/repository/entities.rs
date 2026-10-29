@@ -216,6 +216,8 @@ pub struct TradeEntity {
     pub respondent_confirmed_at: Option<DateTime<Utc>>,
     pub initiator_rating: Option<i16>,
     pub respondent_rating: Option<i16>,
+    pub initiator_abandoned_at: Option<DateTime<Utc>>,
+    pub respondent_abandoned_at: Option<DateTime<Utc>>,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
 }
@@ -237,6 +239,8 @@ impl TryFrom<TradeEntity> for Trade {
             respondent_confirmed_at: entity.respondent_confirmed_at,
             initiator_rating: rating_from_db(entity.initiator_rating)?,
             respondent_rating: rating_from_db(entity.respondent_rating)?,
+            initiator_abandoned_at: entity.initiator_abandoned_at,
+            respondent_abandoned_at: entity.respondent_abandoned_at,
             created_at: entity.created_at,
             updated_at: entity.updated_at,
         })
@@ -869,6 +873,8 @@ mod tests {
             respondent_confirmed_at: None,
             initiator_rating: None,
             respondent_rating: None,
+            initiator_abandoned_at: None,
+            respondent_abandoned_at: None,
             created_at: chrono::Utc::now(),
             updated_at: chrono::Utc::now(),
         };
@@ -897,6 +903,8 @@ mod tests {
             respondent_confirmed_at: None,
             initiator_rating: None,
             respondent_rating: None,
+            initiator_abandoned_at: None,
+            respondent_abandoned_at: None,
             created_at: chrono::Utc::now(),
             updated_at: chrono::Utc::now(),
         };
@@ -923,6 +931,8 @@ mod tests {
             respondent_confirmed_at: None,
             initiator_rating: None,
             respondent_rating: None,
+            initiator_abandoned_at: None,
+            respondent_abandoned_at: None,
             created_at: chrono::Utc::now(),
             updated_at: chrono::Utc::now(),
         };

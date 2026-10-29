@@ -26,6 +26,10 @@ indexes, constraints). Read it for column names and relations; this file only do
   `trade_one_active_per_pair` is keyed on `(LEAST, GREATEST)` of the two user ids, so it ignores direction, and it only
   covers `PENDING`/`ONE_ACCEPTED`/`FULLY_ACCEPTED`. The active-status list in `create_or_find_active`'s fallback
   `SELECT` must stay identical to the index predicate, or a conflicting insert finds nothing to return.
+- **Who abandoned a trade follows the paired per-party columns (ADR-0005)**: `trade.initiator_abandoned_at` /
+  `respondent_abandoned_at`, both nullable. A voluntary abandon sets the abandoning party's column; the automatic
+  abandon (cards reserved by another trade, `apply_transition`) and every trade abandoned before migration 0032 leave
+  both `NULL` — "nobody abandoned", which is what forbids rating such a trade.
 - **Card reservation is derived, not stored**: a card is reserved when it appears in `trade_card` of a non-terminal
   trade.
 - **`v_tradable_entry` is the only source of what a player actually offers**, derived from `users.visibility`,

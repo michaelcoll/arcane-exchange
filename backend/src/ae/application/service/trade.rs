@@ -122,6 +122,8 @@ mod test_fixtures {
             respondent_confirmed_at: None,
             initiator_rating: None,
             respondent_rating: None,
+            initiator_abandoned_at: None,
+            respondent_abandoned_at: None,
             created_at: chrono::Utc::now(),
             updated_at: chrono::Utc::now(),
         }

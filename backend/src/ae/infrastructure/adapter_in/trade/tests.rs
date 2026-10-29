@@ -887,11 +887,13 @@ fn make_trade_detail() -> TradeDetail {
             accepted: false,
             confirmed: false,
             rating: None,
+            abandoned: false,
         },
         partner: TradePartyState {
             accepted: false,
             confirmed: false,
             rating: None,
+            abandoned: false,
         },
     }
 }

@@ -1142,6 +1142,8 @@ extension Components {
         ///
         /// - Remark: Generated from `#/components/schemas/TradePartyStateResponse`.
         public struct TradePartyStateResponse: Codable, Hashable, Sendable {
+            /// - Remark: Generated from `#/components/schemas/TradePartyStateResponse/abandoned`.
+            public var abandoned: Swift.Bool
             /// - Remark: Generated from `#/components/schemas/TradePartyStateResponse/accepted`.
             public var accepted: Swift.Bool
             /// - Remark: Generated from `#/components/schemas/TradePartyStateResponse/confirmed`.
@@ -1151,19 +1153,23 @@ extension Components {
             /// Creates a new `TradePartyStateResponse`.
             ///
             /// - Parameters:
+            ///   - abandoned:
             ///   - accepted:
             ///   - confirmed:
             ///   - rating:
             public init(
+                abandoned: Swift.Bool,
                 accepted: Swift.Bool,
                 confirmed: Swift.Bool,
                 rating: Swift.Int32? = nil
             ) {
+                self.abandoned = abandoned
                 self.accepted = accepted
                 self.confirmed = confirmed
                 self.rating = rating
             }
             public enum CodingKeys: String, CodingKey {
+                case abandoned
                 case accepted
                 case confirmed
                 case rating

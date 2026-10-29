@@ -70,9 +70,9 @@ struct TradeActionsTests {
     @Test func readsMySideFromTheTradeDetail() {
         let trade = TradeDetail(
             id: "t1",
-            me: .init(accepted: true, confirmed: false),
+            me: .init(abandoned: false, accepted: true, confirmed: false),
             my_cards: [],
-            partner: .init(accepted: false, confirmed: false),
+            partner: .init(abandoned: false, accepted: false, confirmed: false),
             partner_cards: [],
             partner_username: "mizzix_42",
             status: "ONE_ACCEPTED"

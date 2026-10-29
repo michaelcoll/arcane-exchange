@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT id, initiator_user_id, respondent_user_id, status,\n                    initiator_amount_due, respondent_amount_due,\n                    initiator_accepted_at, respondent_accepted_at,\n                    initiator_confirmed_at, respondent_confirmed_at,\n                    initiator_rating, respondent_rating,\n                    created_at, updated_at\n                FROM trade WHERE id = $1",
+  "query": "SELECT id, initiator_user_id, respondent_user_id, status,\n                    initiator_amount_due, respondent_amount_due,\n                    initiator_accepted_at, respondent_accepted_at,\n                    initiator_confirmed_at, respondent_confirmed_at,\n                    initiator_rating, respondent_rating,\n                    initiator_abandoned_at, respondent_abandoned_at,\n                    created_at, updated_at\n                FROM trade WHERE id = $1",
   "describe": {
     "columns": [
       {
@@ -137,6 +137,28 @@
       },
       {
         "ordinal": 12,
+        "name": "initiator_abandoned_at",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "trade",
+            "name": "initiator_abandoned_at"
+          }
+        }
+      },
+      {
+        "ordinal": 13,
+        "name": "respondent_abandoned_at",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "trade",
+            "name": "respondent_abandoned_at"
+          }
+        }
+      },
+      {
+        "ordinal": 14,
         "name": "created_at",
         "type_info": "Timestamptz",
         "origin": {
@@ -147,7 +169,7 @@
         }
       },
       {
-        "ordinal": 13,
+        "ordinal": 15,
         "name": "updated_at",
         "type_info": "Timestamptz",
         "origin": {
@@ -176,9 +198,11 @@
       true,
       true,
       true,
+      true,
+      true,
       false,
       false
     ]
   },
-  "hash": "13fa0cd99d24009c634b0a027d81ecccba4a81cf87d9e7064fd3dc2276fbe161"
+  "hash": "5ec909900db07277f5e9ea79d7495859a41a55112fed81d31f4b4e9e08abb686"
 }
