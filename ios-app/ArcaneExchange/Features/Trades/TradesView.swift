@@ -44,29 +44,30 @@ struct TradesView: View {
     }
 
     @ViewBuilder private var content: some View {
-        if model.isLoading, model.trades.isEmpty {
+        switch model.paginator.phase {
+        case .firstLoad:
             ProgressView()
                 .controlSize(.large)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
-        } else if let error = model.loadError, model.trades.isEmpty {
+        case let .failed(error):
             ContentUnavailableView(
                 label: { Label("Échanges indisponibles", systemImage: "exclamationmark.triangle") },
                 description: { Text(error) },
                 actions: { Button("Réessayer") { Task { await model.reload() } } }
             )
-        } else if model.trades.isEmpty {
+        case .empty:
             ContentUnavailableView(
                 "Aucun échange",
                 systemImage: "arrow.left.arrow.right",
                 description: Text("Cherche une carte, puis propose un échange à celui qui la possède.")
             )
-        } else {
+        case .content:
             TradesList(
                 segment: $model.segment,
                 ongoingCount: model.ongoing.count,
                 trades: model.visibleTrades,
-                isLoadingMore: model.isLoadingMore,
-                onRowAppear: { await model.loadMoreIfNeeded(displaying: $0) }
+                isLoadingMore: model.paginator.state == .loadingMore,
+                onRowAppear: { await model.loadMore(after: $0) }
             )
         }
     }

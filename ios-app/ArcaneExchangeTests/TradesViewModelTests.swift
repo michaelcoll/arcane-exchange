@@ -27,11 +27,10 @@ struct TradesViewModelTests {
 
         await model.reload()
 
-        #expect(model.trades.map(\.id) == ["1", "2"])
+        #expect(model.paginator.items.map(\.id) == ["1", "2"])
         #expect(model.ongoing.map(\.id) == ["1"])
         #expect(model.past.map(\.id) == ["2"])
-        #expect(model.loadError == nil)
-        #expect(!model.isLoading)
+        #expect(model.paginator.state == .idle)
         #expect(api.calls == ["list_trades"])
     }
 
@@ -42,38 +41,93 @@ struct TradesViewModelTests {
 
         await model.reload()
 
-        #expect(model.trades.isEmpty)
-        #expect(model.loadError == nil)
+        #expect(model.paginator.items.isEmpty)
+        #expect(model.paginator.state == .idle)
     }
 
-    @Test func loadsTheNextPageWhenTheLastRowsAppear() async {
+    @Test func loadsTheNextPageWhenTheLastRowOfTheDisplayedSegmentAppears() async {
         let api = FakeAPI()
-        let first = (1 ... 20).map { summary("\($0)") }
+        // The last four loaded trades belong to the other segment.
+        let first = (1 ... 16).map { summary("\($0)") } + (17 ... 20).map { summary("\($0)", status: .closed) }
         let second = [summary("21")]
         api.onListTrades = { input in
             input.query.page == 0 ? page(first, total: 21) : page(second, total: 21)
         }
         let model = TradesViewModel(api: api)
         await model.reload()
-        #expect(model.hasMore)
 
-        await model.loadMoreIfNeeded(displaying: first[19])
+        await model.loadMore(after: first[15])
 
-        #expect(model.trades.count == 21)
-        #expect(!model.hasMore)
+        #expect(model.paginator.items.count == 21)
         #expect(api.calls == ["list_trades", "list_trades"])
     }
 
-    @Test func doesNotLoadMoreForARowFarFromTheEnd() async {
+    @Test func doesNotLoadMoreForARowFarFromTheEndOfTheSegment() async {
         let api = FakeAPI()
         let first = (1 ... 20).map { summary("\($0)") }
         api.onListTrades = { _ in page(first, total: 40) }
         let model = TradesViewModel(api: api)
         await model.reload()
 
-        await model.loadMoreIfNeeded(displaying: first[0])
+        await model.loadMore(after: first[0])
 
         #expect(api.calls == ["list_trades"])
+    }
+
+    @Test func fillsAnEmptySegmentUntilItHasARow() async {
+        let api = FakeAPI()
+        let ongoing = { (range: ClosedRange<Int>) in range.map { summary("\($0)") } }
+        api.onListTrades = { input in
+            switch input.query.page {
+            case 0: page(ongoing(1 ... 20), total: 61)
+            case 1: page(ongoing(21 ... 40), total: 61)
+            default: page(ongoing(41 ... 59) + [summary("60", status: .closed)], total: 61)
+            }
+        }
+        let model = TradesViewModel(api: api)
+        model.segment = .past
+
+        await model.reload()
+
+        #expect(model.visibleTrades.map(\.id) == ["60"])
+        #expect(api.calls == ["list_trades", "list_trades", "list_trades"])
+    }
+
+    @Test func stopsFillingAnEmptySegmentAtTheTotal() async {
+        let api = FakeAPI()
+        let first = (1 ... 20).map { summary("\($0)") }
+        let second = (21 ... 25).map { summary("\($0)") }
+        api.onListTrades = { input in
+            input.query.page == 0 ? page(first, total: 25) : page(second, total: 25)
+        }
+        let model = TradesViewModel(api: api)
+        model.segment = .past
+
+        await model.reload()
+
+        #expect(model.visibleTrades.isEmpty)
+        #expect(api.calls == ["list_trades", "list_trades"])
+    }
+
+    @Test func fillsTheSegmentItSwitchesToWithoutReloadingFromPageZero() async {
+        let api = FakeAPI()
+        let first = (1 ... 20).map { summary("\($0)") }
+        let second = [summary("21", status: .closed)]
+        api.onListTrades = { input in
+            input.query.page == 0 ? page(first, total: 21) : page(second, total: 21)
+        }
+        let model = TradesViewModel(api: api)
+        await model.reload()
+
+        model.segment = .past
+        // The fill starts on its own, in a task of the model.
+        while model.visibleTrades.isEmpty {
+            await Task.yield()
+        }
+
+        #expect(model.visibleTrades.map(\.id) == ["21"])
+        #expect(model.paginator.items.count == 21)
+        #expect(api.calls == ["list_trades", "list_trades"])
     }
 
     @Test func showsTheTranslatedMessageOfAFailedLoad() async {
@@ -83,8 +137,8 @@ struct TradesViewModelTests {
 
         await model.reload()
 
-        #expect(model.loadError == "Erreur technique, réessaie plus tard.")
-        #expect(model.trades.isEmpty)
+        #expect(model.paginator.state == .failed("Erreur technique, réessaie plus tard."))
+        #expect(model.paginator.items.isEmpty)
     }
 
     @Test func showsTheNetworkMessageWhenTheServerIsUnreachable() async {
@@ -94,7 +148,7 @@ struct TradesViewModelTests {
 
         await model.reload()
 
-        #expect(model.loadError == APIErrorMessages.network)
+        #expect(model.paginator.state == .failed(APIErrorMessages.network))
     }
 
     @Test func showsTheGenericMessageForAnUnknownCode() async {
@@ -104,6 +158,6 @@ struct TradesViewModelTests {
 
         await model.reload()
 
-        #expect(model.loadError == "Une erreur est survenue.")
+        #expect(model.paginator.state == .failed("Une erreur est survenue."))
     }
 }
