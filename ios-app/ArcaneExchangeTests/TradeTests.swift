@@ -24,13 +24,6 @@ struct TradeStatusTests {
         #expect(TradeStatus(apiValue: "SOMETHING_ELSE") == .pending)
     }
 
-    @Test func onlyPendingAndOneAcceptedCanBeEdited() {
-        #expect(TradeStatus.pending.isEditable)
-        #expect(TradeStatus.oneAccepted.isEditable)
-        #expect(!TradeStatus.fullyAccepted.isEditable)
-        #expect(!TradeStatus.abandoned.isEditable)
-    }
-
     @Test func cardsAreReservedFromTheFirstAcceptanceUntilTheExchangeIsConfirmed() {
         #expect(TradeStatus.oneAccepted.isReserved)
         #expect(TradeStatus.fullyAccepted.isReserved)

@@ -32,6 +32,12 @@ final class TradeDetailViewModel {
         TradeStatus(apiValue: trade?.status ?? "PENDING")
     }
 
+    /// What the player can do now; a trade not loaded yet offers nothing but the default.
+    var actions: TradeActions {
+        trade.map(TradeActions.init(trade:))
+            ?? TradeActions(status: .pending, meAccepted: false, meConfirmed: false, myRating: nil)
+    }
+
     var partnerUsername: String {
         trade?.partner_username ?? ""
     }
@@ -48,14 +54,6 @@ final class TradeDetailViewModel {
 
     var balance: TradeBalance {
         TradeBalance(give: myCards, get: partnerCards)
-    }
-
-    var meAccepted: Bool {
-        trade?.me.accepted ?? false
-    }
-
-    var meConfirmed: Bool {
-        trade?.me.confirmed ?? false
     }
 
     var myRating: Int? {
