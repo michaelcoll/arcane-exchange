@@ -174,8 +174,10 @@ struct TradeDetailView: View {
 
     private var ratingSection: some View {
         VStack(alignment: .leading, spacing: 10) {
-            (Text("Noter ") + Text("@\(model.partnerUsername)").foregroundStyle(Palette.secondary))
-                .font(.subheadline.weight(.semibold))
+            if model.myRating != nil || model.actions.canRate {
+                (Text("Noter ") + Text("@\(model.partnerUsername)").foregroundStyle(Palette.secondary))
+                    .font(.subheadline.weight(.semibold))
+            }
 
             if let rating = model.myRating {
                 Label(
@@ -202,7 +204,12 @@ struct TradeDetailView: View {
 
     private var partnerRatingCaption: Text {
         guard let rating = model.partnerRating else {
-            return Text("Optionnel. L'échange se clôture dès que vous avez tous les deux noté ou passé.")
+            if model.actions.awaitsPartnerRating {
+                return Text("En attente de la note de @\(model.partnerUsername).")
+            }
+            return model.actions.closesTradeOnRating
+                ? Text("Optionnel. L'échange se clôture dès que vous avez tous les deux noté ou passé.")
+                : Text("Optionnel.")
         }
         let partner = Text("@\(model.partnerUsername)").foregroundStyle(Palette.secondary)
         return partner + Text(rating == 0 ? " a passé la notation." : " t'a mis \(rating)/5.")

@@ -263,16 +263,28 @@ impl Trade {
         }))
     }
 
-    /// Rates the other party. The trade is `CLOSED` once both parties have.
+    /// Rates the other party. A `COMPLETED` trade is `CLOSED` once both parties have. An
+    /// `ABANDONED` trade can only be rated by the party who did not abandon it, and stays
+    /// `ABANDONED`.
     pub fn rate(&self, party: Party, rating: u8) -> Result<TradeTransition, FunctionalError> {
-        if self.status != TradeStatus::Completed {
-            return Err(FunctionalError::TradeNotCompleted);
+        match self.status {
+            TradeStatus::Completed => {}
+            TradeStatus::Abandoned => {
+                if self.party_state(party).abandoned {
+                    return Err(FunctionalError::TradeAbandonedByCaller);
+                }
+                if !self.party_state(party.other()).abandoned {
+                    return Err(FunctionalError::TradeAbandonedAutomatically);
+                }
+            }
+            _ => return Err(FunctionalError::TradeNotCompleted),
         }
         if self.party_state(party).rating.is_some() {
             return Err(FunctionalError::TradeAlreadyRated);
         }
 
-        let closed = self.party_state(party.other()).rating.is_some();
+        let closed = self.status == TradeStatus::Completed
+            && self.party_state(party.other()).rating.is_some();
         Ok(self.transition(|next| {
             *next.columns_mut(party).rating = Some(rating);
             if closed {
@@ -727,15 +739,75 @@ mod tests {
     }
 
     #[test]
-    fn rate_is_refused_unless_completed() {
+    fn rate_is_refused_unless_completed_or_abandoned() {
         for status in ALL_STATUSES
             .into_iter()
-            .filter(|s| *s != TradeStatus::Completed)
+            .filter(|s| !matches!(s, TradeStatus::Completed | TradeStatus::Abandoned))
         {
             assert_eq!(
                 make_trade(status).rate(Party::Initiator, 5),
                 Err(FunctionalError::TradeNotCompleted),
                 "status {status:?}"
+            );
+        }
+    }
+
+    fn abandoned_by(abandoning: Party) -> Trade {
+        make_trade(TradeStatus::Pending)
+            .abandon(abandoning)
+            .unwrap()
+            .next
+    }
+
+    #[test]
+    fn the_other_party_can_rate_after_an_abandon_and_the_status_stays_abandoned() {
+        for abandoning in BOTH_PARTIES {
+            let next = abandoned_by(abandoning)
+                .rate(abandoning.other(), 4)
+                .unwrap()
+                .next;
+
+            assert_eq!(next.status, TradeStatus::Abandoned);
+            assert_eq!(next.party_state(abandoning.other()).rating, Some(4));
+            assert_eq!(next.party_state(abandoning).rating, None);
+        }
+    }
+
+    #[test]
+    fn the_abandoning_party_cannot_rate() {
+        for abandoning in BOTH_PARTIES {
+            assert_eq!(
+                abandoned_by(abandoning).rate(abandoning, 4),
+                Err(FunctionalError::TradeAbandonedByCaller),
+                "party {abandoning:?}"
+            );
+        }
+    }
+
+    #[test]
+    fn an_automatic_abandon_cannot_be_rated() {
+        let mut trade = make_trade(TradeStatus::Abandoned);
+        trade.initiator_abandoned_at = None;
+        trade.respondent_abandoned_at = None;
+
+        for party in BOTH_PARTIES {
+            assert_eq!(
+                trade.rate(party, 4),
+                Err(FunctionalError::TradeAbandonedAutomatically),
+                "party {party:?}"
+            );
+        }
+    }
+
+    #[test]
+    fn an_abandoned_trade_cannot_be_rated_twice() {
+        for abandoning in BOTH_PARTIES {
+            let trade = with_rating(abandoned_by(abandoning), abandoning.other(), 0);
+
+            assert_eq!(
+                trade.rate(abandoning.other(), 3),
+                Err(FunctionalError::TradeAlreadyRated),
+                "party {abandoning:?}"
             );
         }
     }

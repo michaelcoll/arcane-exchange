@@ -35,7 +35,7 @@ mod tests {
     use super::*;
     use crate::application::repository::MockTradeRepository;
     use crate::application::service::trade::test_fixtures::{
-        make_base_trade, make_initiator_id, make_stranger_id, mock_reading,
+        make_base_trade, make_initiator_id, make_respondent_id, make_stranger_id, mock_reading,
     };
     use crate::domain::error::FunctionalError;
     use crate::domain::trade::{Trade, TradeStatus};
@@ -59,6 +59,84 @@ mod tests {
         let result = service.rate(TradeId::new(), make_initiator_id(), 5).await;
 
         assert!(result.is_ok());
+    }
+
+    fn abandoned_by_respondent() -> Trade {
+        Trade {
+            status: TradeStatus::Abandoned,
+            respondent_abandoned_at: Some(chrono::Utc::now()),
+            ..make_base_trade()
+        }
+    }
+
+    #[tokio::test]
+    async fn rate_succeeds_for_the_partner_of_the_abandoning_party_and_keeps_the_status() {
+        let mut mock_repository = mock_reading(vec![abandoned_by_respondent()]);
+        mock_repository
+            .expect_apply_transition()
+            .times(1)
+            .withf(|transition| {
+                transition.next().status == TradeStatus::Abandoned
+                    && transition.next().initiator_rating == Some(4)
+            })
+            .returning(|_| Box::pin(async { Ok(true) }));
+
+        let service = RateTradeService::new(Arc::new(mock_repository));
+        let result = service.rate(TradeId::new(), make_initiator_id(), 4).await;
+
+        assert!(result.is_ok());
+    }
+
+    #[tokio::test]
+    async fn rate_fails_for_the_party_who_abandoned() {
+        let mut mock_repository = mock_reading(vec![abandoned_by_respondent()]);
+        mock_repository.expect_apply_transition().times(0);
+
+        let service = RateTradeService::new(Arc::new(mock_repository));
+        let result = service.rate(TradeId::new(), make_respondent_id(), 4).await;
+
+        assert!(matches!(
+            result,
+            Err(AppError::Functional(
+                FunctionalError::TradeAbandonedByCaller
+            ))
+        ));
+    }
+
+    #[tokio::test]
+    async fn rate_fails_after_an_automatic_abandon() {
+        let mut mock_repository = mock_reading(vec![Trade {
+            status: TradeStatus::Abandoned,
+            ..make_base_trade()
+        }]);
+        mock_repository.expect_apply_transition().times(0);
+
+        let service = RateTradeService::new(Arc::new(mock_repository));
+        let result = service.rate(TradeId::new(), make_initiator_id(), 4).await;
+
+        assert!(matches!(
+            result,
+            Err(AppError::Functional(
+                FunctionalError::TradeAbandonedAutomatically
+            ))
+        ));
+    }
+
+    #[tokio::test]
+    async fn rate_fails_when_already_rated_after_an_abandon() {
+        let mut mock_repository = mock_reading(vec![Trade {
+            initiator_rating: Some(2),
+            ..abandoned_by_respondent()
+        }]);
+        mock_repository.expect_apply_transition().times(0);
+
+        let service = RateTradeService::new(Arc::new(mock_repository));
+        let result = service.rate(TradeId::new(), make_initiator_id(), 4).await;
+
+        assert!(matches!(
+            result,
+            Err(AppError::Functional(FunctionalError::TradeAlreadyRated))
+        ));
     }
 
     #[tokio::test]

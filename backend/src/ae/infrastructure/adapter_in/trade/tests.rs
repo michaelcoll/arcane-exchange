@@ -845,6 +845,64 @@ async fn rate_trade_propagates_trade_already_rated_from_use_case() {
     ));
 }
 
+/// `POST /trades/{id}/rate` through the router, authenticated, rating 5.
+async fn post_rate(state: AppState) -> axum::response::Response {
+    use axum::body::Body;
+    use axum::http::{Request, header};
+    use tower::ServiceExt;
+
+    crate::infrastructure::create_router(state)
+        .oneshot(
+            Request::post(format!("/trades/{}/rate", uuid::Uuid::new_v4()))
+                .header(header::AUTHORIZATION, "Bearer test-token")
+                .header(header::CONTENT_TYPE, "application/json")
+                .body(Body::from(r#"{"rating":5}"#))
+                .unwrap(),
+        )
+        .await
+        .unwrap()
+}
+
+#[tokio::test]
+async fn rate_trade_propagates_trade_abandoned_by_caller_from_use_case() {
+    let mut mock_use_case = MockRateTradeUseCase::new();
+    mock_use_case.expect_rate().times(1).returning(|_, _, _| {
+        Box::pin(async {
+            Err(AppError::Functional(
+                FunctionalError::TradeAbandonedByCaller,
+            ))
+        })
+    });
+
+    let response = post_rate(make_app_state_rate(mock_use_case)).await;
+
+    assert_eq!(response.status(), StatusCode::CONFLICT);
+    assert_eq!(
+        crate::infrastructure::testing::json_of(response).await["code"],
+        "trade_abandoned_by_caller"
+    );
+}
+
+#[tokio::test]
+async fn rate_trade_propagates_trade_abandoned_automatically_from_use_case() {
+    let mut mock_use_case = MockRateTradeUseCase::new();
+    mock_use_case.expect_rate().times(1).returning(|_, _, _| {
+        Box::pin(async {
+            Err(AppError::Functional(
+                FunctionalError::TradeAbandonedAutomatically,
+            ))
+        })
+    });
+
+    let response = post_rate(make_app_state_rate(mock_use_case)).await;
+
+    assert_eq!(response.status(), StatusCode::CONFLICT);
+    assert_eq!(
+        crate::infrastructure::testing::json_of(response).await["code"],
+        "trade_abandoned_automatically"
+    );
+}
+
 #[tokio::test]
 async fn rate_trade_propagates_trade_not_completed_from_use_case() {
     let mut mock_use_case = MockRateTradeUseCase::new();

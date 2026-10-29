@@ -7735,7 +7735,7 @@ public enum Operations {
                     self.body = body
                 }
             }
-            /// Trade must be completed before it can be rated, or already rated by the caller
+            /// Trade must be completed or abandoned by the other party before it can be rated, or already rated by the caller
             ///
             /// - Remark: Generated from `#/paths//trades/{trade_id}/rate/post(rate_trade)/responses/409`.
             ///

@@ -87,7 +87,7 @@ enum TradeStatus: String, CaseIterable, Hashable, Codable {
     }
 
     /// A Trade actif (GLOSSARY.md), as on the backend: not yet completed. The home widget's
-    /// `status` filter is built from it. Not "can be abandoned": that is `TradeActions.canAbandon`.
+    /// `status` filter is built from it; `TradeActions.canAbandon` reads it.
     var isActive: Bool {
         self == .pending || self == .oneAccepted || self == .fullyAccepted
     }
