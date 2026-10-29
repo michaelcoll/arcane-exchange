@@ -46,6 +46,8 @@ pub enum FunctionalError {
     TradeAlreadyConfirmed,
     TradeNotCompleted,
     TradeAlreadyRated,
+    TradeAbandonedAutomatically,
+    TradeAbandonedByCaller,
     TradeConcurrentlyModified,
     UserNotFound,
     TradeEmpty,
@@ -92,6 +94,8 @@ impl FunctionalError {
             FunctionalError::TradeAlreadyConfirmed => "trade_already_confirmed",
             FunctionalError::TradeNotCompleted => "trade_not_completed",
             FunctionalError::TradeAlreadyRated => "trade_already_rated",
+            FunctionalError::TradeAbandonedAutomatically => "trade_abandoned_automatically",
+            FunctionalError::TradeAbandonedByCaller => "trade_abandoned_by_caller",
             FunctionalError::TradeConcurrentlyModified => "trade_concurrently_modified",
             FunctionalError::UserNotFound => "user_not_found",
             FunctionalError::TradeEmpty => "trade_empty",
@@ -173,6 +177,12 @@ impl From<FunctionalError> for String {
                 "This trade must be completed before it can be rated".to_string()
             }
             FunctionalError::TradeAlreadyRated => "You have already rated this trade".to_string(),
+            FunctionalError::TradeAbandonedAutomatically => {
+                "This trade was abandoned automatically and cannot be rated".to_string()
+            }
+            FunctionalError::TradeAbandonedByCaller => {
+                "You abandoned this trade, only your partner can rate it".to_string()
+            }
             FunctionalError::TradeConcurrentlyModified => {
                 "This trade is being modified by another request, please retry".to_string()
             }

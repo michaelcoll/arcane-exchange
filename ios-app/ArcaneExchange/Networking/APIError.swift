@@ -91,6 +91,8 @@ enum APIErrorMessages {
         "trade_already_confirmed": "Tu as déjà confirmé cet échange.",
         "trade_not_completed": "Tu pourras noter cet échange une fois qu'il sera terminé.",
         "trade_already_rated": "Tu as déjà noté cet échange.",
+        "trade_abandoned_automatically": "Cet échange a été abandonné automatiquement, il ne peut pas être noté.",
+        "trade_abandoned_by_caller": "Tu as abandonné cet échange : seul ton partenaire peut te noter.",
         "trade_concurrently_modified": "L'échange vient d'être modifié. Recharge la page avant de recommencer.",
         "trade_empty": "Ajoute au moins une carte avant d'accepter cet échange.",
         "trade_card_not_found": "Cette carte ne fait plus partie de l'échange.",

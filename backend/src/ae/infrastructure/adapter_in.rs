@@ -93,6 +93,8 @@ impl IntoResponse for AppError {
                 | FunctionalError::TradeAlreadyConfirmed
                 | FunctionalError::TradeNotCompleted
                 | FunctionalError::TradeAlreadyRated
+                | FunctionalError::TradeAbandonedAutomatically
+                | FunctionalError::TradeAbandonedByCaller
                 | FunctionalError::TradeConcurrentlyModified
                 | FunctionalError::TradeEmpty
                 | FunctionalError::CardAlreadyReserved
@@ -404,6 +406,20 @@ mod tests {
     #[test]
     fn trade_already_rated_returns_conflict_status() {
         let error = AppError::Functional(FunctionalError::TradeAlreadyRated);
+        let response = error.into_response();
+        assert_eq!(response.status(), StatusCode::CONFLICT);
+    }
+
+    #[test]
+    fn trade_abandoned_automatically_returns_conflict_status() {
+        let error = AppError::Functional(FunctionalError::TradeAbandonedAutomatically);
+        let response = error.into_response();
+        assert_eq!(response.status(), StatusCode::CONFLICT);
+    }
+
+    #[test]
+    fn trade_abandoned_by_caller_returns_conflict_status() {
+        let error = AppError::Functional(FunctionalError::TradeAbandonedByCaller);
         let response = error.into_response();
         assert_eq!(response.status(), StatusCode::CONFLICT);
     }

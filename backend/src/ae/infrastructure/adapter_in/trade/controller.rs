@@ -233,7 +233,7 @@ pub(crate) async fn confirm_trade(
         (status = 401, description = "Missing or invalid token"),
         (status = 403, description = "Caller is not a party to this trade"),
         (status = 404, description = "Trade not found"),
-        (status = 409, description = "Trade must be completed before it can be rated, or already rated by the caller"),
+        (status = 409, description = "Trade must be completed or abandoned by the other party before it can be rated, or already rated by the caller"),
     ),
     security(("bearer_auth" = [])),
     tag = "trades",

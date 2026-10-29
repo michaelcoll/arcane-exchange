@@ -1252,7 +1252,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
         '409':
-          description: Trade must be completed before it can be rated, or already rated by the caller
+          description: Trade must be completed or abandoned by the other party before it can be rated, or already rated by the caller
           content:
             application/json:
               schema:

@@ -154,7 +154,11 @@ Any modification notifies the other party.
   - Status → `ABANDONED`.
   - Reserved cards (if any) are released.
   - The other party receives a notification: **"The trade was abandoned by your partner."**
-  - The abandoning party can be rated by the other party (optional, 0–5 stars).
+  - The abandoning party can be rated by the other party (optional, 0–5 stars). Only the other party rates after a
+    voluntary abandon: the abandoning party cannot rate. The status stays `ABANDONED` (it never becomes `CLOSED`), and
+    the abandoning party sees the rating it received.
+  - A trade abandoned automatically (a reserved card went to another trade) has no abandoning party and cannot be
+    rated.
 
 ---
 
