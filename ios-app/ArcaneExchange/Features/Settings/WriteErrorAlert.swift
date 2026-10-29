@@ -19,7 +19,7 @@ extension View {
             ),
             presenting: model.writeError,
             actions: { _ in Button("OK", role: .cancel) {} },
-            message: { Text($0.message) }
+            message: { Text($0) }
         )
     }
 }
