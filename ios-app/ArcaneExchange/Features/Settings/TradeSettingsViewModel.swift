@@ -1,6 +1,5 @@
 import APIClient
 import Foundation
-import OpenAPIRuntime
 
 /// Backs the trade settings of the Réglages sheet: the collection's visibility, the ManaBox
 /// binders opened to trade, and the rarity filters — the `/collection/trade-settings`
@@ -8,26 +7,10 @@ import OpenAPIRuntime
 @MainActor
 @Observable
 final class TradeSettingsViewModel {
-    /// Everything a failed request can say, in the user's terms — same shape as
-    /// `CollectionViewModel.LoadError`.
-    enum RequestError: Equatable {
-        case unauthorized
-        case network
-        case http(Int)
-        case unexpected
+    private let api: any APIProtocol
 
-        var message: String {
-            switch self {
-            case .unauthorized:
-                "Session expirée. Reconnecte-toi pour modifier tes réglages."
-            case .network:
-                "Serveur injoignable. Vérifie ta connexion, et l'URL de l'API dans Réglages ▸ Arcane Exchange."
-            case let .http(status):
-                "Le serveur a répondu \(status)."
-            case .unexpected:
-                "Réponse inattendue du serveur."
-            }
-        }
+    init(api: any APIProtocol) {
+        self.api = api
     }
 
     private(set) var visibility: CollectionVisibility = ._private
@@ -37,9 +20,11 @@ final class TradeSettingsViewModel {
 
     private(set) var isLoading = false
     /// Set when the initial load failed: the screen has nothing to show, so it replaces it.
-    private(set) var loadError: RequestError?
+    /// French message, ready to show.
+    private(set) var loadError: String?
     /// Set when a *write* failed: the screen is intact, only the change was rejected.
-    var writeError: RequestError?
+    /// French message, ready to show.
+    var writeError: String?
 
     private(set) var isSavingVisibility = false
     /// Name of the binder / code of the rarity whose row is waiting on the server, or `nil`.
@@ -66,7 +51,7 @@ final class TradeSettingsViewModel {
             selectedBinders = loaded.2
             self.rarities = loaded.3
         } catch {
-            loadError = Self.requestError(from: error)
+            loadError = APIError.read(error).message
         }
         isLoading = false
     }
@@ -80,21 +65,10 @@ final class TradeSettingsViewModel {
         isSavingVisibility = true
         defer { isSavingVisibility = false }
         do {
-            switch try await APIClientProvider.shared.set_trade_visibility(body: .json(.init(visibility: newValue))) {
-            case .noContent:
-                break
-            case .unauthorized:
-                throw APIClientError.unauthorized
-            case .badRequest:
-                throw APIClientError.undocumented(statusCode: 400)
-            case .notFound:
-                throw APIClientError.undocumented(statusCode: 404)
-            case let .undocumented(statusCode, _):
-                throw APIClientError.undocumented(statusCode: statusCode)
-            }
+            _ = try await api.set_trade_visibility(body: .json(.init(visibility: newValue))).noContent
         } catch {
             visibility = previous
-            writeError = Self.requestError(from: error)
+            writeError = APIError.read(error).message
         }
     }
 
@@ -121,7 +95,7 @@ final class TradeSettingsViewModel {
             // binder *is* selected server-side, and flipping the row back would have the user
             // undo a change that actually went through.
             selectedBinders = previous
-            writeError = Self.requestError(from: error)
+            writeError = APIError.read(error).message
             return
         }
         await refreshRarities()
@@ -139,18 +113,9 @@ final class TradeSettingsViewModel {
                 kept_copies: kept,
                 rarity: rarity
             )
-            switch try await APIClientProvider.shared.set_trade_rarity_filter(body: .json(body)) {
-            case .noContent:
-                break
-            case .unauthorized:
-                throw APIClientError.unauthorized
-            case .badRequest:
-                throw APIClientError.undocumented(statusCode: 400)
-            case let .undocumented(statusCode, _):
-                throw APIClientError.undocumented(statusCode: statusCode)
-            }
+            _ = try await api.set_trade_rarity_filter(body: .json(body)).noContent
         } catch {
-            writeError = Self.requestError(from: error)
+            writeError = APIError.read(error).message
         }
         // Refetched whatever happened, like the web client's `finally`: on success `proposed`
         // is recomputed server-side, and on a rejected write the row must stop showing a value
@@ -169,87 +134,27 @@ final class TradeSettingsViewModel {
     // MARK: Requests
 
     private func fetchVisibility() async throws -> CollectionVisibility {
-        switch try await APIClientProvider.shared.get_trade_visibility() {
-        case let .ok(response):
-            try response.body.json.visibility
-        case .unauthorized:
-            throw APIClientError.unauthorized
-        case .notFound:
-            throw APIClientError.undocumented(statusCode: 404)
-        case let .undocumented(statusCode, _):
-            throw APIClientError.undocumented(statusCode: statusCode)
-        }
+        try await api.get_trade_visibility().ok.body.json.visibility
     }
 
     private func fetchBinders() async throws -> [BinderInfo] {
-        switch try await APIClientProvider.shared.get_collection_stats() {
-        case let .ok(response):
-            try response.body.json.binders
-                .sorted { $0.name.localizedStandardCompare($1.name) == .orderedAscending }
-        case .unauthorized:
-            throw APIClientError.unauthorized
-        case let .undocumented(statusCode, _):
-            throw APIClientError.undocumented(statusCode: statusCode)
-        }
+        try await api.get_collection_stats().ok.body.json.binders
+            .sorted { $0.name.localizedStandardCompare($1.name) == .orderedAscending }
     }
 
     private func fetchSelectedBinders() async throws -> Set<String> {
-        switch try await APIClientProvider.shared.get_trade_binders() {
-        case let .ok(response):
-            try Set(response.body.json.binders)
-        case .unauthorized:
-            throw APIClientError.unauthorized
-        case let .undocumented(statusCode, _):
-            throw APIClientError.undocumented(statusCode: statusCode)
-        }
+        try await Set(api.get_trade_binders().ok.body.json.binders)
     }
 
     private func fetchRarityFilters() async throws -> [RarityFilter] {
-        switch try await APIClientProvider.shared.get_trade_rarity_filters() {
-        case let .ok(response):
-            try response.body.json.rarities
-        case .unauthorized:
-            throw APIClientError.unauthorized
-        case let .undocumented(statusCode, _):
-            throw APIClientError.undocumented(statusCode: statusCode)
-        }
+        try await api.get_trade_rarity_filters().ok.body.json.rarities
     }
 
     private func addBinder(_ name: String) async throws {
-        switch try await APIClientProvider.shared.add_trade_binder(body: .json(.init(binder_name: name))) {
-        case .noContent:
-            return
-        case .unauthorized:
-            throw APIClientError.unauthorized
-        case .badRequest:
-            throw APIClientError.undocumented(statusCode: 400)
-        case .notFound:
-            throw APIClientError.undocumented(statusCode: 404)
-        case let .undocumented(statusCode, _):
-            throw APIClientError.undocumented(statusCode: statusCode)
-        }
+        _ = try await api.add_trade_binder(body: .json(.init(binder_name: name))).noContent
     }
 
     private func removeBinder(_ name: String) async throws {
-        switch try await APIClientProvider.shared.remove_trade_binder(path: .init(name: name)) {
-        case .noContent:
-            return
-        case .unauthorized:
-            throw APIClientError.unauthorized
-        case let .undocumented(statusCode, _):
-            throw APIClientError.undocumented(statusCode: statusCode)
-        }
-    }
-
-    private static func requestError(from error: Error) -> RequestError {
-        if let apiError = error as? APIClientError {
-            switch apiError {
-            case .unauthorized: return .unauthorized
-            case let .undocumented(statusCode): return .http(statusCode)
-            }
-        }
-        // The transport wraps URLSession failures — a wrong base URL or no network lands here.
-        let underlying = (error as? ClientError)?.underlyingError ?? error
-        return underlying is URLError ? .network : .unexpected
+        _ = try await api.remove_trade_binder(path: .init(name: name)).noContent
     }
 }

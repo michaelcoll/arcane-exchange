@@ -9,6 +9,7 @@ struct PlayerAvatar: View {
     let username: String
     var size: CGFloat = 36
 
+    @Environment(\.avatarStore) private var store
     @State private var avatarURL: URL?
 
     var body: some View {
@@ -22,7 +23,7 @@ struct PlayerAvatar: View {
             // loads — same guard as the web client's `watch` on `props.username`.
             .task(id: username) {
                 avatarURL = nil
-                avatarURL = await PlayerAvatarStore.shared.url(for: username)
+                avatarURL = await store.url(for: username)
             }
     }
 
@@ -54,14 +55,16 @@ struct PlayerAvatar: View {
 /// search results, and a trade's two rails can all name the same player. Mirrors the web
 /// client's module-level cache in `useUserAvatar`.
 actor PlayerAvatarStore {
-    static let shared = PlayerAvatarStore()
+    private let api: any APIProtocol
 
     /// `.some(url)` — has an avatar (`url` may itself be `nil`, meaning confirmed none).
     /// Absent — never resolved, or the last attempt failed transiently and is owed a retry.
     private var cached: [String: URL?] = [:]
     private var inFlight: [String: Task<FetchOutcome, Never>] = [:]
 
-    private init() {}
+    init(api: any APIProtocol) {
+        self.api = api
+    }
 
     func url(for username: String) async -> URL? {
         if let cached = cached[username] {
@@ -72,7 +75,7 @@ actor PlayerAvatarStore {
         if let task = inFlight[username] {
             outcome = await task.value
         } else {
-            let task = Task<FetchOutcome, Never> { await Self.fetch(username: username) }
+            let task = Task<FetchOutcome, Never> { [api] in await Self.fetch(username: username, api: api) }
             inFlight[username] = task
             outcome = await task.value
             inFlight[username] = nil
@@ -92,23 +95,17 @@ actor PlayerAvatarStore {
         case retryLater
     }
 
-    /// A 404 (unknown username) is cached as "no avatar", same as the web client — from an
+    /// A `user_not_found` (unknown username) is cached as "no avatar", same as the web client — from an
     /// avatar's point of view the two look identical. Any other failure (network, 5xx, an
     /// expired token) must not freeze the player on initials for the rest of the session, so
-    /// it is left uncached for the next `PlayerAvatar` to retry.
-    private static func fetch(username: String) async -> FetchOutcome {
+    /// it is left uncached for the next `PlayerAvatar` to retry. Nothing is shown for a failure:
+    /// initials are a fine answer, an error message under a handle is not.
+    private static func fetch(username: String, api: any APIProtocol) async -> FetchOutcome {
         do {
-            switch try await APIClientProvider.shared.get_user_profile(path: .init(username: username)) {
-            case let .ok(response):
-                let profile = try response.body.json
-                return .definitive(profile.avatar_url.flatMap(URL.init(string:)))
-            case .notFound:
-                return .definitive(nil)
-            case .unauthorized, .undocumented:
-                return .retryLater
-            }
+            let profile = try await api.get_user_profile(path: .init(username: username)).ok.body.json
+            return .definitive(profile.avatar_url.flatMap(URL.init(string:)))
         } catch {
-            return .retryLater
+            return APIError.read(error).code == "user_not_found" ? .definitive(nil) : .retryLater
         }
     }
 }

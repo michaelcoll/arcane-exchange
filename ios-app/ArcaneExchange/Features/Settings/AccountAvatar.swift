@@ -66,6 +66,7 @@ enum AccountIdentity {
 /// Adds the mockup's nav-bar avatar (`IAvatarBtn`) to a screen inside a `NavigationStack`, and
 /// the Réglages sheet it opens. Each tab keeps its own sheet state, like any other nav-bar item.
 private struct AccountToolbarModifier: ViewModifier {
+    @Environment(\.api) private var api
     @State private var isShowingSettings = false
 
     func body(content: Content) -> some View {
@@ -81,7 +82,7 @@ private struct AccountToolbarModifier: ViewModifier {
                 }
             }
             .sheet(isPresented: $isShowingSettings) {
-                AccountSettingsView()
+                AccountSettingsView(api: api)
             }
     }
 }

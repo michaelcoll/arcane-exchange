@@ -1,3 +1,4 @@
+import APIClient
 import ClerkKit
 import SwiftUI
 
@@ -18,9 +19,13 @@ struct AccountSettingsView: View {
     @Environment(Clerk.self) private var clerk
     @Environment(\.dismiss) private var dismiss
 
-    @State private var model = TradeSettingsViewModel()
+    @State private var model: TradeSettingsViewModel
     @State private var drawer: Drawer?
     @State private var isConfirmingSignOut = false
+
+    init(api: any APIProtocol) {
+        _model = State(initialValue: TradeSettingsViewModel(api: api))
+    }
 
     var body: some View {
         NavigationStack {
@@ -70,13 +75,13 @@ struct AccountSettingsView: View {
         }
     }
 
-    private func loadErrorSection(_ error: TradeSettingsViewModel.RequestError) -> some View {
+    private func loadErrorSection(_ message: String) -> some View {
         Section {
             VStack(alignment: .leading, spacing: 10) {
                 Label("Réglages indisponibles", systemImage: "exclamationmark.triangle")
                     .font(.subheadline)
                     .fontWeight(.semibold)
-                Text(error.message)
+                Text(message)
                     .font(.footnote)
                     .foregroundStyle(.secondary)
                 Button("Réessayer") { Task { await model.load() } }
@@ -148,6 +153,6 @@ struct AccountSettingsView: View {
 }
 
 #Preview {
-    AccountSettingsView()
+    AccountSettingsView(api: APIClientFactory.preview)
         .environment(Clerk.shared)
 }

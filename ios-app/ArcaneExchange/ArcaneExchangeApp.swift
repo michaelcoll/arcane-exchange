@@ -10,6 +10,9 @@ struct ArcaneExchangeApp: App {
     /// The one API client of the session. A 401 signs the player out; `ContentView` follows
     /// the Clerk session back to the login screen.
     private let api: any APIProtocol
+    private let avatarStore: PlayerAvatarStore
+    /// Lets the next 401 sign the player out again once they have signed back in.
+    private let unauthorizedLatch = UnauthorizedLatch()
 
     @Environment(\.scenePhase) private var scenePhase
 
@@ -18,7 +21,12 @@ struct ArcaneExchangeApp: App {
         AppConfig.shareAPIBaseURL()
         ArtworkPipeline.install()
         ClerkSetup.configure()
-        api = APIClientFactory.authenticated(onUnauthorized: { try? await Clerk.shared.auth.signOut() })
+        let api = APIClientFactory.authenticated(
+            onUnauthorized: { try? await Clerk.shared.auth.signOut() },
+            latch: unauthorizedLatch
+        )
+        self.api = api
+        avatarStore = PlayerAvatarStore(api: api)
     }
 
     var body: some Scene {
@@ -28,6 +36,12 @@ struct ArcaneExchangeApp: App {
                 .environment(tilt)
                 .environment(router)
                 .environment(\.api, api)
+                .environment(\.avatarStore, avatarStore)
+                .onChange(of: Clerk.shared.user != nil) { _, isSignedIn in
+                    if isSignedIn {
+                        Task { await unauthorizedLatch.rearm() }
+                    }
+                }
                 .onOpenURL { url in
                     if let link = HomeWidgetLink(url: url) {
                         router.open(link)
