@@ -1,10 +1,12 @@
 use ae::config::Config;
 use ae::infrastructure;
 use dotenv::dotenv;
+use sentry::integrations::tracing::{BreadcrumbLayer, ErrorLayer, LogLayer, SpanLayer};
 use sqlx::postgres::PgPoolOptions;
 use std::net::SocketAddr;
 use tokio::net::TcpListener;
-use tracing::info;
+use tracing::{Level, info};
+use tracing_subscriber::filter::{LevelFilter, filter_fn};
 use tracing_subscriber::layer::SubscriberExt;
 use tracing_subscriber::prelude::*;
 use tracing_subscriber::util::SubscriberInitExt;
@@ -16,7 +18,12 @@ fn main() -> Result<(), sqlx::Error> {
         tracing_subscriber::EnvFilter::try_from_default_env().unwrap_or_else(|_| "info".into());
     tracing_subscriber::Registry::default()
         .with(tracing_subscriber::fmt::layer().with_filter(env_filter))
-        .with(sentry::integrations::tracing::layer())
+        .with(SpanLayer::new().with_filter(LevelFilter::INFO))
+        .with(BreadcrumbLayer::new().with_filter(filter_fn(|metadata| {
+            matches!(*metadata.level(), Level::WARN | Level::INFO)
+        })))
+        .with(ErrorLayer::new().with_filter(LevelFilter::ERROR))
+        .with(LogLayer::new().with_filter(LevelFilter::INFO))
         .init();
 
     let _guard = sentry::init((
