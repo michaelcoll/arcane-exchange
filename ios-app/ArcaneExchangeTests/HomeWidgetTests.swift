@@ -1,3 +1,4 @@
+import APIClient
 import Foundation
 import Testing
 
@@ -90,19 +91,20 @@ struct CollectionSnapshotTests {
     }
 }
 
+/// A cache on a defaults domain of its own per call.
+private func makeCache() -> HomeWidgetCache {
+    HomeWidgetCache(defaults: UserDefaults(suiteName: "HomeWidgetTests.\(UUID().uuidString)")!)
+}
+
 struct HomeWidgetLoaderTests {
     private struct Failure: Error {}
-
-    private static func cache() -> HomeWidgetCache {
-        HomeWidgetCache(defaults: UserDefaults(suiteName: "HomeWidgetLoaderTests.\(UUID().uuidString)")!)
-    }
 
     private static let trades = TradesSnapshot(total: 1, trades: [
         ActiveTrade(id: "t1", partnerUsername: "mizzix_42", myCardCount: 2, partnerCardCount: 1, status: .pending),
     ])
 
     @Test func keepsTheTradeStatusesThroughTheCache() {
-        let cache = Self.cache()
+        let cache = makeCache()
         let snapshot = TradesSnapshot(total: 2, trades: [
             ActiveTrade(id: "t1", partnerUsername: "mizzix_42", myCardCount: 2, partnerCardCount: 1, status: .oneAccepted),
             ActiveTrade(id: "t2", partnerUsername: "golgari.jo", myCardCount: 1, partnerCardCount: 3, status: .fullyAccepted),
@@ -127,7 +129,7 @@ struct HomeWidgetLoaderTests {
     }
 
     @Test func showsAndRemembersWhatTheAPIReturned() async {
-        let cache = Self.cache()
+        let cache = makeCache()
         let content = await HomeWidgetLoader.load(.trades, cache: cache, isSignedIn: true) { Self.trades }
 
         #expect(content == .snapshot(Self.trades))
@@ -135,7 +137,7 @@ struct HomeWidgetLoaderTests {
     }
 
     @Test func fallsBackToTheLastSnapshotWhenTheCallFails() async {
-        let cache = Self.cache()
+        let cache = makeCache()
         cache.save(Self.trades, for: .trades)
         let content: HomeWidgetContent<TradesSnapshot> =
             await HomeWidgetLoader.load(.trades, cache: cache, isSignedIn: true) { throw Failure() }
@@ -145,13 +147,13 @@ struct HomeWidgetLoaderTests {
 
     @Test func isUnavailableWhenTheCallFailsWithNothingCached() async {
         let content: HomeWidgetContent<TradesSnapshot> =
-            await HomeWidgetLoader.load(.trades, cache: Self.cache(), isSignedIn: true) { throw Failure() }
+            await HomeWidgetLoader.load(.trades, cache: makeCache(), isSignedIn: true) { throw Failure() }
 
         #expect(content == .unavailable)
     }
 
     @Test func asksToSignInWithoutCallingTheAPI() async {
-        let cache = Self.cache()
+        let cache = makeCache()
         cache.save(Self.trades, for: .trades)
         let content: HomeWidgetContent<TradesSnapshot> =
             await HomeWidgetLoader.load(.trades, cache: cache, isSignedIn: false) {
@@ -160,6 +162,90 @@ struct HomeWidgetLoaderTests {
             }
 
         #expect(content == .signedOut)
+    }
+}
+
+struct HomeWidgetFetchTests {
+    private static func tradesAPI(_ outcome: @escaping () throws -> Operations.list_trades.Output) -> FakeAPI {
+        let api = FakeAPI()
+        api.onListTrades = { _ in try outcome() }
+        return api
+    }
+
+    @Test func buildsTheTradesSnapshotFromTheActiveTradesPage() async throws {
+        let api = Self.tradesAPI {
+            .ok(.init(body: .json(.init(
+                items: [TradeSummary(
+                    id: "t1",
+                    my_card_count: 2,
+                    partner_card_count: 1,
+                    partner_username: "mizzix_42",
+                    status: TradeStatus.oneAccepted.rawValue,
+                    updated_at: "2026-10-01T10:00:00Z"
+                )],
+                page: 0,
+                page_size: 3,
+                total: 5
+            ))))
+        }
+
+        let snapshot = try await HomeWidgetFetch.trades(api: api)
+
+        #expect(snapshot == TradesSnapshot(total: 5, trades: [
+            ActiveTrade(id: "t1", partnerUsername: "mizzix_42", myCardCount: 2, partnerCardCount: 1, status: .oneAccepted),
+        ]))
+        #expect(api.calls == ["list_trades"])
+    }
+
+    @Test func buildsTheCollectionSnapshotFromTheHistoryAndTheStats() async throws {
+        let api = FakeAPI()
+        let entry = PriceHistoryEntry(avg: 90, date: "2026-10-01", low: 80, trend: 100)
+        api.onGetCollectionPriceHistory = { _ in .ok(.init(body: .json([entry]))) }
+        api.onGetCollectionStats = { _ in
+            .ok(.init(body: .json(.init(binders: [], sets: [], total_cards: 12, unique_cards: 9))))
+        }
+
+        let snapshot = try await HomeWidgetFetch.collection(api: api)
+
+        #expect(snapshot == CollectionSnapshot(history: [entry], totalCards: 12, uniqueCards: 9))
+        #expect(Set(api.calls) == ["get_collection_price_history", "get_collection_stats"])
+    }
+
+    /// An expired session shows the widget's "not signed in" state, whatever an earlier
+    /// snapshot says; nothing here signs the app out.
+    @Test func anExpiredSessionShowsTheSignedOutState() async {
+        let cache = makeCache()
+        cache.save(TradesSnapshot(total: 0, trades: []), for: .trades)
+        let api = Self.tradesAPI { throw APIError(code: "unauthorized", status: 401) }
+
+        let content = await HomeWidgetLoader.load(.trades, cache: cache, isSignedIn: true) {
+            try await HomeWidgetFetch.trades(api: api)
+        }
+
+        #expect(content == .signedOut)
+    }
+
+    @Test func aNetworkFailureKeepsTheLastSnapshot() async {
+        let cache = makeCache()
+        let remembered = TradesSnapshot(total: 0, trades: [])
+        cache.save(remembered, for: .trades)
+        let api = Self.tradesAPI { throw APIError(code: nil, status: nil, isNetworkFailure: true) }
+
+        let content = await HomeWidgetLoader.load(.trades, cache: cache, isSignedIn: true) {
+            try await HomeWidgetFetch.trades(api: api)
+        }
+
+        #expect(content == .snapshot(remembered))
+    }
+
+    @Test func aNetworkFailureWithNothingCachedIsUnavailable() async {
+        let api = Self.tradesAPI { throw APIError(code: nil, status: nil, isNetworkFailure: true) }
+
+        let content = await HomeWidgetLoader.load(.trades, cache: makeCache(), isSignedIn: true) {
+            try await HomeWidgetFetch.trades(api: api)
+        }
+
+        #expect(content == .unavailable)
     }
 }
 
