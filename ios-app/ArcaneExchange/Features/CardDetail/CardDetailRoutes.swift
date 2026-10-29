@@ -18,7 +18,7 @@ private struct CardBrowsingDestinations: ViewModifier {
 
     func body(content: Content) -> some View {
         content
-            .navigationDestination(for: SearchResultsRoute.self) { SearchResultsView(route: $0) }
+            .navigationDestination(for: SearchResultsRoute.self) { SearchResultsView(route: $0, api: api) }
             .navigationDestination(for: CardDetailRoute.self) { CardDetailView(card: $0.card, api: api) }
             .navigationDestination(for: CardOffersRoute.self) { CardOffersView(card: $0.card, api: api) }
     }

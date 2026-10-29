@@ -33,7 +33,7 @@ struct RootTabView: View {
             }
 
             Tab("Rechercher", systemImage: "magnifyingglass", value: .search, role: .search) {
-                SearchView(searchText: $searchText)
+                SearchView(searchText: $searchText, api: api)
             }
         }
     }

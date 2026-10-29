@@ -1,9 +1,11 @@
+import APIClient
 import SwiftUI
 
 /// Where a submitted search lands (`ScrResults` in the mockup): a paginated card grid for a
 /// name or player search, or a placeholder for the not-yet-wired decklist mode.
 struct SearchResultsView: View {
     let route: SearchResultsRoute
+    let api: any APIProtocol
 
     var body: some View {
         Group {
@@ -11,7 +13,7 @@ struct SearchResultsView: View {
             case .decklist:
                 decklistPlaceholder
             case .card, .player:
-                SearchResultsGrid(target: route.target)
+                SearchResultsGrid(target: route.target, api: api)
             }
         }
         .navigationTitle(route.title)
@@ -39,9 +41,9 @@ private struct SearchResultsGrid: View {
 
     private let columns = [GridItem(.adaptive(minimum: 140), spacing: 14)]
 
-    init(target: SearchResultsRoute.Target) {
+    init(target: SearchResultsRoute.Target, api: any APIProtocol) {
         self.target = target
-        _model = State(initialValue: SearchResultsViewModel(target: target))
+        _model = State(initialValue: SearchResultsViewModel(target: target, api: api))
     }
 
     var body: some View {
@@ -64,7 +66,7 @@ private struct SearchResultsGrid: View {
         } else if let error = model.loadError, model.cards.isEmpty {
             ContentUnavailableView(
                 label: { Label("Recherche indisponible", systemImage: "exclamationmark.triangle") },
-                description: { Text(error.message) },
+                description: { Text(error) },
                 actions: { Button("Réessayer") { Task { await model.load() } } }
             )
         } else if model.cards.isEmpty {
@@ -163,6 +165,9 @@ private struct SearchResultsGrid: View {
 
 #Preview {
     NavigationStack {
-        SearchResultsView(route: SearchResultsRoute(target: .card(query: "Vampiric Tutor")))
+        SearchResultsView(
+            route: SearchResultsRoute(target: .card(query: "Vampiric Tutor")),
+            api: APIClientFactory.preview
+        )
     }
 }
