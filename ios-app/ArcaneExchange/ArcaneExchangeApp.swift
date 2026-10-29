@@ -1,3 +1,4 @@
+import APIClient
 import ClerkKit
 import SwiftUI
 
@@ -6,6 +7,10 @@ struct ArcaneExchangeApp: App {
     /// One CoreMotion source for the whole app, read by every `FoilOverlay`.
     @State private var tilt = TiltProvider()
     @State private var router = AppRouter()
+    /// The one API client of the session. A 401 signs the player out; `ContentView` follows
+    /// the Clerk session back to the login screen.
+    private let api: any APIProtocol
+
     @Environment(\.scenePhase) private var scenePhase
 
     init() {
@@ -13,6 +18,7 @@ struct ArcaneExchangeApp: App {
         AppConfig.shareAPIBaseURL()
         ArtworkPipeline.install()
         ClerkSetup.configure()
+        api = APIClientFactory.authenticated(onUnauthorized: { try? await Clerk.shared.auth.signOut() })
     }
 
     var body: some Scene {
@@ -21,6 +27,7 @@ struct ArcaneExchangeApp: App {
                 .environment(Clerk.shared)
                 .environment(tilt)
                 .environment(router)
+                .environment(\.api, api)
                 .onOpenURL { url in
                     if let link = HomeWidgetLink(url: url) {
                         router.open(link)

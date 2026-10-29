@@ -25,6 +25,10 @@ code : [CODING_STANDARDS.md](../CODING_STANDARDS.md) › iOS.
 - The `APIClient` target builds with `-suppress-warnings` (`Package.swift`): the generator writes a `public import`
   per module in every file, one `UnusedImportAccess` warning each. It mutes **every** warning of the module, so keep
   hand-written code out of it — and check `swift build` without the flag after bumping `swift-openapi-*`.
+- New code goes through `APIClientFactory` (`Networking/`, ADR-0020): view models take `any APIProtocol` in their
+  initializer (views read it from `\.api`), read only the success of an `Output` (`.ok`, `.noContent`) and catch with
+  `APIError.read`. Tests use `FakeAPI` (`ArcaneExchangeTests/Fakes/`). `APIClientProvider.shared` is the legacy access,
+  being migrated away.
 - `APIClientProvider.shared` is rebuilt on each access **on purpose**: the base URL is editable at runtime.
 
 ## Home-screen widgets
