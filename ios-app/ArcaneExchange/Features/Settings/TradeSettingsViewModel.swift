@@ -171,7 +171,7 @@ final class TradeSettingsViewModel {
     private func fetchVisibility() async throws -> CollectionVisibility {
         switch try await APIClientProvider.shared.get_trade_visibility() {
         case let .ok(response):
-            return try response.body.json.visibility
+            try response.body.json.visibility
         case .unauthorized:
             throw APIClientError.unauthorized
         case .notFound:
@@ -184,7 +184,7 @@ final class TradeSettingsViewModel {
     private func fetchBinders() async throws -> [BinderInfo] {
         switch try await APIClientProvider.shared.get_collection_stats() {
         case let .ok(response):
-            return try response.body.json.binders
+            try response.body.json.binders
                 .sorted { $0.name.localizedStandardCompare($1.name) == .orderedAscending }
         case .unauthorized:
             throw APIClientError.unauthorized
@@ -196,7 +196,7 @@ final class TradeSettingsViewModel {
     private func fetchSelectedBinders() async throws -> Set<String> {
         switch try await APIClientProvider.shared.get_trade_binders() {
         case let .ok(response):
-            return try Set(response.body.json.binders)
+            try Set(response.body.json.binders)
         case .unauthorized:
             throw APIClientError.unauthorized
         case let .undocumented(statusCode, _):
@@ -207,7 +207,7 @@ final class TradeSettingsViewModel {
     private func fetchRarityFilters() async throws -> [RarityFilter] {
         switch try await APIClientProvider.shared.get_trade_rarity_filters() {
         case let .ok(response):
-            return try response.body.json.rarities
+            try response.body.json.rarities
         case .unauthorized:
             throw APIClientError.unauthorized
         case let .undocumented(statusCode, _):

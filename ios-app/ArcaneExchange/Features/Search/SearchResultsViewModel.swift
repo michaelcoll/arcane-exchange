@@ -102,8 +102,7 @@ final class SearchResultsViewModel {
     }
 
     func loadMoreIfNeeded(displaying card: CollectionCard) async {
-        guard !isLoading, !isLoadingMore, hasMore, loadError == nil else { return }
-        guard cards.suffix(4).contains(card) else { return }
+        guard !isLoading, !isLoadingMore, hasMore, loadError == nil, cards.suffix(4).contains(card) else { return }
 
         let current = generation
         let page = nextPage
