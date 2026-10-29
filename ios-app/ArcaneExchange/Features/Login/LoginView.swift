@@ -1,3 +1,4 @@
+import APIClient
 import ClerkKit
 import SwiftUI
 
@@ -6,6 +7,8 @@ import SwiftUI
 struct LoginView: View {
     /// Never `.signedIn`: `ContentView` shows the tabs then.
     let phase: SessionPhase
+    /// The public endpoints are read with the anonymous client: a 401 there signs nobody out.
+    let api: any APIProtocol
 
     /// `nil` until the public stats answer, and for good when they do not.
     @State private var proposedCopies: Int?
@@ -14,7 +17,7 @@ struct LoginView: View {
         ZStack(alignment: .bottom) {
             // Only a signed-out visitor fetches the showcase: while the session loads, the
             // wall of the previous launch is enough.
-            LoginBackground(fetchesShowcase: phase == .signedOut)
+            LoginBackground(api: api, fetchesShowcase: phase == .signedOut)
                 .ignoresSafeArea()
             // Hidden until Clerk has restored the session: a signed-in player must not see the
             // card flash before the collection.
@@ -30,7 +33,7 @@ struct LoginView: View {
         // card that never shows.
         .task(id: phase) {
             guard phase == .signedOut else { return }
-            proposedCopies = await LoginStats.proposedCopies()
+            proposedCopies = await LoginStats.proposedCopies(api: api)
         }
     }
 }
@@ -42,7 +45,12 @@ struct LoginView: View {
 struct LoginBackground: View {
     let fetchesShowcase: Bool
 
-    @State private var showcase = ShowcaseModel()
+    @State private var showcase: ShowcaseModel
+
+    init(api: any APIProtocol, fetchesShowcase: Bool) {
+        self.fetchesShowcase = fetchesShowcase
+        _showcase = State(initialValue: ShowcaseModel(api: api))
+    }
 
     var body: some View {
         ZStack {
@@ -64,10 +72,10 @@ struct LoginBackground: View {
 }
 
 #Preview("Signed out") {
-    LoginView(phase: .signedOut)
+    LoginView(phase: .signedOut, api: APIClientFactory.anonymous())
         .environment(Clerk.shared)
 }
 
 #Preview("Session loading") {
-    LoginView(phase: .loading)
+    LoginView(phase: .loading, api: APIClientFactory.anonymous())
 }

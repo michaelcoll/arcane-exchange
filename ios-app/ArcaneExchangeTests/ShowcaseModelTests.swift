@@ -1,3 +1,4 @@
+import APIClient
 import Foundation
 import Testing
 import UIKit
@@ -19,9 +20,17 @@ struct ShowcaseModelTests {
         var downloaded = [String]()
         var warmed = [String]()
 
+        var api: FakeAPI {
+            let api = FakeAPI()
+            api.onGetShowcase = { _ in
+                guard let paths = self.showcase else { throw APIError(code: nil, status: 500) }
+                return .ok(.init(body: .json(paths)))
+            }
+            return api
+        }
+
         var source: ShowcaseSource {
             ShowcaseSource(
-                paths: { self.showcase },
                 cachedImages: { urls in urls.compactMap { self.cached[$0.path] } },
                 images: { urls in
                     self.downloaded += urls.map(\.path)
@@ -33,7 +42,7 @@ struct ShowcaseModelTests {
     }
 
     private func model() -> ShowcaseModel {
-        ShowcaseModel(defaults: defaults, source: platform.source)
+        ShowcaseModel(api: platform.api, defaults: defaults, source: platform.source)
     }
 
     /// A launch after `paths` were shown: the list is remembered, the images are on disk.
