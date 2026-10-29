@@ -32,7 +32,7 @@ private enum HomeWidgetMessage {
     }
 
     static var unavailable: some View {
-        message("Serveur injoignable pour le moment", systemImage: "wifi.exclamationmark")
+        message("Données indisponibles pour le moment", systemImage: "wifi.exclamationmark")
     }
 
     private static func message(_ text: String, systemImage: String) -> some View {
@@ -59,7 +59,7 @@ private enum HomeWidgetMessage {
     .background(HomeWidgetSurface.background, in: .rect(cornerRadius: 22))
 }
 
-#Preview("Serveur injoignable") {
+#Preview("Données indisponibles") {
     HomeWidgetContainer(content: HomeWidgetContent<TradesSnapshot>.unavailable, link: .trades) { _ in
         EmptyView()
     }
