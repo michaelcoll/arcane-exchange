@@ -1,3 +1,4 @@
+import APIClient
 import SwiftUI
 
 /// "Possesseurs" (`ScrOffers` in the mockup): the other players offering this card to trade,
@@ -9,9 +10,9 @@ struct CardOffersView: View {
     @State private var model: CardOffersViewModel
     @Environment(\.tradeNavigator) private var openTrade
 
-    init(card: CollectionCard) {
+    init(card: CollectionCard, api: any APIProtocol) {
         self.card = card
-        _model = State(initialValue: CardOffersViewModel(card: card))
+        _model = State(initialValue: CardOffersViewModel(card: card, api: api))
     }
 
     var body: some View {
@@ -119,7 +120,8 @@ struct CardOffersView: View {
                 reserved: false,
                 scryfall_id: "7a79190f-de60-4eb6-b925-594eb76ca8c3",
                 set_code: "FIN"
-            )
+            ),
+            api: APIClientFactory.preview
         )
     }
 }
