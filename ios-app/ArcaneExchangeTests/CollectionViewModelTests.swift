@@ -30,96 +30,76 @@ struct CollectionViewModelTests {
 
         await model.loadInitiallyIfNeeded()
 
-        #expect(model.cards.map(\.scryfall_id) == ["a", "b"])
-        #expect(model.total == 2)
-        #expect(model.loadError == nil)
-        #expect(!model.isLoading)
+        #expect(model.paginator.items.map(\.scryfall_id) == ["a", "b"])
+        #expect(model.paginator.total == 2)
+        #expect(model.paginator.state == .idle)
         #expect(api.calls == ["get_collection"])
     }
 
-    @Test func loadsTheNextPageWhenTheLastCardsAppear() async {
+    @Test func theLatestFilterWinsWhateverOrderTheResponsesComeBackIn() async {
         let api = FakeAPI()
-        let first = (1 ... 20).map { card("\($0)") }
-        api.onGetCollection = { input in
-            input.query.page == 0 ? page(first, total: 21) : page([card("21")], total: 21)
-        }
+        let gate = ResponseGate()
+        api.onGetCollection = { _ in await gate.next() }
         let model = makeModel(api)
-        await model.reload()
-        #expect(model.hasMore)
+        model.filters = CollectionFilters(rarities: [.C])
+        let first = Task { await model.paginator.reload() }
+        await gate.waitForRequests(1)
+        model.filters = CollectionFilters(rarities: [.M])
+        let second = Task { await model.paginator.reload() }
+        await gate.waitForRequests(2)
 
-        await model.loadMoreIfNeeded(displaying: first[19])
+        gate.respond(1, with: page([card("mythic")], total: 1))
+        await second.value
+        gate.respond(0, with: page([card("common")], total: 1))
+        await first.value
 
-        #expect(model.cards.count == 21)
-        #expect(!model.hasMore)
-        #expect(api.calls == ["get_collection", "get_collection"])
+        #expect(model.paginator.items.map(\.scryfall_id) == ["mythic"])
     }
 
-    @Test func doesNotLoadMoreForACardFarFromTheEnd() async {
+    @Test func aRefreshDuringTheNextPageDropsTheOldPage() async {
         let api = FakeAPI()
-        let first = (1 ... 20).map { card("\($0)") }
-        api.onGetCollection = { _ in page(first, total: 40) }
+        let gate = ResponseGate()
+        api.onGetCollection = { _ in await gate.next() }
         let model = makeModel(api)
-        await model.reload()
+        let initial = Task { await model.paginator.reload() }
+        await gate.waitForRequests(1)
+        let first = (1 ... 20).map { card("\($0)") }
+        gate.respond(0, with: page(first, total: 40))
+        await initial.value
+        let more = Task { await model.paginator.loadMore(after: first[19]) }
+        await gate.waitForRequests(2)
+        let refresh = Task { await model.paginator.reload() }
+        await gate.waitForRequests(3)
 
-        await model.loadMoreIfNeeded(displaying: first[0])
+        gate.respond(2, with: page([card("fresh")], total: 1))
+        await refresh.value
+        gate.respond(1, with: page([card("stale")], total: 40))
+        await more.value
 
-        #expect(api.calls == ["get_collection"])
+        #expect(model.paginator.items.map(\.scryfall_id) == ["fresh"])
     }
 
-    @Test func asksForTheRaritiesSetsAndSortOfTheFilters() async {
+    @Test func sendsTheSameRaritiesAndSetsAsTheSearch() async {
         let api = FakeAPI()
-        nonisolated(unsafe) var query: Operations.get_collection.Input.Query?
+        nonisolated(unsafe) var collectionQuery: Operations.get_collection.Input.Query?
         api.onGetCollection = { input in
-            query = input.query
+            collectionQuery = input.query
             return page([], total: 0)
         }
+        let filters = CollectionFilters(rarities: [.M, .C, .R], sets: ["MH3", "FDN"], sortBy: .added_at, sortDir: .asc)
         let model = makeModel(api)
-        model.filters = CollectionFilters(rarities: [.R, .C], sets: ["MH3", "FDN"], sortBy: .added_at, sortDir: .asc)
+        model.filters = filters
 
-        await model.reload()
+        await model.paginator.reload()
+        let searchQuery = SearchResultsRoute.Target.card(query: "Sol Ring")
+            .query(filters: filters, page: 0, pageSize: 20)
 
-        #expect(query?.rarity == [.C, .R])
-        #expect(query?.sets == "FDN,MH3")
-        #expect(query?.sort_by == .added_at)
-        #expect(query?.sort_dir == .asc)
-    }
-
-    @Test func showsTheNetworkMessageWhenTheServerIsUnreachable() async {
-        let api = FakeAPI()
-        api.onGetCollection = { _ in throw APIError(code: nil, status: nil, isNetworkFailure: true) }
-        let model = makeModel(api)
-
-        await model.reload()
-
-        #expect(model.loadError == APIErrorMessages.network)
-        #expect(model.cards.isEmpty)
-        #expect(!model.isLoading)
-    }
-
-    @Test func showsTheGenericMessageForAnUnknownCode() async {
-        let api = FakeAPI()
-        api.onGetCollection = { _ in throw APIError(code: "brand_new_code", status: 418) }
-        let model = makeModel(api)
-
-        await model.reload()
-
-        #expect(model.loadError == APIErrorMessages.generic)
-    }
-
-    @Test func aFailedNextPageKeepsTheCardsAlreadyLoaded() async {
-        let api = FakeAPI()
-        let first = (1 ... 20).map { card("\($0)") }
-        api.onGetCollection = { input in
-            if input.query.page == 0 { return page(first, total: 40) }
-            throw APIError(code: "internal", status: 500)
-        }
-        let model = makeModel(api)
-        await model.reload()
-
-        await model.loadMoreIfNeeded(displaying: first[19])
-
-        #expect(model.cards.count == 20)
-        #expect(model.loadError == APIErrorMessages.message(for: "internal"))
+        #expect(collectionQuery?.rarity == [.C, .R, .M])
+        #expect(collectionQuery?.sets == "FDN,MH3")
+        #expect(collectionQuery?.sort_by == .added_at)
+        #expect(collectionQuery?.sort_dir == .asc)
+        #expect(searchQuery?.rarity == collectionQuery?.rarity)
+        #expect(searchQuery?.sets == collectionQuery?.sets)
     }
 
     @Test func loadsTheSetsSortedByName() async {
@@ -134,6 +114,52 @@ struct CollectionViewModelTests {
         #expect(model.sets.map(\.code) == ["FDN", "MH3"])
     }
 
+    @Test func aRestoredSetFilterWaitsForTheSetListAndDropsASetNoLongerOwned() async {
+        let defaults = isolatedDefaults()
+        CollectionFiltersStore(defaults: defaults).save(CollectionFilters(sets: ["FDN", "OLD"]))
+        let api = FakeAPI()
+        var model: CollectionViewModel?
+        var waitingDuringSets: Bool?
+        var callsDuringSets: [String] = []
+        nonisolated(unsafe) var collectionQuery: Operations.get_collection.Input.Query?
+        api.onGetCollectionStats = { _ in
+            waitingDuringSets = model?.isWaitingForSets
+            callsDuringSets = api.calls
+            return stats(sets: [.init(code: "FDN", name: "Foundations")])
+        }
+        api.onGetCollection = { input in
+            collectionQuery = input.query
+            return page([card("a")], total: 1)
+        }
+        model = CollectionViewModel(api: api, defaults: defaults)
+
+        await model?.loadInitiallyIfNeeded()
+
+        #expect(waitingDuringSets == true)
+        #expect(callsDuringSets == ["get_collection_stats"])
+        #expect(model?.isWaitingForSets == false)
+        #expect(collectionQuery?.sets == "FDN")
+        #expect(model?.filters.sets == ["FDN"])
+        #expect(model?.paginator.items.map(\.scryfall_id) == ["a"])
+    }
+
+    @Test func reloadsTheSetsThenTheGridAfterAnImport() async {
+        let api = FakeAPI()
+        api.onGetCollectionStats = { _ in stats(sets: [.init(code: "FDN", name: "Foundations")]) }
+        api.onGetCollection = { _ in page([card("a")], total: 1) }
+        let model = makeModel(api)
+        await model.loadSetsIfNeeded()
+        api.onGetCollectionStats = { _ in
+            stats(sets: [.init(code: "FDN", name: "Foundations"), .init(code: "MH3", name: "Modern Horizons 3")])
+        }
+
+        await model.reloadAfterImport()
+
+        #expect(model.sets.map(\.code) == ["FDN", "MH3"])
+        #expect(model.paginator.items.map(\.scryfall_id) == ["a"])
+        #expect(api.calls == ["get_collection_stats", "get_collection_stats", "get_collection"])
+    }
+
     @Test func aFailedSetListDoesNotBlankTheGrid() async {
         let api = FakeAPI()
         api.onGetCollectionStats = { _ in throw APIError(code: "internal", status: 500) }
@@ -142,6 +168,27 @@ struct CollectionViewModelTests {
         await model.loadSetsIfNeeded()
 
         #expect(model.sets.isEmpty)
-        #expect(model.loadError == nil)
+        #expect(model.paginator.state == .idle)
+    }
+}
+
+/// Holds each `get_collection` response until the test releases it, to fix the order they
+/// come back in.
+@MainActor
+private final class ResponseGate {
+    private var waiting: [CheckedContinuation<Operations.get_collection.Output, Never>] = []
+
+    func next() async -> Operations.get_collection.Output {
+        await await withCheckedContinuation { waiting.append($0) }
+    }
+
+    func respond(_ index: Int, with output: Operations.get_collection.Output) {
+        waiting[index].resume(returning: output)
+    }
+
+    func waitForRequests(_ count: Int) async {
+        while waiting.count < count {
+            await Task.yield()
+        }
     }
 }

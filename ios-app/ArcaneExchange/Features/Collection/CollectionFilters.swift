@@ -24,6 +24,17 @@ struct CollectionFilters: Hashable, Codable {
         rarities.count + sets.count
     }
 
+    /// The `rarity` query parameter, in the schema's own order so the same selection always gives
+    /// the same URL. `nil` when nothing narrows. Shared by `get_collection` and `search_cards`.
+    var rarityQuery: [RarityCode]? {
+        rarities.isEmpty ? nil : RarityCode.allCases.filter(rarities.contains)
+    }
+
+    /// The `sets` query parameter: the codes sorted, comma-joined. `nil` when nothing narrows.
+    var setsQuery: String? {
+        sets.isEmpty ? nil : sets.sorted().joined(separator: ",")
+    }
+
     mutating func clearAll() {
         rarities = []
         sets = []
