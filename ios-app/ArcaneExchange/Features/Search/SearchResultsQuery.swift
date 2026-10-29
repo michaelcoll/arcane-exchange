@@ -56,9 +56,8 @@ extension SearchResultsRoute.Target {
             sort_by: offeredSort(filters.sortBy),
             sort_dir: filters.sortDir,
             q: scope.q,
-            // Schema order rather than the set's, so the same selection always gives the same URL.
-            rarity: filters.rarities.isEmpty ? nil : RarityCode.allCases.filter(filters.rarities.contains),
-            sets: filters.sets.isEmpty ? nil : filters.sets.sorted().joined(separator: ","),
+            rarity: filters.rarityQuery,
+            sets: filters.setsQuery,
             player_username: scope.player_username
         )
     }

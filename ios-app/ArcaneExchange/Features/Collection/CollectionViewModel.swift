@@ -6,25 +6,21 @@ import Foundation
 @MainActor
 @Observable
 final class CollectionViewModel {
-    /// Matches the mockup's "pagination API de 20 cartes, chargées au défilement".
-    private static let pageSize: Int32 = 20
-
     /// Restored from the previous launch, and saved again on every change.
     var filters: CollectionFilters {
         didSet { store.save(filters) }
     }
 
-    private(set) var cards: [CollectionCard] = []
-    private(set) var total = 0
-    private(set) var sets: [SetInfo] = []
-    private(set) var isLoading = false
-    private(set) var isLoadingMore = false
-    /// French message of the last failed load, ready to show.
-    private(set) var loadError: String?
+    /// The loaded cards and their loading state. Reload it whenever `filters` changes. Implicitly
+    /// unwrapped on purpose: its `fetch` reads `filters`, so it is built in `init` once `self` is
+    /// usable, and `@Observable` rules out `lazy` and a `let` assigned last.
+    private(set) var paginator: Paginator<CollectionCard>!
 
-    /// Index of the page the next `loadMore` should ask for. Doubles as a generation counter:
-    /// `reload` resets it to 0, which lets an in-flight `loadMore` notice its page is stale.
-    private var nextPage: Int32 = 0
+    private(set) var sets: [SetInfo] = []
+
+    /// True while the first load waits for the set list, so the grid shows its spinner rather
+    /// than the "no match" screen.
+    private(set) var isWaitingForSets = false
 
     /// The set-list request in flight. The first load and the view's own `.task` both ask for
     /// the sets: the second caller joins the first request instead of racing it.
@@ -33,14 +29,13 @@ final class CollectionViewModel {
     private let api: any APIProtocol
     private let store: CollectionFiltersStore
 
-    var hasMore: Bool {
-        cards.count < total
-    }
-
     init(api: any APIProtocol, defaults: UserDefaults = .standard) {
         self.api = api
         store = CollectionFiltersStore(defaults: defaults)
         filters = store.load()
+        paginator = .cardGrid(owner: self) { model, page, pageSize in
+            try await model.fetchPage(page, pageSize: pageSize)
+        }
     }
 
     /// First load only. The view's `.task` re-runs every time the screen re-appears (e.g. after
@@ -50,13 +45,13 @@ final class CollectionViewModel {
     /// A restored set filter waits for the set list first, so a set no longer owned is dropped
     /// before the grid is asked for — not after an empty first page.
     func loadInitiallyIfNeeded() async {
-        guard cards.isEmpty, !isLoading, loadError == nil else { return }
+        guard paginator.items.isEmpty, paginator.state == .idle, !isWaitingForSets else { return }
         if !filters.sets.isEmpty {
-            // The spinner, not the "no match" screen, while the set list comes back.
-            isLoading = true
+            isWaitingForSets = true
             await loadSetsIfNeeded()
+            isWaitingForSets = false
         }
-        await reload()
+        await paginator.reload()
     }
 
     /// The import may have replaced the whole collection: its sets included.
@@ -64,52 +59,7 @@ final class CollectionViewModel {
         // A list requested before the import finished is stale: wait it out, then ask again.
         await setsLoad?.value
         await loadSets()
-        await reload()
-    }
-
-    /// Reloads from page 0. Called for the first load and whenever `filters` changes.
-    func reload() async {
-        isLoading = true
-        loadError = nil
-        nextPage = 0
-        // Whatever is still queued was warmed for the previous result set.
-        ArtworkPipeline.cancelPrefetching()
-        do {
-            let response = try await fetchPage(0)
-            cards = response.items
-            total = Int(response.total)
-            nextPage = 1
-            ArtworkPipeline.prefetch(CardArtwork.urls(for: response.items))
-        } catch {
-            cards = []
-            total = 0
-            loadError = APIError.read(error).message
-        }
-        isLoading = false
-    }
-
-    /// Appends the next page once the user scrolls near the end of what is loaded.
-    ///
-    /// The page doubles as the prefetch window: this fires four cards from the end, so the
-    /// twenty that come back are exactly the ones just below the fold, and warming them here
-    /// needs no separate viewport tracking.
-    func loadMoreIfNeeded(displaying card: CollectionCard) async {
-        guard !isLoading, !isLoadingMore, hasMore, loadError == nil, cards.suffix(4).contains(card) else { return }
-
-        let page = nextPage
-        isLoadingMore = true
-        defer { isLoadingMore = false }
-        do {
-            let response = try await fetchPage(page)
-            // A filter change may have restarted pagination while this request was in flight.
-            guard nextPage == page else { return }
-            cards.append(contentsOf: response.items)
-            total = Int(response.total)
-            nextPage = page + 1
-            ArtworkPipeline.prefetch(CardArtwork.urls(for: response.items))
-        } catch {
-            loadError = APIError.read(error).message
-        }
+        await paginator.reload()
     }
 
     /// Sets owned by the user, for the filter sheet. Loaded once, and silently: the sheet can
@@ -139,16 +89,16 @@ final class CollectionViewModel {
         filters.dropSets(notIn: sets)
     }
 
-    private func fetchPage(_ page: Int32) async throws -> Components.Schemas.PaginatedCollectionResponse {
+    private func fetchPage(_ page: Int32, pageSize: Int32) async throws -> PaginatorPage<CollectionCard> {
         let query = Operations.get_collection.Input.Query(
             page: page,
-            page_size: Self.pageSize,
+            page_size: pageSize,
             sort_by: filters.sortBy,
             sort_dir: filters.sortDir,
-            // Repeated `rarity=` params, in the schema's own order for a stable URL.
-            rarity: filters.rarities.isEmpty ? nil : RarityCode.allCases.filter(filters.rarities.contains),
-            sets: filters.sets.isEmpty ? nil : filters.sets.sorted().joined(separator: ",")
+            rarity: filters.rarityQuery,
+            sets: filters.setsQuery
         )
-        return try await api.get_collection(query: query).ok.body.json
+        let response = try await api.get_collection(query: query).ok.body.json
+        return PaginatorPage(items: response.items, total: Int(response.total))
     }
 }

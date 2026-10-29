@@ -27,11 +27,11 @@ struct CollectionView: View {
                         })
                     }
                 }
-                .refreshable { await model.reload() }
+                .refreshable { await model.paginator.reload() }
                 .task { await model.loadInitiallyIfNeeded() }
                 .task { await model.loadSetsIfNeeded() }
                 .onChange(of: model.filters) {
-                    Task { await model.reload() }
+                    Task { await model.paginator.reload() }
                 }
                 .navigationDestination(for: CardDetailRoute.self) { route in
                     CardDetailView(card: route.card, api: api)
@@ -52,33 +52,34 @@ struct CollectionView: View {
     }
 
     @ViewBuilder private var content: some View {
-        if model.isLoading, model.cards.isEmpty {
+        switch model.isWaitingForSets ? .firstLoad : model.paginator.phase {
+        case .firstLoad:
             ProgressView()
                 .controlSize(.large)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
-        } else if let error = model.loadError, model.cards.isEmpty {
+        case let .failed(error):
             CollectionErrorView(message: error) {
-                Task { await model.reload() }
+                Task { await model.paginator.reload() }
             }
-        } else if model.cards.isEmpty {
+        case .empty:
             CollectionEmptyView(hasActiveFilters: model.filters.activeCount > 0) {
                 model.filters.clearAll()
             }
-        } else {
+        case .content:
             CollectionCardGrid(
-                cards: model.cards,
-                isLoadingMore: model.isLoadingMore,
+                cards: model.paginator.items,
+                isLoadingMore: model.paginator.state == .loadingMore,
                 summary: summary,
                 filters: $model.filters,
                 cardTransition: cardTransition,
                 onFilterTap: { isShowingFilters = true },
-                onCardAppear: { card in await model.loadMoreIfNeeded(displaying: card) }
+                onCardAppear: { card in await model.paginator.loadMore(after: card) }
             )
         }
     }
 
     private var summary: String {
-        CollectionCopy.sortedSummary(total: model.total, sortBy: model.filters.sortBy)
+        CollectionCopy.sortedSummary(total: model.paginator.total, sortBy: model.filters.sortBy)
     }
 
     /// The import may have replaced the whole collection — reload from page 0 once the sheet
