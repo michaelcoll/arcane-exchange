@@ -52,7 +52,7 @@ const card = (name: string, trend: number): TradeCard => ({
   image_back_url: null,
 });
 
-const party = { accepted: false, confirmed: false, rating: null };
+const party = { accepted: false, confirmed: false, rating: null, abandoned: false };
 
 /** A Trade where I give a Sol Ring (12 €) and receive a Vampiric Tutor (33 €). */
 const tradeIn = (status: string, overrides: Partial<TradeDetail> = {}): TradeDetail => ({

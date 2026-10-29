@@ -4,4 +4,9 @@
  * One party's acceptance/confirmation/rating state, already resolved from the caller's point
  * of view (`me` vs `partner`) — see `TradeDetailResponse`.
  */
-export type TradePartyState = { accepted: boolean; confirmed: boolean; rating: number | null };
+export type TradePartyState = {
+  accepted: boolean;
+  confirmed: boolean;
+  rating: number | null;
+  abandoned: boolean;
+};

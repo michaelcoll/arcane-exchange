@@ -1993,7 +1993,10 @@ components:
       required:
       - accepted
       - confirmed
+      - abandoned
       properties:
+        abandoned:
+          type: boolean
         accepted:
           type: boolean
         confirmed:

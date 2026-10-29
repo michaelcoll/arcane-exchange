@@ -240,6 +240,46 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn get_trade_marks_the_abandoning_party_from_the_caller_perspective() {
+        let trade = Trade {
+            status: crate::domain::trade::TradeStatus::Abandoned,
+            initiator_abandoned_at: Some(chrono::Utc::now()),
+            ..make_base_trade()
+        };
+        let mut mock_trade_repository = MockTradeRepository::new();
+        mock_trade_repository
+            .expect_find_by_id()
+            .returning(move |_| {
+                let trade = trade.clone();
+                Box::pin(async move { Ok(Some(trade)) })
+            });
+        mock_trade_repository
+            .expect_find_trade_cards_with_details()
+            .returning(|_| Box::pin(async { Ok(vec![]) }));
+        let mut mock_user_repository = MockUserRepository::new();
+        mock_user_repository.expect_find_by_id().returning(|id| {
+            let user = User::new(id.to_string(), None, Some("name".to_string()), None);
+            Box::pin(async move { Ok(Some(user)) })
+        });
+        let service = GetTradeService::new(
+            Arc::new(mock_trade_repository),
+            Arc::new(mock_user_repository),
+        );
+
+        let as_initiator = service
+            .get_trade(TradeId::new(), make_initiator_id())
+            .await
+            .unwrap();
+        let as_respondent = service
+            .get_trade(TradeId::new(), make_respondent_id())
+            .await
+            .unwrap();
+
+        assert!(as_initiator.me.abandoned && !as_initiator.partner.abandoned);
+        assert!(!as_respondent.me.abandoned && as_respondent.partner.abandoned);
+    }
+
+    #[tokio::test]
     async fn get_trade_me_and_partner_state_reflect_caller_perspective() {
         let trade = Trade {
             initiator_accepted_at: Some(chrono::Utc::now()),

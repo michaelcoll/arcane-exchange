@@ -6,9 +6,9 @@ import Testing
 private func detail(status: TradeStatus = .pending) -> TradeDetail {
     TradeDetail(
         id: "t1",
-        me: .init(accepted: false, confirmed: false),
+        me: .init(abandoned: false, accepted: false, confirmed: false),
         my_cards: [],
-        partner: .init(accepted: false, confirmed: false),
+        partner: .init(abandoned: false, accepted: false, confirmed: false),
         partner_cards: [],
         partner_username: "mizzix_42",
         status: status.rawValue

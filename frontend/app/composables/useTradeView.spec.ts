@@ -29,6 +29,7 @@ const party = (overrides: Partial<TradePartyState> = {}): TradePartyState => ({
   accepted: false,
   confirmed: false,
   rating: null,
+  abandoned: false,
   ...overrides,
 });
 
@@ -169,8 +170,13 @@ describe('useTradeView', () => {
       });
 
       expect(view().partnerUsername).toBe('jace');
-      expect(view().me).toEqual({ accepted: true, confirmed: true, rating: 5 });
-      expect(view().partner).toEqual({ accepted: true, confirmed: true, rating: null });
+      expect(view().me).toEqual({ accepted: true, confirmed: true, rating: 5, abandoned: false });
+      expect(view().partner).toEqual({
+        accepted: true,
+        confirmed: true,
+        rating: null,
+        abandoned: false,
+      });
     });
   });
 

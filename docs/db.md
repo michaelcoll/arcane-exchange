@@ -104,6 +104,8 @@ erDiagram
         timestamp_with_time_zone respondent_confirmed_at
         smallint initiator_rating
         smallint respondent_rating
+        timestamp_with_time_zone initiator_abandoned_at
+        timestamp_with_time_zone respondent_abandoned_at
     }
     trade_card {
         uuid trade_id PK, FK

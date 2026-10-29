@@ -143,6 +143,7 @@ async fn write_transition(
                 initiator_accepted_at = $3, respondent_accepted_at = $4,
                 initiator_confirmed_at = $5, respondent_confirmed_at = $6,
                 initiator_rating = $7, respondent_rating = $8,
+                initiator_abandoned_at = $16, respondent_abandoned_at = $17,
                 updated_at = NOW()
             WHERE id = $1 AND status = $9
               AND initiator_accepted_at IS NOT DISTINCT FROM $10
@@ -150,7 +151,9 @@ async fn write_transition(
               AND initiator_confirmed_at IS NOT DISTINCT FROM $12
               AND respondent_confirmed_at IS NOT DISTINCT FROM $13
               AND initiator_rating IS NOT DISTINCT FROM $14
-              AND respondent_rating IS NOT DISTINCT FROM $15"#,
+              AND respondent_rating IS NOT DISTINCT FROM $15
+              AND initiator_abandoned_at IS NOT DISTINCT FROM $18
+              AND respondent_abandoned_at IS NOT DISTINCT FROM $19"#,
         transition.trade_id().0,
         next.status.as_db_str(),
         next.initiator_accepted_at,
@@ -166,6 +169,10 @@ async fn write_transition(
         from.respondent_confirmed_at,
         from.initiator_rating.map(i16::from),
         from.respondent_rating.map(i16::from),
+        next.initiator_abandoned_at,
+        next.respondent_abandoned_at,
+        from.initiator_abandoned_at,
+        from.respondent_abandoned_at,
     )
     .execute(executor)
     .await?;
@@ -231,6 +238,7 @@ impl TradeRepository for TradeRepositoryAdapter {
                     initiator_accepted_at, respondent_accepted_at,
                     initiator_confirmed_at, respondent_confirmed_at,
                     initiator_rating, respondent_rating,
+                    initiator_abandoned_at, respondent_abandoned_at,
                     created_at, updated_at
                 FROM trade WHERE id = $1"#,
             id.0
@@ -1809,7 +1817,10 @@ mod tests {
     }
 
     async fn abandon(repository: &TradeRepositoryAdapter, trade_id: uuid::Uuid) -> bool {
-        apply(repository, trade_id, Trade::abandon).await
+        apply(repository, trade_id, |trade| {
+            trade.abandon(Party::Initiator)
+        })
+        .await
     }
 
     #[sqlx::test]
@@ -1863,7 +1874,7 @@ mod tests {
             id: TradeId::new(),
             ..find(&repository, trade_id).await
         };
-        let transition = unknown.abandon().unwrap();
+        let transition = unknown.abandon(Party::Initiator).unwrap();
 
         assert!(!repository.apply_transition(&transition).await.unwrap());
         assert_eq!(
@@ -2130,6 +2141,47 @@ mod tests {
 
         let repository = TradeRepositoryAdapter::new(pool.clone());
         assert!(abandon(&repository, trade_id).await);
+    }
+
+    #[sqlx::test]
+    async fn voluntary_abandon_records_its_author(pool: PgPool) {
+        insert_user(&pool, "user_a", "alice").await;
+        insert_user(&pool, "user_b", "bob").await;
+        let trade_id = uuid::Uuid::new_v4();
+        insert_trade(&pool, trade_id, "user_a", "user_b", "ONE_ACCEPTED").await;
+
+        let repository = TradeRepositoryAdapter::new(pool.clone());
+        let transition = find(&repository, trade_id)
+            .await
+            .abandon(Party::Respondent)
+            .unwrap();
+        assert!(repository.apply_transition(&transition).await.unwrap());
+
+        let trade = find(&repository, trade_id).await;
+        assert!(trade.party_state(Party::Respondent).abandoned);
+        assert!(!trade.party_state(Party::Initiator).abandoned);
+    }
+
+    #[sqlx::test]
+    async fn automatic_abandon_on_card_reservation_records_no_author(pool: PgPool) {
+        insert_user(&pool, "user_a", "alice").await;
+        insert_user(&pool, "user_b", "bob").await;
+        insert_user(&pool, "user_c", "carol").await;
+        insert_card(&pool, "FDN", "87", "FR", "Goblin Boarders", 1).await;
+        let trade_id = uuid::Uuid::new_v4();
+        insert_trade(&pool, trade_id, "user_a", "user_b", "PENDING").await;
+        insert_trade_card(&pool, trade_id, "FDN", "87", "FR", false, "user_b", 1).await;
+        let other_trade_id = uuid::Uuid::new_v4();
+        insert_trade(&pool, other_trade_id, "user_c", "user_b", "PENDING").await;
+        insert_trade_card(&pool, other_trade_id, "FDN", "87", "FR", false, "user_b", 1).await;
+
+        let repository = TradeRepositoryAdapter::new(pool.clone());
+        assert!(accept(&repository, trade_id, Party::Initiator).await);
+
+        let other_trade = find(&repository, other_trade_id).await;
+        assert_eq!(other_trade.status, TradeStatus::Abandoned);
+        assert!(!other_trade.party_state(Party::Initiator).abandoned);
+        assert!(!other_trade.party_state(Party::Respondent).abandoned);
     }
 
     // --- confirm ---

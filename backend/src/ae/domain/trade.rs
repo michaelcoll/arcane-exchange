@@ -65,6 +65,10 @@ pub struct Trade {
     pub respondent_confirmed_at: Option<DateTime<Utc>>,
     pub initiator_rating: Option<u8>,
     pub respondent_rating: Option<u8>,
+    /// Set on the party that abandoned the trade; both stay empty for an automatic abandon
+    /// (cards reserved by another trade) and for trades abandoned before this was recorded.
+    pub initiator_abandoned_at: Option<DateTime<Utc>>,
+    pub respondent_abandoned_at: Option<DateTime<Utc>>,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
 }
@@ -122,6 +126,7 @@ struct PartyColumns<'a> {
     accepted_at: &'a mut Option<DateTime<Utc>>,
     confirmed_at: &'a mut Option<DateTime<Utc>>,
     rating: &'a mut Option<u8>,
+    abandoned_at: &'a mut Option<DateTime<Utc>>,
 }
 
 impl Trade {
@@ -144,22 +149,25 @@ impl Trade {
     }
 
     pub fn party_state(&self, party: Party) -> TradePartyState {
-        let (accepted_at, confirmed_at, rating) = match party {
+        let (accepted_at, confirmed_at, rating, abandoned_at) = match party {
             Party::Initiator => (
                 self.initiator_accepted_at,
                 self.initiator_confirmed_at,
                 self.initiator_rating,
+                self.initiator_abandoned_at,
             ),
             Party::Respondent => (
                 self.respondent_accepted_at,
                 self.respondent_confirmed_at,
                 self.respondent_rating,
+                self.respondent_abandoned_at,
             ),
         };
         TradePartyState {
             accepted: accepted_at.is_some(),
             confirmed: confirmed_at.is_some(),
             rating,
+            abandoned: abandoned_at.is_some(),
         }
     }
 
@@ -169,11 +177,13 @@ impl Trade {
                 accepted_at: &mut self.initiator_accepted_at,
                 confirmed_at: &mut self.initiator_confirmed_at,
                 rating: &mut self.initiator_rating,
+                abandoned_at: &mut self.initiator_abandoned_at,
             },
             Party::Respondent => PartyColumns {
                 accepted_at: &mut self.respondent_accepted_at,
                 confirmed_at: &mut self.respondent_confirmed_at,
                 rating: &mut self.respondent_rating,
+                abandoned_at: &mut self.respondent_abandoned_at,
             },
         }
     }
@@ -272,10 +282,14 @@ impl Trade {
     }
 
     /// Either party can abandon the trade at any time before the physical exchange is confirmed.
-    pub fn abandon(&self) -> Result<TradeTransition, FunctionalError> {
+    /// `party` is the one abandoning, and is recorded as such.
+    pub fn abandon(&self, party: Party) -> Result<TradeTransition, FunctionalError> {
         match self.status {
             TradeStatus::Pending | TradeStatus::OneAccepted | TradeStatus::FullyAccepted => {
-                Ok(self.transition(|next| next.status = TradeStatus::Abandoned))
+                Ok(self.transition(|next| {
+                    *next.columns_mut(party).abandoned_at = Some(Utc::now());
+                    next.status = TradeStatus::Abandoned;
+                }))
             }
             TradeStatus::Completed | TradeStatus::Closed | TradeStatus::Abandoned => {
                 Err(FunctionalError::TradeAlreadyFinalized)
@@ -306,12 +320,14 @@ pub struct TradeCardDetail {
     pub image: Option<CardImage>,
 }
 
-/// One party's acceptance/confirmation/rating state on a trade.
+/// One party's acceptance/confirmation/rating/abandon state on a trade.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct TradePartyState {
     pub accepted: bool,
     pub confirmed: bool,
     pub rating: Option<u8>,
+    /// This party abandoned the trade (never set for an automatic abandon).
+    pub abandoned: bool,
 }
 
 /// Full read model for a trade, already resolved from the caller's point of view (`me` vs
@@ -408,6 +424,8 @@ mod tests {
             respondent_confirmed_at: None,
             initiator_rating: None,
             respondent_rating: None,
+            initiator_abandoned_at: None,
+            respondent_abandoned_at: None,
             created_at: now,
             updated_at: now,
         }
@@ -482,7 +500,8 @@ mod tests {
             TradePartyState {
                 accepted: true,
                 confirmed: false,
-                rating: None
+                rating: None,
+                abandoned: false
             }
         );
         assert_eq!(
@@ -490,7 +509,8 @@ mod tests {
             TradePartyState {
                 accepted: false,
                 confirmed: false,
-                rating: Some(4)
+                rating: Some(4),
+                abandoned: false
             }
         );
     }
@@ -499,7 +519,7 @@ mod tests {
     fn transition_records_the_state_it_was_decided_from() {
         let trade = make_trade(TradeStatus::Pending);
 
-        let transition = trade.abandon().unwrap();
+        let transition = trade.abandon(Party::Initiator).unwrap();
 
         assert_eq!(transition.from(), &trade);
         assert_eq!(transition.trade_id(), trade.id);
@@ -729,10 +749,26 @@ mod tests {
             TradeStatus::OneAccepted,
             TradeStatus::FullyAccepted,
         ] {
-            let transition = make_trade(status).abandon().unwrap();
+            let transition = make_trade(status).abandon(Party::Initiator).unwrap();
 
             assert_eq!(transition.next.status, TradeStatus::Abandoned);
             assert!(!transition.reserves_cards());
+        }
+    }
+
+    #[test]
+    fn abandon_records_the_abandoning_party_only() {
+        for party in BOTH_PARTIES {
+            let next = make_trade(TradeStatus::OneAccepted)
+                .abandon(party)
+                .unwrap()
+                .next;
+
+            assert!(next.party_state(party).abandoned, "party {party:?}");
+            assert!(
+                !next.party_state(party.other()).abandoned,
+                "party {party:?}"
+            );
         }
     }
 
@@ -744,7 +780,7 @@ mod tests {
             TradeStatus::Abandoned,
         ] {
             assert_eq!(
-                make_trade(status).abandon(),
+                make_trade(status).abandon(Party::Initiator),
                 Err(FunctionalError::TradeAlreadyFinalized),
                 "status {status:?}"
             );

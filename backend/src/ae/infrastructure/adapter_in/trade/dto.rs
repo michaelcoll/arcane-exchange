@@ -97,6 +97,7 @@ pub struct TradePartyStateResponse {
     pub accepted: bool,
     pub confirmed: bool,
     pub rating: Option<u8>,
+    pub abandoned: bool,
 }
 
 impl From<TradePartyState> for TradePartyStateResponse {
@@ -105,6 +106,7 @@ impl From<TradePartyState> for TradePartyStateResponse {
             accepted: s.accepted,
             confirmed: s.confirmed,
             rating: s.rating,
+            abandoned: s.abandoned,
         }
     }
 }

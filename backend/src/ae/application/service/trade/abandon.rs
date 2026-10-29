@@ -24,7 +24,7 @@ impl AbandonTradeUseCase for AbandonTradeService {
             &self.trade_repository,
             trade_id,
             &caller_id,
-            |trade, _| async move { Ok(trade.abandon()?) },
+            |trade, party| async move { Ok(trade.abandon(party)?) },
         )
         .await
     }
