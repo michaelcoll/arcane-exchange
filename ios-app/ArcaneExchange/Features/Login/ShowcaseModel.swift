@@ -1,3 +1,4 @@
+import APIClient
 import Foundation
 import Observation
 import UIKit
@@ -17,13 +18,15 @@ final class ShowcaseModel {
     /// from the disk cache is there at once.
     private(set) var fadesIn = false
 
+    private let api: any APIProtocol
     private let defaults: UserDefaults
     private let source: ShowcaseSource
 
     /// The image paths of the last showcase fetched. Public data, kept across sign-outs.
     private static let pathsKey = "showcase_image_paths"
 
-    init(defaults: UserDefaults = .standard, source: ShowcaseSource = .live) {
+    init(api: any APIProtocol, defaults: UserDefaults = .standard, source: ShowcaseSource = .live) {
+        self.api = api
         self.defaults = defaults
         self.source = source
     }
@@ -41,7 +44,7 @@ final class ShowcaseModel {
     /// when no wall is shown yet: a wall already drifting is not swapped under the player's
     /// eyes, and the new images are only downloaded to disk, for the next launch to restore.
     func refresh() async {
-        guard let paths = await source.paths() else { return }
+        guard let paths = await currentPaths() else { return }
         defaults.set(paths, forKey: Self.pathsKey)
         let urls = Self.urls(paths)
         guard images.isEmpty else {
@@ -49,6 +52,11 @@ final class ShowcaseModel {
             return
         }
         await show(source.images(urls), fadesIn: true)
+    }
+
+    /// The image paths of the current showcase, `nil` when it cannot be read.
+    private func currentPaths() async -> [String]? {
+        try? await api.get_showcase().ok.body.json
     }
 
     private func show(_ loaded: [UIImage], fadesIn: Bool) {
@@ -63,11 +71,8 @@ final class ShowcaseModel {
     }
 }
 
-/// Where the showcase comes from: the public API for its list, the artwork pipeline for its
-/// images.
+/// Where the images of the showcase come from: the artwork pipeline.
 struct ShowcaseSource {
-    /// The image paths of the current showcase, `nil` when it cannot be read.
-    var paths: @MainActor () async -> [String]?
     /// The images the artwork caches already hold, without any network.
     var cachedImages: @MainActor ([URL]) async -> [UIImage]
     /// The images, downloaded when the caches do not hold them.
@@ -76,12 +81,6 @@ struct ShowcaseSource {
     var warm: @MainActor ([URL]) -> Void
 
     static let live = ShowcaseSource(
-        paths: {
-            guard case let .ok(response) = try? await APIClientProvider.anonymous.get_showcase() else {
-                return nil
-            }
-            return try? response.body.json
-        },
         cachedImages: { await ArtworkPipeline.cachedImages(for: $0) },
         images: { await ArtworkPipeline.images(for: $0) },
         warm: { ArtworkPipeline.warmDiskCache($0) }

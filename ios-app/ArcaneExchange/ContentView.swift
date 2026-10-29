@@ -3,6 +3,7 @@ import SwiftUI
 
 struct ContentView: View {
     @Environment(Clerk.self) private var clerk
+    @Environment(\.anonymousAPI) private var anonymousAPI
 
     private var phase: SessionPhase {
         SessionPhase(isLoaded: clerk.isLoaded, isSignedIn: clerk.user != nil)
@@ -13,7 +14,7 @@ struct ContentView: View {
             if phase == .signedIn {
                 RootTabView()
             } else {
-                LoginView(phase: phase)
+                LoginView(phase: phase, api: anonymousAPI)
             }
         }
         // Keyed on Clerk's two flags rather than on `phase`, which is `.signedIn` as soon as the
