@@ -79,10 +79,12 @@ private final class WidgetRecorder: @unchecked Sendable {
 
 /// One call per operation the widgets table is checked against.
 private enum MutationCall: String, CaseIterable, CustomTestStringConvertible {
-    case removeTradeCard, acceptTrade, confirmTrade, abandonTrade
+    case createTrade, addTradeCard, removeTradeCard, acceptTrade, confirmTrade, abandonTrade
     case rateTrade, importCards, setTradeVisibility, setTradeRarityFilter, addTradeBinder, removeTradeBinder
 
-    static let reloadingTrades: [MutationCall] = [.removeTradeCard, .acceptTrade, .confirmTrade, .abandonTrade]
+    static let reloadingTrades: [MutationCall] = [
+        .createTrade, .addTradeCard, .removeTradeCard, .acceptTrade, .confirmTrade, .abandonTrade
+    ]
     static let reloadingNothing: [MutationCall] = [
         .rateTrade, .importCards, .setTradeVisibility, .setTradeRarityFilter, .addTradeBinder, .removeTradeBinder
     ]
@@ -93,15 +95,32 @@ private enum MutationCall: String, CaseIterable, CustomTestStringConvertible {
 
     /// The status of a successful answer.
     var successStatus: Int {
-        self == .importCards ? 202 : 204
+        switch self {
+        case .createTrade: 201
+        case .importCards: 202
+        default: 204
+        }
     }
 
     var successBody: String? {
-        self == .importCards ? #"{"id":"imp-1"}"# : nil
+        switch self {
+        case .createTrade: #"{"id":"t-1"}"#
+        case .importCards: #"{"id":"imp-1"}"#
+        default: nil
+        }
     }
 
     func call(_ api: any APIProtocol) async throws {
         switch self {
+        case .createTrade:
+            _ = try await api.create_trade(body: .json(.init(respondent_username: "bob"))).created.body.json
+        case .addTradeCard:
+            _ = try await api.add_trade_card(
+                path: .init(trade_id: "t-1"),
+                body: .json(.init(
+                    collector_number: "1", foil: false, language_code: "EN", owner_username: "bob", set_code: "lea"
+                ))
+            ).noContent
         case .removeTradeCard:
             _ = try await api.remove_trade_card(
                 path: .init(trade_id: "t-1"),
@@ -308,6 +327,24 @@ struct LiveAPITests {
         let error = await failure { try await operation.call(authenticated(transport, widgets: widgets)) }
         #expect(error != nil)
         #expect(widgets.kinds.isEmpty)
+    }
+
+    @Test func reloadsTwiceWhenTheTradeIsCreatedButItsCardIsRefused() async {
+        let widgets = WidgetRecorder()
+        let created = StubTransport.json(201, #"{"id":"t-1"}"#)
+        let refused = StubTransport.json(409, #"{"code":"card_already_reserved","error":"reserved"}"#)
+        let transport = StubTransport { request, baseURL in
+            request.path?.hasSuffix("/cards") == true
+                ? try await refused(request, baseURL)
+                : try await created(request, baseURL)
+        }
+        let api = authenticated(transport, widgets: widgets)
+        let error = await failure {
+            _ = try await api.create_trade(body: .json(.init(respondent_username: "bob"))).created.body.json
+            try await MutationCall.addTradeCard.call(api)
+        }
+        #expect(widgets.kinds == [.trades, .trades])
+        #expect(error?.code == "card_already_reserved")
     }
 
     @Test func aReadReloadsNothing() async throws {

@@ -36,8 +36,6 @@ final class CardOfferTrade {
             tradeID = try await api.create_trade(
                 body: .json(.init(respondent_username: offer.owner_username))
             ).created.body.json.id
-            // The trade exists from here on, even if putting the card on it fails below.
-            HomeWidgetReload.reload(.trades)
             _ = try await api.add_trade_card(
                 path: .init(trade_id: tradeID),
                 body: .json(.init(
@@ -48,8 +46,6 @@ final class CardOfferTrade {
                     set_code: card.set_code
                 ))
             ).noContent
-            // The widget shows card counts: reload once the card is on the trade too.
-            HomeWidgetReload.reload(.trades)
         } catch {
             startError = APIError.read(error).message
             return nil
