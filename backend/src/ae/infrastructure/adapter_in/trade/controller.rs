@@ -61,7 +61,7 @@ pub(crate) async fn create_trade(
     params(("trade_id" = uuid::Uuid, Path, description = "Trade id")),
     request_body = AddTradeCardRequest,
     responses(
-        (status = 204, description = "Card added to the trade (quantity incremented if already present)"),
+        (status = 204, description = "Card is on the owner's side of the trade, at one copy: added, or already there and left untouched"),
         (status = 400, description = "Invalid payload, or owner_username is not a party to this trade"),
         (status = 401, description = "Missing or invalid token"),
         (status = 403, description = "Caller is not a party to this trade"),
@@ -84,21 +84,9 @@ pub(crate) async fn add_trade_card(
         payload.foil,
     )?;
 
-    if payload.quantity == 0 {
-        return Err(AppError::Functional(FunctionalError::WrongFormat(
-            "quantity must be at least 1".to_string(),
-        )));
-    }
-
     state
         .add_trade_card_use_case
-        .add_card(
-            TradeId(trade_id),
-            user.id,
-            payload.owner_username,
-            copy_id,
-            payload.quantity,
-        )
+        .add_card(TradeId(trade_id), user.id, payload.owner_username, copy_id)
         .await?;
 
     Ok(StatusCode::NO_CONTENT)

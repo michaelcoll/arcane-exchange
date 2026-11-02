@@ -214,6 +214,26 @@ impl Trade {
         }
     }
 
+    /// Ensures a card figures in the trade. A card already there (`already_present`) changes
+    /// nothing, so no transition (`None`) — acceptances included — unless the trade is over.
+    /// An absent card is a modification, see [`Trade::modify`].
+    pub fn add_card(
+        &self,
+        already_present: bool,
+    ) -> Result<Option<TradeTransition>, FunctionalError> {
+        if !already_present {
+            return self.modify().map(Some);
+        }
+        match self.status {
+            TradeStatus::Pending | TradeStatus::OneAccepted | TradeStatus::FullyAccepted => {
+                Ok(None)
+            }
+            TradeStatus::Completed | TradeStatus::Closed | TradeStatus::Abandoned => {
+                Err(FunctionalError::TradeNotModifiable)
+            }
+        }
+    }
+
     /// `cards` are the cards currently in the trade: an empty trade cannot be accepted.
     pub fn accept(
         &self,
@@ -571,6 +591,48 @@ mod tests {
         ] {
             assert_eq!(
                 make_trade(status).modify(),
+                Err(FunctionalError::TradeNotModifiable),
+                "status {status:?}"
+            );
+        }
+    }
+
+    // add_card
+
+    #[test]
+    fn adding_an_absent_card_is_a_modification() {
+        let pending = make_trade(TradeStatus::Pending);
+        assert_eq!(pending.add_card(false), pending.modify().map(Some));
+        let one_accepted = with_accepted(make_trade(TradeStatus::OneAccepted), Party::Initiator);
+        let next = one_accepted.add_card(false).unwrap().unwrap().next;
+        assert_eq!(next.status, TradeStatus::Pending);
+        assert_eq!(next.initiator_accepted_at, None);
+        assert_eq!(
+            make_trade(TradeStatus::FullyAccepted).add_card(false),
+            Err(FunctionalError::TradeNotModifiable)
+        );
+    }
+
+    #[test]
+    fn adding_a_present_card_changes_nothing_unless_the_trade_is_over() {
+        for status in [
+            TradeStatus::Pending,
+            TradeStatus::OneAccepted,
+            TradeStatus::FullyAccepted,
+        ] {
+            assert_eq!(
+                make_trade(status).add_card(true),
+                Ok(None),
+                "status {status:?}"
+            );
+        }
+        for status in [
+            TradeStatus::Completed,
+            TradeStatus::Closed,
+            TradeStatus::Abandoned,
+        ] {
+            assert_eq!(
+                make_trade(status).add_card(true),
                 Err(FunctionalError::TradeNotModifiable),
                 "status {status:?}"
             );

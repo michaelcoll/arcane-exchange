@@ -49,7 +49,6 @@ const startTrade = async (offer: CardOffer) => {
       language_code: props.card.language_code,
       foil: props.card.foil,
       owner_username: offer.owner_username,
-      quantity: 1,
     });
     await navigateTo(`/trade/${id}`);
   } catch (e) {

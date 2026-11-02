@@ -250,7 +250,6 @@ pub trait AddTradeCardUseCase: Send + Sync {
         caller_id: UserId,
         owner_username: String,
         copy_id: CopyId,
-        quantity: u8,
     ) -> Result<(), AppError>;
 }
 

@@ -1,5 +1,5 @@
 ---
-status: amends ADR-0004
+status: amends ADR-0004, amended by ADR-0021
 date: 2026-09-24
 ---
 

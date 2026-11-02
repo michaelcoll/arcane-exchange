@@ -6404,13 +6404,13 @@ public enum Operations {
                 /// Creates a new `NoContent`.
                 public init() {}
             }
-            /// Card added to the trade (quantity incremented if already present)
+            /// Card is on the owner's side of the trade, at one copy: added, or already there and left untouched
             ///
             /// - Remark: Generated from `#/paths//trades/{trade_id}/cards/post(add_trade_card)/responses/204`.
             ///
             /// HTTP response code: `204 noContent`.
             case noContent(Operations.add_trade_card.Output.NoContent)
-            /// Card added to the trade (quantity incremented if already present)
+            /// Card is on the owner's side of the trade, at one copy: added, or already there and left untouched
             ///
             /// - Remark: Generated from `#/paths//trades/{trade_id}/cards/post(add_trade_card)/responses/204`.
             ///

@@ -6,5 +6,4 @@ export type AddTradeCardRequest = {
   language_code: string;
   foil: boolean;
   owner_username: string;
-  quantity: number;
 };

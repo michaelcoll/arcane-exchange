@@ -1,0 +1,28 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT EXISTS (\n                   SELECT 1 FROM trade_card\n                   WHERE trade_id = $1 AND set_code = $2 AND collector_number = $3\n                     AND language_code = $4 AND foil = $5 AND owner_user_id = $6\n               ) AS \"present!\"",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "present!",
+        "type_info": "Bool",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Text",
+        "Text",
+        "Text",
+        "Bool",
+        "Text"
+      ]
+    },
+    "nullable": [
+      null
+    ]
+  },
+  "hash": "be9704781b76d78efb5b7a17f15fde9f54bc5d8f163e375285f779dd81da9baf"
+}

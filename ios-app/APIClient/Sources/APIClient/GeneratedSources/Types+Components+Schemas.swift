@@ -37,8 +37,6 @@ extension Components {
             public var language_code: Swift.String
             /// - Remark: Generated from `#/components/schemas/AddTradeCardRequest/owner_username`.
             public var owner_username: Swift.String
-            /// - Remark: Generated from `#/components/schemas/AddTradeCardRequest/quantity`.
-            public var quantity: Swift.Int32
             /// - Remark: Generated from `#/components/schemas/AddTradeCardRequest/set_code`.
             public var set_code: Swift.String
             /// Creates a new `AddTradeCardRequest`.
@@ -48,21 +46,18 @@ extension Components {
             ///   - foil:
             ///   - language_code:
             ///   - owner_username:
-            ///   - quantity:
             ///   - set_code:
             public init(
                 collector_number: Swift.String,
                 foil: Swift.Bool,
                 language_code: Swift.String,
                 owner_username: Swift.String,
-                quantity: Swift.Int32,
                 set_code: Swift.String
             ) {
                 self.collector_number = collector_number
                 self.foil = foil
                 self.language_code = language_code
                 self.owner_username = owner_username
-                self.quantity = quantity
                 self.set_code = set_code
             }
             public enum CodingKeys: String, CodingKey {
@@ -70,7 +65,6 @@ extension Components {
                 case foil
                 case language_code
                 case owner_username
-                case quantity
                 case set_code
             }
         }
