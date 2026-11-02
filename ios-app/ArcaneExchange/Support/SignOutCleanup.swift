@@ -1,7 +1,8 @@
 import Foundation
 
-/// What the device forgets once nobody is signed in — the one place to list data that belongs to
-/// the previous player.
+/// Makes the device forget the previous player once nobody is signed in. What belongs to the
+/// player is the `PlayerKey` scope of `DeviceMemory`; the `clear()` calls below cover the stores
+/// not migrated to it yet.
 ///
 /// "Signed out" waits for Clerk to have loaded: at launch it has no user until the session is
 /// restored, and that must not wipe what the previous run remembered. Checking the state rather
@@ -14,6 +15,8 @@ enum SignOutCleanup {
         widgetDefaults: UserDefaults = SharedContainer.defaults
     ) {
         guard isLoaded, !isSignedIn else { return }
+        DeviceMemory(defaults: defaults).forgetPlayerScope()
+        DeviceMemory(defaults: widgetDefaults).forgetPlayerScope()
         CollectionFiltersStore(defaults: defaults).clear()
         SearchResultsSortStore(defaults: defaults).clear()
         HomeWidgetCache(defaults: widgetDefaults).clear()

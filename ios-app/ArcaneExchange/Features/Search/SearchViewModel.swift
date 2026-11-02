@@ -32,13 +32,13 @@ final class SearchViewModel {
     private(set) var recentPlayers: [UserSuggestion]
 
     private let api: any APIProtocol
-    private let defaults: UserDefaults
+    private let memory: DeviceMemory
 
     init(api: any APIProtocol, defaults: UserDefaults = .standard) {
         self.api = api
-        self.defaults = defaults
-        recentQueries = Self.decode([String].self, from: defaults, key: SearchRecents.storageKey) ?? []
-        recentPlayers = Self.decode([UserSuggestion].self, from: defaults, key: RecentPlayers.storageKey) ?? []
+        memory = DeviceMemory(defaults: defaults)
+        recentQueries = memory.read([String].self, for: .searchRecentCardQueries) ?? []
+        recentPlayers = memory.read([UserSuggestion].self, for: .searchRecentPlayers) ?? []
     }
 
     // MARK: Live card preview
@@ -99,33 +99,25 @@ final class SearchViewModel {
     // MARK: Recents
 
     func rememberQuery(_ query: String) {
-        recentQueries = SearchRecents.adding(query, to: recentQueries)
-        persist(recentQueries, key: SearchRecents.storageKey)
+        updateRecentQueries { $0 = SearchRecents.adding(query, to: $0) }
     }
 
     func removeQueries(_ toRemove: Set<String>) {
-        recentQueries.removeAll { toRemove.contains($0) }
-        persist(recentQueries, key: SearchRecents.storageKey)
+        updateRecentQueries { queries in queries.removeAll { toRemove.contains($0) } }
     }
 
     func clearQueries() {
-        recentQueries = []
-        persist(recentQueries, key: SearchRecents.storageKey)
+        updateRecentQueries { $0 = [] }
+    }
+
+    /// The one place `recentQueries` changes and is remembered.
+    private func updateRecentQueries(_ change: (inout [String]) -> Void) {
+        change(&recentQueries)
+        memory.write(recentQueries, for: .searchRecentCardQueries)
     }
 
     func rememberPlayer(_ player: UserSuggestion) {
         recentPlayers = RecentPlayers.adding(player, to: recentPlayers)
-        persist(recentPlayers, key: RecentPlayers.storageKey)
-    }
-
-    // MARK: Persistence
-
-    private func persist(_ value: some Encodable, key: String) {
-        defaults.set(try? JSONEncoder().encode(value), forKey: key)
-    }
-
-    private static func decode<T: Decodable>(_: T.Type, from defaults: UserDefaults, key: String) -> T? {
-        guard let data = defaults.data(forKey: key) else { return nil }
-        return try? JSONDecoder().decode(T.self, from: data)
+        memory.write(recentPlayers, for: .searchRecentPlayers)
     }
 }
