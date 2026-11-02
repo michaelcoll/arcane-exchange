@@ -33,6 +33,27 @@ const themeToggleLabel = computed(
 
 const { isSignedIn, isLoaded } = useAuth();
 
+// Overrides apply to the UserButton only: <SignIn> shares `clerkAppearance` and has its own `rootBox`.
+// CSS objects, not Tailwind classes: they go through Clerk's style engine, so they don't fight its
+// default styles over priority.
+const centeredBox = { display: 'flex', alignItems: 'center', height: '34px' };
+const focusRing = { boxShadow: '0 0 0 2px var(--bg), 0 0 0 4px var(--primary)' };
+const userButtonAppearance = {
+  ...clerkAppearance,
+  elements: {
+    rootBox: centeredBox,
+    userButtonBox: centeredBox,
+    userButtonTrigger: {
+      width: '34px',
+      height: '34px',
+      padding: 0,
+      borderRadius: '50%',
+      '&:focus-visible': focusRing,
+    },
+    userButtonTrigger__open: focusRing,
+  },
+};
+
 const route = useRoute();
 const isActive = (path: string) => route.path === path;
 
@@ -111,8 +132,8 @@ const bottomNavLinkClass = (path: string) => [
           <Icon name="lucide:bell" size="17" />
         </button>
 
-        <div v-if="isLoaded && isSignedIn" class="user-btn-wrap flex h-9 items-center">
-          <UserButton :appearance="clerkAppearance" />
+        <div v-if="isLoaded && isSignedIn" class="flex h-9 items-center">
+          <UserButton :appearance="userButtonAppearance" />
         </div>
       </div>
     </header>
@@ -149,27 +170,3 @@ const bottomNavLinkClass = (path: string) => [
     </nav>
   </div>
 </template>
-
-<style>
-/* Clerk UserButton internal overrides */
-.user-btn-wrap .cl-rootBox,
-.user-btn-wrap .cl-userButtonBox {
-  display: flex;
-  align-items: center;
-  height: 34px;
-}
-
-.user-btn-wrap .cl-userButtonTrigger {
-  width: 34px;
-  height: 34px;
-  padding: 0;
-  border-radius: 50%;
-}
-
-.cl-userButtonTrigger.cl-open,
-.cl-userButtonTrigger:focus-visible {
-  box-shadow:
-    0 0 0 2px var(--bg),
-    0 0 0 4px var(--primary) !important;
-}
-</style>
