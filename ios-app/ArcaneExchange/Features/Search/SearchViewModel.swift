@@ -37,8 +37,8 @@ final class SearchViewModel {
     init(api: any APIProtocol, defaults: UserDefaults = .standard) {
         self.api = api
         memory = DeviceMemory(defaults: defaults)
-        recentQueries = memory.read([String].self, for: .searchRecentCardQueries) ?? []
-        recentPlayers = memory.read([UserSuggestion].self, for: .searchRecentPlayers) ?? []
+        recentQueries = memory.read([String].self, for: PlayerKey.searchRecentCardQueries) ?? []
+        recentPlayers = memory.read([UserSuggestion].self, for: PlayerKey.searchRecentPlayers) ?? []
     }
 
     // MARK: Live card preview
@@ -113,11 +113,11 @@ final class SearchViewModel {
     /// The one place `recentQueries` changes and is remembered.
     private func updateRecentQueries(_ change: (inout [String]) -> Void) {
         change(&recentQueries)
-        memory.write(recentQueries, for: .searchRecentCardQueries)
+        memory.write(recentQueries, for: PlayerKey.searchRecentCardQueries)
     }
 
     func rememberPlayer(_ player: UserSuggestion) {
         recentPlayers = RecentPlayers.adding(player, to: recentPlayers)
-        memory.write(recentPlayers, for: .searchRecentPlayers)
+        memory.write(recentPlayers, for: PlayerKey.searchRecentPlayers)
     }
 }

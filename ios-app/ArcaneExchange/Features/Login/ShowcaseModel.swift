@@ -19,15 +19,14 @@ final class ShowcaseModel {
     private(set) var fadesIn = false
 
     private let api: any APIProtocol
-    private let defaults: UserDefaults
+    /// The image paths of the last showcase fetched are public data, kept across sign-outs
+    /// (`DeviceKey.showcaseImagePaths`).
+    private let memory: DeviceMemory
     private let source: ShowcaseSource
-
-    /// The image paths of the last showcase fetched. Public data, kept across sign-outs.
-    private static let pathsKey = "showcase_image_paths"
 
     init(api: any APIProtocol, defaults: UserDefaults = .standard, source: ShowcaseSource = .live) {
         self.api = api
-        self.defaults = defaults
+        memory = DeviceMemory(defaults: defaults)
         self.source = source
     }
 
@@ -36,7 +35,7 @@ final class ShowcaseModel {
     /// session is still loading, for a player who may turn out to be signed in.
     func restore() async {
         guard images.isEmpty else { return }
-        let urls = Self.urls(defaults.stringArray(forKey: Self.pathsKey) ?? [])
+        let urls = Self.urls(memory.read([String].self, for: DeviceKey.showcaseImagePaths) ?? [])
         await show(source.cachedImages(urls), fadesIn: false)
     }
 
@@ -45,7 +44,7 @@ final class ShowcaseModel {
     /// eyes, and the new images are only downloaded to disk, for the next launch to restore.
     func refresh() async {
         guard let paths = await currentPaths() else { return }
-        defaults.set(paths, forKey: Self.pathsKey)
+        memory.write(paths, for: DeviceKey.showcaseImagePaths)
         let urls = Self.urls(paths)
         guard images.isEmpty else {
             source.warm(urls)

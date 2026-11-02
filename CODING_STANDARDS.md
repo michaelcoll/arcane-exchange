@@ -89,6 +89,10 @@ Token names and values: [design-system.instructions.md](.agents/design-system.in
 - **View models**: declare a view model `@Observable`, never `ObservableObject`: views own them with `@State`.
 - **Pure logic**: put pure logic in a type of its own (`LoginCopy`, `AccountIdentity`), never on a `View`, not even
   as a `static func`: a `View` is `@MainActor`, and swift-testing crashes calling into it.
+- **Local data**: remember a piece of local data with `DeviceMemory` (`Support/DeviceMemory.swift`), declaring it as a
+  case of `PlayerKey` (forgotten at sign-out) or `DeviceKey` (kept), never with `UserDefaults` directly: a key without
+  a scope can be neither written nor erased. The one exception is `api_base_url` (`RawDeviceKey`, out of reach of
+  `DeviceMemory`), a raw string shared with `Settings.bundle`.
 - **API errors**: read only the success of a call through the generated accessor (`.ok`, `.noContent`…) and catch a
   failure with `APIError.read` (`Networking/APIError.swift`), showing its `message` and testing its `code`, never a
   generated error case, a status or a `switch` on the `Output`: the client middleware raises every failure as an
