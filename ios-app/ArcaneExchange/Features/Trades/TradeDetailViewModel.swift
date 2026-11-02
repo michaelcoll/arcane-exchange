@@ -135,6 +135,5 @@ final class TradeDetailViewModel {
         }
         await load()
         isBusy = false
-        HomeWidgetReload.reload(.trades)
     }
 }
