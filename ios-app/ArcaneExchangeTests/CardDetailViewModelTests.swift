@@ -92,37 +92,15 @@ struct CardDetailViewModelTests {
         #expect(model.history == .failed)
     }
 
-    @Test func startsATradeFromAnOffer() async {
+    @Test func startsATradeThroughTheSharedOpeningModule() async {
         let api = FakeAPI()
         api.onCreateTrade = { _ in .created(.init(body: .json(.init(id: "t9")))) }
         api.onAddTradeCard = { _ in .noContent(.init()) }
         let model = CardDetailViewModel(card: testCard(), api: api)
 
-        let route = await model.startTrade(with: offer("mizzix_42"))
+        let route = await model.tradeOpener.start(with: offer("mizzix_42"))
 
         #expect(route == TradeDetailRoute(id: "t9", partnerUsername: "mizzix_42"))
         #expect(api.calls == ["create_trade", "add_trade_card"])
-    }
-
-    @Test func showsTheTranslatedReasonWhenTheCardIsGone() async {
-        let api = FakeAPI()
-        api.onCreateTrade = { _ in .created(.init(body: .json(.init(id: "t9")))) }
-        api.onAddTradeCard = { _ in throw APIError(code: "card_not_found", status: 404) }
-        let model = CardDetailViewModel(card: testCard(), api: api)
-
-        let route = await model.startTrade(with: offer("mizzix_42"))
-
-        #expect(route == nil)
-        #expect(model.startError == "Cette carte est introuvable ou n'est plus disponible.")
-    }
-
-    @Test func showsTheTranslatedReasonForATradeWithOneself() async {
-        let api = FakeAPI()
-        api.onCreateTrade = { _ in throw APIError(code: "self_trade", status: 400) }
-        let model = CardDetailViewModel(card: testCard(), api: api)
-
-        _ = await model.startTrade(with: offer("me"))
-
-        #expect(model.startError == "Tu ne peux pas ouvrir un échange avec toi-même.")
     }
 }

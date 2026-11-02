@@ -1,36 +1,59 @@
 import APIClient
 import Foundation
 
-/// Opens (or reuses) the trade with a card's owner and puts the card on their side.
+/// Opens the trade with a card's owner and makes sure the card is on their side.
 ///
-/// Two calls, exactly like the web client's `startTrade`: `POST /trades` is idempotent per
-/// partner — it hands back the existing active trade — so this doubles as "add this card to
-/// the trade I already have with them".
+/// Two calls, exactly like the web client: `POST /trades` is idempotent per partner (it
+/// hands back the active trade) and `POST /trades/{id}/cards` is idempotent too, so every
+/// tap asks the server and nothing is remembered here.
 ///
 /// Shared by the card screen's short owners list and the full "Possesseurs" screen, which
 /// both offer the same "Échanger" button on an offer row.
 @MainActor
-enum CardOfferTrade {
-    /// Throws the `APIError` the API call module raised: read it with `APIError.read`.
-    static func start(
-        card: CollectionCard,
-        with offer: CardOffer,
-        api: any APIProtocol
-    ) async throws -> TradeDetailRoute {
-        let tradeID = try await api.create_trade(
-            body: .json(.init(respondent_username: offer.owner_username))
-        ).created.body.json.id
-        _ = try await api.add_trade_card(
-            path: .init(trade_id: tradeID),
-            body: .json(.init(
-                collector_number: card.collector_number,
-                foil: card.foil,
-                language_code: card.language_code,
-                owner_username: offer.owner_username,
-                set_code: card.set_code
-            ))
-        ).noContent
-        HomeWidgetReload.reload(.trades)
+@Observable
+final class CardOfferTrade {
+    /// The owner whose trade is being opened, so only that row shows a spinner.
+    private(set) var startingWith: String?
+    /// Set when opening a trade is refused; the view shows it in an alert and clears it.
+    var startError: String?
+
+    private let card: CollectionCard
+    private let api: any APIProtocol
+
+    init(card: CollectionCard, api: any APIProtocol) {
+        self.card = card
+        self.api = api
+    }
+
+    /// Opens (or reuses) the trade with this offer's owner, this card on their side.
+    /// Returns `nil` when another opening is in flight or the API refused (`startError` is set).
+    func start(with offer: CardOffer) async -> TradeDetailRoute? {
+        guard startingWith == nil else { return nil }
+        startingWith = offer.owner_username
+        defer { startingWith = nil }
+        let tradeID: String
+        do {
+            tradeID = try await api.create_trade(
+                body: .json(.init(respondent_username: offer.owner_username))
+            ).created.body.json.id
+            // The trade exists from here on, even if putting the card on it fails below.
+            HomeWidgetReload.reload(.trades)
+            _ = try await api.add_trade_card(
+                path: .init(trade_id: tradeID),
+                body: .json(.init(
+                    collector_number: card.collector_number,
+                    foil: card.foil,
+                    language_code: card.language_code,
+                    owner_username: offer.owner_username,
+                    set_code: card.set_code
+                ))
+            ).noContent
+            // The widget shows card counts: reload once the card is on the trade too.
+            HomeWidgetReload.reload(.trades)
+        } catch {
+            startError = APIError.read(error).message
+            return nil
+        }
         return TradeDetailRoute(id: tradeID, partnerUsername: offer.owner_username)
     }
 }
