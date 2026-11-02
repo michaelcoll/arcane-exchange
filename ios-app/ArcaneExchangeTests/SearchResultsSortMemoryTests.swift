@@ -60,6 +60,52 @@ struct SearchResultsSortMemoryTests {
         #expect(next.filters == CollectionFilters(sortBy: .trend, sortDir: .asc))
     }
 
+    @Test func readsSortsWrittenInTheCurrentFormat() {
+        let defaults = isolatedDefaults()
+        defaults.set(Data(#"{"sortBy":"trend","sortDir":"asc"}"#.utf8), forKey: "search.sort.text")
+        defaults.set(Data(#"{"sortBy":"trend","sortDir":"asc"}"#.utf8), forKey: "search.sort.player")
+
+        #expect(SearchResultsViewModel(target: .card(query: "Sol Ring"), api: FakeAPI(), defaults: defaults).filters
+            == CollectionFilters(sortBy: .trend, sortDir: .asc))
+        #expect(SearchResultsViewModel(target: .player(username: "jace"), api: FakeAPI(), defaults: defaults).filters
+            == CollectionFilters(sortBy: .trend, sortDir: .asc))
+    }
+
+    @Test func fallsBackToTheScreenSortWhenTheRememberedOneIsUnreadable() {
+        let defaults = isolatedDefaults()
+        defaults.set(Data("not json".utf8), forKey: "search.sort.text")
+        defaults.set(Data(#"{"sortBy":"nope"}"#.utf8), forKey: "search.sort.player")
+
+        #expect(SearchResultsViewModel(target: .card(query: "Sol Ring"), api: FakeAPI(), defaults: defaults).filters
+            == CollectionFilters(sortBy: .trend, sortDir: .desc))
+        #expect(SearchResultsViewModel(target: .player(username: "jace"), api: FakeAPI(), defaults: defaults).filters
+            == CollectionFilters(sortBy: .added_at, sortDir: .desc))
+    }
+
+    @Test func keepsBothSettingsWhileLoadingOrSignedIn() {
+        let defaults = isolatedDefaults()
+        SearchResultsViewModel(target: .player(username: "jace"), api: FakeAPI(), defaults: defaults).filters.sortBy = .trend
+        SearchResultsViewModel(target: .card(query: "Sol Ring"), api: FakeAPI(), defaults: defaults).filters.sortDir = .asc
+
+        SignOutCleanup.run(isLoaded: false, isSignedIn: false, defaults: defaults, widgetDefaults: defaults)
+        let whileLoading = (
+            SearchResultsViewModel(target: .player(username: "jace"), api: FakeAPI(), defaults: defaults).filters,
+            SearchResultsViewModel(target: .card(query: "Sol Ring"), api: FakeAPI(), defaults: defaults).filters
+        )
+        SignOutCleanup.run(isLoaded: true, isSignedIn: true, defaults: defaults, widgetDefaults: defaults)
+        let signedIn = (
+            SearchResultsViewModel(target: .player(username: "jace"), api: FakeAPI(), defaults: defaults).filters,
+            SearchResultsViewModel(target: .card(query: "Sol Ring"), api: FakeAPI(), defaults: defaults).filters
+        )
+
+        let player = CollectionFilters(sortBy: .trend, sortDir: .desc)
+        let text = CollectionFilters(sortBy: .trend, sortDir: .asc)
+        #expect(whileLoading.0 == player)
+        #expect(whileLoading.1 == text)
+        #expect(signedIn.0 == player)
+        #expect(signedIn.1 == text)
+    }
+
     @Test func signingOutForgetsBothSettings() {
         let defaults = isolatedDefaults()
         SearchResultsViewModel(target: .player(username: "jace"), api: FakeAPI(), defaults: defaults).filters.sortBy = .trend
