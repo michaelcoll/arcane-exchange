@@ -14,8 +14,13 @@ enum APIClientFactory {
     /// A 401 calls `onUnauthorized` (once, until `latch` is re-armed when the player signs in
     /// again) then raises the `unauthorized` error. The app passes the Clerk sign-out; the widgets, which share the
     /// app's session, pass an empty closure and never sign anyone out.
+    ///
+    /// Any response to a mutation listed in the operation table of the widgets reload middleware
+    /// (an error included: a 409 means the trade moved on) calls `onWidgetsChanged` with the widget
+    /// to reload. Only the app passes `HomeWidgetReload.reload`; the default does nothing.
     static func authenticated(
         onUnauthorized: @escaping @Sendable () async -> Void,
+        onWidgetsChanged: @escaping @Sendable (HomeWidgetKind) -> Void = { _ in },
         latch: UnauthorizedLatch = UnauthorizedLatch(),
         transport: any ClientTransport = URLSessionTransport(),
         token: @escaping @Sendable () async -> String? = { try? await Clerk.shared.auth.getToken() },
@@ -26,7 +31,9 @@ enum APIClientFactory {
             baseURL: baseURL,
             middlewares: [
                 ClerkAuthMiddleware(token: token),
-                APIErrorMiddleware(onUnauthorized: onUnauthorized, latch: latch)
+                APIErrorMiddleware(onUnauthorized: onUnauthorized, latch: latch),
+                // Inside the error middleware, so it sees the response before it becomes an `APIError`.
+                WidgetsReloadMiddleware(onWidgetsChanged: onWidgetsChanged)
             ]
         )
     }
@@ -74,6 +81,36 @@ private struct CurrentBaseURLMiddleware: ClientMiddleware {
         next: @Sendable (HTTPRequest, HTTPBody?, URL) async throws -> (HTTPResponse, HTTPBody?)
     ) async throws -> (HTTPResponse, HTTPBody?) {
         try await next(request, body, baseURL())
+    }
+}
+
+/// Asks for the reload of the widget a mutation touches, as soon as the server answered it,
+/// whatever the status. A transport failure or a cancellation reloads nothing. An operation
+/// absent from the table (the other mutations, every read) reloads nothing.
+private struct WidgetsReloadMiddleware: ClientMiddleware {
+    /// The widget each operation touches. Rating a trade, the import (it answers 202 before
+    /// the collection changes) and the trade settings touch none.
+    static let table: [String: HomeWidgetKind] = [
+        Operations.remove_trade_card.id: .trades,
+        Operations.accept_trade.id: .trades,
+        Operations.confirm_trade.id: .trades,
+        Operations.abandon_trade.id: .trades
+    ]
+
+    let onWidgetsChanged: @Sendable (HomeWidgetKind) -> Void
+
+    func intercept(
+        _ request: HTTPRequest,
+        body: HTTPBody?,
+        baseURL: URL,
+        operationID: String,
+        next: @Sendable (HTTPRequest, HTTPBody?, URL) async throws -> (HTTPResponse, HTTPBody?)
+    ) async throws -> (HTTPResponse, HTTPBody?) {
+        let result = try await next(request, body, baseURL)
+        if let kind = Self.table[operationID] {
+            onWidgetsChanged(kind)
+        }
+        return result
     }
 }
 

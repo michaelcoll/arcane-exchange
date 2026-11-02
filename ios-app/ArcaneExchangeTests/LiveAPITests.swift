@@ -64,6 +64,75 @@ private actor Counter {
     }
 }
 
+private final class WidgetRecorder: @unchecked Sendable {
+    private let lock = NSLock()
+    private var recorded: [HomeWidgetKind] = []
+
+    var kinds: [HomeWidgetKind] {
+        lock.withLock { recorded }
+    }
+
+    func record(_ kind: HomeWidgetKind) {
+        lock.withLock { recorded.append(kind) }
+    }
+}
+
+/// One call per operation the widgets table is checked against.
+private enum MutationCall: String, CaseIterable, CustomTestStringConvertible {
+    case removeTradeCard, acceptTrade, confirmTrade, abandonTrade
+    case rateTrade, importCards, setTradeVisibility, setTradeRarityFilter, addTradeBinder, removeTradeBinder
+
+    static let reloadingTrades: [MutationCall] = [.removeTradeCard, .acceptTrade, .confirmTrade, .abandonTrade]
+    static let reloadingNothing: [MutationCall] = [
+        .rateTrade, .importCards, .setTradeVisibility, .setTradeRarityFilter, .addTradeBinder, .removeTradeBinder
+    ]
+
+    var testDescription: String {
+        rawValue
+    }
+
+    /// The status of a successful answer.
+    var successStatus: Int {
+        self == .importCards ? 202 : 204
+    }
+
+    var successBody: String? {
+        self == .importCards ? #"{"id":"imp-1"}"# : nil
+    }
+
+    func call(_ api: any APIProtocol) async throws {
+        switch self {
+        case .removeTradeCard:
+            _ = try await api.remove_trade_card(
+                path: .init(trade_id: "t-1"),
+                body: .json(.init(
+                    collector_number: "1", foil: false, language_code: "EN", owner_username: "bob", set_code: "lea"
+                ))
+            ).noContent
+        case .acceptTrade:
+            _ = try await api.accept_trade(path: .init(trade_id: "t-1")).noContent
+        case .confirmTrade:
+            _ = try await api.confirm_trade(path: .init(trade_id: "t-1")).noContent
+        case .abandonTrade:
+            _ = try await api.abandon_trade(path: .init(trade_id: "t-1")).noContent
+        case .rateTrade:
+            _ = try await api.rate_trade(path: .init(trade_id: "t-1"), body: .json(.init(rating: 5))).noContent
+        case .importCards:
+            _ = try await api.import_cards(.init(body: .plainText("csv"))).accepted.body.json
+        case .setTradeVisibility:
+            _ = try await api.set_trade_visibility(body: .json(.init(visibility: ._private))).noContent
+        case .setTradeRarityFilter:
+            _ = try await api.set_trade_rarity_filter(
+                body: .json(.init(is_open: true, kept_copies: 0, rarity: "rare"))
+            ).noContent
+        case .addTradeBinder:
+            _ = try await api.add_trade_binder(body: .json(.init(binder_name: "b"))).noContent
+        case .removeTradeBinder:
+            _ = try await api.remove_trade_binder(path: .init(name: "b")).noContent
+        }
+    }
+}
+
 private let tradesPage = #"{"items":[],"page":0,"page_size":20,"total":0}"#
 private let someURL = URL(string: "https://one.example/api/v1")!
 
@@ -71,10 +140,12 @@ private func authenticated(
     _ transport: StubTransport,
     unauthorized: Counter = Counter(),
     latch: UnauthorizedLatch = UnauthorizedLatch(),
+    widgets: WidgetRecorder = WidgetRecorder(),
     baseURL: @escaping @Sendable () -> URL = { someURL }
 ) -> any APIProtocol {
     APIClientFactory.authenticated(
         onUnauthorized: { await unauthorized.increment() },
+        onWidgetsChanged: { widgets.record($0) },
         latch: latch,
         transport: transport,
         token: { "token" },
@@ -192,6 +263,58 @@ struct LiveAPITests {
         current.url = URL(string: "https://two.example/api/v1")!
         try await listTrades(api)
         #expect(transport.baseURLs.map(\.host) == ["one.example", "two.example"])
+    }
+
+    @Test(arguments: MutationCall.reloadingTrades)
+    fileprivate func reloadsTheTradesWidgetOnceOnASuccessOf(_ operation: MutationCall) async throws {
+        let widgets = WidgetRecorder()
+        let transport = StubTransport(StubTransport.json(operation.successStatus, operation.successBody))
+        try await operation.call(authenticated(transport, widgets: widgets))
+        #expect(widgets.kinds == [.trades])
+    }
+
+    @Test(arguments: MutationCall.reloadingTrades)
+    fileprivate func reloadsTheTradesWidgetWhenTheServerRefuses(_ operation: MutationCall) async {
+        let widgets = WidgetRecorder()
+        let transport = StubTransport(StubTransport.json(409, #"{"code":"card_already_reserved","error":"reserved"}"#))
+        let error = await failure { try await operation.call(authenticated(transport, widgets: widgets)) }
+        #expect(widgets.kinds == [.trades])
+        #expect(error?.code == "card_already_reserved")
+        #expect(error?.message == "Cette carte est déjà réservée dans un autre échange.")
+    }
+
+    @Test(arguments: MutationCall.reloadingTrades)
+    fileprivate func reloadsNothingWhenTheServerIsUnreachableOn(_ operation: MutationCall) async {
+        let widgets = WidgetRecorder()
+        let transport = StubTransport { _, _ in throw URLError(.cannotConnectToHost) }
+        let error = await failure { try await operation.call(authenticated(transport, widgets: widgets)) }
+        #expect(widgets.kinds.isEmpty)
+        #expect(error?.isNetworkFailure == true)
+    }
+
+    @Test(arguments: MutationCall.reloadingNothing)
+    fileprivate func reloadsNothingOnASuccessOf(_ operation: MutationCall) async throws {
+        let widgets = WidgetRecorder()
+        let transport = StubTransport(StubTransport.json(operation.successStatus, operation.successBody))
+        try await operation.call(authenticated(transport, widgets: widgets))
+        #expect(transport.requests.count == 1)
+        #expect(widgets.kinds.isEmpty)
+    }
+
+    @Test(arguments: MutationCall.reloadingTrades)
+    fileprivate func reloadsNothingWhenTheCallIsCancelledOn(_ operation: MutationCall) async {
+        let widgets = WidgetRecorder()
+        let transport = StubTransport { _, _ in throw CancellationError() }
+        let error = await failure { try await operation.call(authenticated(transport, widgets: widgets)) }
+        #expect(error != nil)
+        #expect(widgets.kinds.isEmpty)
+    }
+
+    @Test func aReadReloadsNothing() async throws {
+        let widgets = WidgetRecorder()
+        let transport = StubTransport(StubTransport.json(200, tradesPage))
+        try await listTrades(authenticated(transport, widgets: widgets))
+        #expect(widgets.kinds.isEmpty)
     }
 }
 

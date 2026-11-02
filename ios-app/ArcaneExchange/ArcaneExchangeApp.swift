@@ -23,6 +23,7 @@ struct ArcaneExchangeApp: App {
         ClerkSetup.configure()
         let api = APIClientFactory.authenticated(
             onUnauthorized: { try? await Clerk.shared.auth.signOut() },
+            onWidgetsChanged: HomeWidgetReload.reload,
             latch: unauthorizedLatch
         )
         self.api = api
