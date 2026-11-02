@@ -66,7 +66,6 @@ struct SearchResultsRoute: Hashable {
 
 /// Local, device-only recent card queries.
 enum SearchRecents {
-    static let storageKey = "search.recentCardQueries"
     static let limit = 8
 
     /// Prepends `query` (de-duplicated, case-insensitively), capped at `limit`.
@@ -81,7 +80,6 @@ enum SearchRecents {
 
 /// Local, device-only recently opened players — mirrors the web `useRecentPlayers`.
 enum RecentPlayers {
-    static let storageKey = "search.recentPlayers"
     static let limit = 4
 
     static func adding(_ player: UserSuggestion, to list: [UserSuggestion]) -> [UserSuggestion] {
