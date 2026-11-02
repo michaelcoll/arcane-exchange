@@ -19,6 +19,5 @@ enum SignOutCleanup {
         DeviceMemory(defaults: widgetDefaults).forgetPlayerScope()
         CollectionFiltersStore(defaults: defaults).clear()
         SearchResultsSortStore(defaults: defaults).clear()
-        HomeWidgetCache(defaults: widgetDefaults).clear()
     }
 }

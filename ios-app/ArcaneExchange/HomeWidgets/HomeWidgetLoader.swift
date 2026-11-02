@@ -1,7 +1,7 @@
 import Foundation
 
-/// The two home-screen widgets. The raw value is the WidgetKit `kind`, and the key of the
-/// widget's last snapshot in `HomeWidgetCache`.
+/// The two home-screen widgets. The raw value is the WidgetKit `kind`; the key of the widget's
+/// last snapshot comes from `PlayerKey`.
 enum HomeWidgetKind: String, CaseIterable {
     case collection = "CollectionWidget"
     case trades = "TradesWidget"
@@ -19,29 +19,27 @@ enum HomeWidgetContent<Snapshot: Equatable>: Equatable {
 /// The widgets' last good snapshots, kept in the App Group so a failed refresh (offline, an
 /// expired session) keeps showing them instead of an error.
 struct HomeWidgetCache {
-    let defaults: UserDefaults
+    private let memory: DeviceMemory
 
     init(defaults: UserDefaults = SharedContainer.defaults) {
-        self.defaults = defaults
+        memory = DeviceMemory(defaults: defaults)
     }
 
     func save(_ snapshot: some Encodable, for kind: HomeWidgetKind) {
-        guard let data = try? JSONEncoder().encode(snapshot) else { return }
-        defaults.set(data, forKey: Self.key(kind))
+        memory.write(snapshot, for: kind.key)
     }
 
     func load<Snapshot: Decodable>(_: Snapshot.Type, for kind: HomeWidgetKind) -> Snapshot? {
-        defaults.data(forKey: Self.key(kind)).flatMap { try? JSONDecoder().decode(Snapshot.self, from: $0) }
+        memory.read(Snapshot.self, for: kind.key)
     }
+}
 
-    func clear() {
-        for kind in HomeWidgetKind.allCases {
-            defaults.removeObject(forKey: Self.key(kind))
+private extension HomeWidgetKind {
+    var key: PlayerKey {
+        switch self {
+        case .collection: .collectionWidgetSnapshot
+        case .trades: .tradesWidgetSnapshot
         }
-    }
-
-    static func key(_ kind: HomeWidgetKind) -> String {
-        "home_widget_snapshot.\(kind.rawValue)"
     }
 }
 
