@@ -75,18 +75,19 @@ struct CollectionFiltersTests {
     /// A payload from another app version must not crash the tab — it falls back to defaults.
     @Test func ignoresAnUnreadablePayload() {
         let defaults = isolatedDefaults()
-        defaults.set(Data("{\"sortBy\":\"nope\"}".utf8), forKey: CollectionFiltersStore.storageKey)
+        defaults.set(Data("{\"sortBy\":\"nope\"}".utf8), forKey: "collection.filters")
 
         #expect(CollectionFiltersStore(defaults: defaults).load() == CollectionFilters())
     }
 
-    @Test func forgetsEverythingOnClear() {
+    /// Filters saved by the previous version, before `DeviceMemory`, must still be restored.
+    @Test func readsFiltersWrittenInTheCurrentFormat() {
         let defaults = isolatedDefaults()
-        let store = CollectionFiltersStore(defaults: defaults)
-        store.save(CollectionFilters(rarities: [.C], sets: ["EOE"], sortBy: .added_at, sortDir: .asc))
-        store.clear()
+        let json = #"{"rarities":["R"],"sets":["MH3"],"sortBy":"added_at","sortDir":"asc"}"#
+        defaults.set(Data(json.utf8), forKey: "collection.filters")
 
-        #expect(store.load() == CollectionFilters())
+        let expected = CollectionFilters(rarities: [.R], sets: ["MH3"], sortBy: .added_at, sortDir: .asc)
+        #expect(CollectionFiltersStore(defaults: defaults).load() == expected)
     }
 
     @MainActor

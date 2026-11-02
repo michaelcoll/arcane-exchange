@@ -7,18 +7,15 @@ import Foundation
 /// Two independent settings: one for text searches, one for a player's collection — the same
 /// for every player. Only the sort is kept: the filters start empty on each new search.
 struct SearchResultsSortStore {
-    static let textSearchKey = "search.sort.text"
-    static let playerCollectionKey = "search.sort.player"
-
     private struct Sort: Codable {
         var sortBy: SortField
         var sortDir: SortDirection
     }
 
-    private let defaults: UserDefaults
+    private let memory: DeviceMemory
 
     init(defaults: UserDefaults = .standard) {
-        self.defaults = defaults
+        memory = DeviceMemory(defaults: defaults)
     }
 
     /// `target`'s defaults with the remembered sort, if any. A remembered criterion the screen
@@ -26,8 +23,7 @@ struct SearchResultsSortStore {
     func load(for target: SearchResultsRoute.Target) -> CollectionFilters {
         var filters = target.defaultFilters
         guard let key = Self.key(for: target),
-              let data = defaults.data(forKey: key),
-              let sort = try? JSONDecoder().decode(Sort.self, from: data)
+              let sort = memory.read(Sort.self, for: key)
         else {
             return filters
         }
@@ -38,19 +34,13 @@ struct SearchResultsSortStore {
 
     func save(_ filters: CollectionFilters, for target: SearchResultsRoute.Target) {
         guard let key = Self.key(for: target) else { return }
-        let sort = Sort(sortBy: filters.sortBy, sortDir: filters.sortDir)
-        defaults.set(try? JSONEncoder().encode(sort), forKey: key)
+        memory.write(Sort(sortBy: filters.sortBy, sortDir: filters.sortDir), for: key)
     }
 
-    func clear() {
-        defaults.removeObject(forKey: Self.textSearchKey)
-        defaults.removeObject(forKey: Self.playerCollectionKey)
-    }
-
-    private static func key(for target: SearchResultsRoute.Target) -> String? {
+    private static func key(for target: SearchResultsRoute.Target) -> PlayerKey? {
         switch target {
-        case .card: textSearchKey
-        case .player: playerCollectionKey
+        case .card: .searchSortText
+        case .player: .searchSortPlayerCollection
         case .decklist: nil
         }
     }

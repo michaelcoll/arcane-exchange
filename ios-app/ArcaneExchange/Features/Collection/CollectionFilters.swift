@@ -50,30 +50,19 @@ struct CollectionFilters: Hashable, Codable {
 /// Local, device-only memory of the Collection tab's sort and filters, restored at launch and
 /// wiped by `SignOutCleanup`: the sets filtered belong to the previous player's collection.
 struct CollectionFiltersStore {
-    static let storageKey = "collection.filters"
-
-    private let defaults: UserDefaults
+    private let memory: DeviceMemory
 
     init(defaults: UserDefaults = .standard) {
-        self.defaults = defaults
+        memory = DeviceMemory(defaults: defaults)
     }
 
     /// The saved filters, or the defaults when nothing — or nothing readable — was saved.
     func load() -> CollectionFilters {
-        guard let data = defaults.data(forKey: Self.storageKey),
-              let filters = try? JSONDecoder().decode(CollectionFilters.self, from: data)
-        else {
-            return CollectionFilters()
-        }
-        return filters
+        memory.read(CollectionFilters.self, for: .collectionFilters) ?? CollectionFilters()
     }
 
     func save(_ filters: CollectionFilters) {
-        defaults.set(try? JSONEncoder().encode(filters), forKey: Self.storageKey)
-    }
-
-    func clear() {
-        defaults.removeObject(forKey: Self.storageKey)
+        memory.write(filters, for: .collectionFilters)
     }
 }
 
