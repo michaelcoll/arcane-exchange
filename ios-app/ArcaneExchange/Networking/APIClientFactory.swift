@@ -91,6 +91,8 @@ private struct WidgetsReloadMiddleware: ClientMiddleware {
     /// The widget each operation touches. Rating a trade, the import (it answers 202 before
     /// the collection changes) and the trade settings touch none.
     static let table: [String: HomeWidgetKind] = [
+        Operations.create_trade.id: .trades,
+        Operations.add_trade_card.id: .trades,
         Operations.remove_trade_card.id: .trades,
         Operations.accept_trade.id: .trades,
         Operations.confirm_trade.id: .trades,

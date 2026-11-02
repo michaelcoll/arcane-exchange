@@ -42,7 +42,13 @@ code : [CODING_STANDARDS.md](../CODING_STANDARDS.md) › iOS.
   `entitlements` in `project.yml` — rename one side, rename the other. Clerk is configured through
   `ClerkSetup` in both processes; never call `Clerk.configure` directly.
 - The app reloads the widgets itself (`HomeWidgetReload`) after anything that changes what they show;
-  `HomeWidgetSchedule` only covers the app being closed. A new trade action or import path must call it.
+  `HomeWidgetSchedule` only covers the app being closed. The authenticated API client does it for every
+  mutation that changes what a widget shows, from the operation table of `WidgetsReloadMiddleware` (any
+  HTTP response, an error included). Rating a trade and the trade settings are deliberately absent: no
+  widget shows them. A new mutation that changes what a widget shows adds a line to that table. View
+  models do not call `HomeWidgetReload`, with one named exception: `ImportViewModel` at the end of an
+  import (not a mutation: the server answers 202 first). `reloadAll` stays for sign-in, sign-out and the
+  app leaving the foreground.
 - Widget taps open `arcane-exchange://` links (`HomeWidgetLink`), routed by `AppRouter`.
 
 ## Runtime configuration
