@@ -66,69 +66,15 @@ struct CardOffersViewModelTests {
         #expect(!model.isSetKnown)
     }
 
-    @Test func startsATradeWithTheOwnerAndPutsTheCardOnTheirSide() async {
-        let api = FakeAPI()
-        var added: Operations.add_trade_card.Input?
-        api.onCreateTrade = { _ in .created(.init(body: .json(.init(id: "t1")))) }
-        api.onAddTradeCard = { input in
-            added = input
-            return .noContent(.init())
-        }
-        let model = CardOffersViewModel(card: testCard(), api: api)
-
-        let route = await model.startTrade(with: offer("mizzix_42"))
-
-        #expect(route == TradeDetailRoute(id: "t1", partnerUsername: "mizzix_42"))
-        #expect(model.startError == nil)
-        #expect(api.calls == ["create_trade", "add_trade_card"])
-        #expect(added?.path.trade_id == "t1")
-        #expect(model.startingWith == nil)
-    }
-
-    @Test func reopensTheTradeAlreadyOpenedWithoutAddingTheCardAgain() async {
+    @Test func startsATradeThroughTheSharedOpeningModule() async {
         let api = FakeAPI()
         api.onCreateTrade = { _ in .created(.init(body: .json(.init(id: "t1")))) }
         api.onAddTradeCard = { _ in .noContent(.init()) }
         let model = CardOffersViewModel(card: testCard(), api: api)
-        _ = await model.startTrade(with: offer("mizzix_42"))
 
-        let route = await model.startTrade(with: offer("mizzix_42"))
+        let route = await model.tradeOpener.start(with: offer("mizzix_42"))
 
-        #expect(route?.id == "t1")
+        #expect(route == TradeDetailRoute(id: "t1", partnerUsername: "mizzix_42"))
         #expect(api.calls == ["create_trade", "add_trade_card"])
-    }
-
-    @Test func showsTheTranslatedReasonWhenTheTradeCannotBeOpened() async {
-        let api = FakeAPI()
-        api.onCreateTrade = { _ in throw APIError(code: "self_trade", status: 400) }
-        let model = CardOffersViewModel(card: testCard(), api: api)
-
-        let route = await model.startTrade(with: offer("me"))
-
-        #expect(route == nil)
-        #expect(model.startError == "Tu ne peux pas ouvrir un échange avec toi-même.")
-        #expect(api.calls == ["create_trade"])
-    }
-
-    @Test func showsTheTranslatedReasonWhenTheCardIsAlreadyReserved() async {
-        let api = FakeAPI()
-        api.onCreateTrade = { _ in .created(.init(body: .json(.init(id: "t1")))) }
-        api.onAddTradeCard = { _ in throw APIError(code: "card_already_reserved", status: 409) }
-        let model = CardOffersViewModel(card: testCard(), api: api)
-
-        let route = await model.startTrade(with: offer("mizzix_42"))
-
-        #expect(route == nil)
-        #expect(model.startError == "Cette carte est déjà réservée dans un autre échange.")
-    }
-
-    @Test func showsTheNetworkMessageWhenTheServerIsUnreachableWhileStartingATrade() async {
-        let api = FakeAPI()
-        api.onCreateTrade = { _ in throw APIError(code: nil, status: nil, isNetworkFailure: true) }
-        let model = CardOffersViewModel(card: testCard(), api: api)
-
-        _ = await model.startTrade(with: offer("mizzix_42"))
-
-        #expect(model.startError == APIErrorMessages.network)
     }
 }

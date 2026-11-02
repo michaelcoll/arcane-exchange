@@ -23,13 +23,13 @@ struct CardOffersView: View {
             .task { await model.loadSetName() }
             .alert(
                 "Échange impossible",
-                isPresented: Binding(get: { model.startError != nil }, set: {
+                isPresented: Binding(get: { model.tradeOpener.startError != nil }, set: {
                     if !$0 {
-                        model.startError = nil
+                        model.tradeOpener.startError = nil
                     }
                 }),
-                actions: { Button("OK", role: .cancel) { model.startError = nil } },
-                message: { Text(model.startError ?? "") }
+                actions: { Button("OK", role: .cancel) { model.tradeOpener.startError = nil } },
+                message: { Text(model.tradeOpener.startError ?? "") }
             )
     }
 
@@ -65,7 +65,7 @@ struct CardOffersView: View {
                     ForEach(available + reserved, id: \.owner_username) { offer in
                         CardOfferRow(
                             offer: offer,
-                            isStarting: model.startingWith == offer.owner_username,
+                            isStarting: model.tradeOpener.startingWith == offer.owner_username,
                             // A reserved copy is locked into someone else's accepted trade.
                             action: offer.reserved ? nil : { start(offer) }
                         )
@@ -100,7 +100,7 @@ struct CardOffersView: View {
 
     private func start(_ offer: CardOffer) {
         Task {
-            if let route = await model.startTrade(with: offer) {
+            if let route = await model.tradeOpener.start(with: offer) {
                 openTrade(route)
             }
         }

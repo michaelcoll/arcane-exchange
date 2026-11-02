@@ -30,12 +30,8 @@ final class CardDetailViewModel {
     let card: CollectionCard
     private(set) var history: HistoryState = .loading
     private(set) var offers: OffersState = .loading
-    /// The owner whose trade is being created, so only that row shows a spinner.
-    private(set) var startingWith: String?
-    /// Set when starting a trade is refused; the view shows it in an alert and clears it.
-    var startError: String?
-    /// Trades this screen has already opened, keyed by owner — see `startTrade(with:)`.
-    private var openedTrades: [String: TradeDetailRoute] = [:]
+    /// Opens a trade from an offer row; the view reads its spinner and error from here.
+    let tradeOpener: CardOfferTrade
 
     /// The set name once `/sets/{set_code}` resolves; falls back to the raw code
     /// (mirrors `frontend/`'s `DetailModal.vue` `setName`/`isSetKnown`).
@@ -47,6 +43,7 @@ final class CardDetailViewModel {
     init(card: CollectionCard, api: any APIProtocol) {
         self.card = card
         self.api = api
+        tradeOpener = CardOfferTrade(card: card, api: api)
         setName = card.set_code.uppercased()
     }
 
@@ -76,30 +73,6 @@ final class CardDetailViewModel {
         } catch {
             // An unknown card has nobody offering it, which is not an error.
             offers = APIError.read(error).code == "card_not_found" ? .loaded(preview: [], total: 0) : .failed
-        }
-    }
-
-    /// Opens (or reuses) the trade with this offer's owner, this card already on their side.
-    ///
-    /// A second tap on a row this screen already acted on just reopens that trade. The offers
-    /// are fetched once — the stack keeps this screen alive, so coming back from the trade
-    /// leaves the row still reading "Échanger" — and `POST /trades/{id}/cards` *adds* to the
-    /// quantity already on the table, so calling it again would either slip in a second copy
-    /// or fail with "ce joueur ne propose plus assez de copies".
-    func startTrade(with offer: CardOffer) async -> TradeDetailRoute? {
-        if let opened = openedTrades[offer.owner_username] {
-            return opened
-        }
-        guard startingWith == nil else { return nil }
-        startingWith = offer.owner_username
-        defer { startingWith = nil }
-        do {
-            let route = try await CardOfferTrade.start(card: card, with: offer, api: api)
-            openedTrades[offer.owner_username] = route
-            return route
-        } catch {
-            startError = APIError.read(error).message
-            return nil
         }
     }
 
