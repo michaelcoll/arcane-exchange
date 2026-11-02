@@ -5,6 +5,9 @@ import Foundation
 enum PlayerKey: String, CaseIterable {
     case searchRecentCardQueries = "search.recentCardQueries"
     case searchRecentPlayers = "search.recentPlayers"
+    // Kept in the App Group, which the widgets extension reads with the same codec.
+    case collectionWidgetSnapshot = "home_widget_snapshot.CollectionWidget"
+    case tradesWidgetSnapshot = "home_widget_snapshot.TradesWidget"
 }
 
 /// The one place local data is read, written and forgotten, as JSON in an injected

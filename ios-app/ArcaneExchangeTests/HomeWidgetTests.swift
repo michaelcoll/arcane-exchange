@@ -122,10 +122,17 @@ struct HomeWidgetLoaderTests {
         {"total":1,"trades":[{"id":"t1","partnerUsername":"mizzix_42","myCardCount":2,"partnerCardCount":1,\
         "status":"SOMETHING_ELSE"}]}
         """
-        defaults.set(Data(json.utf8), forKey: HomeWidgetCache.key(.trades))
+        defaults.set(Data(json.utf8), forKey: "home_widget_snapshot.TradesWidget")
 
         let snapshot = try #require(HomeWidgetCache(defaults: defaults).load(TradesSnapshot.self, for: .trades))
         #expect(snapshot.trades.map(\.status) == [.pending])
+    }
+
+    @Test func readsAnUnreadableCachedSnapshotAsNone() {
+        let defaults = isolatedDefaults()
+        defaults.set(Data("not json".utf8), forKey: "home_widget_snapshot.TradesWidget")
+
+        #expect(HomeWidgetCache(defaults: defaults).load(TradesSnapshot.self, for: .trades) == nil)
     }
 
     @Test func showsAndRemembersWhatTheAPIReturned() async {

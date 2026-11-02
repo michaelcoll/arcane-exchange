@@ -137,6 +137,7 @@ targets:
           - HomeWidgetReload.swift
       - path: ArcaneExchange/Networking
       - path: ArcaneExchange/Config/AppConfig.swift
+      - path: ArcaneExchange/Support/DeviceMemory.swift
       - path: ArcaneExchange/Support/Palette.swift
       - path: ArcaneExchange/Support/Price.swift
       - path: ArcaneExchange/Support/PlayerMonogram.swift

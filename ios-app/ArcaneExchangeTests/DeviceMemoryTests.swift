@@ -62,6 +62,11 @@ struct DeviceMemoryTests {
     /// Renaming a key would strand the saved values of signed-in players and leave orphans that
     /// sign-out never erases.
     @Test func pinsTheStoredKeyNames() {
-        #expect(PlayerKey.allCases.map(\.rawValue).sorted() == ["search.recentCardQueries", "search.recentPlayers"])
+        #expect(PlayerKey.allCases.map(\.rawValue).sorted() == [
+            "home_widget_snapshot.CollectionWidget",
+            "home_widget_snapshot.TradesWidget",
+            "search.recentCardQueries",
+            "search.recentPlayers",
+        ])
     }
 }

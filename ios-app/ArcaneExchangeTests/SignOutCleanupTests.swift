@@ -28,12 +28,14 @@ struct SignOutCleanupTests {
 
     /// The widgets would otherwise keep showing the previous player's collection and trades.
     @Test func forgetsTheWidgetSnapshotsOnceSignedOut() {
-        let defaults = Self.defaultsWithSavedFilters()
-        let widgetCache = HomeWidgetCache(defaults: defaults)
+        let widgetDefaults = isolatedDefaults()
+        let widgetCache = HomeWidgetCache(defaults: widgetDefaults)
         widgetCache.save(TradesSnapshot(total: 0, trades: []), for: .trades)
-        SignOutCleanup.run(isLoaded: true, isSignedIn: false, defaults: defaults, widgetDefaults: defaults)
+        widgetCache.save(CollectionSnapshot(history: [], totalCards: 1, uniqueCards: 1), for: .collection)
+        SignOutCleanup.run(isLoaded: true, isSignedIn: false, defaults: isolatedDefaults(), widgetDefaults: widgetDefaults)
 
         #expect(widgetCache.load(TradesSnapshot.self, for: .trades) == nil)
+        #expect(widgetCache.load(CollectionSnapshot.self, for: .collection) == nil)
     }
 
     @MainActor private static func searchModel(_ defaults: UserDefaults) -> SearchViewModel {
