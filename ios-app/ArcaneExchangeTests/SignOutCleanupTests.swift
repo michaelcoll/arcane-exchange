@@ -84,6 +84,24 @@ struct SignOutCleanupTests {
         #expect(model.recentPlayers == [UserSuggestion(card_count: 3, note: 5, username: "alice")])
     }
 
+    /// Public data and a developer setting: neither belongs to the player.
+    @Test func keepsTheShowcaseAndTheAPIURLInEachContainer() {
+        #expect(AppConfig.apiBaseURLDefaultsKey == RawDeviceKey.apiBaseURL.rawValue)
+        let defaults = isolatedDefaults()
+        let widgetDefaults = isolatedDefaults()
+        for container in [defaults, widgetDefaults] {
+            DeviceMemory(defaults: container).write(["/card-images/a.webp"], for: DeviceKey.showcaseImagePaths)
+            container.set("https://staging.example.com/api/v1", forKey: AppConfig.apiBaseURLDefaultsKey)
+        }
+        SignOutCleanup.run(isLoaded: true, isSignedIn: false, defaults: defaults, widgetDefaults: widgetDefaults)
+
+        for container in [defaults, widgetDefaults] {
+            #expect(DeviceMemory(defaults: container).read([String].self, for: DeviceKey.showcaseImagePaths)
+                == ["/card-images/a.webp"])
+            #expect(container.string(forKey: AppConfig.apiBaseURLDefaultsKey) == "https://staging.example.com/api/v1")
+        }
+    }
+
     @Test func keepsThemWhileSignedIn() {
         let defaults = Self.defaultsWithSavedFilters()
         SignOutCleanup.run(isLoaded: true, isSignedIn: true, defaults: defaults)

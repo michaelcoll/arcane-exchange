@@ -50,13 +50,29 @@ struct DeviceMemoryTests {
         let defaults = isolatedDefaults()
         let memory = DeviceMemory(defaults: defaults)
         for key in PlayerKey.allCases { memory.write(["x"], for: key) }
-        defaults.set("https://example.test", forKey: "api_base_url")
+        defaults.set("https://example.test", forKey: RawDeviceKey.apiBaseURL.rawValue)
         defaults.set("kept", forKey: "foreign.library.key")
         memory.forgetPlayerScope()
 
         for key in PlayerKey.allCases { #expect(memory.read([String].self, for: key) == nil) }
-        #expect(defaults.string(forKey: "api_base_url") == "https://example.test")
+        #expect(defaults.string(forKey: RawDeviceKey.apiBaseURL.rawValue) == "https://example.test")
         #expect(defaults.string(forKey: "foreign.library.key") == "kept")
+    }
+
+    @Test func forgettingThePlayerScopeSparesTheDeviceScope() {
+        let defaults = isolatedDefaults()
+        let memory = DeviceMemory(defaults: defaults)
+        for key in DeviceKey.allCases { memory.write(["x"], for: key) }
+        for key in PlayerKey.allCases { memory.write(["x"], for: key) }
+        memory.forgetPlayerScope()
+
+        for key in DeviceKey.allCases { #expect(memory.read([String].self, for: key) == ["x"]) }
+        for key in PlayerKey.allCases { #expect(memory.read([String].self, for: key) == nil) }
+    }
+
+    @Test func pinsTheDeviceKeyNames() {
+        #expect(DeviceKey.allCases.map(\.rawValue) == ["showcase_image_paths"])
+        #expect(RawDeviceKey.allCases.map(\.rawValue) == ["api_base_url"])
     }
 
     /// Renaming a key would strand the saved values of signed-in players and leave orphans that

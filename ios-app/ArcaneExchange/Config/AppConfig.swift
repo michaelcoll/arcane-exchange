@@ -4,9 +4,12 @@ enum AppConfig {
     /// `UserDefaults` key backing the "URL de l'API" row of the app's pane in the iOS
     /// Settings app (`Settings.bundle/Root.plist`). The Settings app writes it, we read it.
     ///
-    /// Keep it in sync with the `Key` entry of that plist — there is no shared symbol
+    /// Named by `RawDeviceKey`, out of reach of `DeviceMemory`'s JSON codec: it is a raw string,
+    /// the contract with the Settings app. Read in both containers (the app's and the App
+    /// Group's), and also written to the App Group by `shareAPIBaseURL()`.
+    /// Keep the name in sync with the `Key` entry of that plist — there is no shared symbol
     /// between a Settings bundle and the app binary.
-    static let apiBaseURLDefaultsKey = "api_base_url"
+    static let apiBaseURLDefaultsKey = RawDeviceKey.apiBaseURL.rawValue
 
     /// Base URL the API client talks to, i.e. the server root **including** the `/api/v1`
     /// prefix (same contract as `API_BASE_URL` in the xcconfigs).

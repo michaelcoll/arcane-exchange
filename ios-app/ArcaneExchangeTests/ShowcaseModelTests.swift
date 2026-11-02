@@ -67,6 +67,22 @@ struct ShowcaseModelTests {
         #expect(platform.downloaded.isEmpty)
     }
 
+    /// Before DeviceMemory the paths were a native string array, unreadable as JSON.
+    @Test func aShowcaseRememberedInTheOldFormatReadsAsNothing() async {
+        defaults.set(["/card-images/a.webp"], forKey: "showcase_image_paths")
+        platform.cached["/card-images/a.webp"] = UIImage()
+        let model = model()
+
+        await model.restore()
+        #expect(model.images.isEmpty)
+
+        platform.showcase = ["/card-images/a.webp"]
+        await model.refresh()
+        let next = self.model()
+        await next.restore()
+        #expect(next.images.count == 1)
+    }
+
     @Test func aFirstWallIsDownloadedAndFadesIn() async {
         platform.showcase = ["/card-images/a.webp"]
         let model = model()

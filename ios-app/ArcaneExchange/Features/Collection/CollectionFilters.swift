@@ -58,11 +58,11 @@ struct CollectionFiltersStore {
 
     /// The saved filters, or the defaults when nothing — or nothing readable — was saved.
     func load() -> CollectionFilters {
-        memory.read(CollectionFilters.self, for: .collectionFilters) ?? CollectionFilters()
+        memory.read(CollectionFilters.self, for: PlayerKey.collectionFilters) ?? CollectionFilters()
     }
 
     func save(_ filters: CollectionFilters) {
-        memory.write(filters, for: .collectionFilters)
+        memory.write(filters, for: PlayerKey.collectionFilters)
     }
 }
 
