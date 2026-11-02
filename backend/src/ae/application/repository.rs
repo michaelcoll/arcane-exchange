@@ -299,25 +299,26 @@ pub trait TradeRepository: Send + Sync {
         query: TradeListQuery,
     ) -> Result<Paginated<TradeSummary>, AppError>;
 
-    /// Adds `copy_id` to the trade of `transition` (or increments its `quantity` if already
-    /// present for `owner_id`), and writes `transition` (see `Trade::modify`).
+    /// Adds one copy of `copy_id` on `owner_id`'s side of the trade of `transition`, and writes
+    /// `transition` (see `Trade::add_card`). Idempotent: when the card is already there, under
+    /// the trade's lock, nothing is written, `transition` included, and the quantity it already
+    /// holds stays as is.
     ///
     /// Fails, changing nothing, with:
     /// - `TradeNotFound` if the trade doesn't exist;
-    /// - `TradeNotModifiable` if its status is no longer `transition.from`;
-    /// - `CardNotFound` if the resulting total for (`copy_id`, `owner_id`) in this trade exceeds
-    ///   what `availability` allows;
+    /// - `TradeNotModifiable` if the trade has ended (`COMPLETED`, `CLOSED` or `ABANDONED`) since
+    ///   it was read, or if the card is absent and the trade's status is no longer
+    ///   `transition.from`;
+    /// - `CardNotFound` if `availability` allows none of `copy_id` for `owner_id`;
     /// - `CardAlreadyReserved` if the card is committed to another `ONE_ACCEPTED` or
     ///   `FULLY_ACCEPTED` trade.
     ///
-    /// Atomic: concurrent additions to the same trade cannot together exceed the available
-    /// quantity.
-    async fn merge_card_into_trade(
+    /// Atomic: concurrent additions of the same card to the same trade give a single copy.
+    async fn add_card_to_trade(
         &self,
         transition: &TradeTransition,
         copy_id: &CopyId,
         owner_id: &UserId,
-        quantity: u8,
         availability: CardAvailability,
     ) -> Result<(), AppError>;
 

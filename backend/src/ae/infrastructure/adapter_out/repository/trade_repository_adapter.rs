@@ -4,7 +4,8 @@ use crate::domain::card::CopyId;
 use crate::domain::error::FunctionalError;
 use crate::domain::pagination::Paginated;
 use crate::domain::trade::{
-    Trade, TradeCard, TradeCardDetail, TradeId, TradeListQuery, TradeSummary, TradeTransition,
+    Trade, TradeCard, TradeCardDetail, TradeId, TradeListQuery, TradeStatus, TradeSummary,
+    TradeTransition,
 };
 use crate::domain::user::UserId;
 use crate::infrastructure::adapter_out::repository::entities::{
@@ -359,35 +360,30 @@ impl TradeRepository for TradeRepositoryAdapter {
         })
     }
 
-    #[tracing::instrument(name = "trade_repo.merge_card_into_trade", skip_all, fields(sentry.op = "db"))]
-    async fn merge_card_into_trade(
+    #[tracing::instrument(name = "trade_repo.add_card_to_trade", skip_all, fields(sentry.op = "db"))]
+    async fn add_card_to_trade(
         &self,
         transition: &TradeTransition,
         copy_id: &CopyId,
         owner_id: &UserId,
-        quantity: u8,
         availability: CardAvailability,
     ) -> Result<(), AppError> {
         let trade_id = transition.trade_id();
         let mut tx = self.pool.begin().await?;
 
         // Serializes every addition to this trade: a concurrent one waits here, then sees the
-        // quantity this one committed. The state the transition was decided from must still
-        // hold under the lock — else an acceptance committed meanwhile would let a card slip
-        // into a trade without reopening it. Everything is rolled back if a check below fails.
+        // card this one committed.
         lock_trade(&mut *tx, trade_id).await?;
-        if !write_transition(&mut *tx, transition).await? {
-            return Err(FunctionalError::TradeNotModifiable.into());
-        }
 
-        // The merge below adds `quantity` to whatever this trade already holds for this
-        // (card, owner) pair, so availability must cover the resulting total — not just this
-        // call's `quantity` — or repeated calls could add more than is available one bite at a
-        // time.
+        // Presence is decided under the lock: a card another call just added is left as is,
+        // and nothing is written — not even the transition, which would reopen the trade for
+        // nothing.
         let already_in_trade = sqlx::query_scalar!(
-            r#"SELECT quantity FROM trade_card
-                WHERE trade_id = $1 AND set_code = $2 AND collector_number = $3
-                  AND language_code = $4 AND foil = $5 AND owner_user_id = $6"#,
+            r#"SELECT EXISTS (
+                   SELECT 1 FROM trade_card
+                   WHERE trade_id = $1 AND set_code = $2 AND collector_number = $3
+                     AND language_code = $4 AND foil = $5 AND owner_user_id = $6
+               ) AS "present!""#,
             trade_id.0,
             copy_id.card_id.set_code.to_string(),
             copy_id.card_id.collector_number,
@@ -395,10 +391,29 @@ impl TradeRepository for TradeRepositoryAdapter {
             copy_id.foil,
             owner_id.as_str(),
         )
-        .fetch_optional(&mut *tx)
-        .await?
-        .unwrap_or(0);
-        let total_requested = i64::from(already_in_trade) + i64::from(quantity);
+        .fetch_one(&mut *tx)
+        .await?;
+        if already_in_trade {
+            // Nothing to write, but a trade that ended since it was read still refuses.
+            let status = sqlx::query_scalar!("SELECT status FROM trade WHERE id = $1", trade_id.0)
+                .fetch_one(&mut *tx)
+                .await?;
+            return match TradeStatus::try_from(status.as_str())? {
+                TradeStatus::Completed | TradeStatus::Closed | TradeStatus::Abandoned => {
+                    Err(FunctionalError::TradeNotModifiable.into())
+                }
+                TradeStatus::Pending | TradeStatus::OneAccepted | TradeStatus::FullyAccepted => {
+                    Ok(())
+                }
+            };
+        }
+
+        // The state the transition was decided from must still hold under the lock — else an
+        // acceptance committed meanwhile would let a card slip into a trade without reopening
+        // it. Everything is rolled back if a check below fails.
+        if !write_transition(&mut *tx, transition).await? {
+            return Err(FunctionalError::TradeNotModifiable.into());
+        }
 
         let available = match availability {
             CardAvailability::Owned => find_collection_entry_quantity(&mut *tx, owner_id, copy_id)
@@ -412,7 +427,7 @@ impl TradeRepository for TradeRepositoryAdapter {
         // `CardAlreadyReserved` (409) instead: from the caller's perspective an unavailable card
         // is indistinguishable from a nonexistent one, which also avoids leaking the other
         // party's trade settings.
-        if total_requested > i64::from(available) {
+        if available < 1 {
             return Err(FunctionalError::CardNotFound.into());
         }
 
@@ -422,16 +437,13 @@ impl TradeRepository for TradeRepositoryAdapter {
 
         sqlx::query!(
             r#"INSERT INTO trade_card (trade_id, set_code, collector_number, language_code, foil, owner_user_id, quantity)
-                VALUES ($1, $2, $3, $4, $5, $6, $7)
-                ON CONFLICT (trade_id, set_code, collector_number, language_code, foil, owner_user_id)
-                    DO UPDATE SET quantity = trade_card.quantity + EXCLUDED.quantity"#,
+                VALUES ($1, $2, $3, $4, $5, $6, 1)"#,
             trade_id.0,
             copy_id.card_id.set_code.to_string(),
             copy_id.card_id.collector_number,
             copy_id.card_id.language_code.to_string(),
             copy_id.foil,
             owner_id.as_str(),
-            quantity as i32,
         )
         .execute(&mut *tx)
         .await?;
@@ -451,7 +463,7 @@ impl TradeRepository for TradeRepositoryAdapter {
         let trade_id = transition.trade_id();
         let mut tx = self.pool.begin().await?;
 
-        // Same lock order as `merge_card_into_trade` (trade row, then its cards).
+        // Same lock order as `add_card_to_trade` (trade row, then its cards).
         lock_trade(&mut *tx, trade_id).await?;
 
         let result = sqlx::query!(
@@ -523,7 +535,7 @@ mod tests {
     use crate::domain::card_image::{CardImage, CardImageSource};
     use crate::domain::language_code::LanguageCode;
     use crate::domain::pagination::Pagination;
-    use crate::domain::trade::{Party, TradeStatus};
+    use crate::domain::trade::Party;
     use crate::infrastructure::adapter_out::repository::common_repository_tests::{
         insert_card, insert_card_with_rarity, insert_collection_entry,
         insert_collection_entry_with_binder, insert_price, insert_rarity_filter, insert_trade,
@@ -1213,15 +1225,14 @@ mod tests {
         assert_eq!(status_of(finished).await, TradeStatus::Closed);
     }
 
-    // --- merge_card_into_trade ---
+    // --- add_card_to_trade ---
 
-    /// Merges `quantity` copies of `make_card_id()` owned by `user_b`, who is first given more
-    /// than enough of them for the availability check to stay out of the way.
-    async fn merge_owned_card(
+    /// Adds `make_card_id()` owned by `user_b`, who is first given more than enough copies of it
+    /// for the availability check to stay out of the way.
+    async fn add_owned_card(
         pool: &PgPool,
         repository: &TradeRepositoryAdapter,
         trade_id: uuid::Uuid,
-        quantity: u8,
     ) -> Result<(), AppError> {
         insert_collection_entry(
             pool,
@@ -1236,11 +1247,10 @@ mod tests {
         )
         .await;
         repository
-            .merge_card_into_trade(
+            .add_card_to_trade(
                 &modify(repository, trade_id).await,
                 &make_card_id(),
                 &UserId::new("user_b"),
-                quantity,
                 CardAvailability::Owned,
             )
             .await
@@ -1269,33 +1279,30 @@ mod tests {
         trade_id
     }
 
-    async fn merge_offered_card_with(
+    async fn add_offered_card_with(
         repository: &TradeRepositoryAdapter,
         transition: &TradeTransition,
-        quantity: u8,
     ) -> Result<(), AppError> {
         repository
-            .merge_card_into_trade(
+            .add_card_to_trade(
                 transition,
                 &make_card_id(),
                 &UserId::new("user_b"),
-                quantity,
                 CardAvailability::Offered,
             )
             .await
     }
 
-    async fn merge_offered_card(
+    async fn add_offered_card(
         repository: &TradeRepositoryAdapter,
         trade_id: uuid::Uuid,
-        quantity: u8,
     ) -> Result<(), AppError> {
         let transition = modify(repository, trade_id).await;
-        merge_offered_card_with(repository, &transition, quantity).await
+        add_offered_card_with(repository, &transition).await
     }
 
     #[sqlx::test]
-    async fn merge_card_into_trade_fails_when_status_changed_since_it_was_read(pool: PgPool) {
+    async fn add_card_to_trade_fails_when_status_changed_since_it_was_read(pool: PgPool) {
         // The caller read `PENDING` (no reopening needed), but an acceptance committed since.
         let trade_id = setup_trade_with_offered_copies(&pool, 1).await;
         let repository = TradeRepositoryAdapter::new(pool.clone());
@@ -1303,7 +1310,7 @@ mod tests {
         mark_trade_party_accepted(&pool, trade_id, false).await;
         set_status(&pool, trade_id, "ONE_ACCEPTED").await;
 
-        let result = merge_offered_card_with(&repository, &transition, 1).await;
+        let result = add_offered_card_with(&repository, &transition).await;
 
         assert!(matches!(
             result,
@@ -1319,7 +1326,7 @@ mod tests {
     }
 
     #[sqlx::test]
-    async fn merge_card_into_trade_fails_when_trade_does_not_exist(pool: PgPool) {
+    async fn add_card_to_trade_fails_when_trade_does_not_exist(pool: PgPool) {
         let trade_id = setup_trade_with_offered_copies(&pool, 1).await;
         let repository = TradeRepositoryAdapter::new(pool);
         let unknown = Trade {
@@ -1328,7 +1335,7 @@ mod tests {
         };
         let transition = unknown.modify().unwrap();
 
-        let result = merge_offered_card_with(&repository, &transition, 1).await;
+        let result = add_offered_card_with(&repository, &transition).await;
 
         assert!(matches!(
             result,
@@ -1347,21 +1354,21 @@ mod tests {
     }
 
     #[sqlx::test]
-    async fn merge_card_into_trade_accepts_up_to_the_offered_quantity(pool: PgPool) {
-        let trade_id = setup_trade_with_offered_copies(&pool, 2).await;
+    async fn add_card_to_trade_adds_a_single_copy_even_when_more_are_offered(pool: PgPool) {
+        let trade_id = setup_trade_with_offered_copies(&pool, 3).await;
         let repository = TradeRepositoryAdapter::new(pool);
 
-        merge_offered_card(&repository, trade_id, 2).await.unwrap();
+        add_offered_card(&repository, trade_id).await.unwrap();
 
-        assert_eq!(quantity_in_trade(&repository, trade_id).await, 2);
+        assert_eq!(quantity_in_trade(&repository, trade_id).await, 1);
     }
 
     #[sqlx::test]
-    async fn merge_card_into_trade_fails_when_request_exceeds_offered_quantity(pool: PgPool) {
-        let trade_id = setup_trade_with_offered_copies(&pool, 2).await;
+    async fn add_card_to_trade_fails_when_the_owner_offers_none(pool: PgPool) {
+        let trade_id = setup_trade_with_offered_copies(&pool, 0).await;
         let repository = TradeRepositoryAdapter::new(pool);
 
-        let result = merge_offered_card(&repository, trade_id, 3).await;
+        let result = add_offered_card(&repository, trade_id).await;
 
         assert!(matches!(
             result,
@@ -1371,24 +1378,7 @@ mod tests {
     }
 
     #[sqlx::test]
-    async fn merge_card_into_trade_counts_copies_already_in_the_trade(pool: PgPool) {
-        // Bob offers 2 copies. 1 is already in the trade, 2 more would sum to 3, which Bob never
-        // offered.
-        let trade_id = setup_trade_with_offered_copies(&pool, 2).await;
-        insert_trade_card(&pool, trade_id, "FDN", "87", "FR", false, "user_b", 1).await;
-        let repository = TradeRepositoryAdapter::new(pool);
-
-        let result = merge_offered_card(&repository, trade_id, 2).await;
-
-        assert!(matches!(
-            result,
-            Err(AppError::Functional(FunctionalError::CardNotFound))
-        ));
-        assert_eq!(quantity_in_trade(&repository, trade_id).await, 1);
-    }
-
-    #[sqlx::test]
-    async fn merge_card_into_trade_offered_excludes_a_private_collection(pool: PgPool) {
+    async fn add_card_to_trade_offered_excludes_a_private_collection(pool: PgPool) {
         insert_user(&pool, "user_a", "alice").await;
         insert_user_with_visibility(&pool, "user_b", "bob", "private").await;
         insert_card(&pool, "FDN", "87", "FR", "Goblin Boarders", 1).await;
@@ -1396,9 +1386,9 @@ mod tests {
         insert_trade(&pool, trade_id, "user_a", "user_b", "PENDING").await;
         let repository = TradeRepositoryAdapter::new(pool.clone());
 
-        let offered = merge_offered_card(&repository, trade_id, 1).await;
+        let offered = add_offered_card(&repository, trade_id).await;
         // The same copies are fully available to their owner, whatever their visibility.
-        let owned = merge_owned_card(&pool, &repository, trade_id, 1).await;
+        let owned = add_owned_card(&pool, &repository, trade_id).await;
 
         assert!(matches!(
             offered,
@@ -1408,7 +1398,7 @@ mod tests {
     }
 
     #[sqlx::test]
-    async fn merge_card_into_trade_fails_when_card_reserved_elsewhere(pool: PgPool) {
+    async fn add_card_to_trade_fails_when_card_reserved_elsewhere(pool: PgPool) {
         let trade_id = setup_trade_with_offered_copies(&pool, 1).await;
         insert_user(&pool, "user_c", "carol").await;
         let other_trade = uuid::Uuid::new_v4();
@@ -1416,7 +1406,7 @@ mod tests {
         insert_trade_card(&pool, other_trade, "FDN", "87", "FR", false, "user_b", 1).await;
         let repository = TradeRepositoryAdapter::new(pool);
 
-        let result = merge_offered_card(&repository, trade_id, 1).await;
+        let result = add_offered_card(&repository, trade_id).await;
 
         assert!(matches!(
             result,
@@ -1425,16 +1415,16 @@ mod tests {
     }
 
     #[sqlx::test]
-    async fn merge_card_into_trade_reports_unavailable_before_reserved(pool: PgPool) {
+    async fn add_card_to_trade_reports_unavailable_before_reserved(pool: PgPool) {
         // An unavailable card must not leak through a `CardAlreadyReserved` (409).
-        let trade_id = setup_trade_with_offered_copies(&pool, 1).await;
+        let trade_id = setup_trade_with_offered_copies(&pool, 0).await;
         insert_user(&pool, "user_c", "carol").await;
         let other_trade = uuid::Uuid::new_v4();
         insert_trade(&pool, other_trade, "user_b", "user_c", "ONE_ACCEPTED").await;
         insert_trade_card(&pool, other_trade, "FDN", "87", "FR", false, "user_b", 1).await;
         let repository = TradeRepositoryAdapter::new(pool);
 
-        let result = merge_offered_card(&repository, trade_id, 2).await;
+        let result = add_offered_card(&repository, trade_id).await;
 
         assert!(matches!(
             result,
@@ -1443,27 +1433,87 @@ mod tests {
     }
 
     #[sqlx::test]
-    async fn merge_card_into_trade_concurrent_additions_cannot_exceed_offered_quantity(
+    async fn add_card_to_trade_concurrent_additions_of_the_same_card_give_a_single_copy(
         pool: PgPool,
     ) {
-        let trade_id = setup_trade_with_offered_copies(&pool, 1).await;
+        let trade_id = setup_trade_with_offered_copies(&pool, 2).await;
         warm_up(&pool).await;
         let repository = TradeRepositoryAdapter::new(pool);
 
         let (first, second) = tokio::join!(
-            merge_offered_card(&repository, trade_id, 1),
-            merge_offered_card(&repository, trade_id, 1),
+            add_offered_card(&repository, trade_id),
+            add_offered_card(&repository, trade_id),
         );
 
         assert!(
-            first.is_ok() ^ second.is_ok(),
-            "exactly one addition must win: {first:?} / {second:?}"
+            first.is_ok() && second.is_ok(),
+            "both additions must succeed: {first:?} / {second:?}"
         );
         assert_eq!(quantity_in_trade(&repository, trade_id).await, 1);
     }
 
     #[sqlx::test]
-    async fn merge_card_into_trade_adds_new_card_and_keeps_status(pool: PgPool) {
+    async fn add_card_to_trade_leaves_a_present_card_untouched(pool: PgPool) {
+        // A quantity above one predates the idempotent addition and stays as is.
+        let trade_id = setup_trade_with_offered_copies(&pool, 1).await;
+        insert_trade_card(&pool, trade_id, "FDN", "87", "FR", false, "user_b", 2).await;
+        let repository = TradeRepositoryAdapter::new(pool);
+        let before = find(&repository, trade_id).await;
+
+        add_offered_card(&repository, trade_id).await.unwrap();
+
+        assert_eq!(quantity_in_trade(&repository, trade_id).await, 2);
+        assert_eq!(find(&repository, trade_id).await, before);
+    }
+
+    #[sqlx::test]
+    async fn add_card_to_trade_keeps_the_acceptance_when_the_card_is_already_present(pool: PgPool) {
+        let trade_id = setup_trade_with_offered_copies(&pool, 1).await;
+        insert_trade_card(&pool, trade_id, "FDN", "87", "FR", false, "user_b", 1).await;
+        mark_trade_party_accepted(&pool, trade_id, false).await;
+        set_status(&pool, trade_id, "ONE_ACCEPTED").await;
+        let repository = TradeRepositoryAdapter::new(pool);
+        let before = find(&repository, trade_id).await;
+        let transition = before.add_card(false).unwrap().unwrap();
+
+        // Even a transition that would reopen the trade is not written for a present card.
+        add_offered_card_with(&repository, &transition)
+            .await
+            .unwrap();
+
+        assert_eq!(find(&repository, trade_id).await, before);
+    }
+
+    #[sqlx::test]
+    async fn add_card_to_trade_refuses_a_present_card_when_the_trade_ended_meanwhile(pool: PgPool) {
+        // The caller read an active trade, but it was abandoned before the lock was taken.
+        let trade_id = setup_trade_with_offered_copies(&pool, 1).await;
+        insert_trade_card(&pool, trade_id, "FDN", "87", "FR", false, "user_b", 1).await;
+        let repository = TradeRepositoryAdapter::new(pool.clone());
+        let transition = modify(&repository, trade_id).await;
+        set_status(&pool, trade_id, "ABANDONED").await;
+
+        let result = add_offered_card_with(&repository, &transition).await;
+
+        assert!(matches!(
+            result,
+            Err(AppError::Functional(FunctionalError::TradeNotModifiable))
+        ));
+    }
+
+    #[sqlx::test]
+    async fn add_card_to_trade_treats_foil_and_non_foil_as_distinct_cards(pool: PgPool) {
+        let trade_id = setup_trade_with_offered_copies(&pool, 1).await;
+        insert_trade_card(&pool, trade_id, "FDN", "87", "FR", true, "user_b", 1).await;
+        let repository = TradeRepositoryAdapter::new(pool);
+
+        add_offered_card(&repository, trade_id).await.unwrap();
+
+        assert_eq!(quantity_in_trade(&repository, trade_id).await, 2);
+    }
+
+    #[sqlx::test]
+    async fn add_card_to_trade_adds_new_card_and_keeps_status(pool: PgPool) {
         insert_user(&pool, "user_a", "alice").await;
         insert_user(&pool, "user_b", "bob").await;
         insert_card(&pool, "FDN", "87", "FR", "Goblin Boarders", 1).await;
@@ -1471,16 +1521,14 @@ mod tests {
         insert_trade(&pool, trade_id, "user_a", "user_b", "PENDING").await;
 
         let repository = TradeRepositoryAdapter::new(pool.clone());
-        merge_owned_card(&pool, &repository, trade_id, 2)
-            .await
-            .unwrap();
+        add_owned_card(&pool, &repository, trade_id).await.unwrap();
 
         let trade_cards = repository
             .find_trade_cards(TradeId(trade_id))
             .await
             .unwrap();
         assert_eq!(trade_cards.len(), 1);
-        assert_eq!(trade_cards[0].quantity, 2);
+        assert_eq!(trade_cards[0].quantity, 1);
 
         let trade = repository
             .find_by_id(TradeId(trade_id))
@@ -1491,7 +1539,7 @@ mod tests {
     }
 
     #[sqlx::test]
-    async fn merge_card_into_trade_reopens_one_accepted_trade(pool: PgPool) {
+    async fn add_card_to_trade_reopens_one_accepted_trade(pool: PgPool) {
         insert_user(&pool, "user_a", "alice").await;
         insert_user(&pool, "user_b", "bob").await;
         insert_card(&pool, "FDN", "87", "FR", "Goblin Boarders", 1).await;
@@ -1500,9 +1548,7 @@ mod tests {
         mark_trade_accepted_by_both(&pool, trade_id).await;
 
         let repository = TradeRepositoryAdapter::new(pool.clone());
-        merge_owned_card(&pool, &repository, trade_id, 1)
-            .await
-            .unwrap();
+        add_owned_card(&pool, &repository, trade_id).await.unwrap();
 
         let trade = repository
             .find_by_id(TradeId(trade_id))
@@ -1515,7 +1561,7 @@ mod tests {
     }
 
     #[sqlx::test]
-    async fn merge_card_into_trade_leaves_acceptance_timestamps_untouched_when_not_reopening(
+    async fn add_card_to_trade_leaves_acceptance_timestamps_untouched_when_not_reopening(
         pool: PgPool,
     ) {
         insert_user(&pool, "user_a", "alice").await;
@@ -1525,9 +1571,7 @@ mod tests {
         insert_trade(&pool, trade_id, "user_a", "user_b", "PENDING").await;
 
         let repository = TradeRepositoryAdapter::new(pool.clone());
-        merge_owned_card(&pool, &repository, trade_id, 1)
-            .await
-            .unwrap();
+        add_owned_card(&pool, &repository, trade_id).await.unwrap();
 
         let trade = repository
             .find_by_id(TradeId(trade_id))
@@ -1539,29 +1583,32 @@ mod tests {
     }
 
     #[sqlx::test]
-    async fn merge_card_into_trade_increments_quantity_when_card_already_present(pool: PgPool) {
+    async fn add_card_to_trade_a_second_addition_changes_nothing(pool: PgPool) {
         insert_user(&pool, "user_a", "alice").await;
         insert_user(&pool, "user_b", "bob").await;
         insert_card(&pool, "FDN", "87", "FR", "Goblin Boarders", 1).await;
         let trade_id = uuid::Uuid::new_v4();
         insert_trade(&pool, trade_id, "user_a", "user_b", "PENDING").await;
-        insert_trade_card(&pool, trade_id, "FDN", "87", "FR", false, "user_b", 2).await;
-
         let repository = TradeRepositoryAdapter::new(pool.clone());
-        merge_owned_card(&pool, &repository, trade_id, 3)
+        add_owned_card(&pool, &repository, trade_id).await.unwrap();
+        let after_first = find(&repository, trade_id).await;
+
+        repository
+            .add_card_to_trade(
+                &modify(&repository, trade_id).await,
+                &make_card_id(),
+                &UserId::new("user_b"),
+                CardAvailability::Owned,
+            )
             .await
             .unwrap();
 
-        let trade_cards = repository
-            .find_trade_cards(TradeId(trade_id))
-            .await
-            .unwrap();
-        assert_eq!(trade_cards.len(), 1);
-        assert_eq!(trade_cards[0].quantity, 5);
+        assert_eq!(quantity_in_trade(&repository, trade_id).await, 1);
+        assert_eq!(find(&repository, trade_id).await, after_first);
     }
 
     #[sqlx::test]
-    async fn merge_card_into_trade_updates_updated_at(pool: PgPool) {
+    async fn add_card_to_trade_updates_updated_at(pool: PgPool) {
         insert_user(&pool, "user_a", "alice").await;
         insert_user(&pool, "user_b", "bob").await;
         insert_card(&pool, "FDN", "87", "FR", "Goblin Boarders", 1).await;
@@ -1576,9 +1623,7 @@ mod tests {
             .unwrap()
             .updated_at;
 
-        merge_owned_card(&pool, &repository, trade_id, 1)
-            .await
-            .unwrap();
+        add_owned_card(&pool, &repository, trade_id).await.unwrap();
 
         let after = repository
             .find_by_id(TradeId(trade_id))

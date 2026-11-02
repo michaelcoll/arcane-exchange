@@ -1076,7 +1076,7 @@ paths:
         required: true
       responses:
         '204':
-          description: Card added to the trade (quantity incremented if already present)
+          description: 'Card is on the owner''s side of the trade, at one copy: added, or already there and left untouched'
         '400':
           description: Invalid payload, or owner_username is not a party to this trade
           content:
@@ -1331,7 +1331,6 @@ components:
       - language_code
       - foil
       - owner_username
-      - quantity
       properties:
         collector_number:
           type: string
@@ -1341,10 +1340,6 @@ components:
           type: string
         owner_username:
           type: string
-        quantity:
-          type: integer
-          format: int32
-          minimum: 0
         set_code:
           type: string
     BinderInfoResponse:

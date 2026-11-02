@@ -29,7 +29,6 @@ pub(crate) struct AddTradeCardRequest {
     pub(crate) language_code: String,
     pub(crate) foil: bool,
     pub(crate) owner_username: String,
-    pub(crate) quantity: u8,
 }
 
 #[derive(Deserialize, TS, ToSchema)]

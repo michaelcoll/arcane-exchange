@@ -27,7 +27,6 @@ enum CardOfferTrade {
                 foil: card.foil,
                 language_code: card.language_code,
                 owner_username: offer.owner_username,
-                quantity: 1,
                 set_code: card.set_code
             ))
         ).noContent

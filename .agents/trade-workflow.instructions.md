@@ -143,6 +143,10 @@ ABANDONED  ← reachable from any status before COMPLETED
 | Either party   | Status `ONE_ACCEPTED`             | Goes back to `PENDING`, cards released |
 | No one         | Status `FULLY_ACCEPTED` or beyond | Not possible                           |
 
+Adding a card is idempotent (ADR-0021): a card already on its owner's side of the trade changes nothing —
+status and acceptances included — and succeeds, even on a `FULLY_ACCEPTED` trade. It is not a modification. A card
+that is absent follows the table above, at one copy.
+
 Any modification notifies the other party.
 
 ---

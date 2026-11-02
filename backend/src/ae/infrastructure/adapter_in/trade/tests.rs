@@ -126,8 +126,39 @@ fn make_add_card_payload() -> AddTradeCardRequest {
         language_code: "FR".to_string(),
         foil: false,
         owner_username: "bob".to_string(),
-        quantity: 1,
     }
+}
+
+#[tokio::test]
+async fn add_trade_card_ignores_the_quantity_older_apps_still_send() {
+    use axum::body::Body;
+    use axum::http::{Request, header};
+    use tower::ServiceExt;
+
+    let mut mock_use_case = MockAddTradeCardUseCase::new();
+    mock_use_case
+        .expect_add_card()
+        .times(1)
+        .withf(|_, _, owner_username, _| owner_username == "bob")
+        .returning(|_, _, _, _| Box::pin(async { Ok(()) }));
+
+    let response = crate::infrastructure::create_router(make_app_state_add_trade_card(
+        mock_use_case,
+    ))
+    .oneshot(
+        Request::post(format!("/trades/{}/cards", uuid::Uuid::new_v4()))
+            .header(header::AUTHORIZATION, "Bearer test-token")
+            .header(header::CONTENT_TYPE, "application/json")
+            .body(Body::from(
+                r#"{"set_code":"FDN","collector_number":"87","language_code":"FR","foil":false,
+                    "owner_username":"bob","quantity":3}"#,
+            ))
+            .unwrap(),
+    )
+    .await
+    .unwrap();
+
+    assert_eq!(response.status(), StatusCode::NO_CONTENT);
 }
 
 #[tokio::test]
@@ -136,7 +167,7 @@ async fn add_trade_card_returns_no_content_on_success() {
     mock_use_case
         .expect_add_card()
         .times(1)
-        .returning(|_, _, _, _, _| Box::pin(async { Ok(()) }));
+        .returning(|_, _, _, _| Box::pin(async { Ok(()) }));
 
     let state = make_app_state_add_trade_card(mock_use_case);
     let result = add_trade_card(
@@ -174,35 +205,12 @@ async fn add_trade_card_returns_bad_request_on_invalid_language_code() {
 }
 
 #[tokio::test]
-async fn add_trade_card_returns_bad_request_when_quantity_is_zero() {
-    let mock_use_case = MockAddTradeCardUseCase::new();
-    let state = make_app_state_add_trade_card(mock_use_case);
-    let mut payload = make_add_card_payload();
-    payload.quantity = 0;
-
-    let result = add_trade_card(
-        AuthenticatedUser(User::for_testing()),
-        State(state),
-        Path(uuid::Uuid::new_v4()),
-        axum::Json(payload),
-    )
-    .await;
-
-    match result.unwrap_err() {
-        AppError::Functional(FunctionalError::WrongFormat(msg)) => {
-            assert_eq!(msg, "quantity must be at least 1")
-        }
-        _ => panic!("Expected WrongFormat"),
-    }
-}
-
-#[tokio::test]
 async fn add_trade_card_propagates_trade_not_found_from_use_case() {
     let mut mock_use_case = MockAddTradeCardUseCase::new();
     mock_use_case
         .expect_add_card()
         .times(1)
-        .returning(|_, _, _, _, _| {
+        .returning(|_, _, _, _| {
             Box::pin(async { Err(AppError::Functional(FunctionalError::TradeNotFound)) })
         });
 
@@ -229,7 +237,7 @@ async fn add_trade_card_propagates_card_not_found_from_use_case() {
     mock_use_case
         .expect_add_card()
         .times(1)
-        .returning(|_, _, _, _, _| {
+        .returning(|_, _, _, _| {
             Box::pin(async { Err(AppError::Functional(FunctionalError::CardNotFound)) })
         });
 
@@ -254,7 +262,7 @@ async fn add_trade_card_propagates_trade_access_denied_from_use_case() {
     mock_use_case
         .expect_add_card()
         .times(1)
-        .returning(|_, _, _, _, _| {
+        .returning(|_, _, _, _| {
             Box::pin(async { Err(AppError::Functional(FunctionalError::TradeAccessDenied)) })
         });
 
@@ -279,7 +287,7 @@ async fn add_trade_card_propagates_trade_not_modifiable_from_use_case() {
     mock_use_case
         .expect_add_card()
         .times(1)
-        .returning(|_, _, _, _, _| {
+        .returning(|_, _, _, _| {
             Box::pin(async { Err(AppError::Functional(FunctionalError::TradeNotModifiable)) })
         });
 
