@@ -370,7 +370,6 @@ const onDragLeave = () => {
           :qty="card.collection_entry?.quantity ?? 0"
           :purchased="card.collection_entry?.purchase_price ?? 0"
           :trend="card.price_guide?.trend ?? 0"
-          deal="compare"
           :foil="card.foil"
           :size="size"
           :reserved="card.reserved"
