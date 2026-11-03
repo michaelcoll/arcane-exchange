@@ -1,59 +1,54 @@
-use super::controller::*;
 use super::dto::*;
 use crate::application::error::AppError;
+use crate::application::use_case::{MockGetCardOffersUseCase, MockGetCardPriceHistoryUseCase};
 use crate::domain::card::CollectionEntry;
 use crate::domain::card_offer::CardOfferSortField;
 use crate::domain::error::FunctionalError;
+use crate::domain::pagination::{PageRequest, Paginated, Pagination};
+use crate::domain::price::{Price, PriceGuide, PriceHistoryEntry};
 use crate::domain::user::User;
-use crate::infrastructure::AppState;
-use crate::infrastructure::adapter_in::auth_extractor::AuthenticatedUser;
-use axum::extract::{Query, State};
+use crate::infrastructure::testing::{
+    assert_error, assert_routes_refuse_anonymous, authed, json_of,
+};
+use crate::infrastructure::{AppState, create_router};
+use axum::http::{Method, StatusCode};
 use chrono::NaiveDate;
 use serde_json::json;
 use std::sync::Arc;
+use uuid::Uuid;
 
-fn make_app_state_with_card_price_history(
-    mock: crate::application::use_case::MockGetCardPriceHistoryUseCase,
-) -> AppState {
-    AppState {
+fn price_history_app(mock: MockGetCardPriceHistoryUseCase) -> axum::Router {
+    create_router(AppState {
         get_card_price_history_use_case: Arc::new(mock),
         ..AppState::for_testing()
-    }
+    })
 }
 
-fn make_app_state_with_card_offers(
-    mock: crate::application::use_case::MockGetCardOffersUseCase,
-) -> AppState {
-    AppState {
+fn offers_app(mock: MockGetCardOffersUseCase) -> axum::Router {
+    create_router(AppState {
         get_card_offers_use_case: Arc::new(mock),
         ..AppState::for_testing()
-    }
+    })
 }
 
-fn valid_offers_params() -> CardOffersParams {
-    CardOffersParams {
-        set_code: "FDN".to_string(),
-        collector_number: "87".to_string(),
-        language_code: "FR".to_string(),
-        foil: false,
-        sort_by: CardOffersSortByParam::default(),
-        page: 0,
-        page_size: 20,
-    }
-}
+const OFFERS_URI: &str =
+    "/card/offers?set_code=FDN&collector_number=87&language_code=FR&foil=false&page=0&page_size=20";
 
-// --- Tests for get_card_price_history ---
+// --- Price history ---
 
 #[tokio::test]
 async fn get_card_price_history_returns_entries() {
-    use crate::application::use_case::MockGetCardPriceHistoryUseCase;
-    use crate::domain::price::{Price, PriceGuide, PriceHistoryEntry};
-    use uuid::Uuid;
-
     let scryfall_id = Uuid::new_v4();
 
     let mut mock = MockGetCardPriceHistoryUseCase::new();
     mock.expect_get_card_price_history()
+        .times(1)
+        .withf(move |id, foil, start, end| {
+            *id == scryfall_id
+                && !*foil
+                && *start == NaiveDate::from_ymd_opt(2025, 1, 1)
+                && *end == NaiveDate::from_ymd_opt(2025, 1, 31)
+        })
         .returning(|_, _, _, _| {
             Box::pin(async {
                 Ok(vec![PriceHistoryEntry {
@@ -67,68 +62,53 @@ async fn get_card_price_history_returns_entries() {
             })
         });
 
-    let app_state = make_app_state_with_card_price_history(mock);
-    let params = CardPriceHistoryParams {
-        foil: false,
-        start_date: Some(NaiveDate::from_ymd_opt(2025, 1, 1).unwrap()),
-        end_date: Some(NaiveDate::from_ymd_opt(2025, 1, 31).unwrap()),
-    };
+    let uri = format!(
+        "/card/{scryfall_id}/price-history?foil=false&start_date=2025-01-01&end_date=2025-01-31"
+    );
+    let response = authed(price_history_app(mock), Method::GET, &uri).await;
 
-    let result = get_card_price_history(
-        AuthenticatedUser(User::for_testing()),
-        State(app_state),
-        axum::extract::Path(scryfall_id),
-        Query(params),
-    )
-    .await;
+    assert_eq!(response.status(), StatusCode::OK);
+    assert_eq!(
+        json_of(response).await,
+        json!([{ "date": "2025-01-15", "low": 100, "trend": 150, "avg": 130 }])
+    );
+}
 
-    assert!(result.is_ok());
-    let axum::Json(entries) = result.unwrap();
-    assert_eq!(entries.len(), 1);
-    assert_eq!(entries[0].low, 100);
-    assert_eq!(entries[0].trend, 150);
-    assert_eq!(entries[0].avg, 130);
+#[tokio::test]
+async fn get_card_price_history_returns_empty_list() {
+    let mut mock = MockGetCardPriceHistoryUseCase::new();
+    mock.expect_get_card_price_history()
+        .times(1)
+        .withf(|_, foil, start, end| *foil && start.is_none() && end.is_none())
+        .returning(|_, _, _, _| Box::pin(async { Ok(vec![]) }));
+
+    let uri = format!("/card/{}/price-history?foil=true", Uuid::new_v4());
+    let response = authed(price_history_app(mock), Method::GET, &uri).await;
+
+    assert_eq!(response.status(), StatusCode::OK);
+    assert_eq!(json_of(response).await, json!([]));
 }
 
 #[tokio::test]
 async fn get_card_price_history_returns_404_when_card_not_found() {
-    use crate::application::use_case::MockGetCardPriceHistoryUseCase;
-    use uuid::Uuid;
-
     let mut mock = MockGetCardPriceHistoryUseCase::new();
     mock.expect_get_card_price_history()
+        .times(1)
         .returning(|_, _, _, _| {
             Box::pin(async { Err(AppError::Functional(FunctionalError::CardNotFound)) })
         });
 
-    let app_state = make_app_state_with_card_price_history(mock);
+    let uri = format!("/card/{}/price-history?foil=false", Uuid::new_v4());
+    let response = authed(price_history_app(mock), Method::GET, &uri).await;
 
-    let result = get_card_price_history(
-        AuthenticatedUser(User::for_testing()),
-        State(app_state),
-        axum::extract::Path(Uuid::new_v4()),
-        Query(CardPriceHistoryParams {
-            foil: false,
-            start_date: None,
-            end_date: None,
-        }),
-    )
-    .await;
-
-    assert!(result.is_err());
-    match result.unwrap_err() {
-        AppError::Functional(FunctionalError::CardNotFound) => {}
-        other => panic!("Expected CardNotFound, got {:?}", other),
-    }
+    assert_error(response, StatusCode::NOT_FOUND, "card_not_found").await;
 }
 
 #[tokio::test]
 async fn get_card_price_history_propagates_wrong_format_error() {
-    use crate::application::use_case::MockGetCardPriceHistoryUseCase;
-    use uuid::Uuid;
-
     let mut mock = MockGetCardPriceHistoryUseCase::new();
     mock.expect_get_card_price_history()
+        .times(1)
         .returning(|_, _, _, _| {
             Box::pin(async {
                 Err(AppError::Functional(FunctionalError::WrongFormat(
@@ -137,219 +117,164 @@ async fn get_card_price_history_propagates_wrong_format_error() {
             })
         });
 
-    let app_state = make_app_state_with_card_price_history(mock);
-    let params = CardPriceHistoryParams {
-        foil: false,
-        start_date: Some(NaiveDate::from_ymd_opt(2025, 2, 1).unwrap()),
-        end_date: Some(NaiveDate::from_ymd_opt(2025, 1, 1).unwrap()),
-    };
+    let uri = format!(
+        "/card/{}/price-history?foil=false&start_date=2025-02-01&end_date=2025-01-01",
+        Uuid::new_v4()
+    );
+    let response = authed(price_history_app(mock), Method::GET, &uri).await;
 
-    let result = get_card_price_history(
-        AuthenticatedUser(User::for_testing()),
-        State(app_state),
-        axum::extract::Path(Uuid::new_v4()),
-        Query(params),
-    )
-    .await;
-
-    assert!(result.is_err());
-    match result.unwrap_err() {
-        AppError::Functional(FunctionalError::WrongFormat(msg)) => {
-            assert_eq!(msg, "start_date must be before or equal to end_date");
-        }
-        _ => panic!("Expected WrongFormat error"),
-    }
+    assert_eq!(response.status(), StatusCode::BAD_REQUEST);
+    let body = json_of(response).await;
+    assert_eq!(body["code"], "wrong_format");
+    assert_eq!(
+        body["error"],
+        "start_date must be before or equal to end_date"
+    );
 }
 
 #[tokio::test]
-async fn get_card_price_history_returns_empty_list() {
-    use crate::application::use_case::MockGetCardPriceHistoryUseCase;
-    use uuid::Uuid;
-
-    let mut mock = MockGetCardPriceHistoryUseCase::new();
-    mock.expect_get_card_price_history()
-        .returning(|_, _, _, _| Box::pin(async { Ok(vec![]) }));
-
-    let app_state = make_app_state_with_card_price_history(mock);
-
-    let result = get_card_price_history(
-        AuthenticatedUser(User::for_testing()),
-        State(app_state),
-        axum::extract::Path(Uuid::new_v4()),
-        Query(CardPriceHistoryParams {
-            foil: false,
-            start_date: None,
-            end_date: None,
-        }),
+async fn get_card_price_history_rejects_missing_foil_with_bad_request() {
+    // The catalog doesn't know a card's finish, so `foil` is required on this endpoint.
+    let uri = format!("/card/{}/price-history", Uuid::new_v4());
+    let response = authed(
+        price_history_app(MockGetCardPriceHistoryUseCase::new()),
+        Method::GET,
+        &uri,
     )
     .await;
 
-    assert!(result.is_ok());
-    let axum::Json(entries) = result.unwrap();
-    assert!(entries.is_empty());
+    assert_error(response, StatusCode::BAD_REQUEST, "invalid_request").await;
 }
 
-// --- Tests for get_card_offers ---
+// --- Offers ---
 
 #[tokio::test]
 async fn get_card_offers_returns_paginated_offers() {
-    use crate::application::use_case::MockGetCardOffersUseCase;
-    use crate::domain::card::CollectionEntry;
-    use crate::domain::pagination::{Paginated, Pagination};
-
     let mut mock = MockGetCardOffersUseCase::new();
-    mock.expect_get_card_offers().returning(|_, _, _, _| {
-        Box::pin(async move {
-            Ok(Paginated {
-                items: vec![CollectionEntry::Owned {
-                    owner_username: "Bob".to_string(),
-                    quantity: 3,
-                    selling_price: Some(1500),
-                    reserved: false,
-                }],
-                total: 1,
-                pagination: Pagination::default(),
-            })
+    mock.expect_get_card_offers()
+        .times(1)
+        .withf(|user_id, _, _, page| {
+            *user_id == User::for_testing().id
+                && *page
+                    == PageRequest {
+                        page: 0,
+                        page_size: 20,
+                    }
         })
-    });
+        .returning(|_, _, _, _| {
+            Box::pin(async move {
+                Ok(Paginated {
+                    items: vec![CollectionEntry::Owned {
+                        owner_username: "Bob".to_string(),
+                        quantity: 3,
+                        selling_price: Some(1500),
+                        reserved: false,
+                    }],
+                    total: 1,
+                    pagination: Pagination::default(),
+                })
+            })
+        });
 
-    let app_state = make_app_state_with_card_offers(mock);
+    let response = authed(offers_app(mock), Method::GET, OFFERS_URI).await;
 
-    let result = get_card_offers(
-        AuthenticatedUser(User::for_testing()),
-        State(app_state),
-        Query(valid_offers_params()),
-    )
-    .await;
-
-    assert!(result.is_ok());
-    let axum::Json(offers) = result.unwrap();
-    assert_eq!(offers.total, 1);
-    assert_eq!(offers.items.len(), 1);
-    assert_eq!(offers.items[0].owner_username, "Bob");
-    assert_eq!(offers.items[0].quantity, 3);
-    assert_eq!(offers.items[0].selling_price, Some(1500));
-    assert!(!offers.items[0].reserved);
+    assert_eq!(response.status(), StatusCode::OK);
+    let body = json_of(response).await;
+    assert_eq!(body["total"], 1);
+    assert_eq!(
+        body["items"],
+        json!([{
+            "owner_username": "Bob",
+            "quantity": 3,
+            "selling_price": 1500,
+            "reserved": false,
+        }])
+    );
 }
 
 #[tokio::test]
 async fn get_card_offers_returns_404_when_card_not_found() {
-    use crate::application::use_case::MockGetCardOffersUseCase;
-
     let mut mock = MockGetCardOffersUseCase::new();
-    mock.expect_get_card_offers().returning(|_, _, _, _| {
-        Box::pin(async { Err(AppError::Functional(FunctionalError::CardNotFound)) })
-    });
+    mock.expect_get_card_offers()
+        .times(1)
+        .returning(|_, _, _, _| {
+            Box::pin(async { Err(AppError::Functional(FunctionalError::CardNotFound)) })
+        });
 
-    let app_state = make_app_state_with_card_offers(mock);
+    let response = authed(offers_app(mock), Method::GET, OFFERS_URI).await;
 
-    let result = get_card_offers(
-        AuthenticatedUser(User::for_testing()),
-        State(app_state),
-        Query(valid_offers_params()),
-    )
-    .await;
-
-    assert!(result.is_err());
-    match result.unwrap_err() {
-        AppError::Functional(FunctionalError::CardNotFound) => {}
-        other => panic!("Expected CardNotFound, got {:?}", other),
-    }
+    assert_error(response, StatusCode::NOT_FOUND, "card_not_found").await;
 }
 
 #[tokio::test]
 async fn get_card_offers_returns_400_for_invalid_language_code() {
-    use crate::application::use_case::MockGetCardOffersUseCase;
-
-    let mock = MockGetCardOffersUseCase::new();
-    let app_state = make_app_state_with_card_offers(mock);
-
-    let mut params = valid_offers_params();
-    params.language_code = "XX".to_string();
-
-    let result = get_card_offers(
-        AuthenticatedUser(User::for_testing()),
-        State(app_state),
-        Query(params),
+    let uri = "/card/offers?set_code=FDN&collector_number=87&language_code=XX&foil=false";
+    let response = authed(
+        offers_app(MockGetCardOffersUseCase::new()),
+        Method::GET,
+        uri,
     )
     .await;
 
-    assert!(result.is_err());
-    match result.unwrap_err() {
-        AppError::Functional(FunctionalError::InvalidLanguageCode(code)) => {
-            assert_eq!(code, "XX");
-        }
-        other => panic!("Expected InvalidLanguageCode, got {:?}", other),
-    }
+    assert_error(response, StatusCode::BAD_REQUEST, "invalid_language_code").await;
 }
 
 #[tokio::test]
 async fn get_card_offers_returns_400_for_collector_number_too_long() {
-    use crate::application::use_case::MockGetCardOffersUseCase;
-
-    let mock = MockGetCardOffersUseCase::new();
-    let app_state = make_app_state_with_card_offers(mock);
-
-    let mut params = valid_offers_params();
-    params.collector_number = "12345678901".to_string();
-
-    let result = get_card_offers(
-        AuthenticatedUser(User::for_testing()),
-        State(app_state),
-        Query(params),
+    let uri = "/card/offers?set_code=FDN&collector_number=12345678901&language_code=FR&foil=false";
+    let response = authed(
+        offers_app(MockGetCardOffersUseCase::new()),
+        Method::GET,
+        uri,
     )
     .await;
 
-    assert!(result.is_err());
-    match result.unwrap_err() {
-        AppError::Functional(FunctionalError::InvalidCollectorNumber(_)) => {}
-        other => panic!("Expected InvalidCollectorNumber, got {:?}", other),
-    }
+    assert_error(
+        response,
+        StatusCode::BAD_REQUEST,
+        "invalid_collector_number",
+    )
+    .await;
 }
 
 #[tokio::test]
 async fn get_card_offers_returns_empty_items_with_nonzero_total_for_page_beyond_last_result() {
-    use crate::application::use_case::MockGetCardOffersUseCase;
-    use crate::domain::pagination::{Paginated, Pagination};
-
     let mut mock = MockGetCardOffersUseCase::new();
-    mock.expect_get_card_offers().returning(|_, _, _, _| {
-        Box::pin(async move {
-            Ok(Paginated {
-                items: vec![],
-                total: 3,
-                pagination: Pagination::try_new(2, 20, 60).unwrap(),
-            })
+    mock.expect_get_card_offers()
+        .times(1)
+        .withf(|_, _, _, page| {
+            *page
+                == PageRequest {
+                    page: 2,
+                    page_size: 20,
+                }
         })
-    });
+        .returning(|_, _, _, _| {
+            Box::pin(async move {
+                Ok(Paginated {
+                    items: vec![],
+                    total: 3,
+                    pagination: Pagination::try_new(2, 20, 60).unwrap(),
+                })
+            })
+        });
 
-    let app_state = make_app_state_with_card_offers(mock);
+    let uri = "/card/offers?set_code=FDN&collector_number=87&language_code=FR&foil=false&page=2";
+    let response = authed(offers_app(mock), Method::GET, uri).await;
 
-    let mut params = valid_offers_params();
-    params.page = 2;
-
-    let result = get_card_offers(
-        AuthenticatedUser(User::for_testing()),
-        State(app_state),
-        Query(params),
-    )
-    .await;
-
-    assert!(result.is_ok());
-    let axum::Json(offers) = result.unwrap();
-    assert!(offers.items.is_empty());
-    assert_eq!(offers.total, 3);
+    assert_eq!(response.status(), StatusCode::OK);
+    let body = json_of(response).await;
+    assert_eq!(body["items"], json!([]));
+    assert_eq!(body["total"], 3);
 }
 
 #[tokio::test]
 async fn get_card_offers_passes_the_requested_page_to_the_use_case_unvalidated() {
-    use crate::application::use_case::MockGetCardOffersUseCase;
-    use crate::domain::pagination::PageRequest;
-
     // Validating the page against the offers' depth limit is the use case's job: the controller
     // forwards whatever the client asked for, even a page the use case will reject.
     let mut mock = MockGetCardOffersUseCase::new();
     mock.expect_get_card_offers()
+        .times(1)
         .withf(|_, _, _, page| {
             *page
                 == PageRequest {
@@ -366,97 +291,50 @@ async fn get_card_offers_passes_the_requested_page_to_the_use_case_unvalidated()
             })
         });
 
-    let app_state = make_app_state_with_card_offers(mock);
+    let uri = "/card/offers?set_code=FDN&collector_number=87&language_code=FR&foil=false&page=1000&page_size=1000";
+    let response = authed(offers_app(mock), Method::GET, uri).await;
 
-    let mut params = valid_offers_params();
-    params.page = 1000;
-    params.page_size = 1000;
+    assert_error(response, StatusCode::BAD_REQUEST, "invalid_page_size").await;
+}
 
-    let result = get_card_offers(
-        AuthenticatedUser(User::for_testing()),
-        State(app_state),
-        Query(params),
+#[tokio::test]
+async fn get_card_offers_rejects_negative_page_with_bad_request() {
+    let uri = "/card/offers?set_code=FDN&collector_number=87&language_code=FR&foil=false&page=-1&page_size=20";
+    let response = authed(
+        offers_app(MockGetCardOffersUseCase::new()),
+        Method::GET,
+        uri,
     )
     .await;
 
-    match result.unwrap_err() {
-        AppError::Functional(FunctionalError::InvalidPageSize { .. }) => {}
-        other => panic!("Expected InvalidPageSize, got {:?}", other),
-    }
+    assert_error(response, StatusCode::BAD_REQUEST, "invalid_request").await;
 }
 
 #[tokio::test]
-async fn card_offers_params_rejects_negative_page_with_bad_request() {
-    use axum::extract::FromRequestParts;
-    use axum::response::IntoResponse;
+async fn get_card_offers_rejects_non_numeric_page_size_with_bad_request() {
+    let uri = "/card/offers?set_code=FDN&collector_number=87&language_code=FR&foil=false&page=0&page_size=abc";
+    let response = authed(
+        offers_app(MockGetCardOffersUseCase::new()),
+        Method::GET,
+        uri,
+    )
+    .await;
 
-    let request = axum::http::Request::builder()
-        .uri("/card/offers?set_code=FDN&collector_number=87&language_code=FR&foil=false&page=-1&page_size=20")
-        .body(())
-        .unwrap();
-    let (mut parts, ()) = request.into_parts();
-
-    let response = match Query::<CardOffersParams>::from_request_parts(&mut parts, &()).await {
-        Err(rejection) => rejection.into_response(),
-        Ok(_) => panic!("expected a rejection for page=-1"),
-    };
-    assert_eq!(response.status(), axum::http::StatusCode::BAD_REQUEST);
+    assert_error(response, StatusCode::BAD_REQUEST, "invalid_request").await;
 }
 
-#[tokio::test]
-async fn card_offers_params_rejects_non_numeric_page_size_with_bad_request() {
-    use axum::extract::FromRequestParts;
-    use axum::response::IntoResponse;
-
-    let request = axum::http::Request::builder()
-        .uri("/card/offers?set_code=FDN&collector_number=87&language_code=FR&foil=false&page=0&page_size=abc")
-        .body(())
-        .unwrap();
-    let (mut parts, ()) = request.into_parts();
-
-    let response = match Query::<CardOffersParams>::from_request_parts(&mut parts, &()).await {
-        Err(rejection) => rejection.into_response(),
-        Ok(_) => panic!("expected a rejection for page_size=abc"),
-    };
-    assert_eq!(response.status(), axum::http::StatusCode::BAD_REQUEST);
-}
+// --- Authentication ---
 
 #[tokio::test]
-async fn card_price_history_params_rejects_missing_foil_with_bad_request() {
-    use axum::extract::FromRequestParts;
-    use axum::response::IntoResponse;
+async fn every_route_refuses_an_anonymous_request() {
+    let price_history_uri = format!("/card/{}/price-history?foil=false", Uuid::new_v4());
+    let routes = [
+        (Method::POST, "/card/card-info"),
+        (Method::GET, price_history_uri.as_str()),
+        (Method::GET, OFFERS_URI),
+    ];
 
-    // The catalog doesn't know a card's finish, so `foil` is required on this endpoint's
-    // params — unlike `PriceHistoryParams`, shared with `/collection/price-history`, which has
-    // no notion of finish at all.
-    let request = axum::http::Request::builder()
-        .uri("/card/00000000-0000-0000-0000-000000000000/price-history")
-        .body(())
-        .unwrap();
-    let (mut parts, ()) = request.into_parts();
-
-    let response = match Query::<CardPriceHistoryParams>::from_request_parts(&mut parts, &()).await
-    {
-        Err(rejection) => rejection.into_response(),
-        Ok(_) => panic!("expected a rejection when foil is missing"),
-    };
-    assert_eq!(response.status(), axum::http::StatusCode::BAD_REQUEST);
-}
-
-#[tokio::test]
-async fn price_history_params_accepts_missing_finish_related_param() {
-    // `/collection/price-history` has no `foil` param, even though
-    // `/card/{scryfall_id}/price-history` requires one.
-    use axum::extract::FromRequestParts;
-
-    let request = axum::http::Request::builder()
-        .uri("/collection/price-history")
-        .body(())
-        .unwrap();
-    let (mut parts, ()) = request.into_parts();
-
-    let result = Query::<PriceHistoryParams>::from_request_parts(&mut parts, &()).await;
-    assert!(result.is_ok());
+    assert_routes_refuse_anonymous(|| create_router(AppState::for_testing()), &routes).await;
 }
 
 // --- Unit tests for dto.rs ---
