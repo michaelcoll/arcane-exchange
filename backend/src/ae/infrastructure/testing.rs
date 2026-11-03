@@ -6,6 +6,13 @@
 //! Most mocks have no expectation and panic if called. Four are pre-armed to succeed on any
 //! call: `import_card_use_case`, `edh_rec_caller_adapter`, `token_validator` and
 //! `import_price_use_case`. Override them to assert on calls.
+//!
+//! The pre-armed `token_validator` accepts any token and resolves it to `User::for_testing()`.
+//! A test that needs another caller overrides `token_validator` with a mock returning that user.
+//!
+//! Requests go through `get`, `send`, `authed`, `authed_json` and `anonymous`; responses are read
+//! with `json_of`. `assert_error` checks an error response, `assert_routes_refuse_anonymous` the
+//! `401` of a table of routes.
 
 use super::AppState;
 use crate::application::caller::MockEdhRecCaller;
@@ -33,7 +40,7 @@ use crate::infrastructure::adapter_out::repository::showcase_repository_adapter:
 use crate::infrastructure::adapter_out::repository::stats_repository_adapter::StatsRepositoryAdapter;
 use crate::infrastructure::create_router;
 use axum::body::Body;
-use axum::http::Request;
+use axum::http::{Method, Request, StatusCode, header};
 use axum::response::Response;
 use serde_json::Value;
 use sqlx::PgPool;
@@ -61,11 +68,97 @@ pub(crate) async fn get(app: axum::Router, uri: &str) -> Response {
         .unwrap()
 }
 
+/// Sends a hand-built `Request` (a multipart import, say) through the router.
+pub(crate) async fn send(app: axum::Router, request: Request<Body>) -> Response {
+    app.oneshot(request).await.unwrap()
+}
+
+/// A request without body, authenticated as the caller: any `Bearer` token is accepted, and
+/// resolves to `User::for_testing()` unless the test overrides `token_validator`.
+pub(crate) async fn authed(app: axum::Router, method: Method, uri: &str) -> Response {
+    let request = Request::builder()
+        .method(method)
+        .uri(uri)
+        .header(header::AUTHORIZATION, BEARER)
+        .body(Body::empty())
+        .unwrap();
+    send(app, request).await
+}
+
+/// Like [`authed`], with `body` as the JSON request body.
+#[expect(
+    dead_code,
+    reason = "no route of the first migrated folders takes a JSON body; the next ones do"
+)]
+pub(crate) async fn authed_json(
+    app: axum::Router,
+    method: Method,
+    uri: &str,
+    body: Value,
+) -> Response {
+    let request = Request::builder()
+        .method(method)
+        .uri(uri)
+        .header(header::AUTHORIZATION, BEARER)
+        .header(header::CONTENT_TYPE, "application/json")
+        .body(Body::from(body.to_string()))
+        .unwrap();
+    send(app, request).await
+}
+
+/// A request without body and without `Authorization` header, whatever the verb: a `401` on an
+/// authenticated route, the real answer on a public one.
+pub(crate) async fn anonymous(app: axum::Router, method: Method, uri: &str) -> Response {
+    let request = Request::builder()
+        .method(method)
+        .uri(uri)
+        .body(Body::empty())
+        .unwrap();
+    send(app, request).await
+}
+
+pub(crate) const BEARER: &str = "Bearer test-token";
+
 pub(crate) async fn json_of(response: Response) -> Value {
     let bytes = axum::body::to_bytes(response.into_body(), usize::MAX)
         .await
         .unwrap();
     serde_json::from_slice(&bytes).unwrap()
+}
+
+/// Asserts the response has this `status` and an `{error, code}` body carrying this `code`.
+pub(crate) async fn assert_error(response: Response, status: StatusCode, code: &str) {
+    assert_eq!(response.status(), status);
+    let body = json_of(response).await;
+    assert_eq!(body["code"], code);
+    assert!(body["error"].is_string(), "missing `error` in {body}");
+}
+
+/// Asserts that each `(verb, path)` of `routes`, sent without `Authorization` header to a router
+/// built by `app`, is refused with a `401` and the `{error, code: "unauthorized"}` body. The
+/// failure names the route.
+pub(crate) async fn assert_routes_refuse_anonymous(
+    app: impl Fn() -> axum::Router,
+    routes: &[(Method, &str)],
+) {
+    for (method, uri) in routes {
+        let response = anonymous(app(), method.clone(), uri).await;
+
+        assert_eq!(
+            response.status(),
+            StatusCode::UNAUTHORIZED,
+            "{method} {uri} must refuse an anonymous request"
+        );
+        let body = json_of(response).await;
+        assert_eq!(
+            body["code"], "unauthorized",
+            "{method} {uri} must answer with the error body"
+        );
+        assert!(
+            body["error"].is_string(),
+            "{method} {uri} must answer with an `error` message"
+        );
+    }
 }
 
 impl AppState {
@@ -88,7 +181,7 @@ impl AppState {
         let mut mock_auth = MockTokenValidator::new();
         mock_auth
             .expect_validate_token()
-            .returning(|_| Ok(User::new("test-user-id".to_string(), None, None, None)));
+            .returning(|_| Ok(User::for_testing()));
 
         let mut mock_import_price = MockImportPriceUseCase::new();
         mock_import_price

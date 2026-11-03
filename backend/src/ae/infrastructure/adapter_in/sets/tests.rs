@@ -1,20 +1,22 @@
-use super::controller::*;
 use crate::application::error::{AppError, InfraError};
 use crate::application::use_case::{MockGetSetUseCase, MockListSetsUseCase};
+use crate::domain::error::FunctionalError;
 use crate::domain::set_name::{SetCode, SetName};
-use crate::infrastructure::AppState;
-use axum::extract::{Path, State};
+use crate::infrastructure::testing::{anonymous, assert_error, json_of};
+use crate::infrastructure::{AppState, create_router};
+use axum::http::{Method, StatusCode};
+use serde_json::json;
 use std::sync::Arc;
 
-fn make_app_state(
+fn app_with(
     list_sets_use_case: MockListSetsUseCase,
     get_set_use_case: MockGetSetUseCase,
-) -> AppState {
-    AppState {
+) -> axum::Router {
+    create_router(AppState {
         list_sets_use_case: Arc::new(list_sets_use_case),
         get_set_use_case: Arc::new(get_set_use_case),
         ..AppState::for_testing()
-    }
+    })
 }
 
 #[tokio::test]
@@ -29,15 +31,14 @@ async fn list_sets_delegates_to_use_case() {
         })
     });
 
-    let state = make_app_state(mock_list, MockGetSetUseCase::new());
+    let app = app_with(mock_list, MockGetSetUseCase::new());
+    let response = anonymous(app, Method::GET, "/sets").await;
 
-    let result = list_sets(State(state)).await;
-
-    assert!(result.is_ok());
-    let body = result.unwrap().0;
-    assert_eq!(body.len(), 1);
-    assert_eq!(body[0].code, "ECL");
-    assert_eq!(body[0].name, "Eclipsed");
+    assert_eq!(response.status(), StatusCode::OK);
+    assert_eq!(
+        json_of(response).await,
+        json!([{ "code": "ECL", "name": "Eclipsed" }])
+    );
 }
 
 #[tokio::test]
@@ -51,11 +52,10 @@ async fn list_sets_propagates_use_case_error() {
         })
     });
 
-    let state = make_app_state(mock_list, MockGetSetUseCase::new());
+    let app = app_with(mock_list, MockGetSetUseCase::new());
+    let response = anonymous(app, Method::GET, "/sets").await;
 
-    let result = list_sets(State(state)).await;
-
-    assert!(result.is_err());
+    assert_error(response, StatusCode::INTERNAL_SERVER_ERROR, "internal").await;
 }
 
 #[tokio::test]
@@ -71,40 +71,33 @@ async fn get_set_delegates_to_use_case() {
         })
     });
 
-    let state = make_app_state(MockListSetsUseCase::new(), mock_get);
+    let app = app_with(MockListSetsUseCase::new(), mock_get);
+    let response = anonymous(app, Method::GET, "/sets/ECL").await;
 
-    let result = get_set(State(state), Path("ECL".to_string())).await;
-
-    assert!(result.is_ok());
-    let body = result.unwrap().0;
-    assert_eq!(body.code, "ECL");
-    assert_eq!(body.name, "Eclipsed");
+    assert_eq!(response.status(), StatusCode::OK);
+    assert_eq!(
+        json_of(response).await,
+        json!({ "code": "ECL", "name": "Eclipsed" })
+    );
 }
 
 #[tokio::test]
-async fn get_set_returns_error_for_invalid_set_code() {
-    let state = make_app_state(MockListSetsUseCase::new(), MockGetSetUseCase::new());
+async fn get_set_returns_bad_request_for_invalid_set_code() {
+    let app = app_with(MockListSetsUseCase::new(), MockGetSetUseCase::new());
+    let response = anonymous(app, Method::GET, "/sets/AB").await;
 
-    let result = get_set(State(state), Path("AB".to_string())).await;
-
-    assert!(result.is_err());
+    assert_error(response, StatusCode::BAD_REQUEST, "invalid_set_code").await;
 }
 
 #[tokio::test]
 async fn get_set_propagates_not_found_from_use_case() {
-    use crate::domain::error::FunctionalError;
-
     let mut mock_get = MockGetSetUseCase::new();
     mock_get
         .expect_get_set()
         .returning(|_| Box::pin(async { Err(FunctionalError::SetNotFound.into()) }));
 
-    let state = make_app_state(MockListSetsUseCase::new(), mock_get);
+    let app = app_with(MockListSetsUseCase::new(), mock_get);
+    let response = anonymous(app, Method::GET, "/sets/XXX").await;
 
-    let result = get_set(State(state), Path("XXX".to_string())).await;
-
-    assert!(matches!(
-        result.unwrap_err(),
-        AppError::Functional(FunctionalError::SetNotFound)
-    ));
+    assert_error(response, StatusCode::NOT_FOUND, "set_not_found").await;
 }
