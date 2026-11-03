@@ -112,8 +112,8 @@ watch(
 );
 
 const cardVariation = computed(() => priceTrend(cardHistoryData.value).variation);
-const ownedDeal = computed(() =>
-  computeDeal(props.card.collection_entry?.purchase_price, props.card.price_guide?.trend),
+const ownedSpread = computed(() =>
+  computePurchaseSpread(props.card.collection_entry?.purchase_price, props.card.price_guide?.trend),
 );
 
 const onKeydown = (e: KeyboardEvent) => {
@@ -230,16 +230,16 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
                   {{ formatPrice(card.collection_entry.purchase_price) }}
                 </dd>
               </div>
-              <div v-if="ownedDeal" class="flex items-center justify-between gap-3">
+              <div v-if="ownedSpread" class="flex items-center justify-between gap-3">
                 <dt class="text-slate-500 dark:text-slate-400">Écart depuis l'achat</dt>
                 <dd
                   :class="[
                     'font-mono font-semibold',
-                    ownedDeal.kind === 'bad' ? 'text-red-500 dark:text-red-400' : 'text-primary',
+                    ownedSpread.kind === 'loss' ? 'text-red-500 dark:text-red-400' : 'text-primary',
                   ]"
                 >
-                  {{ ownedDeal.deltaCents >= 0 ? '+' : '−'
-                  }}{{ formatPrice(Math.abs(ownedDeal.deltaCents)) }} · {{ ownedDeal.abs }} %
+                  {{ ownedSpread.deltaCents >= 0 ? '+' : '−'
+                  }}{{ formatPrice(Math.abs(ownedSpread.deltaCents)) }} · {{ ownedSpread.abs }} %
                 </dd>
               </div>
             </dl>

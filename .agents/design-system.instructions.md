@@ -168,8 +168,9 @@ to consult; none of them is a class in `frontend/`.
 **MTG cards** `.mtg` — the mockup's monochrome frame (title bar, art, type bar, text box) is **not** reproduced: the app
 always shows the stored card image, or the generic card back `public/card-back.webp` for a card without one (pending,
 or failed to load). Quantity badge `.qty`, variants `.mini`, `.foil` (holographic, scroll-driven), `.clickable`, plus
-a flip button to the back of a double-faced card (`flippable`, detail modal only). Grid cell `.card-cell` + deal indicators (`.deal-tag.good/.bad/.par`) — already implemented in
-`app/components/MtgCard.vue` and `app/components/CardCell.vue` respectively.
+a flip button to the back of a double-faced card (`flippable`, detail modal only). Grid cell `.card-cell` + the écart depuis l'achat indicators (`.deal-tag.good/.bad/.par` are the mockup's class
+names, kept as is; the code's `gain`/`loss`/`par` kinds map to them) — already implemented in
+`app/components/MtgCard.vue` and `app/components/Card/Cell.vue` respectively.
 
 **Official symbols**: mana (`.msym`, `@font-face` ManaSym, WUBRG badges) and set symbols (Keyrune, classes `ss`/
 `ss-{code}`, loaded from the jsdelivr CDN in `nuxt.config.ts` — not self-hosted, unlike ManaSym).
