@@ -40,7 +40,7 @@ enum Palette {
         Color("OnSecondary")
     }
 
-    /// `--down`: a value going down — a falling collection, a bad deal. Rising values are
+    /// `--down`: a value going down — a falling collection, a loss since purchase. Rising values are
     /// `primary`.
     static var down: Color {
         Color("Down")

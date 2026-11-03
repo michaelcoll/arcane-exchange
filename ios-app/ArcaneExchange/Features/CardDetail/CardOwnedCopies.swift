@@ -10,8 +10,8 @@ struct CardOwnedCopies: View {
         Int(entry.purchase_price)
     }
 
-    private var deal: CardDeal? {
-        CardDeal(purchaseCents: purchase, trendCents: trendCents)
+    private var purchaseSpread: PurchaseSpread? {
+        PurchaseSpread(purchaseCents: purchase, trendCents: trendCents)
     }
 
     var body: some View {
@@ -19,20 +19,20 @@ struct CardOwnedCopies: View {
             CardDetailRow("Exemplaires") { Text("×\(entry.quantity)") }
             Divider()
             CardDetailRow("Prix d'achat") { Text(Price.euros(cents: purchase)) }
-            if let deal, let trendCents {
+            if let purchaseSpread, let trendCents {
                 Divider()
                 CardDetailRow("Écart depuis l'achat") {
-                    Text(spread(to: trendCents, deal: deal))
-                        .foregroundStyle(deal.kind == .bad ? Palette.down : Palette.primary)
+                    Text(spreadText(to: trendCents, purchaseSpread: purchaseSpread))
+                        .foregroundStyle(purchaseSpread.kind == .loss ? Palette.down : Palette.primary)
                 }
             }
         }
     }
 
-    private func spread(to trend: Int, deal: CardDeal) -> String {
+    private func spreadText(to trend: Int, purchaseSpread: PurchaseSpread) -> String {
         let delta = trend - purchase
         let sign = delta >= 0 ? "+" : "−"
-        return "\(sign)\(Price.euros(cents: abs(delta))) · \(abs(deal.percent)) %"
+        return "\(sign)\(Price.euros(cents: abs(delta))) · \(abs(purchaseSpread.percent)) %"
     }
 }
 

@@ -10,27 +10,27 @@ struct PriceTests {
     }
 }
 
-struct CardDealTests {
+struct PurchaseSpreadTests {
     @Test func needsBothAPurchasePriceAndATrendPrice() {
-        #expect(CardDeal(purchaseCents: nil, trendCents: 3100) == nil)
-        #expect(CardDeal(purchaseCents: 2700, trendCents: nil) == nil)
+        #expect(PurchaseSpread(purchaseCents: nil, trendCents: 3100) == nil)
+        #expect(PurchaseSpread(purchaseCents: 2700, trendCents: nil) == nil)
         // A free card would make the percentage meaningless.
-        #expect(CardDeal(purchaseCents: 0, trendCents: 3100) == nil)
+        #expect(PurchaseSpread(purchaseCents: 0, trendCents: 3100) == nil)
     }
 
     @Test func treatsSwingsUnderThreePercentAsNoise() {
-        #expect(CardDeal(purchaseCents: 10000, trendCents: 10200)?.kind == .par)
-        #expect(CardDeal(purchaseCents: 10000, trendCents: 9800)?.kind == .par)
+        #expect(PurchaseSpread(purchaseCents: 10000, trendCents: 10200)?.kind == .par)
+        #expect(PurchaseSpread(purchaseCents: 10000, trendCents: 9800)?.kind == .par)
     }
 
     @Test func flagsRealGainsAndLosses() {
-        let gain = CardDeal(purchaseCents: 2700, trendCents: 3100)
-        #expect(gain?.kind == .good)
+        let gain = PurchaseSpread(purchaseCents: 2700, trendCents: 3100)
+        #expect(gain?.kind == .gain)
         #expect(gain?.percent == 15)
         #expect(gain?.label == "+15%")
 
-        let loss = CardDeal(purchaseCents: 3100, trendCents: 2700)
-        #expect(loss?.kind == .bad)
+        let loss = PurchaseSpread(purchaseCents: 3100, trendCents: 2700)
+        #expect(loss?.kind == .loss)
         #expect(loss?.label == "−13%")
     }
 }

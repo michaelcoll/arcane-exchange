@@ -19,8 +19,8 @@ struct CollectionCardCell: View {
         card.price_guide.flatMap(\.trend).map(Int.init)
     }
 
-    private var deal: CardDeal? {
-        CardDeal(purchaseCents: purchaseCents, trendCents: trendCents)
+    private var purchaseSpread: PurchaseSpread? {
+        PurchaseSpread(purchaseCents: purchaseCents, trendCents: trendCents)
     }
 
     var body: some View {
@@ -95,7 +95,7 @@ struct CollectionCardCell: View {
     /// Same rules as `Card/Cell.vue`: the comparison only shows when the swing is meaningful,
     /// otherwise a single price — trend when known, purchase price as a fallback.
     @ViewBuilder private var priceRow: some View {
-        if let deal, deal.kind != .par, let trendCents {
+        if let purchaseSpread, purchaseSpread.kind != .par, let trendCents {
             HStack(spacing: 6) {
                 priceText(cents: trendCents)
                 if let purchaseCents {
@@ -105,7 +105,7 @@ struct CollectionCardCell: View {
                         .strikethrough()
                         .foregroundStyle(.tertiary)
                 }
-                dealBadge(deal)
+                spreadBadge(purchaseSpread)
             }
         } else if let cents = trendCents ?? purchaseCents {
             priceText(cents: cents)
@@ -119,9 +119,9 @@ struct CollectionCardCell: View {
             .monospacedDigit()
     }
 
-    private func dealBadge(_ deal: CardDeal) -> some View {
-        let color: Color = deal.kind == .good ? .green : Palette.down
-        return Text(deal.label)
+    private func spreadBadge(_ purchaseSpread: PurchaseSpread) -> some View {
+        let color: Color = purchaseSpread.kind == .gain ? .green : Palette.down
+        return Text(purchaseSpread.label)
             .font(.caption2)
             .fontWeight(.bold)
             .monospacedDigit()

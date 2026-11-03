@@ -18,11 +18,11 @@ enum Price {
 
 /// Compares what a card is worth today against what it was bought for.
 ///
-/// Mirrors `Card/Cell.vue`'s `dealInfo`: a swing under 3 % is noise, not a deal.
-struct CardDeal: Equatable {
+/// Mirrors the web `utils/purchase-spread.ts`'s `computePurchaseSpread`: a swing under 3 % is noise, not a spread.
+struct PurchaseSpread: Equatable {
     enum Kind: Equatable {
-        case good
-        case bad
+        case gain
+        case loss
         case par
     }
 
@@ -33,7 +33,7 @@ struct CardDeal: Equatable {
         guard let purchase = purchaseCents, purchase > 0, let trend = trendCents else { return nil }
         let percent = Int(((Double(trend) - Double(purchase)) / Double(purchase) * 100).rounded())
         self.percent = percent
-        kind = percent >= 3 ? .good : (percent <= -3 ? .bad : .par)
+        kind = percent >= 3 ? .gain : (percent <= -3 ? .loss : .par)
     }
 
     /// Signed percentage, using a real minus sign like the web client.
