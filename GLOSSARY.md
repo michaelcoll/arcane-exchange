@@ -73,6 +73,13 @@ La possession, par un joueur, d'un certain nombre d'exemplaires d'une carte dans
 et un binder donné. Porte la quantité, le prix d'achat et la date d'ajout.
 _Avoid_ : ligne de collection, possession, card quantity
 
+**Écart depuis l'achat** :
+La comparaison, pour un exemplaire, de son prix d'achat à son prix de tendance. Neutre sous 3 % dans
+un sens ou dans l'autre ; absent sans prix d'achat positif ou sans prix de tendance, ce qui n'est pas
+un écart nul. Indépendant d'un Trade : à ne pas confondre avec le **Delta cash**, qui oppose les deux
+côtés d'un Trade.
+_Avoid_ : deal, plus-value, bonne affaire
+
 **Valeur de collection** :
 La somme, pour un joueur et à une date, du prix de tendance de chaque exemplaire qu'il possédait ce
 jour-là, dans sa finition. Sa série jour par jour forme l'historique de valeur de la collection.

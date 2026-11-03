@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { DealKind } from '~/utils/deal';
+import type { PurchaseSpreadKind } from '~/utils/purchase-spread';
 
 const props = withDefaults(
   defineProps<{
@@ -24,18 +24,18 @@ const emit = defineEmits(['click']);
 
 const hasPurchase = computed(() => props.purchased !== undefined);
 
-const dealInfo = computed(() =>
-  hasPurchase.value ? computeDeal(props.purchased, props.trend) : null,
+const spread = computed(() =>
+  hasPurchase.value ? computePurchaseSpread(props.purchased, props.trend) : null,
 );
 
-const dealTagClass = computed(() => {
-  if (!dealInfo.value) return '';
-  const kinds: Record<DealKind, string> = {
-    good: 'text-emerald-600 dark:text-emerald-400 bg-emerald-500/15',
-    bad: 'text-red-500 dark:text-red-400 bg-red-500/15',
+const spreadTagClass = computed(() => {
+  if (!spread.value) return '';
+  const kinds: Record<PurchaseSpreadKind, string> = {
+    gain: 'text-emerald-600 dark:text-emerald-400 bg-emerald-500/15',
+    loss: 'text-red-500 dark:text-red-400 bg-red-500/15',
     par: 'text-slate-400 dark:text-slate-500',
   };
-  return `font-mono text-2xs font-bold px-1.5 py-px rounded ${kinds[dealInfo.value.kind]}`;
+  return `font-mono text-2xs font-bold px-1.5 py-px rounded ${kinds[spread.value.kind]}`;
 });
 </script>
 
@@ -66,9 +66,9 @@ const dealTagClass = computed(() => {
         </span>
 
         <!-- compare: trend price + unit crossed out + % badge -->
-        <template v-else-if="dealInfo">
+        <template v-else-if="spread">
           <span
-            v-if="dealInfo.kind === 'par'"
+            v-if="spread.kind === 'par'"
             class="font-mono text-xs font-semibold text-slate-800 dark:text-slate-100"
             >{{ formatPrice(trend) }}</span
           >
@@ -81,7 +81,7 @@ const dealTagClass = computed(() => {
               class="font-mono text-xs text-slate-400 line-through dark:text-slate-500"
               >{{ formatPrice(purchased) }}</span
             >
-            <span :class="dealTagClass">{{ dealInfo.sign }}{{ dealInfo.abs }}%</span>
+            <span :class="spreadTagClass">{{ spread.sign }}{{ spread.abs }}%</span>
           </span>
         </template>
         <span v-else class="font-mono text-xs font-semibold text-slate-800 dark:text-slate-100">{{
