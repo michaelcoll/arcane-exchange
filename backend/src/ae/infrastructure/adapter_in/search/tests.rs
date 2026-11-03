@@ -1,26 +1,32 @@
-use super::controller::*;
-use super::dto::*;
 use crate::application::error::{AppError, InfraError};
 use crate::application::use_case::{MockSearchCardsUseCase, MockSearchSetsUseCase};
 use crate::domain::card::{Card, CollectionEntry};
-use crate::domain::collection::{CollectionSortField, SearchScope, SortDirection};
+use crate::domain::collection::{CollectionSortField, SearchQuery, SearchScope, SortDirection};
 use crate::domain::error::FunctionalError;
 use crate::domain::language_code::LanguageCode;
 use crate::domain::pagination::{PageRequest, Paginated, Pagination};
 use crate::domain::rarity_code::RarityCode;
 use crate::domain::set_name::SetName;
-use crate::domain::user::User;
-use crate::infrastructure::AppState;
-use crate::infrastructure::adapter_in::auth_extractor::AuthenticatedUser;
-use axum::extract::State;
-use axum_extra::extract::Query;
+use crate::infrastructure::testing::{
+    assert_error, assert_routes_refuse_anonymous, authed, json_of,
+};
+use crate::infrastructure::{AppState, create_router};
+use axum::http::{Method, StatusCode};
+use serde_json::json;
 use std::sync::Arc;
 
-fn make_app_state_with_search(mock: MockSearchCardsUseCase) -> AppState {
-    AppState {
-        search_cards_use_case: Arc::new(mock),
+fn search_app(search_cards_use_case: MockSearchCardsUseCase) -> axum::Router {
+    create_router(AppState {
+        search_cards_use_case: Arc::new(search_cards_use_case),
         ..AppState::for_testing()
-    }
+    })
+}
+
+fn sets_app(search_sets_use_case: MockSearchSetsUseCase) -> axum::Router {
+    create_router(AppState {
+        search_sets_use_case: Arc::new(search_sets_use_case),
+        ..AppState::for_testing()
+    })
 }
 
 fn make_card(set_code: &str, collector_number: &str) -> Card {
@@ -47,33 +53,50 @@ fn make_paginated(items: Vec<Card>, page: u32, page_size: u32) -> Paginated<Card
     }
 }
 
+/// A search mock that accepts exactly one call matching `matcher` and answers an empty page.
+fn expecting_search(
+    matcher: impl Fn(&SearchQuery<PageRequest>) -> bool + Send + 'static,
+) -> MockSearchCardsUseCase {
+    let mut mock = MockSearchCardsUseCase::new();
+    mock.expect_search_cards()
+        .withf(move |q| matcher(q))
+        .times(1)
+        .returning(|_| Box::pin(async { Ok(make_paginated(vec![], 0, 20)) }));
+    mock
+}
+
+/// A sets mock that accepts exactly one call matching `matcher` and answers no set.
+fn expecting_sets(
+    matcher: impl Fn(&SearchScope) -> bool + Send + 'static,
+) -> MockSearchSetsUseCase {
+    let mut mock = MockSearchSetsUseCase::new();
+    mock.expect_search_sets()
+        .withf(move |scope| matcher(scope))
+        .times(1)
+        .returning(|_| Box::pin(async { Ok(vec![]) }));
+    mock
+}
+
 #[tokio::test]
 async fn search_cards_returns_empty_response_when_search_is_empty() {
     let mut mock = MockSearchCardsUseCase::new();
     mock.expect_search_cards()
+        .times(1)
         .returning(|_| Box::pin(async { Ok(make_paginated(vec![], 0, 20)) }));
 
-    let app_state = make_app_state_with_search(mock);
+    let response = authed(search_app(mock), Method::GET, "/search/card").await;
 
-    let result = search_cards(
-        AuthenticatedUser(User::for_testing()),
-        State(app_state),
-        Query(SearchParams::default()),
-    )
-    .await;
-
-    assert!(result.is_ok());
-    let axum::Json(response) = result.unwrap();
-    assert!(response.items.is_empty());
-    assert_eq!(response.total, 0);
-    assert_eq!(response.page, 0);
-    assert_eq!(response.page_size, 20);
+    assert_eq!(response.status(), StatusCode::OK);
+    assert_eq!(
+        json_of(response).await,
+        json!({ "items": [], "total": 0, "page": 0, "page_size": 20 })
+    );
 }
 
 #[tokio::test]
 async fn search_cards_returns_cards_from_use_case() {
     let mut mock = MockSearchCardsUseCase::new();
-    mock.expect_search_cards().returning(|_| {
+    mock.expect_search_cards().times(1).returning(|_| {
         Box::pin(async {
             Ok(make_paginated(
                 vec![make_card("FDN", "1"), make_card("GPT", "32")],
@@ -83,25 +106,18 @@ async fn search_cards_returns_cards_from_use_case() {
         })
     });
 
-    let app_state = make_app_state_with_search(mock);
+    let response = authed(search_app(mock), Method::GET, "/search/card").await;
 
-    let result = search_cards(
-        AuthenticatedUser(User::for_testing()),
-        State(app_state),
-        Query(SearchParams::default()),
-    )
-    .await;
-
-    assert!(result.is_ok());
-    let axum::Json(response) = result.unwrap();
-    assert_eq!(response.items.len(), 2);
-    assert_eq!(response.total, 2);
+    assert_eq!(response.status(), StatusCode::OK);
+    let body = json_of(response).await;
+    assert_eq!(body["items"].as_array().unwrap().len(), 2);
+    assert_eq!(body["total"], 2);
 }
 
 #[tokio::test]
 async fn search_cards_returns_empty_items_with_nonzero_total_for_page_beyond_last_result() {
     let mut mock = MockSearchCardsUseCase::new();
-    mock.expect_search_cards().returning(|_| {
+    mock.expect_search_cards().times(1).returning(|_| {
         Box::pin(async {
             Ok(Paginated {
                 items: vec![],
@@ -111,29 +127,18 @@ async fn search_cards_returns_empty_items_with_nonzero_total_for_page_beyond_las
         })
     });
 
-    let app_state = make_app_state_with_search(mock);
-    let params = SearchParams {
-        page: 5,
-        ..Default::default()
-    };
+    let response = authed(search_app(mock), Method::GET, "/search/card?page=5").await;
 
-    let result = search_cards(
-        AuthenticatedUser(User::for_testing()),
-        State(app_state),
-        Query(params),
-    )
-    .await;
-
-    assert!(result.is_ok());
-    let axum::Json(response) = result.unwrap();
-    assert!(response.items.is_empty());
-    assert_eq!(response.total, 7);
+    assert_eq!(response.status(), StatusCode::OK);
+    let body = json_of(response).await;
+    assert_eq!(body["items"], json!([]));
+    assert_eq!(body["total"], 7);
 }
 
 #[tokio::test]
 async fn search_cards_propagates_error_from_use_case() {
     let mut mock = MockSearchCardsUseCase::new();
-    mock.expect_search_cards().returning(|_| {
+    mock.expect_search_cards().times(1).returning(|_| {
         Box::pin(async {
             Err(AppError::Infra(InfraError::RepositoryError(
                 "db failure".to_string(),
@@ -141,20 +146,9 @@ async fn search_cards_propagates_error_from_use_case() {
         })
     });
 
-    let app_state = make_app_state_with_search(mock);
+    let response = authed(search_app(mock), Method::GET, "/search/card").await;
 
-    let result = search_cards(
-        AuthenticatedUser(User::for_testing()),
-        State(app_state),
-        Query(SearchParams::default()),
-    )
-    .await;
-
-    assert!(result.is_err());
-    match result.err().unwrap() {
-        AppError::Infra(InfraError::RepositoryError(msg)) => assert_eq!(msg, "db failure"),
-        _ => panic!("Expected RepositoryError"),
-    }
+    assert_error(response, StatusCode::INTERNAL_SERVER_ERROR, "internal").await;
 }
 
 #[tokio::test]
@@ -170,6 +164,7 @@ async fn search_cards_passes_the_requested_page_to_the_use_case_unvalidated() {
                     page_size: 9999,
                 }
         })
+        .times(1)
         .returning(|_| {
             Box::pin(async {
                 Err(AppError::Functional(FunctionalError::InvalidPageSize {
@@ -179,24 +174,14 @@ async fn search_cards_passes_the_requested_page_to_the_use_case_unvalidated() {
             })
         });
 
-    let app_state = make_app_state_with_search(mock);
-    let params = SearchParams {
-        page: 1000,
-        page_size: 9999,
-        ..Default::default()
-    };
-
-    let result = search_cards(
-        AuthenticatedUser(User::for_testing()),
-        State(app_state),
-        Query(params),
+    let response = authed(
+        search_app(mock),
+        Method::GET,
+        "/search/card?page=1000&page_size=9999",
     )
     .await;
 
-    match result.err().unwrap() {
-        AppError::Functional(FunctionalError::InvalidPageSize { .. }) => {}
-        other => panic!("Expected InvalidPageSize, got {:?}", other),
-    }
+    assert_error(response, StatusCode::BAD_REQUEST, "invalid_page_size").await;
 }
 
 #[tokio::test]
@@ -210,54 +195,42 @@ async fn search_cards_passes_pagination_params_to_use_case() {
                     page_size: 5,
                 }
         })
+        .times(1)
         .returning(|q| {
             let PageRequest { page, page_size } = q.collection_query.pagination;
             Box::pin(async move { Ok(make_paginated(vec![], page, page_size)) })
         });
 
-    let app_state = make_app_state_with_search(mock);
-    let params = SearchParams {
-        page: 3,
-        page_size: 5,
-        ..Default::default()
-    };
-
-    let result = search_cards(
-        AuthenticatedUser(User::for_testing()),
-        State(app_state),
-        Query(params),
+    let response = authed(
+        search_app(mock),
+        Method::GET,
+        "/search/card?page=3&page_size=5",
     )
     .await;
 
-    assert!(result.is_ok());
-    let axum::Json(response) = result.unwrap();
-    assert_eq!(response.page, 3);
-    assert_eq!(response.page_size, 5);
+    assert_eq!(response.status(), StatusCode::OK);
+    let body = json_of(response).await;
+    assert_eq!(body["page"], 3);
+    assert_eq!(body["page_size"], 5);
 }
 
 #[tokio::test]
 async fn search_cards_maps_card_fields_correctly() {
     let mut mock = MockSearchCardsUseCase::new();
     mock.expect_search_cards()
+        .times(1)
         .returning(|_| Box::pin(async { Ok(make_paginated(vec![make_card("FDN", "42")], 0, 20)) }));
 
-    let app_state = make_app_state_with_search(mock);
+    let response = authed(search_app(mock), Method::GET, "/search/card").await;
 
-    let result = search_cards(
-        AuthenticatedUser(User::for_testing()),
-        State(app_state),
-        Query(SearchParams::default()),
-    )
-    .await;
-
-    assert!(result.is_ok());
-    let axum::Json(response) = result.unwrap();
-    let item = &response.items[0];
-    assert_eq!(item.set_code, "FDN");
-    assert_eq!(item.collector_number, "42");
-    assert_eq!(item.language_code, "EN");
-    assert!(!item.foil);
-    assert_eq!(item.name, "Test Card");
+    assert_eq!(response.status(), StatusCode::OK);
+    let body = json_of(response).await;
+    let item = &body["items"][0];
+    assert_eq!(item["set_code"], "FDN");
+    assert_eq!(item["collector_number"], "42");
+    assert_eq!(item["language_code"], "EN");
+    assert_eq!(item["foil"], false);
+    assert_eq!(item["name"], "Test Card");
 }
 
 #[tokio::test]
@@ -269,496 +242,289 @@ async fn search_cards_never_exposes_collection_entry_always_owner_count() {
     };
 
     let mut mock = MockSearchCardsUseCase::new();
-    mock.expect_search_cards().returning(move |_| {
-        Box::pin({
-            let c = card.clone();
-            async move { Ok(make_paginated(vec![c], 0, 20)) }
-        })
+    mock.expect_search_cards().times(1).returning(move |_| {
+        let c = card.clone();
+        Box::pin(async move { Ok(make_paginated(vec![c], 0, 20)) })
     });
 
-    let app_state = make_app_state_with_search(mock);
+    let response = authed(search_app(mock), Method::GET, "/search/card").await;
 
-    let result = search_cards(
-        AuthenticatedUser(User::for_testing()),
-        State(app_state),
-        Query(SearchParams::default()),
-    )
-    .await;
-
-    assert!(result.is_ok());
-    let axum::Json(response) = result.unwrap();
-    let item = &response.items[0];
-    assert!(item.collection_entry.is_none());
-    assert_eq!(item.owner_count, Some(3));
+    assert_eq!(response.status(), StatusCode::OK);
+    let body = json_of(response).await;
+    let item = &body["items"][0];
+    assert_eq!(item["collection_entry"], json!(null));
+    assert_eq!(item["owner_count"], 3);
 }
 
 #[tokio::test]
 async fn search_cards_passes_sort_by_avg_to_use_case() {
-    let mut mock = MockSearchCardsUseCase::new();
-    mock.expect_search_cards()
-        .withf(|q| q.collection_query.sort_by == CollectionSortField::Avg)
-        .returning(|_| Box::pin(async { Ok(make_paginated(vec![], 0, 20)) }));
+    let mock = expecting_search(|q| q.collection_query.sort_by == CollectionSortField::Avg);
 
-    let app_state = make_app_state_with_search(mock);
-    let params = SearchParams {
-        sort_by: SortByParam::Avg,
-        ..Default::default()
-    };
+    let response = authed(search_app(mock), Method::GET, "/search/card?sort_by=avg").await;
 
-    let result = search_cards(
-        AuthenticatedUser(User::for_testing()),
-        State(app_state),
-        Query(params),
-    )
-    .await;
-
-    assert!(result.is_ok());
+    assert_eq!(response.status(), StatusCode::OK);
 }
 
 #[tokio::test]
 async fn search_cards_passes_sort_by_set_code_to_use_case() {
-    let mut mock = MockSearchCardsUseCase::new();
-    mock.expect_search_cards()
-        .withf(|q| q.collection_query.sort_by == CollectionSortField::SetCode)
-        .returning(|_| Box::pin(async { Ok(make_paginated(vec![], 0, 20)) }));
+    let mock = expecting_search(|q| q.collection_query.sort_by == CollectionSortField::SetCode);
 
-    let app_state = make_app_state_with_search(mock);
-    let params = SearchParams {
-        sort_by: SortByParam::SetCode,
-        ..Default::default()
-    };
-
-    let result = search_cards(
-        AuthenticatedUser(User::for_testing()),
-        State(app_state),
-        Query(params),
+    let response = authed(
+        search_app(mock),
+        Method::GET,
+        "/search/card?sort_by=set_code",
     )
     .await;
 
-    assert!(result.is_ok());
+    assert_eq!(response.status(), StatusCode::OK);
 }
 
 #[tokio::test]
 async fn search_cards_passes_sort_by_language_code_to_use_case() {
-    let mut mock = MockSearchCardsUseCase::new();
-    mock.expect_search_cards()
-        .withf(|q| q.collection_query.sort_by == CollectionSortField::LanguageCode)
-        .returning(|_| Box::pin(async { Ok(make_paginated(vec![], 0, 20)) }));
+    let mock =
+        expecting_search(|q| q.collection_query.sort_by == CollectionSortField::LanguageCode);
 
-    let app_state = make_app_state_with_search(mock);
-    let params = SearchParams {
-        sort_by: SortByParam::LanguageCode,
-        ..Default::default()
-    };
-
-    let result = search_cards(
-        AuthenticatedUser(User::for_testing()),
-        State(app_state),
-        Query(params),
+    let response = authed(
+        search_app(mock),
+        Method::GET,
+        "/search/card?sort_by=language_code",
     )
     .await;
 
-    assert!(result.is_ok());
+    assert_eq!(response.status(), StatusCode::OK);
 }
 
 #[tokio::test]
 async fn search_cards_passes_sort_dir_asc_to_use_case() {
-    let mut mock = MockSearchCardsUseCase::new();
-    mock.expect_search_cards()
-        .withf(|q| q.collection_query.sort_dir == SortDirection::Asc)
-        .returning(|_| Box::pin(async { Ok(make_paginated(vec![], 0, 20)) }));
+    let mock = expecting_search(|q| q.collection_query.sort_dir == SortDirection::Asc);
 
-    let app_state = make_app_state_with_search(mock);
-    let params = SearchParams {
-        sort_dir: SortDirParam::Asc,
-        ..Default::default()
-    };
+    let response = authed(search_app(mock), Method::GET, "/search/card?sort_dir=asc").await;
 
-    let result = search_cards(
-        AuthenticatedUser(User::for_testing()),
-        State(app_state),
-        Query(params),
-    )
-    .await;
-
-    assert!(result.is_ok());
+    assert_eq!(response.status(), StatusCode::OK);
 }
 
 #[tokio::test]
-async fn search_cards_passes_sort_dir_desc_to_use_case() {
-    let mut mock = MockSearchCardsUseCase::new();
-    mock.expect_search_cards()
-        .withf(|q| q.collection_query.sort_dir == SortDirection::Desc)
-        .returning(|_| Box::pin(async { Ok(make_paginated(vec![], 0, 20)) }));
+async fn search_cards_defaults_sort_dir_to_desc() {
+    let mock = expecting_search(|q| q.collection_query.sort_dir == SortDirection::Desc);
 
-    let app_state = make_app_state_with_search(mock);
+    let response = authed(search_app(mock), Method::GET, "/search/card").await;
 
-    let result = search_cards(
-        AuthenticatedUser(User::for_testing()),
-        State(app_state),
-        Query(SearchParams::default()),
-    )
-    .await;
-
-    assert!(result.is_ok());
+    assert_eq!(response.status(), StatusCode::OK);
 }
 
 #[tokio::test]
 async fn search_cards_passes_search_query_to_use_case() {
-    let mut mock = MockSearchCardsUseCase::new();
-    mock.expect_search_cards()
-        .withf(|q| q.collection_query.search_query == Some("gob".to_string()))
-        .returning(|_| Box::pin(async { Ok(make_paginated(vec![], 0, 20)) }));
+    let mock = expecting_search(|q| q.collection_query.search_query == Some("gob".to_string()));
 
-    let app_state = make_app_state_with_search(mock);
-    let params = SearchParams {
-        q: Some("gob".to_string()),
-        ..Default::default()
-    };
+    let response = authed(search_app(mock), Method::GET, "/search/card?q=gob").await;
 
-    let result = search_cards(
-        AuthenticatedUser(User::for_testing()),
-        State(app_state),
-        Query(params),
-    )
-    .await;
-
-    assert!(result.is_ok());
+    assert_eq!(response.status(), StatusCode::OK);
 }
 
 #[tokio::test]
 async fn search_cards_passes_none_search_query_when_q_is_absent() {
-    let mut mock = MockSearchCardsUseCase::new();
-    mock.expect_search_cards()
-        .withf(|q| q.collection_query.search_query.is_none())
-        .returning(|_| Box::pin(async { Ok(make_paginated(vec![], 0, 20)) }));
+    let mock = expecting_search(|q| q.collection_query.search_query.is_none());
 
-    let app_state = make_app_state_with_search(mock);
+    let response = authed(search_app(mock), Method::GET, "/search/card").await;
 
-    let result = search_cards(
-        AuthenticatedUser(User::for_testing()),
-        State(app_state),
-        Query(SearchParams::default()),
-    )
-    .await;
-
-    assert!(result.is_ok());
+    assert_eq!(response.status(), StatusCode::OK);
 }
 
 #[tokio::test]
 async fn search_cards_parses_repeated_rarity_query_params_into_rarity_codes() {
-    let mut mock = MockSearchCardsUseCase::new();
-    mock.expect_search_cards()
-        .withf(|q| q.collection_query.rarity == vec![RarityCode::C, RarityCode::U])
-        .returning(|_| Box::pin(async { Ok(make_paginated(vec![], 0, 20)) }));
+    let mock =
+        expecting_search(|q| q.collection_query.rarity == vec![RarityCode::C, RarityCode::U]);
 
-    let app_state = make_app_state_with_search(mock);
-    let uri: axum::http::Uri = "/search?rarity=C&rarity=U".parse().unwrap();
-    let params = Query::<SearchParams>::try_from_uri(&uri).unwrap();
-
-    let result = search_cards(
-        AuthenticatedUser(User::for_testing()),
-        State(app_state),
-        params,
+    let response = authed(
+        search_app(mock),
+        Method::GET,
+        "/search/card?rarity=C&rarity=U",
     )
     .await;
 
-    assert!(result.is_ok());
+    assert_eq!(response.status(), StatusCode::OK);
 }
 
 #[tokio::test]
 async fn search_cards_defaults_rarity_to_empty_when_absent() {
-    let mut mock = MockSearchCardsUseCase::new();
-    mock.expect_search_cards()
-        .withf(|q| q.collection_query.rarity.is_empty())
-        .returning(|_| Box::pin(async { Ok(make_paginated(vec![], 0, 20)) }));
+    let mock = expecting_search(|q| q.collection_query.rarity.is_empty());
 
-    let app_state = make_app_state_with_search(mock);
-    let uri: axum::http::Uri = "/search".parse().unwrap();
-    let params = Query::<SearchParams>::try_from_uri(&uri).unwrap();
+    let response = authed(search_app(mock), Method::GET, "/search/card").await;
 
-    let result = search_cards(
-        AuthenticatedUser(User::for_testing()),
-        State(app_state),
-        params,
-    )
-    .await;
-
-    assert!(result.is_ok());
+    assert_eq!(response.status(), StatusCode::OK);
 }
 
 #[tokio::test]
 async fn search_cards_passes_player_username_to_use_case() {
-    let mut mock = MockSearchCardsUseCase::new();
-    mock.expect_search_cards()
-        .withf(|q| q.player_username == Some("Alice".to_string()))
-        .returning(|_| Box::pin(async { Ok(make_paginated(vec![], 0, 20)) }));
+    let mock = expecting_search(|q| q.player_username == Some("Alice".to_string()));
 
-    let app_state = make_app_state_with_search(mock);
-    let params = SearchParams {
-        player_username: Some("Alice".to_string()),
-        ..Default::default()
-    };
-
-    let result = search_cards(
-        AuthenticatedUser(User::for_testing()),
-        State(app_state),
-        Query(params),
+    let response = authed(
+        search_app(mock),
+        Method::GET,
+        "/search/card?player_username=Alice",
     )
     .await;
 
-    assert!(result.is_ok());
+    assert_eq!(response.status(), StatusCode::OK);
 }
 
 #[tokio::test]
 async fn search_cards_treats_empty_player_username_as_none() {
-    let mut mock = MockSearchCardsUseCase::new();
-    mock.expect_search_cards()
-        .withf(|q| q.player_username.is_none())
-        .returning(|_| Box::pin(async { Ok(make_paginated(vec![], 0, 20)) }));
+    let mock = expecting_search(|q| q.player_username.is_none());
 
-    let app_state = make_app_state_with_search(mock);
-    let params = SearchParams {
-        player_username: Some("".to_string()),
-        ..Default::default()
-    };
-
-    let result = search_cards(
-        AuthenticatedUser(User::for_testing()),
-        State(app_state),
-        Query(params),
+    let response = authed(
+        search_app(mock),
+        Method::GET,
+        "/search/card?player_username=",
     )
     .await;
 
-    assert!(result.is_ok());
+    assert_eq!(response.status(), StatusCode::OK);
 }
 
 #[tokio::test]
 async fn search_cards_treats_whitespace_only_player_username_as_none() {
-    let mut mock = MockSearchCardsUseCase::new();
-    mock.expect_search_cards()
-        .withf(|q| q.player_username.is_none())
-        .returning(|_| Box::pin(async { Ok(make_paginated(vec![], 0, 20)) }));
+    let mock = expecting_search(|q| q.player_username.is_none());
 
-    let app_state = make_app_state_with_search(mock);
-    let params = SearchParams {
-        player_username: Some("   ".to_string()),
-        ..Default::default()
-    };
-
-    let result = search_cards(
-        AuthenticatedUser(User::for_testing()),
-        State(app_state),
-        Query(params),
+    let response = authed(
+        search_app(mock),
+        Method::GET,
+        "/search/card?player_username=%20%20%20",
     )
     .await;
 
-    assert!(result.is_ok());
+    assert_eq!(response.status(), StatusCode::OK);
 }
 
 #[tokio::test]
 async fn search_cards_defaults_player_username_to_none_when_absent() {
-    let mut mock = MockSearchCardsUseCase::new();
-    mock.expect_search_cards()
-        .withf(|q| q.player_username.is_none())
-        .returning(|_| Box::pin(async { Ok(make_paginated(vec![], 0, 20)) }));
+    let mock = expecting_search(|q| q.player_username.is_none());
 
-    let app_state = make_app_state_with_search(mock);
+    let response = authed(search_app(mock), Method::GET, "/search/card").await;
 
-    let result = search_cards(
-        AuthenticatedUser(User::for_testing()),
-        State(app_state),
-        Query(SearchParams::default()),
-    )
-    .await;
-
-    assert!(result.is_ok());
+    assert_eq!(response.status(), StatusCode::OK);
 }
 
 #[tokio::test]
 async fn search_cards_rejects_added_at_sort_without_player_username() {
     // The use case must never be reached: the combination is rejected before that.
-    let mock = MockSearchCardsUseCase::new();
-
-    let app_state = make_app_state_with_search(mock);
-    let params = SearchParams {
-        sort_by: SortByParam::AddedAt,
-        ..Default::default()
-    };
-
-    let result = search_cards(
-        AuthenticatedUser(User::for_testing()),
-        State(app_state),
-        Query(params),
+    let response = authed(
+        search_app(MockSearchCardsUseCase::new()),
+        Method::GET,
+        "/search/card?sort_by=added_at",
     )
     .await;
 
-    match result.err().unwrap() {
-        AppError::Functional(FunctionalError::AddedAtSortRequiresPlayerUsername) => {}
-        other => panic!(
-            "Expected AddedAtSortRequiresPlayerUsername, got {:?}",
-            other
-        ),
-    }
+    assert_error(
+        response,
+        StatusCode::BAD_REQUEST,
+        "added_at_sort_requires_player_username",
+    )
+    .await;
 }
 
 #[tokio::test]
 async fn search_cards_rejects_added_at_sort_with_empty_player_username() {
-    let mock = MockSearchCardsUseCase::new();
-
-    let app_state = make_app_state_with_search(mock);
-    let params = SearchParams {
-        sort_by: SortByParam::AddedAt,
-        player_username: Some("".to_string()),
-        ..Default::default()
-    };
-
-    let result = search_cards(
-        AuthenticatedUser(User::for_testing()),
-        State(app_state),
-        Query(params),
+    let response = authed(
+        search_app(MockSearchCardsUseCase::new()),
+        Method::GET,
+        "/search/card?sort_by=added_at&player_username=",
     )
     .await;
 
-    match result.err().unwrap() {
-        AppError::Functional(FunctionalError::AddedAtSortRequiresPlayerUsername) => {}
-        other => panic!(
-            "Expected AddedAtSortRequiresPlayerUsername, got {:?}",
-            other
-        ),
-    }
+    assert_error(
+        response,
+        StatusCode::BAD_REQUEST,
+        "added_at_sort_requires_player_username",
+    )
+    .await;
 }
 
 #[tokio::test]
 async fn search_cards_passes_sort_by_added_at_to_use_case() {
-    let mut mock = MockSearchCardsUseCase::new();
-    mock.expect_search_cards()
-        .withf(|q| q.collection_query.sort_by == CollectionSortField::AddedAt)
-        .returning(|_| Box::pin(async { Ok(make_paginated(vec![], 0, 20)) }));
+    let mock = expecting_search(|q| q.collection_query.sort_by == CollectionSortField::AddedAt);
 
-    let app_state = make_app_state_with_search(mock);
-    let params = SearchParams {
-        sort_by: SortByParam::AddedAt,
-        player_username: Some("alice".to_string()),
-        ..Default::default()
-    };
-
-    let result = search_cards(
-        AuthenticatedUser(User::for_testing()),
-        State(app_state),
-        Query(params),
+    let response = authed(
+        search_app(mock),
+        Method::GET,
+        "/search/card?sort_by=added_at&player_username=alice",
     )
     .await;
 
-    assert!(result.is_ok());
+    assert_eq!(response.status(), StatusCode::OK);
 }
 
 #[tokio::test]
 async fn search_cards_with_added_at_sort_and_unknown_player_username_still_reaches_use_case() {
     // Whether the username matches a real user is a repository concern; the
     // controller-level validation only cares that `player_username` is present.
-    let mut mock = MockSearchCardsUseCase::new();
-    mock.expect_search_cards()
-        .withf(|q| {
-            q.collection_query.sort_by == CollectionSortField::AddedAt
-                && q.player_username.as_deref() == Some("no-such-user")
-        })
-        .returning(|_| Box::pin(async { Ok(make_paginated(vec![], 0, 20)) }));
+    let mock = expecting_search(|q| {
+        q.collection_query.sort_by == CollectionSortField::AddedAt
+            && q.player_username.as_deref() == Some("no-such-user")
+    });
 
-    let app_state = make_app_state_with_search(mock);
-    let params = SearchParams {
-        sort_by: SortByParam::AddedAt,
-        player_username: Some("no-such-user".to_string()),
-        ..Default::default()
-    };
-
-    let result = search_cards(
-        AuthenticatedUser(User::for_testing()),
-        State(app_state),
-        Query(params),
+    let response = authed(
+        search_app(mock),
+        Method::GET,
+        "/search/card?sort_by=added_at&player_username=no-such-user",
     )
     .await;
 
-    assert!(result.is_ok());
-}
-
-fn make_app_state_with_search_sets(mock: MockSearchSetsUseCase) -> AppState {
-    AppState {
-        search_sets_use_case: Arc::new(mock),
-        ..AppState::for_testing()
-    }
+    assert_eq!(response.status(), StatusCode::OK);
 }
 
 #[tokio::test]
 async fn search_card_sets_passes_the_scope_with_a_trimmed_player_username() {
-    let mut mock = MockSearchSetsUseCase::new();
-    mock.expect_search_sets()
-        .withf(|scope| {
-            *scope
-                == SearchScope {
-                    search_query: Some("gob".to_string()),
-                    player_username: Some("Bob".to_string()),
-                }
-        })
-        .returning(|_| Box::pin(async { Ok(vec![]) }));
+    let mock = expecting_sets(|scope| {
+        *scope
+            == SearchScope {
+                search_query: Some("gob".to_string()),
+                player_username: Some("Bob".to_string()),
+            }
+    });
 
-    let result = search_card_sets(
-        AuthenticatedUser(User::for_testing()),
-        State(make_app_state_with_search_sets(mock)),
-        Query(SearchSetsParams {
-            q: Some("gob".to_string()),
-            player_username: Some("  Bob ".to_string()),
-        }),
+    let response = authed(
+        sets_app(mock),
+        Method::GET,
+        "/search/card/sets?q=gob&player_username=%20%20Bob%20",
     )
     .await;
 
-    assert!(result.is_ok());
+    assert_eq!(response.status(), StatusCode::OK);
 }
 
 #[tokio::test]
 async fn search_card_sets_treats_a_blank_player_username_as_absent() {
-    let mut mock = MockSearchSetsUseCase::new();
-    mock.expect_search_sets()
-        .withf(|scope| scope.player_username.is_none())
-        .returning(|_| Box::pin(async { Ok(vec![]) }));
+    let mock = expecting_sets(|scope| scope.player_username.is_none());
 
-    let result = search_card_sets(
-        AuthenticatedUser(User::for_testing()),
-        State(make_app_state_with_search_sets(mock)),
-        Query(SearchSetsParams {
-            q: Some("gob".to_string()),
-            player_username: Some("   ".to_string()),
-        }),
+    let response = authed(
+        sets_app(mock),
+        Method::GET,
+        "/search/card/sets?q=gob&player_username=%20%20%20",
     )
     .await;
 
-    assert!(result.is_ok());
+    assert_eq!(response.status(), StatusCode::OK);
 }
 
 #[tokio::test]
 async fn search_card_sets_treats_a_blank_q_as_absent() {
-    let mut mock = MockSearchSetsUseCase::new();
-    mock.expect_search_sets()
-        .withf(|scope| scope.search_query.is_none())
-        .returning(|_| Box::pin(async { Ok(vec![]) }));
+    let mock = expecting_sets(|scope| scope.search_query.is_none());
 
-    let result = search_card_sets(
-        AuthenticatedUser(User::for_testing()),
-        State(make_app_state_with_search_sets(mock)),
-        Query(SearchSetsParams {
-            q: Some("  ".to_string()),
-            player_username: Some("Bob".to_string()),
-        }),
+    let response = authed(
+        sets_app(mock),
+        Method::GET,
+        "/search/card/sets?q=%20%20&player_username=Bob",
     )
     .await;
 
-    assert!(result.is_ok());
+    assert_eq!(response.status(), StatusCode::OK);
 }
 
 #[tokio::test]
 async fn search_card_sets_returns_the_sets_in_the_use_case_order() {
     let mut mock = MockSearchSetsUseCase::new();
-    mock.expect_search_sets().returning(|_| {
+    mock.expect_search_sets().times(1).returning(|_| {
         Box::pin(async {
             Ok(vec![
                 SetName::new("ZZZ", "Alpha"),
@@ -767,25 +533,22 @@ async fn search_card_sets_returns_the_sets_in_the_use_case_order() {
         })
     });
 
-    let axum::Json(sets) = search_card_sets(
-        AuthenticatedUser(User::for_testing()),
-        State(make_app_state_with_search_sets(mock)),
-        Query(SearchSetsParams::default()),
-    )
-    .await
-    .unwrap();
+    let response = authed(sets_app(mock), Method::GET, "/search/card/sets").await;
 
-    let pairs: Vec<_> = sets
-        .iter()
-        .map(|s| (s.code.as_str(), s.name.as_str()))
-        .collect();
-    assert_eq!(pairs, vec![("ZZZ", "Alpha"), ("AAA", "Zendikar")]);
+    assert_eq!(response.status(), StatusCode::OK);
+    assert_eq!(
+        json_of(response).await,
+        json!([
+            { "code": "ZZZ", "name": "Alpha" },
+            { "code": "AAA", "name": "Zendikar" },
+        ])
+    );
 }
 
 #[tokio::test]
 async fn search_card_sets_propagates_use_case_errors() {
     let mut mock = MockSearchSetsUseCase::new();
-    mock.expect_search_sets().returning(|_| {
+    mock.expect_search_sets().times(1).returning(|_| {
         Box::pin(async {
             Err(AppError::Infra(InfraError::RepositoryError(
                 "db down".to_string(),
@@ -793,12 +556,17 @@ async fn search_card_sets_propagates_use_case_errors() {
         })
     });
 
-    let result = search_card_sets(
-        AuthenticatedUser(User::for_testing()),
-        State(make_app_state_with_search_sets(mock)),
-        Query(SearchSetsParams::default()),
-    )
-    .await;
+    let response = authed(sets_app(mock), Method::GET, "/search/card/sets").await;
 
-    assert!(result.is_err());
+    assert_error(response, StatusCode::INTERNAL_SERVER_ERROR, "internal").await;
+}
+
+#[tokio::test]
+async fn every_route_refuses_an_anonymous_request() {
+    let routes = [
+        (Method::GET, "/search/card"),
+        (Method::GET, "/search/card/sets"),
+    ];
+
+    assert_routes_refuse_anonymous(|| create_router(AppState::for_testing()), &routes).await;
 }
