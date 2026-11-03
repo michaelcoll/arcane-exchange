@@ -86,10 +86,6 @@ pub(crate) async fn authed(app: axum::Router, method: Method, uri: &str) -> Resp
 }
 
 /// Like [`authed`], with `body` as the JSON request body.
-#[expect(
-    dead_code,
-    reason = "no route of the first migrated folders takes a JSON body; the next ones do"
-)]
 pub(crate) async fn authed_json(
     app: axum::Router,
     method: Method,

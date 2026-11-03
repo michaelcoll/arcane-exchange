@@ -1,7 +1,3 @@
-use super::controller::*;
-use super::dto::{
-    AddTradeBinderRequest, CollectionVisibilityParam, SetRarityFilterRequest, SetVisibilityRequest,
-};
 use crate::application::error::{AppError, InfraError};
 use crate::application::use_case::{
     MockAddTradeBinderUseCase, MockGetCollectionVisibilityUseCase,
@@ -11,64 +7,17 @@ use crate::application::use_case::{
 use crate::domain::error::FunctionalError;
 use crate::domain::rarity_code::RarityCode;
 use crate::domain::rarity_trade_filter::RarityTradeFilter;
-use crate::domain::user::{CollectionVisibility, User};
-use crate::infrastructure::AppState;
-use crate::infrastructure::adapter_in::auth_extractor::AuthenticatedUser;
-use axum::extract::{Path, State};
-use axum::http::StatusCode;
+use crate::domain::user::CollectionVisibility;
+use crate::infrastructure::testing::{
+    assert_error, assert_routes_refuse_anonymous, authed, authed_json, json_of,
+};
+use crate::infrastructure::{AppState, create_router};
+use axum::http::{Method, StatusCode};
+use serde_json::json;
 use std::sync::Arc;
 
-fn test_user() -> AuthenticatedUser {
-    AuthenticatedUser(User::for_testing())
-}
-
-fn make_app_state_get_visibility(uc: MockGetCollectionVisibilityUseCase) -> AppState {
-    AppState {
-        get_collection_visibility_use_case: Arc::new(uc),
-        ..AppState::for_testing()
-    }
-}
-
-fn make_app_state_set_visibility(uc: MockSetCollectionVisibilityUseCase) -> AppState {
-    AppState {
-        set_collection_visibility_use_case: Arc::new(uc),
-        ..AppState::for_testing()
-    }
-}
-
-fn make_app_state_get_trade_binders(uc: MockGetTradeBindersUseCase) -> AppState {
-    AppState {
-        get_trade_binders_use_case: Arc::new(uc),
-        ..AppState::for_testing()
-    }
-}
-
-fn make_app_state_add_trade_binder(uc: MockAddTradeBinderUseCase) -> AppState {
-    AppState {
-        add_trade_binder_use_case: Arc::new(uc),
-        ..AppState::for_testing()
-    }
-}
-
-fn make_app_state_remove_trade_binder(uc: MockRemoveTradeBinderUseCase) -> AppState {
-    AppState {
-        remove_trade_binder_use_case: Arc::new(uc),
-        ..AppState::for_testing()
-    }
-}
-
-fn make_app_state_get_rarities(uc: MockGetRarityTradeFiltersUseCase) -> AppState {
-    AppState {
-        get_rarity_trade_filters_use_case: Arc::new(uc),
-        ..AppState::for_testing()
-    }
-}
-
-fn make_app_state_set_rarity(uc: MockSetRarityTradeFilterUseCase) -> AppState {
-    AppState {
-        set_rarity_trade_filter_use_case: Arc::new(uc),
-        ..AppState::for_testing()
-    }
+fn db_error() -> AppError {
+    AppError::Infra(InfraError::RepositoryError("DB error".to_string()))
 }
 
 // ============================================================
@@ -82,13 +31,15 @@ async fn get_trade_visibility_returns_value_on_success() {
         .expect_get_visibility()
         .times(1)
         .returning(|_| Box::pin(async { Ok(CollectionVisibility::Trade) }));
+    let app = create_router(AppState {
+        get_collection_visibility_use_case: Arc::new(mock_uc),
+        ..AppState::for_testing()
+    });
 
-    let state = make_app_state_get_visibility(mock_uc);
+    let response = authed(app, Method::GET, "/collection/trade-settings/visibility").await;
 
-    let result = get_trade_visibility(State(state), test_user()).await;
-
-    let response = result.unwrap();
-    assert_eq!(response.0.visibility, CollectionVisibilityParam::Trade);
+    assert_eq!(response.status(), StatusCode::OK);
+    assert_eq!(json_of(response).await, json!({ "visibility": "trade" }));
 }
 
 #[tokio::test]
@@ -98,15 +49,14 @@ async fn get_trade_visibility_propagates_user_not_found() {
         .expect_get_visibility()
         .times(1)
         .returning(|_| Box::pin(async { Err(FunctionalError::UserNotFound.into()) }));
+    let app = create_router(AppState {
+        get_collection_visibility_use_case: Arc::new(mock_uc),
+        ..AppState::for_testing()
+    });
 
-    let state = make_app_state_get_visibility(mock_uc);
+    let response = authed(app, Method::GET, "/collection/trade-settings/visibility").await;
 
-    let result = get_trade_visibility(State(state), test_user()).await;
-
-    match result.unwrap_err() {
-        AppError::Functional(FunctionalError::UserNotFound) => {}
-        _ => panic!("Expected UserNotFound"),
-    }
+    assert_error(response, StatusCode::NOT_FOUND, "user_not_found").await;
 }
 
 #[tokio::test]
@@ -117,19 +67,20 @@ async fn set_trade_visibility_returns_no_content_on_success() {
         .withf(|_, visibility| *visibility == CollectionVisibility::Public)
         .times(1)
         .returning(|_, _| Box::pin(async { Ok(()) }));
+    let app = create_router(AppState {
+        set_collection_visibility_use_case: Arc::new(mock_uc),
+        ..AppState::for_testing()
+    });
 
-    let state = make_app_state_set_visibility(mock_uc);
-
-    let result = set_trade_visibility(
-        State(state),
-        test_user(),
-        axum::Json(SetVisibilityRequest {
-            visibility: CollectionVisibilityParam::Public,
-        }),
+    let response = authed_json(
+        app,
+        Method::PUT,
+        "/collection/trade-settings/visibility",
+        json!({ "visibility": "public" }),
     )
     .await;
 
-    assert_eq!(result.unwrap(), StatusCode::NO_CONTENT);
+    assert_eq!(response.status(), StatusCode::NO_CONTENT);
 }
 
 #[tokio::test]
@@ -139,22 +90,20 @@ async fn set_trade_visibility_propagates_user_not_found() {
         .expect_set_visibility()
         .times(1)
         .returning(|_, _| Box::pin(async { Err(FunctionalError::UserNotFound.into()) }));
+    let app = create_router(AppState {
+        set_collection_visibility_use_case: Arc::new(mock_uc),
+        ..AppState::for_testing()
+    });
 
-    let state = make_app_state_set_visibility(mock_uc);
-
-    let result = set_trade_visibility(
-        State(state),
-        test_user(),
-        axum::Json(SetVisibilityRequest {
-            visibility: CollectionVisibilityParam::Public,
-        }),
+    let response = authed_json(
+        app,
+        Method::PUT,
+        "/collection/trade-settings/visibility",
+        json!({ "visibility": "public" }),
     )
     .await;
 
-    match result.unwrap_err() {
-        AppError::Functional(FunctionalError::UserNotFound) => {}
-        _ => panic!("Expected UserNotFound"),
-    }
+    assert_error(response, StatusCode::NOT_FOUND, "user_not_found").await;
 }
 
 // ============================================================
@@ -167,37 +116,35 @@ async fn get_trade_binders_returns_binders_on_success() {
     mock_uc.expect_get_trade_binders().times(1).returning(|_| {
         Box::pin(async { Ok(vec!["Trade Binder".to_string(), "Bulk".to_string()]) })
     });
+    let app = create_router(AppState {
+        get_trade_binders_use_case: Arc::new(mock_uc),
+        ..AppState::for_testing()
+    });
 
-    let state = make_app_state_get_trade_binders(mock_uc);
+    let response = authed(app, Method::GET, "/collection/trade-settings/binders").await;
 
-    let result = get_trade_binders(State(state), test_user()).await;
-
-    let response = result.unwrap();
+    assert_eq!(response.status(), StatusCode::OK);
     assert_eq!(
-        response.0.binders,
-        vec!["Trade Binder".to_string(), "Bulk".to_string()]
+        json_of(response).await,
+        json!({ "binders": ["Trade Binder", "Bulk"] })
     );
 }
 
 #[tokio::test]
 async fn get_trade_binders_propagates_use_case_error() {
     let mut mock_uc = MockGetTradeBindersUseCase::new();
-    mock_uc.expect_get_trade_binders().times(1).returning(|_| {
-        Box::pin(async {
-            Err(AppError::Infra(InfraError::RepositoryError(
-                "DB error".to_string(),
-            )))
-        })
+    mock_uc
+        .expect_get_trade_binders()
+        .times(1)
+        .returning(|_| Box::pin(async { Err(db_error()) }));
+    let app = create_router(AppState {
+        get_trade_binders_use_case: Arc::new(mock_uc),
+        ..AppState::for_testing()
     });
 
-    let state = make_app_state_get_trade_binders(mock_uc);
+    let response = authed(app, Method::GET, "/collection/trade-settings/binders").await;
 
-    let result = get_trade_binders(State(state), test_user()).await;
-
-    match result.unwrap_err() {
-        AppError::Infra(InfraError::RepositoryError(msg)) => assert_eq!(msg, "DB error"),
-        _ => panic!("Expected RepositoryError"),
-    }
+    assert_error(response, StatusCode::INTERNAL_SERVER_ERROR, "internal").await;
 }
 
 #[tokio::test]
@@ -208,19 +155,20 @@ async fn add_trade_binder_returns_no_content_on_success() {
         .withf(|_, name| name == "Trade Binder")
         .times(1)
         .returning(|_, _| Box::pin(async { Ok(()) }));
+    let app = create_router(AppState {
+        add_trade_binder_use_case: Arc::new(mock_uc),
+        ..AppState::for_testing()
+    });
 
-    let state = make_app_state_add_trade_binder(mock_uc);
-
-    let result = add_trade_binder(
-        State(state),
-        test_user(),
-        axum::Json(AddTradeBinderRequest {
-            binder_name: "Trade Binder".to_string(),
-        }),
+    let response = authed_json(
+        app,
+        Method::POST,
+        "/collection/trade-settings/binders",
+        json!({ "binder_name": "Trade Binder" }),
     )
     .await;
 
-    assert_eq!(result.unwrap(), StatusCode::NO_CONTENT);
+    assert_eq!(response.status(), StatusCode::NO_CONTENT);
 }
 
 #[tokio::test]
@@ -230,22 +178,20 @@ async fn add_trade_binder_propagates_binder_not_found() {
         .expect_add_trade_binder()
         .times(1)
         .returning(|_, _| Box::pin(async { Err(FunctionalError::BinderNotFound.into()) }));
+    let app = create_router(AppState {
+        add_trade_binder_use_case: Arc::new(mock_uc),
+        ..AppState::for_testing()
+    });
 
-    let state = make_app_state_add_trade_binder(mock_uc);
-
-    let result = add_trade_binder(
-        State(state),
-        test_user(),
-        axum::Json(AddTradeBinderRequest {
-            binder_name: "Unknown".to_string(),
-        }),
+    let response = authed_json(
+        app,
+        Method::POST,
+        "/collection/trade-settings/binders",
+        json!({ "binder_name": "Unknown" }),
     )
     .await;
 
-    match result.unwrap_err() {
-        AppError::Functional(FunctionalError::BinderNotFound) => {}
-        _ => panic!("Expected BinderNotFound"),
-    }
+    assert_error(response, StatusCode::NOT_FOUND, "binder_not_found").await;
 }
 
 #[tokio::test]
@@ -259,22 +205,20 @@ async fn add_trade_binder_propagates_wrong_format() {
                 Err(FunctionalError::WrongFormat("Binder name is empty".to_string()).into())
             })
         });
+    let app = create_router(AppState {
+        add_trade_binder_use_case: Arc::new(mock_uc),
+        ..AppState::for_testing()
+    });
 
-    let state = make_app_state_add_trade_binder(mock_uc);
-
-    let result = add_trade_binder(
-        State(state),
-        test_user(),
-        axum::Json(AddTradeBinderRequest {
-            binder_name: "   ".to_string(),
-        }),
+    let response = authed_json(
+        app,
+        Method::POST,
+        "/collection/trade-settings/binders",
+        json!({ "binder_name": "   " }),
     )
     .await;
 
-    match result.unwrap_err() {
-        AppError::Functional(FunctionalError::WrongFormat(_)) => {}
-        _ => panic!("Expected WrongFormat"),
-    }
+    assert_error(response, StatusCode::BAD_REQUEST, "wrong_format").await;
 }
 
 #[tokio::test]
@@ -285,13 +229,19 @@ async fn remove_trade_binder_returns_no_content_on_success() {
         .withf(|_, name| name == "Trade Binder")
         .times(1)
         .returning(|_, _| Box::pin(async { Ok(()) }));
+    let app = create_router(AppState {
+        remove_trade_binder_use_case: Arc::new(mock_uc),
+        ..AppState::for_testing()
+    });
 
-    let state = make_app_state_remove_trade_binder(mock_uc);
+    let response = authed(
+        app,
+        Method::DELETE,
+        "/collection/trade-settings/binders/Trade%20Binder",
+    )
+    .await;
 
-    let result =
-        remove_trade_binder(State(state), test_user(), Path("Trade Binder".to_string())).await;
-
-    assert_eq!(result.unwrap(), StatusCode::NO_CONTENT);
+    assert_eq!(response.status(), StatusCode::NO_CONTENT);
 }
 
 #[tokio::test]
@@ -300,23 +250,20 @@ async fn remove_trade_binder_propagates_use_case_error() {
     mock_uc
         .expect_remove_trade_binder()
         .times(1)
-        .returning(|_, _| {
-            Box::pin(async {
-                Err(AppError::Infra(InfraError::RepositoryError(
-                    "DB error".to_string(),
-                )))
-            })
-        });
+        .returning(|_, _| Box::pin(async { Err(db_error()) }));
+    let app = create_router(AppState {
+        remove_trade_binder_use_case: Arc::new(mock_uc),
+        ..AppState::for_testing()
+    });
 
-    let state = make_app_state_remove_trade_binder(mock_uc);
+    let response = authed(
+        app,
+        Method::DELETE,
+        "/collection/trade-settings/binders/Trade%20Binder",
+    )
+    .await;
 
-    let result =
-        remove_trade_binder(State(state), test_user(), Path("Trade Binder".to_string())).await;
-
-    match result.unwrap_err() {
-        AppError::Infra(InfraError::RepositoryError(msg)) => assert_eq!(msg, "DB error"),
-        _ => panic!("Expected RepositoryError"),
-    }
+    assert_error(response, StatusCode::INTERNAL_SERVER_ERROR, "internal").await;
 }
 
 // ============================================================
@@ -337,17 +284,26 @@ async fn get_trade_rarity_filters_returns_filters_from_use_case() {
             }])
         })
     });
+    let app = create_router(AppState {
+        get_rarity_trade_filters_use_case: Arc::new(mock),
+        ..AppState::for_testing()
+    });
 
-    let state = make_app_state_get_rarities(mock);
-    let result = get_trade_rarity_filters(State(state), test_user()).await;
+    let response = authed(app, Method::GET, "/collection/trade-settings/rarities").await;
 
-    let axum::Json(response) = result.unwrap();
-    assert_eq!(response.rarities.len(), 1);
-    assert_eq!(response.rarities[0].rarity, "R");
-    assert!(response.rarities[0].is_open);
-    assert_eq!(response.rarities[0].kept_copies, 1);
-    assert_eq!(response.rarities[0].copies, 4);
-    assert_eq!(response.rarities[0].proposed, 2);
+    assert_eq!(response.status(), StatusCode::OK);
+    assert_eq!(
+        json_of(response).await,
+        json!({
+            "rarities": [{
+                "rarity": "R",
+                "is_open": true,
+                "kept_copies": 1,
+                "copies": 4,
+                "proposed": 2,
+            }]
+        })
+    );
 }
 
 #[tokio::test]
@@ -355,32 +311,30 @@ async fn get_trade_rarity_filters_returns_empty_list() {
     let mut mock = MockGetRarityTradeFiltersUseCase::new();
     mock.expect_get_rarity_trade_filters()
         .returning(|_| Box::pin(async { Ok(vec![]) }));
+    let app = create_router(AppState {
+        get_rarity_trade_filters_use_case: Arc::new(mock),
+        ..AppState::for_testing()
+    });
 
-    let state = make_app_state_get_rarities(mock);
-    let result = get_trade_rarity_filters(State(state), test_user()).await;
+    let response = authed(app, Method::GET, "/collection/trade-settings/rarities").await;
 
-    let axum::Json(response) = result.unwrap();
-    assert!(response.rarities.is_empty());
+    assert_eq!(response.status(), StatusCode::OK);
+    assert_eq!(json_of(response).await, json!({ "rarities": [] }));
 }
 
 #[tokio::test]
 async fn get_trade_rarity_filters_propagates_error_from_use_case() {
     let mut mock = MockGetRarityTradeFiltersUseCase::new();
-    mock.expect_get_rarity_trade_filters().returning(|_| {
-        Box::pin(async {
-            Err(AppError::Infra(InfraError::RepositoryError(
-                "db failure".to_string(),
-            )))
-        })
+    mock.expect_get_rarity_trade_filters()
+        .returning(|_| Box::pin(async { Err(db_error()) }));
+    let app = create_router(AppState {
+        get_rarity_trade_filters_use_case: Arc::new(mock),
+        ..AppState::for_testing()
     });
 
-    let state = make_app_state_get_rarities(mock);
-    let result = get_trade_rarity_filters(State(state), test_user()).await;
+    let response = authed(app, Method::GET, "/collection/trade-settings/rarities").await;
 
-    match result.unwrap_err() {
-        AppError::Infra(InfraError::RepositoryError(msg)) => assert_eq!(msg, "db failure"),
-        _ => panic!("Expected RepositoryError"),
-    }
+    assert_error(response, StatusCode::INTERNAL_SERVER_ERROR, "internal").await;
 }
 
 #[tokio::test]
@@ -395,64 +349,57 @@ async fn set_trade_rarity_filter_forwards_payload_to_use_case() {
         })
         .times(1)
         .returning(|_, _| Box::pin(async { Ok(()) }));
+    let app = create_router(AppState {
+        set_rarity_trade_filter_use_case: Arc::new(mock),
+        ..AppState::for_testing()
+    });
 
-    let state = make_app_state_set_rarity(mock);
-    let result = set_trade_rarity_filter(
-        State(state),
-        test_user(),
-        axum::Json(SetRarityFilterRequest {
-            rarity: "M".to_string(),
-            is_open: true,
-            kept_copies: 2,
-        }),
+    let response = authed_json(
+        app,
+        Method::POST,
+        "/collection/trade-settings/rarities",
+        json!({ "rarity": "M", "is_open": true, "kept_copies": 2 }),
     )
     .await;
 
-    assert_eq!(result.unwrap(), StatusCode::NO_CONTENT);
+    assert_eq!(response.status(), StatusCode::NO_CONTENT);
 }
 
 #[tokio::test]
 async fn set_trade_rarity_filter_rejects_unknown_rarity_without_calling_use_case() {
-    let mock = MockSetRarityTradeFilterUseCase::new();
+    // No expectation: the mock panics if the controller calls it.
+    let app = create_router(AppState {
+        set_rarity_trade_filter_use_case: Arc::new(MockSetRarityTradeFilterUseCase::new()),
+        ..AppState::for_testing()
+    });
 
-    let state = make_app_state_set_rarity(mock);
-    let result = set_trade_rarity_filter(
-        State(state),
-        test_user(),
-        axum::Json(SetRarityFilterRequest {
-            rarity: "X".to_string(),
-            is_open: true,
-            kept_copies: 1,
-        }),
+    let response = authed_json(
+        app,
+        Method::POST,
+        "/collection/trade-settings/rarities",
+        json!({ "rarity": "X", "is_open": true, "kept_copies": 1 }),
     )
     .await;
 
-    match result.unwrap_err() {
-        AppError::Functional(FunctionalError::InvalidRarityCode(msg)) => assert_eq!(msg, "X"),
-        other => panic!("Expected InvalidRarityCode, got {other:?}"),
-    }
+    assert_error(response, StatusCode::BAD_REQUEST, "invalid_rarity_code").await;
 }
 
 #[tokio::test]
 async fn set_trade_rarity_filter_rejects_negative_kept_copies_without_calling_use_case() {
-    let mock = MockSetRarityTradeFilterUseCase::new();
+    let app = create_router(AppState {
+        set_rarity_trade_filter_use_case: Arc::new(MockSetRarityTradeFilterUseCase::new()),
+        ..AppState::for_testing()
+    });
 
-    let state = make_app_state_set_rarity(mock);
-    let result = set_trade_rarity_filter(
-        State(state),
-        test_user(),
-        axum::Json(SetRarityFilterRequest {
-            rarity: "M".to_string(),
-            is_open: true,
-            kept_copies: -1,
-        }),
+    let response = authed_json(
+        app,
+        Method::POST,
+        "/collection/trade-settings/rarities",
+        json!({ "rarity": "M", "is_open": true, "kept_copies": -1 }),
     )
     .await;
 
-    match result.unwrap_err() {
-        AppError::Functional(FunctionalError::WrongFormat(_)) => {}
-        other => panic!("Expected WrongFormat, got {other:?}"),
-    }
+    assert_error(response, StatusCode::BAD_REQUEST, "wrong_format").await;
 }
 
 #[tokio::test]
@@ -465,21 +412,37 @@ async fn set_trade_rarity_filter_propagates_error_from_use_case() {
             )))
         })
     });
+    let app = create_router(AppState {
+        set_rarity_trade_filter_use_case: Arc::new(mock),
+        ..AppState::for_testing()
+    });
 
-    let state = make_app_state_set_rarity(mock);
-    let result = set_trade_rarity_filter(
-        State(state),
-        test_user(),
-        axum::Json(SetRarityFilterRequest {
-            rarity: "M".to_string(),
-            is_open: true,
-            kept_copies: 5,
-        }),
+    let response = authed_json(
+        app,
+        Method::POST,
+        "/collection/trade-settings/rarities",
+        json!({ "rarity": "M", "is_open": true, "kept_copies": 5 }),
     )
     .await;
 
-    match result.unwrap_err() {
-        AppError::Functional(FunctionalError::WrongFormat(_)) => {}
-        other => panic!("Expected WrongFormat, got {other:?}"),
-    }
+    assert_error(response, StatusCode::BAD_REQUEST, "wrong_format").await;
+}
+
+// ============================================================
+// authentication
+// ============================================================
+
+#[tokio::test]
+async fn every_route_refuses_an_anonymous_request() {
+    let routes = [
+        (Method::GET, "/collection/trade-settings/visibility"),
+        (Method::PUT, "/collection/trade-settings/visibility"),
+        (Method::GET, "/collection/trade-settings/binders"),
+        (Method::POST, "/collection/trade-settings/binders"),
+        (Method::DELETE, "/collection/trade-settings/binders/Bulk"),
+        (Method::GET, "/collection/trade-settings/rarities"),
+        (Method::POST, "/collection/trade-settings/rarities"),
+    ];
+
+    assert_routes_refuse_anonymous(|| create_router(AppState::for_testing()), &routes).await;
 }
