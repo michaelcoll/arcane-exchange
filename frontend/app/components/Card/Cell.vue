@@ -9,7 +9,6 @@ const props = withDefaults(
     price?: number;
     purchased?: number;
     trend?: number;
-    deal?: 'none' | 'compare';
     clickable?: boolean;
     foil?: boolean;
     size?: 'sm' | 'md' | 'lg';
@@ -23,10 +22,11 @@ const props = withDefaults(
 
 const emit = defineEmits(['click']);
 
-const dealInfo = computed(() => {
-  if (!props.deal || props.deal === 'none') return null;
-  return computeDeal(props.purchased, props.trend);
-});
+const hasPurchase = computed(() => props.purchased !== undefined);
+
+const dealInfo = computed(() =>
+  hasPurchase.value ? computeDeal(props.purchased, props.trend) : null,
+);
 
 const dealTagClass = computed(() => {
   if (!dealInfo.value) return '';
@@ -59,14 +59,14 @@ const dealTagClass = computed(() => {
 
       <div class="flex items-center justify-between gap-2">
         <span
-          v-if="!deal || deal === 'none'"
+          v-if="!hasPurchase"
           class="font-mono text-xs font-semibold text-slate-800 dark:text-slate-100"
         >
           <template v-if="price != null">{{ formatPrice(price) }}</template>
         </span>
 
         <!-- compare: trend price + unit crossed out + % badge -->
-        <template v-else-if="deal === 'compare' && dealInfo">
+        <template v-else-if="dealInfo">
           <span
             v-if="dealInfo.kind === 'par'"
             class="font-mono text-xs font-semibold text-slate-800 dark:text-slate-100"
@@ -84,13 +84,9 @@ const dealTagClass = computed(() => {
             <span :class="dealTagClass">{{ dealInfo.sign }}{{ dealInfo.abs }}%</span>
           </span>
         </template>
-        <span
-          v-else-if="deal === 'compare'"
-          class="font-mono text-xs font-semibold text-slate-800 dark:text-slate-100"
-        >
-          <template v-if="purchased != null">{{ formatPrice(purchased) }}</template>
-          <template v-else-if="price != null">{{ formatPrice(price) }}</template>
-        </span>
+        <span v-else class="font-mono text-xs font-semibold text-slate-800 dark:text-slate-100">{{
+          formatPrice(purchased)
+        }}</span>
 
         <span
           v-if="ownerCount != null && ownerCount > 1"
