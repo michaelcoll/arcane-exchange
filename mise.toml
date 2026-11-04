@@ -210,9 +210,24 @@ dir = "frontend"
 run = "pnpm update"
 hide = true
 
+[tasks.upgrade-ios]
+# APIClient's Package.resolved is also the app's lockfile. `swift package update` drops the app-only
+# packages from it (Clerk, Nuke) and xcodebuild brings them back. It needs fresh package state,
+# otherwise it restores their previous versions.
+dir = "ios-app"
+depends = ["generate-ios"]
+run = """
+tmp=$(mktemp -d)
+swift package --package-path APIClient update
+xcodebuild -resolvePackageDependencies -project ArcaneExchange.xcodeproj -scheme ArcaneExchange \
+  -derivedDataPath "$tmp/dd" -clonedSourcePackagesDirPath "$tmp/spm"
+rm -rf "$tmp"
+"""
+hide = true
+
 [tasks.upgrade]
 description = "Upgrades the project dependencies"
-depends = ["upgrade-backend", "upgrade-frontend"]
+depends = ["upgrade-backend", "upgrade-frontend", "upgrade-ios"]
 
 [tasks.back]
 description = "Runs the backend server"
