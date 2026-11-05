@@ -27,6 +27,25 @@ Frame timestamps come from the capture buffers (`PresentationTimer`).
 Caveat: "presented" is when text first becomes readable, not when the card physically enters the
 frame, so the figure is a lower bound.
 
+## Collector line reader (#657)
+
+`CollectorLineReader.read(lines:)` is a pure function: Vision's lines of one frame in, a
+`CollectorReading {set, number, language, isToken}` or nil out. Understood formats (2014-2022 then since 2023), the two lines being separate or merged:
+
+- `0123/0280 R` then `DMU • FR  Artist`
+- `R 0123` then `MOM • EN`
+
+Rarity `T` = token (the Scryfall set is then `t` + `set`). The "•" may come as `*`, `·`, `-`;
+O/I/l in the number are read as 0/1; leading zeros are stripped; printed languages map to Scryfall
+codes (SP -> es, JP -> ja...). A reading needs set, number and a known language together. No
+bounding boxes are used.
+
+Stabilisation: a reading is retained only when identical on two consecutive frames
+(`PresentationTimer.observe(lines:reading:at:)`), so the latency shown includes that extra frame.
+
+The fixtures in `OCRPrototypeTests/CollectorLineFixtures.swift` are SYNTHETIC (written from the
+known printed formats, not captured): replace/extend them with real captures in #658.
+
 ## Fixtures
 
 `Copy reading` / `Export` give the raw lines frozen at the measure, one Vision line per row.
