@@ -80,26 +80,51 @@ un écart nul. Indépendant d'un Trade : à ne pas confondre avec le **Delta cas
 côtés d'un Trade.
 _Avoid_ : deal, plus-value, bonne affaire
 
+**Achat** :
+Une dépense datée d'un joueur pour enrichir sa collection : un produit scellé ou une carte à
+l'unité. Il survit aux exemplaires qu'il a apportés, même cédés depuis par un Trade : c'est la
+dépense qu'on compare à l'évolution de la valeur de collection.
+_Avoid_ : commande, transaction, dépense
+
+**Produit scellé** :
+Un booster ou une display acheté fermé. Son achat porte un prix et reçoit, au fil des ouvertures,
+les exemplaires qu'il contenait. Sa rentabilité se lit à ce niveau : les exemplaires qui en
+sortent n'ont pas de prix d'achat propre.
+_Avoid_ : pack, sealed, boîte
+
+**Lot de scan** :
+Les cartes reconnues par la caméra au cours d'une séance, en attente de correction et de
+validation. Rien n'entre dans la collection avant la validation du lot, qui peut être rattaché à un
+achat de produit scellé.
+_Avoid_ : scan (seul), session, panier
+
 **Valeur de collection** :
 La somme, pour un joueur et à une date, du prix de tendance de chaque exemplaire qu'il possédait ce
 jour-là, dans sa finition. Sa série jour par jour forme l'historique de valeur de la collection.
 _Avoid_ : cote de collection, patrimoine, total
 
 **Binder** :
-Le classeur physique dans lequel un joueur range des exemplaires, tel que déclaré à l'import. Donnée
-importée en lecture seule — la plateforme ne crée, ne renomme et ne supprime jamais de binder.
+Le classeur physique dans lequel un joueur range des exemplaires. Le joueur le crée, le renomme, le
+supprime et y déplace ses exemplaires depuis la plateforme, qui fait foi pour sa collection.
 _Avoid_ : classeur, dossier, deck
 
 **Import** :
-Le remplacement intégral de la collection d'un joueur à partir d'un export ManaBox. Asynchrone, suivi
-par son état, sa progression et ses erreurs de ligne.
+Le remplacement intégral de la collection d'un joueur à partir d'un export ManaBox, réservé au
+chargement initial ou à une remise à zéro explicite : la plateforme fait foi ensuite. Asynchrone,
+suivi par son état, sa progression et ses erreurs de ligne.
 _Avoid_ : synchronisation, upload
 
 **Proxy** :
 Une reproduction non officielle d'une carte, déclarée comme telle dans ManaBox. Un proxy n'est pas
 un exemplaire : il n'entre jamais dans une collection, n'a pas de valeur et ne s'échange pas.
-L'import l'écarte silencieusement, comme les tokens.
+L'import l'écarte silencieusement.
 _Avoid_ : copie, fausse carte, contrefaçon
+
+**Token** :
+Une carte de jeton imprimée par Wizards, simple ou double face. Un token possédé est un exemplaire
+comme un autre : il entre dans la collection, a une valeur et suit les mêmes règles de mise à
+l'échange. À ne pas confondre avec un **Proxy**, qui n'est jamais un exemplaire.
+_Avoid_ : jeton, carte annexe
 
 **Vitrine** :
 Les cartes les plus chères présentes dans les collections de la plateforme, toutes collections
@@ -174,6 +199,12 @@ _Avoid_ : carte bloquée, carte verrouillée
 L'écart de valeur entre les deux côtés d'un Trade. Purement informatif : il est affiché, jamais réglé
 par la plateforme.
 _Avoid_ : soulte, paiement, balance à payer
+
+**Transfert** :
+Le passage des cartes d'un Trade de la collection de leur propriétaire à celle de l'autre partie, au
+moment où les deux parties ont confirmé l'échange physique. Il découle de l'état du Trade : aucun
+joueur ne le déclenche.
+_Avoid_ : mouvement, livraison
 
 **Note** :
 L'appréciation, de une à cinq étoiles, que chaque partie porte sur l'autre à l'issue d'un Trade.
