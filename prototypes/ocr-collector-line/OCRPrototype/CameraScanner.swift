@@ -11,6 +11,8 @@ final class CameraScanner: NSObject {
     private(set) var lines: [String] = []
     /// Seconds between the card being presented and a stable reading (see `PresentationTimer`).
     private(set) var latency: TimeInterval?
+    /// The retained collector line reading (complete, seen on two consecutive frames).
+    private(set) var reading: CollectorReading?
     /// Lines frozen when the latency was measured: the text to keep as a fixture.
     private(set) var lastReading: [String] = []
     private(set) var ocrMilliseconds: Int = 0
@@ -86,12 +88,14 @@ extension CameraScanner: AVCaptureVideoDataOutputSampleBufferDelegate {
         let elapsed = Int((CFAbsoluteTimeGetCurrent() - started) * 1000)
 
         let recognised = (request.results ?? []).compactMap { $0.topCandidates(1).first?.string }
-        let measured = timer.observe(lines: recognised, at: frameTime)
+        let reading = CollectorLineReader.read(lines: recognised)
+        let measured = timer.observe(lines: recognised, reading: reading, at: frameTime)
         DispatchQueue.main.async {
             self.lines = recognised
             self.ocrMilliseconds = elapsed
-            if let measured {
+            if let measured, let reading {
                 self.latency = measured
+                self.reading = reading
                 self.lastReading = recognised
             }
         }

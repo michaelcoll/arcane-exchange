@@ -15,6 +15,7 @@ struct ContentView: View {
                 Text("\(scanner.ocrMilliseconds) ms / frame").font(.caption.monospacedDigit())
             }
             .padding()
+            Text(readingLabel).font(.title3.monospaced().bold())
             ScrollView {
                 Text(scanner.lines.joined(separator: "\n"))
                     .font(.system(.body, design: .monospaced))
@@ -34,7 +35,13 @@ struct ContentView: View {
     }
 
     private var latencyLabel: String {
-        scanner.latency.map { String(format: "Recognised in %.2f s", $0) } ?? "No measure yet"
+        scanner.latency.map { String(format: "Read in %.2f s", $0) } ?? "No reading yet"
+    }
+
+    private var readingLabel: String {
+        guard let reading = scanner.reading else { return "-" }
+        let token = reading.isToken ? " (token)" : ""
+        return "\(reading.set.uppercased()) #\(reading.number) \(reading.language)\(token)"
     }
 
     /// The raw text frozen at the measure, one Vision line per row.
