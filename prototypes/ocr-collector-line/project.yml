@@ -1,0 +1,50 @@
+name: OCRPrototype
+options:
+  bundleIdPrefix: fr.piconsoft
+  deploymentTarget:
+    iOS: "26.0"
+
+schemes:
+  OCRPrototype:
+    build:
+      targets:
+        OCRPrototype: all
+    run:
+      config: Debug
+    test:
+      targets:
+        - OCRPrototypeTests
+
+targets:
+  OCRPrototype:
+    type: application
+    platform: iOS
+    sources:
+      - path: OCRPrototype
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: fr.piconsoft.ocr-prototype
+        TARGETED_DEVICE_FAMILY: "1"
+        SWIFT_VERSION: "5.0"
+        GENERATE_INFOPLIST_FILE: YES
+        INFOPLIST_KEY_UILaunchScreen_Generation: YES
+        INFOPLIST_KEY_UISupportedInterfaceOrientations: UIInterfaceOrientationPortrait
+        INFOPLIST_KEY_NSCameraUsageDescription: "The prototype reads the text printed on cards with the camera."
+        # Set your own team to run on an iPhone (see README.md).
+        DEVELOPMENT_TEAM: "YOUR_TEAM_ID"
+        CODE_SIGN_STYLE: Automatic
+
+  OCRPrototypeTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources:
+      - path: OCRPrototypeTests
+    settings:
+      base:
+        GENERATE_INFOPLIST_FILE: YES
+        PRODUCT_BUNDLE_IDENTIFIER: fr.piconsoft.ocr-prototype.tests
+        TARGETED_DEVICE_FAMILY: "1"
+        SWIFT_VERSION: "5.0"
+        DEVELOPMENT_TEAM: "YOUR_TEAM_ID"
+    dependencies:
+      - target: OCRPrototype
