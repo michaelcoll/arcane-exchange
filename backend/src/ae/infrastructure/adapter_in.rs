@@ -83,7 +83,8 @@ impl IntoResponse for AppError {
                 | FunctionalError::UserNotFound
                 | FunctionalError::TradeCardNotFound
                 | FunctionalError::BinderNotFound
-                | FunctionalError::ImportNotFound => StatusCode::NOT_FOUND,
+                | FunctionalError::ImportNotFound
+                | FunctionalError::CardNotInCatalog => StatusCode::NOT_FOUND,
                 FunctionalError::TradeAccessDenied => StatusCode::FORBIDDEN,
                 FunctionalError::TradeNotModifiable
                 | FunctionalError::TradeNotAcceptable

@@ -1,0 +1,77 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT rarity, name, french_name, scryfall_id, cardmarket_id\n             FROM catalog_card\n             WHERE set_code = $1 AND collector_number = $2",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "rarity",
+        "type_info": "Varchar",
+        "origin": {
+          "Table": {
+            "table": "catalog_card",
+            "name": "rarity"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "name",
+        "type_info": "Varchar",
+        "origin": {
+          "Table": {
+            "table": "catalog_card",
+            "name": "name"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "french_name",
+        "type_info": "Varchar",
+        "origin": {
+          "Table": {
+            "table": "catalog_card",
+            "name": "french_name"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "scryfall_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "catalog_card",
+            "name": "scryfall_id"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "cardmarket_id",
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "catalog_card",
+            "name": "cardmarket_id"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      true,
+      false,
+      true
+    ]
+  },
+  "hash": "69bea1e735d1250d550c8fbc4a8f178eeb3874fe17727f59d903bd4a8ce24e58"
+}

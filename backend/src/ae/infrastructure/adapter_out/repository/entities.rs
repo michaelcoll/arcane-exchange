@@ -59,6 +59,10 @@ pub(crate) fn invalid_db_value(what: &str, value: &str) -> InfraError {
     InfraError::RepositoryError(format!("invalid {what} from database: {value}"))
 }
 
+pub(crate) fn cardmarket_id_from_db(id: i32) -> Result<u32, InfraError> {
+    u32::try_from(id).map_err(|_| invalid_db_value("cardmarket id", &id.to_string()))
+}
+
 /// Cardmarket ids are `INTEGER` in the database: one too large for it is refused, not truncated.
 pub(crate) fn cardmarket_id_to_db(id: u32) -> Result<i32, InfraError> {
     i32::try_from(id).map_err(|_| {
@@ -636,6 +640,17 @@ mod tests {
             cardmarket_id_to_db(u32::MAX),
             Err(InfraError::RepositoryError(
                 "cardmarket id too large for the database: 4294967295".to_string()
+            ))
+        );
+    }
+
+    #[test]
+    fn a_negative_cardmarket_id_is_a_repository_error() {
+        assert_eq!(cardmarket_id_from_db(574956), Ok(574956));
+        assert_eq!(
+            cardmarket_id_from_db(-1),
+            Err(InfraError::RepositoryError(
+                "invalid cardmarket id from database: -1".to_string()
             ))
         );
     }

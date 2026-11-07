@@ -57,6 +57,8 @@ pub enum FunctionalError {
     InvalidCardImportStatus(String),
     ImportAlreadyRunning,
     ImportNotFound,
+    /// No card of the catalog has this set and collector number (a token, for one).
+    CardNotInCatalog,
 }
 
 impl FunctionalError {
@@ -105,6 +107,7 @@ impl FunctionalError {
             FunctionalError::InvalidCardImportStatus(_) => "invalid_card_import_status",
             FunctionalError::ImportAlreadyRunning => "import_already_running",
             FunctionalError::ImportNotFound => "import_not_found",
+            FunctionalError::CardNotInCatalog => "card_not_in_catalog",
         }
     }
 }
@@ -202,6 +205,9 @@ impl From<FunctionalError> for String {
                 "An import is already in progress for this user".to_string()
             }
             FunctionalError::ImportNotFound => "Import not found".to_string(),
+            FunctionalError::CardNotInCatalog => {
+                "No card of the catalog has this set and collector number".to_string()
+            }
         }
     }
 }
@@ -251,6 +257,14 @@ mod tests {
         assert_eq!(
             FunctionalError::ImportAlreadyRunning.code(),
             "import_already_running"
+        );
+    }
+
+    #[test]
+    fn card_not_in_catalog_carries_its_stable_code() {
+        assert_eq!(
+            FunctionalError::CardNotInCatalog.code(),
+            "card_not_in_catalog"
         );
     }
 
