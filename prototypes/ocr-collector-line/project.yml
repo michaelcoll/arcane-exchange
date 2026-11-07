@@ -29,7 +29,7 @@ targets:
         GENERATE_INFOPLIST_FILE: YES
         INFOPLIST_KEY_UILaunchScreen_Generation: YES
         INFOPLIST_KEY_UISupportedInterfaceOrientations: UIInterfaceOrientationPortrait
-        INFOPLIST_KEY_NSCameraUsageDescription: "The prototype reads the text printed on cards with the camera."
+        INFOPLIST_KEY_NSCameraUsageDescription: "Le prototype lit le texte imprimé sur les cartes avec la caméra."
         # Set your own team to run on an iPhone (see README.md).
         DEVELOPMENT_TEAM: "YOUR_TEAM_ID"
         CODE_SIGN_STYLE: Automatic

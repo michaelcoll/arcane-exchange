@@ -13,24 +13,26 @@ final class CameraScanner: NSObject {
     private(set) var latency: TimeInterval?
     /// The retained collector line reading (complete, seen on two consecutive frames).
     private(set) var reading: CollectorReading?
-    /// Lines frozen when the latency was measured: the text to keep as a fixture.
-    private(set) var lastReading: [String] = []
+    /// Scryfall lookup of the retained reading (nil before the first one).
+    private(set) var lookup: LookupState?
     private(set) var ocrMilliseconds: Int = 0
-    private(set) var status = "Waiting for the camera"
+    private(set) var status = "En attente de la caméra"
 
     @ObservationIgnored let session = AVCaptureSession()
     @ObservationIgnored private let queue = DispatchQueue(label: "ocr.camera")
     @ObservationIgnored private var timer = PresentationTimer()
     @ObservationIgnored private var configured = false
+    @ObservationIgnored private let client = ScryfallClient()
+    @ObservationIgnored private var lookedUp: CollectorReading?
 
     func start() {
         switch AVCaptureDevice.authorizationStatus(for: .video) {
         case .authorized: run()
         case .notDetermined:
             AVCaptureDevice.requestAccess(for: .video) { [weak self] granted in
-                DispatchQueue.main.async { granted ? self?.run() : self?.fail("Camera access denied") }
+                DispatchQueue.main.async { granted ? self?.run() : self?.fail("Accès à la caméra refusé") }
             }
-        default: fail("Camera access denied: enable it in Settings")
+        default: fail("Accès à la caméra refusé : l'autoriser dans les Réglages")
         }
     }
 
@@ -50,7 +52,7 @@ final class CameraScanner: NSObject {
     private func configure() {
         guard let device = AVCaptureDevice.default(.builtInWideAngleCamera, for: .video, position: .back),
               let input = try? AVCaptureDeviceInput(device: device) else {
-            DispatchQueue.main.async { self.fail("No camera available (the simulator has none)") }
+            DispatchQueue.main.async { self.fail("Aucune caméra disponible (le simulateur n'en a pas)") }
             return
         }
         session.beginConfiguration()
@@ -68,7 +70,7 @@ final class CameraScanner: NSObject {
             device.unlockForConfiguration()
         }
         configured = true
-        DispatchQueue.main.async { self.status = "Show a card" }
+        DispatchQueue.main.async { self.status = "Présenter une carte" }
     }
 }
 
@@ -96,8 +98,19 @@ extension CameraScanner: AVCaptureVideoDataOutputSampleBufferDelegate {
             if let measured, let reading {
                 self.latency = measured
                 self.reading = reading
-                self.lastReading = recognised
+                self.lookUp(reading)
             }
+        }
+    }
+
+    /// One request per distinct retained reading (the client also caches per set/number/language).
+    private func lookUp(_ reading: CollectorReading) {
+        guard reading != lookedUp else { return }
+        lookedUp = reading
+        lookup = .loading
+        Task {
+            let outcome = await client.lookup(reading)
+            if lookedUp == reading { lookup = outcome }
         }
     }
 }
