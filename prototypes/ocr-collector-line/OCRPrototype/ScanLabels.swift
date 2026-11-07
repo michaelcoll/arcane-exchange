@@ -21,8 +21,7 @@ enum ScanLabels {
 
     static func reading(_ reading: CollectorReading?) -> String {
         guard let reading else { return "-" }
-        let rarity = reading.isToken ? "rareté T : token" : "rareté autre que T ou absente : carte ou token"
-        return "\(reading.set.uppercased()) n° \(reading.number) \(reading.language) (\(rarity))"
+        return "\(reading.set.uppercased()) n° \(reading.number) \(reading.language)"
     }
 
     static func lookup(_ state: LookupState?) -> String {
@@ -31,14 +30,14 @@ enum ScanLabels {
         case .loading: return "Scryfall : recherche en cours..."
         case .notFound: return "Scryfall : introuvable (ni en anglais)"
         case let .failed(message): return "Scryfall : \(message)"
-        case let .found(matches): return matches.map(match).joined(separator: "\n\n")
+        case let .found(match): return found(match)
         }
     }
 
-    private static func match(_ match: LookupMatch) -> String {
+    private static func found(_ match: LookupMatch) -> String {
         let card = match.card
         var rows = [
-            (match.isToken ? "TOKEN" : "CARTE") + " : " + card.displayName,
+            card.displayName,
             "\(card.set.uppercased()) n° \(card.number) \(card.language) - \(card.layout)",
         ]
         if !card.faceNames.isEmpty { rows.append("Faces : " + card.faceNames.joined(separator: " / ")) }

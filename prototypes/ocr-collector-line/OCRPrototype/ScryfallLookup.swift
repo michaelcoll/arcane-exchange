@@ -6,12 +6,6 @@ struct LookupStep: Equatable, Sendable {
     let isEnglishPrinting: Bool
 }
 
-/// The requests for one candidate: the Card set (`mkm/12`) or the token set (`tmkm/12`).
-struct LookupTarget: Equatable, Sendable {
-    let isToken: Bool
-    let steps: [LookupStep]
-}
-
 /// The Scryfall Card found, trimmed to what the screen shows.
 struct ScryfallCard: Equatable, Sendable {
     let name: String
@@ -30,23 +24,14 @@ struct ScryfallCard: Equatable, Sendable {
 enum ScryfallLookup {
     private static let base = "https://api.scryfall.com/cards"
 
-    /// Candidates to look up. The rarity letter `T` says token: only the token set ("t" + printed
-    /// set). Otherwise (other letter or none) both the Card set and the token set, because the
-    /// printed code is the same (`mkm/12` is a Card, `tmkm/12` a token).
-    /// A Card set tries the language read, then English (some printings are missing). Scryfall has
-    /// no non-English token: a token set goes straight to English.
-    static func plan(for reading: CollectorReading) -> [LookupTarget] {
-        var targets: [LookupTarget] = []
-        if !reading.isToken {
-            var steps = [LookupStep(url: url(reading.set, reading.number, reading.language), isEnglishPrinting: false)]
-            if reading.language != "en" {
-                steps.append(LookupStep(url: url(reading.set, reading.number, nil), isEnglishPrinting: true))
-            }
-            targets.append(LookupTarget(isToken: false, steps: steps))
+    /// The requests, tried in order until one finds the Card: the language read, then English
+    /// (some printings are missing in the language read).
+    static func plan(for reading: CollectorReading) -> [LookupStep] {
+        var steps = [LookupStep(url: url(reading.set, reading.number, reading.language), isEnglishPrinting: false)]
+        if reading.language != "en" {
+            steps.append(LookupStep(url: url(reading.set, reading.number, nil), isEnglishPrinting: true))
         }
-        let tokenStep = LookupStep(url: url("t" + reading.set, reading.number, nil), isEnglishPrinting: reading.language != "en")
-        targets.append(LookupTarget(isToken: true, steps: [tokenStep]))
-        return targets
+        return steps
     }
 
     private static func url(_ set: String, _ number: String, _ language: String?) -> URL {
