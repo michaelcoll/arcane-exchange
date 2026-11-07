@@ -1,7 +1,9 @@
 use crate::domain::error::FunctionalError;
+use serde::Serialize;
 use std::fmt::Display;
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+/// Serialized as its code (`"R"`), like [`Display`].
+#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
 pub enum RarityCode {
     C,
     U,

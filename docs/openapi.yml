@@ -183,6 +183,50 @@ paths:
                 $ref: '#/components/schemas/ErrorResponse'
       security:
       - bearer_auth: []
+  /catalog/scan-index:
+    get:
+      tags:
+      - catalog
+      operationId: get_scan_index
+      parameters:
+      - name: If-None-Match
+        in: header
+        description: ETag of the index the client already has
+        required: false
+        schema:
+          type:
+          - string
+          - 'null'
+      responses:
+        '200':
+          description: 'The scan index: one entry per catalog card whose collector number is purely numeric. JSON compressed with gzip (`Content-Encoding: gzip`), with an `ETag` derived from a hash of its content.'
+          headers:
+            ETag:
+              schema:
+                type: string
+              description: Hash of the content, unchanged by a catalog reload that changes nothing
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ScanIndexEntryResponse'
+        '304':
+          description: The client's index is the current one
+        '401':
+          description: Missing or invalid token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '503':
+          description: No catalog is loaded yet (`scan_index_unavailable`)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      security:
+      - bearer_auth: []
   /collection:
     get:
       tags:
@@ -1823,6 +1867,37 @@ components:
           type: string
         set_code:
           type: string
+    ScanIndexEntryResponse:
+      type: object
+      description: |-
+        One entry of the scan index, keyed by set and collector number.
+
+        The body of `GET /catalog/scan-index` is a JSON array of these; it is built and gzipped once
+        per catalog load by the `ScanIndexUseCase` from the serialization of `ScanIndexEntry`, this
+        type only documents its shape (a controller test decodes the served body as this type).
+      required:
+      - set_code
+      - collector_number
+      - rarity
+      - name
+      properties:
+        collector_number:
+          type: string
+          description: Purely numeric collector number, without leading zeros.
+        french_name:
+          type:
+          - string
+          - 'null'
+          description: French name; absent when Scryfall does not have one, the client then shows the English name.
+        name:
+          type: string
+          description: English name.
+        rarity:
+          type: string
+          description: 'Rarity code: `C`, `U`, `R`, `M` or `S`.'
+        set_code:
+          type: string
+          description: Set code, 3 to 6 uppercase characters.
     SetInfoResponse:
       type: object
       required:

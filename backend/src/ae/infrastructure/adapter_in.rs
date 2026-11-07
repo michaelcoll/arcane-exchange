@@ -12,6 +12,7 @@ use utoipa::ToSchema;
 pub mod auth_extractor;
 pub mod autocomplete;
 pub mod card;
+pub mod catalog;
 pub mod collection;
 pub mod maintenance;
 pub mod openapi;
@@ -100,6 +101,7 @@ impl IntoResponse for AppError {
                 | FunctionalError::TradeEmpty
                 | FunctionalError::CardAlreadyReserved
                 | FunctionalError::ImportAlreadyRunning => StatusCode::CONFLICT,
+                FunctionalError::ScanIndexUnavailable => StatusCode::SERVICE_UNAVAILABLE,
             },
             AppError::Authentication(_) => StatusCode::UNAUTHORIZED,
             AppError::Infra(e) => match e {

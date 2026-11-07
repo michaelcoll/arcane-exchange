@@ -29,6 +29,9 @@ public protocol APIProtocol: Sendable {
     /// - Remark: HTTP `GET /card/{scryfall_id}/price-history`.
     /// - Remark: Generated from `#/paths//card/{scryfall_id}/price-history/get(get_card_price_history)`.
     func get_card_price_history(_ input: Operations.get_card_price_history.Input) async throws -> Operations.get_card_price_history.Output
+    /// - Remark: HTTP `GET /catalog/scan-index`.
+    /// - Remark: Generated from `#/paths//catalog/scan-index/get(get_scan_index)`.
+    func get_scan_index(_ input: Operations.get_scan_index.Input) async throws -> Operations.get_scan_index.Output
     /// - Remark: HTTP `GET /collection`.
     /// - Remark: Generated from `#/paths//collection/get(get_collection)`.
     func get_collection(_ input: Operations.get_collection.Input) async throws -> Operations.get_collection.Output
@@ -171,6 +174,11 @@ extension APIProtocol {
             query: query,
             headers: headers
         ))
+    }
+    /// - Remark: HTTP `GET /catalog/scan-index`.
+    /// - Remark: Generated from `#/paths//catalog/scan-index/get(get_scan_index)`.
+    public func get_scan_index(headers: Operations.get_scan_index.Input.Headers = .init()) async throws -> Operations.get_scan_index.Output {
+        try await get_scan_index(Operations.get_scan_index.Input(headers: headers))
     }
     /// - Remark: HTTP `GET /collection`.
     /// - Remark: Generated from `#/paths//collection/get(get_collection)`.

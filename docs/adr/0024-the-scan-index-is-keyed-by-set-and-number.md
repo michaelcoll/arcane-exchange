@@ -11,12 +11,15 @@ déjà le set, le numéro et la langue. L'index n'a donc pas besoin d'une ligne 
 clé par set et numéro, et la langue retenue est celle lue sur la carte. Une impression absente de
 Scryfall dans la langue lue reste ainsi scannable.
 
-L'index porte, par set et numéro, la rareté, le nombre de faces et le nom au moins en anglais et en
-français, avec repli sur l'anglais. Les images restent servies par le backend.
+L'index porte, par set et numéro, la rareté et le nom au moins en anglais et en français ; à
+défaut de nom français, l'app montre le nom anglais. Les images restent servies par le backend.
 
 Le prototype (#646) l'a confirmé sur de vraies cartes : plus de 90 % de lectures correctes en
 moins de 0,5 s, en français comme en anglais, foils et cartes double face compris. Le verso d'une
-transform ou d'une modale porte la même ligne d'impression que son recto.
+transform ou d'une modale porte la même ligne d'impression que son recto : une carte double face
+est un seul objet Scryfall, avec un seul numéro, et ses deux faces mènent à la même entrée.
+L'index ne porte donc pas de nombre de faces, prévu avant le prototype pour réunir les faces d'une
+même Card.
 
 ## Conséquences
 

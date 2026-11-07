@@ -5,6 +5,7 @@ use crate::application::card_import_job::CardImportJob;
 use crate::domain::card::{Card, CardId, CollectionEntry, CopyId};
 use crate::domain::card_import::{CardImport, CardImportId};
 use crate::domain::card_offer::CardOfferSortField;
+use crate::domain::catalog::ScanIndex;
 use crate::domain::collection::{CollectionQuery, SearchQuery, SearchScope};
 use crate::domain::collection_stats::CollectionStats;
 use crate::domain::pagination::{PageRequest, Paginated};
@@ -17,6 +18,7 @@ use crate::domain::trade::{TradeDetail, TradeId, TradeListQuery, TradeSummary};
 use crate::domain::user::{CollectionVisibility, User, UserId, UserSuggestion};
 #[cfg(test)]
 use mockall::automock;
+use std::sync::Arc;
 
 #[async_trait]
 #[cfg_attr(test, automock)]
@@ -161,6 +163,17 @@ pub trait CreateCardUseCase: Send + Sync {
     /// images). `FunctionalError::CardNotInCatalog` when the card does not exist and no catalog
     /// card has this set and number.
     async fn create_card(&self, card_id: CardId) -> Result<CardId, AppError>;
+}
+
+#[async_trait]
+#[cfg_attr(test, automock)]
+pub trait ScanIndexUseCase: Send + Sync {
+    /// Regenerates the scan index from the catalog and keeps it in memory. With no catalog
+    /// loaded, there is no index. A failure keeps the previous index.
+    async fn refresh_scan_index(&self) -> Result<(), AppError>;
+
+    /// The scan index, or `ScanIndexUnavailable` while no catalog is loaded.
+    async fn get_scan_index(&self) -> Result<Arc<ScanIndex>, AppError>;
 }
 
 #[async_trait]

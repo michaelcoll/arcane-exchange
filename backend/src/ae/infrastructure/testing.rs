@@ -30,9 +30,9 @@ use crate::application::use_case::{
     MockGetTradeBindersUseCase, MockGetTradeUseCase, MockGetUserProfileUseCase,
     MockImportCardUseCase, MockImportPriceUseCase, MockListSetsUseCase, MockListTradesUseCase,
     MockRateTradeUseCase, MockRegisterUserUseCase, MockRemoveTradeBinderUseCase,
-    MockRemoveTradeCardUseCase, MockSearchCardsUseCase, MockSearchSetsUseCase,
-    MockSetCollectionVisibilityUseCase, MockSetRarityTradeFilterUseCase, MockStatsUseCase,
-    MockUpdateCatalogUseCase,
+    MockRemoveTradeCardUseCase, MockScanIndexUseCase, MockSearchCardsUseCase,
+    MockSearchSetsUseCase, MockSetCollectionVisibilityUseCase, MockSetRarityTradeFilterUseCase,
+    MockStatsUseCase, MockUpdateCatalogUseCase,
 };
 use crate::domain::card::CardInfo;
 use crate::domain::card_import::CardImportId;
@@ -226,6 +226,7 @@ impl AppState {
             get_set_use_case: Arc::new(MockGetSetUseCase::new()),
             card_import_query_use_case: Arc::new(MockGetCardImportUseCase::new()),
             update_catalog_use_case: Arc::new(MockUpdateCatalogUseCase::new()),
+            scan_index_use_case: Arc::new(MockScanIndexUseCase::new()),
         }
     }
 }

@@ -1,7 +1,9 @@
 use crate::domain::error::FunctionalError;
+use serde::Serialize;
 use std::fmt::Display;
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+/// Serialized as its uppercase code (`"MKM"`), like [`Display`].
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize)]
 pub struct SetCode(String);
 
 impl SetCode {

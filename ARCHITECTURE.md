@@ -142,8 +142,12 @@ Tout tourne dans le même processus que l'API, sans ordonnanceur externe :
   est lu en flux, ligne par ligne, par le `ScryfallCaller` ; les règles (tokens écartés, une impression par
   set et numéro) vivent dans le use case. Le catalogue remplace l'ancien en une transaction en fin de
   lecture : un échec le laisse intact. Il ne crée aucune Card et n'alimente aucune file.
+- **Index de scan** : projection du catalogue servie par `GET /catalog/scan-index`, en JSON gzip avec
+  un ETag tiré d'un hash de son contenu. Il est construit une fois, gardé en mémoire, et régénéré
+  depuis la table au démarrage puis à la fin de chaque chargement réussi du catalogue ; tant qu'aucun
+  catalogue n'est chargé, l'endpoint répond 503.
 
-Corollaire : le backend est **stateful en mémoire** (files, dédup). Il n'est pas conçu pour tourner
+Corollaire : le backend est **stateful en mémoire** (files, dédup, index de scan). Il n'est pas conçu pour tourner
 en plusieurs répliques en l'état.
 
 ## Authentification

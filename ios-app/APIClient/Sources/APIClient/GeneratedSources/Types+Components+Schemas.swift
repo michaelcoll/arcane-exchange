@@ -853,6 +853,63 @@ extension Components {
                 case set_code
             }
         }
+        /// One entry of the scan index, keyed by set and collector number.
+        ///
+        /// The body of `GET /catalog/scan-index` is a JSON array of these; it is built and gzipped once
+        /// per catalog load by the `ScanIndexUseCase` from the serialization of `ScanIndexEntry`, this
+        /// type only documents its shape (a controller test decodes the served body as this type).
+        ///
+        /// - Remark: Generated from `#/components/schemas/ScanIndexEntryResponse`.
+        public struct ScanIndexEntryResponse: Codable, Hashable, Sendable {
+            /// Purely numeric collector number, without leading zeros.
+            ///
+            /// - Remark: Generated from `#/components/schemas/ScanIndexEntryResponse/collector_number`.
+            public var collector_number: Swift.String
+            /// French name; absent when Scryfall does not have one, the client then shows the English name.
+            ///
+            /// - Remark: Generated from `#/components/schemas/ScanIndexEntryResponse/french_name`.
+            public var french_name: Swift.String?
+            /// English name.
+            ///
+            /// - Remark: Generated from `#/components/schemas/ScanIndexEntryResponse/name`.
+            public var name: Swift.String
+            /// Rarity code: `C`, `U`, `R`, `M` or `S`.
+            ///
+            /// - Remark: Generated from `#/components/schemas/ScanIndexEntryResponse/rarity`.
+            public var rarity: Swift.String
+            /// Set code, 3 to 6 uppercase characters.
+            ///
+            /// - Remark: Generated from `#/components/schemas/ScanIndexEntryResponse/set_code`.
+            public var set_code: Swift.String
+            /// Creates a new `ScanIndexEntryResponse`.
+            ///
+            /// - Parameters:
+            ///   - collector_number: Purely numeric collector number, without leading zeros.
+            ///   - french_name: French name; absent when Scryfall does not have one, the client then shows the English name.
+            ///   - name: English name.
+            ///   - rarity: Rarity code: `C`, `U`, `R`, `M` or `S`.
+            ///   - set_code: Set code, 3 to 6 uppercase characters.
+            public init(
+                collector_number: Swift.String,
+                french_name: Swift.String? = nil,
+                name: Swift.String,
+                rarity: Swift.String,
+                set_code: Swift.String
+            ) {
+                self.collector_number = collector_number
+                self.french_name = french_name
+                self.name = name
+                self.rarity = rarity
+                self.set_code = set_code
+            }
+            public enum CodingKeys: String, CodingKey {
+                case collector_number
+                case french_name
+                case name
+                case rarity
+                case set_code
+            }
+        }
         /// - Remark: Generated from `#/components/schemas/SetInfoResponse`.
         public struct SetInfoResponse: Codable, Hashable, Sendable {
             /// - Remark: Generated from `#/components/schemas/SetInfoResponse/code`.
