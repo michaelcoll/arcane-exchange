@@ -276,6 +276,31 @@ mod tests {
     }
 
     #[sqlx::test]
+    async fn a_card_nobody_owns_changes_neither_the_dates_to_update_nor_the_history(pool: PgPool) {
+        let adapter = CollectionPriceHistoryRepositoryAdapter::new(pool.clone());
+        let user = User::from_id(UserId::new("user1"));
+        let date = NaiveDate::from_ymd_opt(2025, 12, 25).unwrap();
+        let added_at = date.and_hms_opt(0, 0, 0).unwrap().and_utc();
+
+        insert_set(&pool, "OWN").await;
+        insert_card(&pool, "OWN", "1", "EN", "Owned Card", 1).await;
+        insert_set(&pool, "ORP").await;
+        insert_card(&pool, "ORP", "1", "EN", "Orphan Card", 2).await;
+        insert_user(&pool, "user1", "User1").await;
+        insert_collection_entry(&pool, "OWN", "1", "EN", false, "user1", 1, 100, added_at).await;
+        insert_price(&pool, CardMarketPriceEntity::simple_at(1, date, 100)).await;
+        insert_price(&pool, CardMarketPriceEntity::simple_at(2, date, 99_999)).await;
+
+        let to_update = adapter.get_date_and_user_to_update().await.unwrap();
+        adapter.update_for_date_and_user(date, user).await.unwrap();
+        let rows = fetch_collection_price_history(&pool, date, "user1").await;
+
+        assert_eq!(to_update.len(), 1);
+        assert_eq!(rows.len(), 1);
+        assert_eq!(rows[0].trend, 100, "only the owned card is valued");
+    }
+
+    #[sqlx::test]
     async fn update_for_date_and_user_uses_the_finish_of_each_collection_entry(pool: PgPool) {
         // The catalog carries a single card definition for both finishes; the value computed
         // for each `collection_entry` row must come from its own `foil` column, not from the

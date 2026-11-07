@@ -1,0 +1,21 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT count(*) AS count\n               FROM card c\n               WHERE EXISTS (SELECT 1 FROM collection_entry ce\n                             WHERE (ce.set_code, ce.collector_number, ce.language_code) =\n                                   (c.set_code, c.collector_number, c.language_code))",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "count",
+        "type_info": "Int8",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": [
+      null
+    ]
+  },
+  "hash": "a39d5fa40d42a8dcab5262918dc35ac22f35ef62f204cf4d68fd105c600976a4"
+}

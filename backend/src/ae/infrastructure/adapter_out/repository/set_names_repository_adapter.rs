@@ -37,19 +37,24 @@ impl SetNameRepository for SetNameRepositoryAdapter {
         Ok(())
     }
 
+    /// Only the sets of which a card is owned: `set_name` also holds sets nobody owns a card of.
     #[tracing::instrument(name = "set_names_repo.find_all", skip_all, fields(sentry.op = "db"))]
     async fn find_all(&self) -> Result<Vec<SetName>, AppError> {
-        Ok(
-            sqlx::query_as!(SetNameEntity, "SELECT * FROM set_name ORDER BY name")
-                .fetch_all(&self.pool)
-                .await?
-                .into_iter()
-                .map(|e| SetName {
-                    code: SetCode::new(e.set_code),
-                    name: e.name,
-                })
-                .collect(),
+        Ok(sqlx::query_as!(
+            SetNameEntity,
+            r#"SELECT sn.set_code, sn.name
+               FROM set_name sn
+               WHERE EXISTS (SELECT 1 FROM collection_entry ce WHERE ce.set_code = sn.set_code)
+               ORDER BY sn.name"#
         )
+        .fetch_all(&self.pool)
+        .await?
+        .into_iter()
+        .map(|e| SetName {
+            code: SetCode::new(e.set_code),
+            name: e.name,
+        })
+        .collect())
     }
 
     #[tracing::instrument(name = "set_names_repo.find_by_code", skip_all, fields(sentry.op = "db"))]
@@ -71,7 +76,37 @@ impl SetNameRepository for SetNameRepositoryAdapter {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::infrastructure::adapter_out::repository::common_repository_tests::{
+        insert_card_without_cardmarket_id, insert_collection_entry, insert_set, insert_user,
+    };
+    use chrono::Utc;
     use sqlx::PgPool;
+
+    #[sqlx::test]
+    async fn find_all_only_lists_sets_with_an_owned_card(pool: PgPool) {
+        let adapter = SetNameRepositoryAdapter::new(pool.clone());
+        insert_set(&pool, "OWN").await;
+        insert_set(&pool, "ORP").await;
+        insert_set(&pool, "EMP").await;
+        insert_card_without_cardmarket_id(&pool, "OWN", "1", "en", "Owned Card").await;
+        insert_card_without_cardmarket_id(&pool, "ORP", "1", "en", "Orphan Card").await;
+        insert_user(&pool, "user-1", "User1").await;
+        insert_collection_entry(&pool, "OWN", "1", "en", false, "user-1", 1, 100, Utc::now()).await;
+
+        let codes: Vec<String> = adapter
+            .find_all()
+            .await
+            .unwrap()
+            .into_iter()
+            .map(|set| set.code.to_string())
+            .collect();
+
+        assert_eq!(
+            codes,
+            vec!["OWN"],
+            "a set whose cards are all unowned, or without card, is not listed"
+        );
+    }
 
     #[sqlx::test]
     async fn save_all_inserts_new_sets_and_ignores_existing_ones(pool: PgPool) {
