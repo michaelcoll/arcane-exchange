@@ -20,14 +20,21 @@ impl StatsRepositoryAdapter {
 #[async_trait]
 impl StatsRepository for StatsRepositoryAdapter {
     #[tracing::instrument(name = "stats_repo.get_card_number", skip_all, fields(sentry.op = "db"))]
+    /// Counts the owned cards: `card` also holds cards nobody owns.
     async fn get_card_number(&self) -> Result<u32, AppError> {
-        Ok(
-            sqlx::query_as!(CountEntity, "SELECT count(*) AS count FROM card")
-                .fetch_one(&self.pool)
-                .await?
-                .count
-                .unwrap() as u32,
+        let count = sqlx::query_as!(
+            CountEntity,
+            r#"SELECT count(*) AS count
+               FROM card c
+               WHERE EXISTS (SELECT 1 FROM collection_entry ce
+                             WHERE (ce.set_code, ce.collector_number, ce.language_code) =
+                                   (c.set_code, c.collector_number, c.language_code))"#
         )
+        .fetch_one(&self.pool)
+        .await?
+        .count;
+
+        Ok(card_count_from_db(count)?)
     }
 
     #[tracing::instrument(name = "stats_repo.get_card_price_number", skip_all, fields(sentry.op = "db"))]
@@ -77,6 +84,17 @@ impl StatsRepository for StatsRepositoryAdapter {
     }
 }
 
+fn card_count_from_db(count: Option<i64>) -> Result<u32, InfraError> {
+    count
+        .and_then(|count| u32::try_from(count).ok())
+        .ok_or_else(|| {
+            invalid_db_value(
+                "card count",
+                &count.map_or("NULL".into(), |c| c.to_string()),
+            )
+        })
+}
+
 fn proposed_copy_number_from_db(total: i64) -> Result<u32, InfraError> {
     u32::try_from(total).map_err(|_| invalid_db_value("proposed copy number", &total.to_string()))
 }
@@ -85,9 +103,11 @@ fn proposed_copy_number_from_db(total: i64) -> Result<u32, InfraError> {
 mod tests {
     use super::*;
     use crate::infrastructure::adapter_out::repository::common_repository_tests::{
-        insert_card_without_cardmarket_id, insert_price, insert_set,
+        insert_card_without_cardmarket_id, insert_collection_entry, insert_price, insert_set,
+        insert_user,
     };
     use crate::infrastructure::adapter_out::repository::entities::CardMarketPriceEntity;
+    use chrono::Utc;
     use sqlx::PgPool;
 
     #[test]
@@ -107,6 +127,23 @@ mod tests {
         );
     }
 
+    #[test]
+    fn a_card_count_missing_or_out_of_range_is_a_repository_error() {
+        assert_eq!(card_count_from_db(Some(12)), Ok(12));
+        assert_eq!(
+            card_count_from_db(None),
+            Err(InfraError::RepositoryError(
+                "invalid card count from database: NULL".to_string()
+            ))
+        );
+        assert_eq!(
+            card_count_from_db(Some(-1)),
+            Err(InfraError::RepositoryError(
+                "invalid card count from database: -1".to_string()
+            ))
+        );
+    }
+
     #[sqlx::test]
     async fn should_return_card_count(pool: PgPool) {
         let adapter = StatsRepositoryAdapter::new(pool.clone());
@@ -114,12 +151,47 @@ mod tests {
         insert_set(&pool, "TST").await;
         insert_card_without_cardmarket_id(&pool, "TST", "1", "en", "Test Card").await;
         insert_card_without_cardmarket_id(&pool, "TST", "2", "en", "Another Card").await;
+        insert_user(&pool, "user-1", "User1").await;
+        insert_collection_entry(&pool, "TST", "1", "en", false, "user-1", 1, 100, Utc::now()).await;
+        insert_collection_entry(&pool, "TST", "2", "en", false, "user-1", 1, 100, Utc::now()).await;
 
         let result = adapter.get_card_number().await;
 
         assert!(result.is_ok());
         let count = result.unwrap();
-        assert_eq!(count, 2, "should return count of cards in the database");
+        assert_eq!(count, 2, "should return count of owned cards");
+    }
+
+    #[sqlx::test]
+    async fn should_count_a_card_owned_in_several_finishes_and_by_several_users_once(pool: PgPool) {
+        let adapter = StatsRepositoryAdapter::new(pool.clone());
+
+        insert_set(&pool, "TST").await;
+        insert_card_without_cardmarket_id(&pool, "TST", "1", "en", "Test Card").await;
+        insert_user(&pool, "user-1", "User1").await;
+        insert_user(&pool, "user-2", "User2").await;
+        insert_collection_entry(&pool, "TST", "1", "en", false, "user-1", 1, 100, Utc::now()).await;
+        insert_collection_entry(&pool, "TST", "1", "en", true, "user-1", 1, 100, Utc::now()).await;
+        insert_collection_entry(&pool, "TST", "1", "en", false, "user-2", 1, 100, Utc::now()).await;
+
+        assert_eq!(adapter.get_card_number().await.unwrap(), 1);
+    }
+
+    #[sqlx::test]
+    async fn should_not_count_a_card_nobody_owns(pool: PgPool) {
+        let adapter = StatsRepositoryAdapter::new(pool.clone());
+
+        insert_set(&pool, "TST").await;
+        insert_card_without_cardmarket_id(&pool, "TST", "1", "en", "Owned Card").await;
+        insert_card_without_cardmarket_id(&pool, "TST", "2", "en", "Orphan Card").await;
+        insert_user(&pool, "user-1", "User1").await;
+        insert_collection_entry(&pool, "TST", "1", "en", false, "user-1", 1, 100, Utc::now()).await;
+
+        assert_eq!(
+            adapter.get_card_number().await.unwrap(),
+            1,
+            "a card without any collection entry is not counted"
+        );
     }
 
     #[sqlx::test]

@@ -3103,4 +3103,62 @@ mod tests {
             _ => panic!("expected CollectionEntry::Owned"),
         }
     }
+
+    /// An owned card (`OWN/1`, trend 100) next to a card nobody owns (`ORP/1`, trend 99 999),
+    /// both on the market, the view refreshed.
+    async fn insert_owned_and_orphan_cards(pool: &PgPool) {
+        insert_set(pool, "OWN").await;
+        insert_card(pool, "OWN", "1", "EN", "Owned Card", 1).await;
+        insert_set(pool, "ORP").await;
+        insert_card(pool, "ORP", "1", "EN", "Orphan Card", 2).await;
+        insert_user_with_visibility(pool, "userA", "Alice", "public").await;
+        insert_collection_entry(pool, "OWN", "1", "EN", false, "userA", 1, 100, Utc::now()).await;
+        insert_price(pool, CardMarketPriceEntity::simple(1, 100)).await;
+        insert_price(pool, CardMarketPriceEntity::simple(2, 99_999)).await;
+        refresh_view(pool).await;
+    }
+
+    #[sqlx::test]
+    async fn a_card_nobody_owns_is_left_out_of_the_search(pool: PgPool) {
+        insert_owned_and_orphan_cards(&pool).await;
+
+        let adapter = CardPricesViewRepositoryAdapter::new(pool);
+        let result = adapter
+            .search_paginated(CollectionQuery::default().into())
+            .await
+            .unwrap();
+
+        assert_eq!(result.total, 1);
+        assert_eq!(result.items.len(), 1);
+    }
+
+    #[sqlx::test]
+    async fn a_card_nobody_owns_is_left_out_of_the_set_search(pool: PgPool) {
+        insert_owned_and_orphan_cards(&pool).await;
+
+        let adapter = CardPricesViewRepositoryAdapter::new(pool);
+        let sets = adapter.search_sets(&SearchScope::default()).await.unwrap();
+
+        let codes: Vec<String> = sets.iter().map(|set| set.code.to_string()).collect();
+        assert_eq!(codes, vec!["OWN"]);
+    }
+
+    #[sqlx::test]
+    async fn a_card_nobody_owns_has_no_offers(pool: PgPool) {
+        insert_owned_and_orphan_cards(&pool).await;
+
+        let adapter = CardPricesViewRepositoryAdapter::new(pool);
+        let result = adapter
+            .get_offers(
+                &UserId::new("userB"),
+                &copy_id("ORP", "1", "EN", false),
+                CardOfferSortField::SellingPrice,
+                Pagination::try_new(0, 20, CARD_OFFERS_MAX_OFFSET).unwrap(),
+            )
+            .await
+            .unwrap();
+
+        assert_eq!(result.total, 0);
+        assert!(result.items.is_empty());
+    }
 }

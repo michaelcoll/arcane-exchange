@@ -61,3 +61,39 @@ impl ShowcaseRepository for ShowcaseRepositoryAdapter {
             .collect()
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::infrastructure::adapter_out::repository::common_repository_tests::{
+        insert_card, insert_collection_entry, insert_price, insert_set,
+        insert_user_with_visibility, refresh_view,
+    };
+    use crate::infrastructure::adapter_out::repository::entities::CardMarketPriceEntity;
+    use chrono::Utc;
+    use sqlx::PgPool;
+
+    #[sqlx::test]
+    async fn a_card_nobody_owns_is_left_out_of_the_showcase(pool: PgPool) {
+        insert_set(&pool, "OWN").await;
+        insert_card(&pool, "OWN", "1", "EN", "Owned Card", 1).await;
+        insert_set(&pool, "ORP").await;
+        insert_card(&pool, "ORP", "1", "EN", "Orphan Card", 2).await;
+        insert_user_with_visibility(&pool, "userA", "Alice", "public").await;
+        insert_collection_entry(&pool, "OWN", "1", "EN", false, "userA", 1, 100, Utc::now()).await;
+        insert_price(&pool, CardMarketPriceEntity::simple(1, 100)).await;
+        insert_price(&pool, CardMarketPriceEntity::simple(2, 99_999)).await;
+        sqlx::query("UPDATE card SET image_source = 'gatherer_en'")
+            .execute(&pool)
+            .await
+            .unwrap();
+        refresh_view(&pool).await;
+
+        let showcase = ShowcaseRepositoryAdapter::new(pool)
+            .find_most_expensive()
+            .await
+            .unwrap();
+
+        assert_eq!(showcase.len(), 1, "only the owned card is showcased");
+    }
+}

@@ -113,9 +113,10 @@ impl CollectionStatsRepository for CollectionStatsRepositoryAdapter {
 mod tests {
     use super::*;
     use crate::infrastructure::adapter_out::repository::common_repository_tests::{
-        insert_card_without_cardmarket_id, insert_collection_entry,
-        insert_collection_entry_with_binder, insert_set, insert_user,
+        insert_card, insert_card_without_cardmarket_id, insert_collection_entry,
+        insert_collection_entry_with_binder, insert_price, insert_set, insert_user, refresh_view,
     };
+    use crate::infrastructure::adapter_out::repository::entities::CardMarketPriceEntity;
     use chrono::Utc;
     use sqlx::PgPool;
 
@@ -153,6 +154,29 @@ mod tests {
         assert_eq!(stats.sets.len(), 1);
         assert_eq!(stats.sets[0].name, "Set TST");
         assert_eq!(stats.sets[0].code.to_string(), "TST");
+    }
+
+    #[sqlx::test]
+    async fn a_card_nobody_owns_does_not_change_the_collection_value(pool: PgPool) {
+        insert_set(&pool, "OWN").await;
+        insert_card(&pool, "OWN", "1", "en", "Owned Card", 1).await;
+        insert_set(&pool, "ORP").await;
+        insert_card(&pool, "ORP", "1", "en", "Orphan Card", 2).await;
+        insert_user(&pool, "user-1", "User1").await;
+        insert_collection_entry(&pool, "OWN", "1", "en", false, "user-1", 1, 100, Utc::now()).await;
+        insert_price(&pool, CardMarketPriceEntity::simple(1, 100)).await;
+        insert_price(&pool, CardMarketPriceEntity::simple(2, 99_999)).await;
+        refresh_view(&pool).await;
+
+        let stats = CollectionStatsRepositoryAdapter::new(pool)
+            .get_collection_stats(&UserId::new("user-1"))
+            .await
+            .unwrap();
+
+        assert_eq!(stats.total_cards, 1);
+        assert_eq!(stats.unique_cards, 1);
+        assert_eq!(stats.price_trend_max.value, Some(100));
+        assert_eq!(stats.sets.len(), 1);
     }
 
     #[sqlx::test]
