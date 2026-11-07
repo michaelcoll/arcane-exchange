@@ -1,0 +1,190 @@
+use super::dto::ScanIndexEntryResponse;
+use crate::application::repository::MockCatalogRepository;
+use crate::application::service::catalog::scan_index::ScanIndexService;
+use crate::application::use_case::{MockScanIndexUseCase, ScanIndexUseCase};
+use crate::domain::catalog::{ScanIndex, ScanIndexEntry};
+use crate::domain::error::FunctionalError;
+use crate::domain::rarity_code::RarityCode;
+use crate::domain::set_name::SetCode;
+use crate::infrastructure::testing::{
+    BEARER, assert_error, assert_routes_refuse_anonymous, authed, send,
+};
+use crate::infrastructure::{AppState, create_router};
+use axum::body::Body;
+use axum::http::{Method, Request, StatusCode, header};
+use axum::response::Response;
+use flate2::Compression;
+use flate2::read::GzDecoder;
+use flate2::write::GzEncoder;
+use std::io::{Read, Write};
+use std::sync::Arc;
+
+const JSON: &str = r#"[{"set_code":"MKM","collector_number":"12","rarity":"R","name":"Card 12"}]"#;
+const ETAG: &str = "\"abc123\"";
+
+fn scan_index() -> ScanIndex {
+    let mut encoder = GzEncoder::new(Vec::new(), Compression::default());
+    encoder.write_all(JSON.as_bytes()).unwrap();
+    ScanIndex {
+        etag: ETAG.to_string(),
+        gzipped_json: encoder.finish().unwrap(),
+    }
+}
+
+fn app_serving(index: Option<ScanIndex>) -> axum::Router {
+    let mut mock = MockScanIndexUseCase::new();
+    mock.expect_get_scan_index().returning(move || {
+        let result = match index.clone() {
+            Some(index) => Ok(Arc::new(index)),
+            None => Err(FunctionalError::ScanIndexUnavailable.into()),
+        };
+        Box::pin(async move { result })
+    });
+    create_router(AppState {
+        scan_index_use_case: Arc::new(mock),
+        ..AppState::for_testing()
+    })
+}
+
+async fn get_with_etag(app: axum::Router, if_none_match: &str) -> Response {
+    let request = Request::builder()
+        .method(Method::GET)
+        .uri("/catalog/scan-index")
+        .header(header::AUTHORIZATION, BEARER)
+        .header(header::IF_NONE_MATCH, if_none_match)
+        .body(Body::empty())
+        .unwrap();
+    send(app, request).await
+}
+
+async fn body_bytes(response: Response) -> Vec<u8> {
+    axum::body::to_bytes(response.into_body(), usize::MAX)
+        .await
+        .unwrap()
+        .to_vec()
+}
+
+#[tokio::test]
+async fn the_scan_index_is_served_as_gzipped_json_with_its_etag() {
+    let response = authed(
+        app_serving(Some(scan_index())),
+        Method::GET,
+        "/catalog/scan-index",
+    )
+    .await;
+
+    assert_eq!(response.status(), StatusCode::OK);
+    assert_eq!(response.headers()[header::ETAG], ETAG);
+    assert_eq!(response.headers()[header::CONTENT_TYPE], "application/json");
+    assert_eq!(response.headers()[header::CONTENT_ENCODING], "gzip");
+    let mut json = String::new();
+    GzDecoder::new(body_bytes(response).await.as_slice())
+        .read_to_string(&mut json)
+        .unwrap();
+    assert_eq!(json, JSON);
+}
+
+/// What the documented `ScanIndexEntryResponse` says the served bytes are: the index really built
+/// by `ScanIndexService` from catalog entries, decoded as the DTO (which refuses unknown fields).
+#[tokio::test]
+async fn the_served_body_decodes_as_the_documented_entries() {
+    let mut repository = MockCatalogRepository::new();
+    repository.expect_scan_index_entries().returning(|| {
+        let entries = vec![
+            ScanIndexEntry {
+                set_code: SetCode::new("MID"),
+                collector_number: "2".to_string(),
+                rarity: RarityCode::U,
+                name: "Ambitious Farmhand // Seasoned Cathar".to_string(),
+                french_name: Some("Fermière ambitieuse // Cathare aguerrie".to_string()),
+            },
+            ScanIndexEntry {
+                set_code: SetCode::new("MKM"),
+                collector_number: "12".to_string(),
+                rarity: RarityCode::M,
+                name: "Delney, Streetwise Lookout".to_string(),
+                french_name: None,
+            },
+        ];
+        Box::pin(async move { Ok(entries) })
+    });
+    let service = Arc::new(ScanIndexService::new(Arc::new(repository)));
+    service.refresh_scan_index().await.unwrap();
+    let app = create_router(AppState {
+        scan_index_use_case: service,
+        ..AppState::for_testing()
+    });
+
+    let response = authed(app, Method::GET, "/catalog/scan-index").await;
+
+    assert_eq!(response.status(), StatusCode::OK);
+    let entries: Vec<ScanIndexEntryResponse> =
+        serde_json::from_reader(GzDecoder::new(body_bytes(response).await.as_slice())).unwrap();
+    assert_eq!(
+        entries
+            .iter()
+            .map(|entry| (
+                entry.set_code.as_str(),
+                entry.collector_number.as_str(),
+                entry.rarity.as_str(),
+                entry.name.as_str(),
+                entry.french_name.as_deref(),
+            ))
+            .collect::<Vec<_>>(),
+        vec![
+            (
+                "MID",
+                "2",
+                "U",
+                "Ambitious Farmhand // Seasoned Cathar",
+                Some("Fermière ambitieuse // Cathare aguerrie")
+            ),
+            ("MKM", "12", "M", "Delney, Streetwise Lookout", None),
+        ]
+    );
+}
+
+#[tokio::test]
+async fn an_equal_if_none_match_gets_a_not_modified_without_body() {
+    let response = get_with_etag(app_serving(Some(scan_index())), ETAG).await;
+
+    assert_eq!(response.status(), StatusCode::NOT_MODIFIED);
+    assert_eq!(response.headers()[header::ETAG], ETAG);
+    assert!(body_bytes(response).await.is_empty());
+}
+
+#[tokio::test]
+async fn an_if_none_match_among_several_tags_still_matches() {
+    let response = get_with_etag(app_serving(Some(scan_index())), "\"old\", \"abc123\"").await;
+
+    assert_eq!(response.status(), StatusCode::NOT_MODIFIED);
+}
+
+#[tokio::test]
+async fn a_different_if_none_match_gets_the_whole_index() {
+    let response = get_with_etag(app_serving(Some(scan_index())), "\"stale\"").await;
+
+    assert_eq!(response.status(), StatusCode::OK);
+    assert_eq!(response.headers()[header::ETAG], ETAG);
+}
+
+#[tokio::test]
+async fn without_a_loaded_catalog_the_answer_is_a_503_with_its_code() {
+    let response = authed(app_serving(None), Method::GET, "/catalog/scan-index").await;
+
+    assert_error(
+        response,
+        StatusCode::SERVICE_UNAVAILABLE,
+        "scan_index_unavailable",
+    )
+    .await;
+}
+
+#[tokio::test]
+async fn the_scan_index_requires_a_token() {
+    assert_routes_refuse_anonymous(
+        || app_serving(Some(scan_index())),
+        &[(Method::GET, "/catalog/scan-index")],
+    )
+    .await;
+}

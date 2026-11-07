@@ -1,0 +1,74 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT set_code, collector_number, rarity, name, french_name\n               FROM catalog_card\n               WHERE collector_number ~ '^[0-9]+$'\n               ORDER BY set_code, collector_number::BIGINT",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "set_code",
+        "type_info": "Varchar",
+        "origin": {
+          "Table": {
+            "table": "catalog_card",
+            "name": "set_code"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "collector_number",
+        "type_info": "Varchar",
+        "origin": {
+          "Table": {
+            "table": "catalog_card",
+            "name": "collector_number"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "rarity",
+        "type_info": "Varchar",
+        "origin": {
+          "Table": {
+            "table": "catalog_card",
+            "name": "rarity"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "name",
+        "type_info": "Varchar",
+        "origin": {
+          "Table": {
+            "table": "catalog_card",
+            "name": "name"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "french_name",
+        "type_info": "Varchar",
+        "origin": {
+          "Table": {
+            "table": "catalog_card",
+            "name": "french_name"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      true
+    ]
+  },
+  "hash": "7a4e68bae2446e591c51bd2ed0d5a1d4400ed267b1f6269f122ebea94fa001e9"
+}

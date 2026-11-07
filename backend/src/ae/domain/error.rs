@@ -59,6 +59,8 @@ pub enum FunctionalError {
     ImportNotFound,
     /// No card of the catalog has this set and collector number (a token, for one).
     CardNotInCatalog,
+    /// No catalog is loaded yet, so there is no scan index to serve.
+    ScanIndexUnavailable,
 }
 
 impl FunctionalError {
@@ -108,6 +110,7 @@ impl FunctionalError {
             FunctionalError::ImportAlreadyRunning => "import_already_running",
             FunctionalError::ImportNotFound => "import_not_found",
             FunctionalError::CardNotInCatalog => "card_not_in_catalog",
+            FunctionalError::ScanIndexUnavailable => "scan_index_unavailable",
         }
     }
 }
@@ -208,6 +211,7 @@ impl From<FunctionalError> for String {
             FunctionalError::CardNotInCatalog => {
                 "No card of the catalog has this set and collector number".to_string()
             }
+            FunctionalError::ScanIndexUnavailable => "No catalog loaded yet".to_string(),
         }
     }
 }

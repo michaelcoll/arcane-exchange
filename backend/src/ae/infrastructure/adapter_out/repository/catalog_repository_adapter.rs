@@ -1,6 +1,6 @@
 use crate::application::error::AppError;
 use crate::application::repository::CatalogRepository;
-use crate::domain::catalog::CatalogCard;
+use crate::domain::catalog::{CatalogCard, ScanIndexEntry};
 use crate::domain::set_name::{SetCode, SetName};
 use crate::infrastructure::adapter_out::repository::entities::{
     cardmarket_id_from_db, cardmarket_id_to_db, from_db_rarity,
@@ -100,6 +100,35 @@ impl CatalogRepository for CatalogRepositoryAdapter {
                 })
             })
             .transpose()?)
+    }
+
+    #[tracing::instrument(
+        name = "catalog_repo.scan_index_entries",
+        skip_all,
+        fields(sentry.op = "db")
+    )]
+    async fn scan_index_entries(&self) -> Result<Vec<ScanIndexEntry>, AppError> {
+        // The numeric order of the numbers: the cast is safe, the filter keeps up to 10 digits.
+        let rows = sqlx::query!(
+            r#"SELECT set_code, collector_number, rarity, name, french_name
+               FROM catalog_card
+               WHERE collector_number ~ '^[0-9]+$'
+               ORDER BY set_code, collector_number::BIGINT"#
+        )
+        .fetch_all(&self.pool)
+        .await?;
+
+        rows.into_iter()
+            .map(|row| {
+                Ok(ScanIndexEntry {
+                    set_code: SetCode::try_new(row.set_code)?,
+                    collector_number: row.collector_number,
+                    rarity: from_db_rarity(&row.rarity)?,
+                    name: row.name,
+                    french_name: row.french_name,
+                })
+            })
+            .collect()
     }
 }
 
@@ -339,6 +368,55 @@ mod tests {
             adapter.find(&SetCode::new("TMKM"), "12").await.unwrap(),
             None
         );
+    }
+
+    #[sqlx::test]
+    async fn the_scan_index_keeps_only_the_purely_numeric_collector_numbers(pool: PgPool) {
+        let adapter = CatalogRepositoryAdapter::new(pool.clone());
+        let mut french_less = catalog_card("MKM", "7");
+        french_less.french_name = None;
+        french_less.rarity = RarityCode::C;
+        adapter
+            .replace_all(
+                &[set("MKM"), set("PLST")],
+                &[
+                    catalog_card("MKM", "12"),
+                    french_less,
+                    catalog_card("MKM", "H13"),
+                    catalog_card("MKM", "★"),
+                    catalog_card("MKM", "12a"),
+                    catalog_card("PLST", "100"),
+                ],
+            )
+            .await
+            .unwrap();
+
+        let entries = adapter.scan_index_entries().await.unwrap();
+
+        let keys: Vec<String> = entries
+            .iter()
+            .map(|e| format!("{}/{}", e.set_code, e.collector_number))
+            .collect();
+        assert_eq!(keys, vec!["MKM/7", "MKM/12", "PLST/100"]);
+        assert_eq!(
+            entries[1],
+            ScanIndexEntry {
+                set_code: SetCode::new("MKM"),
+                collector_number: "12".to_string(),
+                rarity: RarityCode::R,
+                name: "Card 12".to_string(),
+                french_name: Some("Carte 12".to_string()),
+            }
+        );
+        assert_eq!(entries[0].french_name, None);
+        assert_eq!(entries[0].rarity, RarityCode::C);
+    }
+
+    #[sqlx::test]
+    async fn the_scan_index_is_empty_without_a_catalog(pool: PgPool) {
+        let adapter = CatalogRepositoryAdapter::new(pool);
+
+        assert!(adapter.scan_index_entries().await.unwrap().is_empty());
     }
 
     #[sqlx::test]

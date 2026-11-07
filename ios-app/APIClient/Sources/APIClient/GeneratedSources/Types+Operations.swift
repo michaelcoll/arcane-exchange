@@ -928,6 +928,281 @@ public enum Operations {
             }
         }
     }
+    /// - Remark: HTTP `GET /catalog/scan-index`.
+    /// - Remark: Generated from `#/paths//catalog/scan-index/get(get_scan_index)`.
+    public enum get_scan_index {
+        public static let id: Swift.String = "get_scan_index"
+        public struct Input: Sendable, Hashable {
+            /// - Remark: Generated from `#/paths/catalog/scan-index/GET/header`.
+            public struct Headers: Sendable, Hashable {
+                /// ETag of the index the client already has
+                ///
+                /// - Remark: Generated from `#/paths/catalog/scan-index/GET/header/If-None-Match`.
+                public var If_hyphen_None_hyphen_Match: Swift.String?
+                public var accept: [OpenAPIRuntime.AcceptHeaderContentType<Operations.get_scan_index.AcceptableContentType>]
+                /// Creates a new `Headers`.
+                ///
+                /// - Parameters:
+                ///   - If_hyphen_None_hyphen_Match: ETag of the index the client already has
+                ///   - accept:
+                public init(
+                    If_hyphen_None_hyphen_Match: Swift.String? = nil,
+                    accept: [OpenAPIRuntime.AcceptHeaderContentType<Operations.get_scan_index.AcceptableContentType>] = .defaultValues()
+                ) {
+                    self.If_hyphen_None_hyphen_Match = If_hyphen_None_hyphen_Match
+                    self.accept = accept
+                }
+            }
+            public var headers: Operations.get_scan_index.Input.Headers
+            /// Creates a new `Input`.
+            ///
+            /// - Parameters:
+            ///   - headers:
+            public init(headers: Operations.get_scan_index.Input.Headers = .init()) {
+                self.headers = headers
+            }
+        }
+        @frozen public enum Output: Sendable, Hashable {
+            public struct Ok: Sendable, Hashable {
+                /// - Remark: Generated from `#/paths/catalog/scan-index/GET/responses/200/headers`.
+                public struct Headers: Sendable, Hashable {
+                    /// Hash of the content, unchanged by a catalog reload that changes nothing
+                    ///
+                    /// - Remark: Generated from `#/paths/catalog/scan-index/GET/responses/200/headers/ETag`.
+                    public var ETag: Swift.String?
+                    /// Creates a new `Headers`.
+                    ///
+                    /// - Parameters:
+                    ///   - ETag: Hash of the content, unchanged by a catalog reload that changes nothing
+                    public init(ETag: Swift.String? = nil) {
+                        self.ETag = ETag
+                    }
+                }
+                /// Received HTTP response headers
+                public var headers: Operations.get_scan_index.Output.Ok.Headers
+                /// - Remark: Generated from `#/paths/catalog/scan-index/GET/responses/200/content`.
+                @frozen public enum Body: Sendable, Hashable {
+                    /// - Remark: Generated from `#/paths/catalog/scan-index/GET/responses/200/content/application\/json`.
+                    case json([Components.Schemas.ScanIndexEntryResponse])
+                    /// The associated value of the enum case if `self` is `.json`.
+                    ///
+                    /// - Throws: An error if `self` is not `.json`.
+                    /// - SeeAlso: `.json`.
+                    public var json: [Components.Schemas.ScanIndexEntryResponse] {
+                        get throws {
+                            switch self {
+                            case let .json(body):
+                                return body
+                            }
+                        }
+                    }
+                }
+                /// Received HTTP response body
+                public var body: Operations.get_scan_index.Output.Ok.Body
+                /// Creates a new `Ok`.
+                ///
+                /// - Parameters:
+                ///   - headers: Received HTTP response headers
+                ///   - body: Received HTTP response body
+                public init(
+                    headers: Operations.get_scan_index.Output.Ok.Headers = .init(),
+                    body: Operations.get_scan_index.Output.Ok.Body
+                ) {
+                    self.headers = headers
+                    self.body = body
+                }
+            }
+            /// The scan index: one entry per catalog card whose collector number is purely numeric. JSON compressed with gzip (`Content-Encoding: gzip`), with an `ETag` derived from a hash of its content.
+            ///
+            /// - Remark: Generated from `#/paths//catalog/scan-index/get(get_scan_index)/responses/200`.
+            ///
+            /// HTTP response code: `200 ok`.
+            case ok(Operations.get_scan_index.Output.Ok)
+            /// The associated value of the enum case if `self` is `.ok`.
+            ///
+            /// - Throws: An error if `self` is not `.ok`.
+            /// - SeeAlso: `.ok`.
+            public var ok: Operations.get_scan_index.Output.Ok {
+                get throws {
+                    switch self {
+                    case let .ok(response):
+                        return response
+                    default:
+                        try throwUnexpectedResponseStatus(
+                            expectedStatus: "ok",
+                            response: self
+                        )
+                    }
+                }
+            }
+            public struct NotModified: Sendable, Hashable {
+                /// Creates a new `NotModified`.
+                public init() {}
+            }
+            /// The client's index is the current one
+            ///
+            /// - Remark: Generated from `#/paths//catalog/scan-index/get(get_scan_index)/responses/304`.
+            ///
+            /// HTTP response code: `304 notModified`.
+            case notModified(Operations.get_scan_index.Output.NotModified)
+            /// The client's index is the current one
+            ///
+            /// - Remark: Generated from `#/paths//catalog/scan-index/get(get_scan_index)/responses/304`.
+            ///
+            /// HTTP response code: `304 notModified`.
+            public static var notModified: Self {
+                .notModified(.init())
+            }
+            /// The associated value of the enum case if `self` is `.notModified`.
+            ///
+            /// - Throws: An error if `self` is not `.notModified`.
+            /// - SeeAlso: `.notModified`.
+            public var notModified: Operations.get_scan_index.Output.NotModified {
+                get throws {
+                    switch self {
+                    case let .notModified(response):
+                        return response
+                    default:
+                        try throwUnexpectedResponseStatus(
+                            expectedStatus: "notModified",
+                            response: self
+                        )
+                    }
+                }
+            }
+            public struct Unauthorized: Sendable, Hashable {
+                /// - Remark: Generated from `#/paths/catalog/scan-index/GET/responses/401/content`.
+                @frozen public enum Body: Sendable, Hashable {
+                    /// - Remark: Generated from `#/paths/catalog/scan-index/GET/responses/401/content/application\/json`.
+                    case json(Components.Schemas.ErrorResponse)
+                    /// The associated value of the enum case if `self` is `.json`.
+                    ///
+                    /// - Throws: An error if `self` is not `.json`.
+                    /// - SeeAlso: `.json`.
+                    public var json: Components.Schemas.ErrorResponse {
+                        get throws {
+                            switch self {
+                            case let .json(body):
+                                return body
+                            }
+                        }
+                    }
+                }
+                /// Received HTTP response body
+                public var body: Operations.get_scan_index.Output.Unauthorized.Body
+                /// Creates a new `Unauthorized`.
+                ///
+                /// - Parameters:
+                ///   - body: Received HTTP response body
+                public init(body: Operations.get_scan_index.Output.Unauthorized.Body) {
+                    self.body = body
+                }
+            }
+            /// Missing or invalid token
+            ///
+            /// - Remark: Generated from `#/paths//catalog/scan-index/get(get_scan_index)/responses/401`.
+            ///
+            /// HTTP response code: `401 unauthorized`.
+            case unauthorized(Operations.get_scan_index.Output.Unauthorized)
+            /// The associated value of the enum case if `self` is `.unauthorized`.
+            ///
+            /// - Throws: An error if `self` is not `.unauthorized`.
+            /// - SeeAlso: `.unauthorized`.
+            public var unauthorized: Operations.get_scan_index.Output.Unauthorized {
+                get throws {
+                    switch self {
+                    case let .unauthorized(response):
+                        return response
+                    default:
+                        try throwUnexpectedResponseStatus(
+                            expectedStatus: "unauthorized",
+                            response: self
+                        )
+                    }
+                }
+            }
+            public struct ServiceUnavailable: Sendable, Hashable {
+                /// - Remark: Generated from `#/paths/catalog/scan-index/GET/responses/503/content`.
+                @frozen public enum Body: Sendable, Hashable {
+                    /// - Remark: Generated from `#/paths/catalog/scan-index/GET/responses/503/content/application\/json`.
+                    case json(Components.Schemas.ErrorResponse)
+                    /// The associated value of the enum case if `self` is `.json`.
+                    ///
+                    /// - Throws: An error if `self` is not `.json`.
+                    /// - SeeAlso: `.json`.
+                    public var json: Components.Schemas.ErrorResponse {
+                        get throws {
+                            switch self {
+                            case let .json(body):
+                                return body
+                            }
+                        }
+                    }
+                }
+                /// Received HTTP response body
+                public var body: Operations.get_scan_index.Output.ServiceUnavailable.Body
+                /// Creates a new `ServiceUnavailable`.
+                ///
+                /// - Parameters:
+                ///   - body: Received HTTP response body
+                public init(body: Operations.get_scan_index.Output.ServiceUnavailable.Body) {
+                    self.body = body
+                }
+            }
+            /// No catalog is loaded yet (`scan_index_unavailable`)
+            ///
+            /// - Remark: Generated from `#/paths//catalog/scan-index/get(get_scan_index)/responses/503`.
+            ///
+            /// HTTP response code: `503 serviceUnavailable`.
+            case serviceUnavailable(Operations.get_scan_index.Output.ServiceUnavailable)
+            /// The associated value of the enum case if `self` is `.serviceUnavailable`.
+            ///
+            /// - Throws: An error if `self` is not `.serviceUnavailable`.
+            /// - SeeAlso: `.serviceUnavailable`.
+            public var serviceUnavailable: Operations.get_scan_index.Output.ServiceUnavailable {
+                get throws {
+                    switch self {
+                    case let .serviceUnavailable(response):
+                        return response
+                    default:
+                        try throwUnexpectedResponseStatus(
+                            expectedStatus: "serviceUnavailable",
+                            response: self
+                        )
+                    }
+                }
+            }
+            /// Undocumented response.
+            ///
+            /// A response with a code that is not documented in the OpenAPI document.
+            case undocumented(statusCode: Swift.Int, OpenAPIRuntime.UndocumentedPayload)
+        }
+        @frozen public enum AcceptableContentType: AcceptableProtocol {
+            case json
+            case other(Swift.String)
+            public init?(rawValue: Swift.String) {
+                switch rawValue.lowercased() {
+                case "application/json":
+                    self = .json
+                default:
+                    self = .other(rawValue)
+                }
+            }
+            public var rawValue: Swift.String {
+                switch self {
+                case let .other(string):
+                    return string
+                case .json:
+                    return "application/json"
+                }
+            }
+            public static var allCases: [Self] {
+                [
+                    .json
+                ]
+            }
+        }
+    }
     /// - Remark: HTTP `GET /collection`.
     /// - Remark: Generated from `#/paths//collection/get(get_collection)`.
     public enum get_collection {

@@ -1,0 +1,26 @@
+meta {
+  name: scan index
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{baseUrl}}/catalog/scan-index
+  body: none
+  auth: inherit
+}
+
+headers {
+  ~If-None-Match: "<etag of a previous response>"
+}
+
+docs {
+  The scan index, gzip-encoded JSON with an `ETag`. Enable `If-None-Match` with the `ETag` of a
+  previous response to get a `304 Not Modified`. Answers `503` (`scan_index_unavailable`) until a
+  catalog is loaded: run `maintenance/update catalog` first.
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}

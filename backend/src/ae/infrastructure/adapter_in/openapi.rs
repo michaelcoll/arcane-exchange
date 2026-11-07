@@ -44,6 +44,7 @@ use utoipa::OpenApi;
         super::card::controller::get_card_info,
         super::card::controller::get_card_price_history,
         super::card::controller::get_card_offers,
+        super::catalog::controller::get_scan_index,
         super::stats::controller::get_stats,
         super::showcase::controller::get_showcase,
         super::maintenance::controller::trigger_price_update,

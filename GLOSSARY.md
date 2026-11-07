@@ -35,6 +35,13 @@ physique (transform, modale, meld). Les cartes split, aventure ou flip n'ont qu'
 sans image est en attente, jamais en erreur.
 _Avoid_ : illustration, scan, visuel Gatherer/Scryfall
 
+**Index de scan** :
+La projection compacte du Catalogue que l'app iOS embarque pour reconnaître une carte sans réseau :
+une entrée par impression dont le numéro est purement numérique, avec son set, sa rareté, son nom
+anglais et, quand Scryfall le connaît, son nom français. Le backend le publie avec
+un ETag tiré d'un hash de son contenu.
+_Avoid_ : cache de scan, base de scan
+
 **Ligne d'impression** :
 Les deux lignes imprimées en bas d'une carte physique depuis 2014 environ : numéro, rareté, set et
 langue. Le scanner la lit pour retrouver la Card ; une carte qui n'en porte pas de lisible

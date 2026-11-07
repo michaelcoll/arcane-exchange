@@ -4,7 +4,7 @@ use crate::domain::card::{Card, CardId, CollectionEntry, CopyId};
 use crate::domain::card_image::{CardImageSource, CardImages, EnglishImage};
 use crate::domain::card_import::{CardImport, CardImportId, CardImportStatus};
 use crate::domain::card_offer::CardOfferSortField;
-use crate::domain::catalog::CatalogCard;
+use crate::domain::catalog::{CatalogCard, ScanIndexEntry};
 use crate::domain::collection::{CollectionQuery, SearchQuery, SearchScope};
 use crate::domain::collection_stats::CollectionStats;
 use crate::domain::pagination::{Paginated, Pagination};
@@ -114,6 +114,10 @@ pub trait CatalogRepository: Send + Sync {
         set_code: &SetCode,
         collector_number: &str,
     ) -> Result<Option<CatalogCard>, AppError>;
+
+    /// The catalog cards of the scan index: those whose collector number is purely numeric, ordered by
+    /// set then number. Empty when no catalog is loaded.
+    async fn scan_index_entries(&self) -> Result<Vec<ScanIndexEntry>, AppError>;
 }
 
 #[async_trait]

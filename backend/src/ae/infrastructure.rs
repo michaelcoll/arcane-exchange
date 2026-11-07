@@ -7,6 +7,7 @@ use crate::application::repository::CardImportRepository;
 use crate::application::service::autocomplete::users::AutocompleteUserService;
 use crate::application::service::card::get_offers::CardOfferService;
 use crate::application::service::card::get_price_history::CardPriceHistoryService;
+use crate::application::service::catalog::scan_index::ScanIndexService;
 use crate::application::service::collection::get::CollectionService;
 use crate::application::service::collection::get_card_import::CardImportQueryService;
 use crate::application::service::collection::get_price_history::CollectionPriceHistoryService;
@@ -52,13 +53,14 @@ use crate::application::use_case::{
     GetRarityTradeFiltersUseCase, GetSetUseCase, GetShowcaseUseCase, GetTradeBindersUseCase,
     GetTradeUseCase, GetUserProfileUseCase, ImportCardUseCase, ImportPriceUseCase, ListSetsUseCase,
     ListTradesUseCase, RateTradeUseCase, RegisterUserUseCase, RemoveTradeBinderUseCase,
-    RemoveTradeCardUseCase, RunCardImportUseCase, SearchCardsUseCase, SearchSetsUseCase,
-    SetCollectionVisibilityUseCase, SetRarityTradeFilterUseCase, StatsUseCase,
+    RemoveTradeCardUseCase, RunCardImportUseCase, ScanIndexUseCase, SearchCardsUseCase,
+    SearchSetsUseCase, SetCollectionVisibilityUseCase, SetRarityTradeFilterUseCase, StatsUseCase,
     UpdateCatalogUseCase,
 };
 use crate::config::Config;
 use crate::infrastructure::adapter_in::autocomplete::controller::create_autocomplete_router;
 use crate::infrastructure::adapter_in::card::controller::create_card_router;
+use crate::infrastructure::adapter_in::catalog::controller::create_catalog_router;
 use crate::infrastructure::adapter_in::collection::controller::create_collection_router;
 use crate::infrastructure::adapter_in::search::controller::create_search_router;
 use crate::infrastructure::adapter_in::sets::controller::create_set_router;
@@ -144,6 +146,7 @@ pub struct AppState {
     pub get_set_use_case: Arc<dyn GetSetUseCase>,
     pub card_import_query_use_case: Arc<dyn GetCardImportUseCase>,
     pub update_catalog_use_case: Arc<dyn UpdateCatalogUseCase>,
+    pub scan_index_use_case: Arc<dyn ScanIndexUseCase>,
 }
 
 // ---- Repositories ----
@@ -331,8 +334,11 @@ fn create_app_state(
     ));
     let remove_trade_card_service: Arc<dyn RemoveTradeCardUseCase> =
         Arc::new(RemoveTradeCardService::new(repos.trade, repos.user));
-    let update_catalog_service: Arc<dyn UpdateCatalogUseCase> =
-        Arc::new(UpdateCatalogService::new(callers.scryfall, repos.catalog));
+    let scan_index_service: Arc<dyn ScanIndexUseCase> =
+        Arc::new(ScanIndexService::new(repos.catalog.clone()));
+    let update_catalog_service: Arc<dyn UpdateCatalogUseCase> = Arc::new(
+        UpdateCatalogService::new(callers.scryfall, repos.catalog, scan_index_service.clone()),
+    );
     let list_sets_service = Arc::new(ListSetsService::new(repos.set_name.clone()));
     let get_set_service = Arc::new(GetSetService::new(repos.set_name));
 
@@ -375,6 +381,7 @@ fn create_app_state(
         get_set_use_case: get_set_service,
         card_import_query_use_case: card_import_query_service,
         update_catalog_use_case: update_catalog_service,
+        scan_index_use_case: scan_index_service,
     }
 }
 
@@ -418,6 +425,7 @@ pub(crate) fn create_router(app_state: AppState) -> Router {
     Router::new()
         .nest("/autocomplete", create_autocomplete_router())
         .nest("/card", create_card_router())
+        .nest("/catalog", create_catalog_router())
         .nest("/collection", create_collection_router())
         .nest("/collection/trade-settings", create_trade_settings_router())
         .nest("/search", create_search_router())
@@ -494,6 +502,11 @@ pub async fn create_infra(pool: Pool<Postgres>, config: &Config) -> Router {
         enqueue_card_image_use_case,
         card_import_sender,
     );
+
+    // The scan index lives in memory: rebuild it from the stored catalog without waiting for the cron.
+    if let Err(e) = app_state.scan_index_use_case.refresh_scan_index().await {
+        tracing::error!(error = %e, "failed to generate the scan index on startup");
+    }
 
     schedule_price_import_job(app_state.import_price_use_case.clone()).await;
     schedule_catalog_update_job(app_state.update_catalog_use_case.clone()).await;

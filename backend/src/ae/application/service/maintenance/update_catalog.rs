@@ -1,7 +1,7 @@
 use crate::application::caller::{ScryfallBulkCard, ScryfallCaller};
 use crate::application::error::{AppError, InfraError};
 use crate::application::repository::CatalogRepository;
-use crate::application::use_case::UpdateCatalogUseCase;
+use crate::application::use_case::{ScanIndexUseCase, UpdateCatalogUseCase};
 use crate::domain::card::MAX_COLLECTOR_NUMBER_LENGTH;
 use crate::domain::catalog::CatalogCard;
 use crate::domain::rarity_code::RarityCode;
@@ -16,6 +16,7 @@ use tokio::sync::Mutex;
 pub struct UpdateCatalogService {
     scryfall_caller: Arc<dyn ScryfallCaller>,
     catalog_repository: Arc<dyn CatalogRepository>,
+    scan_index: Arc<dyn ScanIndexUseCase>,
     /// Held for the whole load: there is one at a time.
     loading: Mutex<()>,
 }
@@ -24,10 +25,12 @@ impl UpdateCatalogService {
     pub fn new(
         scryfall_caller: Arc<dyn ScryfallCaller>,
         catalog_repository: Arc<dyn CatalogRepository>,
+        scan_index: Arc<dyn ScanIndexUseCase>,
     ) -> Self {
         Self {
             scryfall_caller,
             catalog_repository,
+            scan_index,
             loading: Mutex::new(()),
         }
     }
@@ -58,6 +61,7 @@ impl UpdateCatalogUseCase for UpdateCatalogService {
         self.catalog_repository
             .replace_all(&catalog.sets, &catalog.cards)
             .await?;
+        self.scan_index.refresh_scan_index().await?;
 
         tracing::info!(
             loaded = catalog.cards.len(),
@@ -239,9 +243,11 @@ mod tests {
     use super::*;
     use crate::application::caller::{MockScryfallCaller, ScryfallBulkCard, ScryfallBulkCardFace};
     use crate::application::repository::MockCatalogRepository;
+    use crate::application::use_case::MockScanIndexUseCase;
     use crate::domain::catalog::CatalogCard;
     use crate::domain::rarity_code::RarityCode;
     use crate::domain::set_name::SetName;
+    use mockall::Sequence;
     use std::sync::Mutex;
     use uuid::Uuid;
 
@@ -354,6 +360,7 @@ mod tests {
         let service = UpdateCatalogService::new(
             Arc::new(caller_streaming(objects.into_iter().map(Ok).collect())),
             Arc::new(repository),
+            refreshed_scan_index(),
         );
 
         service.update_catalog().await.unwrap();
@@ -649,6 +656,7 @@ mod tests {
                 Ok(object("mkm", "2", "en")),
             ])),
             Arc::new(repository),
+            refreshed_scan_index(),
         );
 
         let result = service.update_catalog().await;
@@ -665,7 +673,11 @@ mod tests {
             .returning(|| Box::pin(async { Err(failure("open")) }));
         let mut repository = MockCatalogRepository::new();
         repository.expect_replace_all().times(0);
-        let service = UpdateCatalogService::new(Arc::new(caller), Arc::new(repository));
+        let service = UpdateCatalogService::new(
+            Arc::new(caller),
+            Arc::new(repository),
+            refreshed_scan_index(),
+        );
 
         assert!(service.update_catalog().await.is_err());
     }
@@ -680,6 +692,7 @@ mod tests {
                 object("tmkm", "1", "en"),
             ))])),
             Arc::new(repository),
+            refreshed_scan_index(),
         );
 
         assert!(service.update_catalog().await.is_err());
@@ -692,12 +705,67 @@ mod tests {
             .expect_replace_all()
             .times(1)
             .returning(|_, _| Box::pin(async { Err(failure("replace")) }));
+        let mut scan_index = MockScanIndexUseCase::new();
+        scan_index.expect_refresh_scan_index().times(0);
         let service = UpdateCatalogService::new(
             Arc::new(caller_streaming(vec![Ok(object("mkm", "1", "en"))])),
             Arc::new(repository),
+            Arc::new(scan_index),
         );
 
         assert!(service.update_catalog().await.is_err());
+    }
+
+    #[tokio::test]
+    async fn the_scan_index_is_regenerated_once_the_catalog_is_replaced() {
+        let mut sequence = Sequence::new();
+        let mut repository = MockCatalogRepository::new();
+        repository
+            .expect_replace_all()
+            .times(1)
+            .in_sequence(&mut sequence)
+            .returning(|_, _| Box::pin(async { Ok(()) }));
+        let mut scan_index = MockScanIndexUseCase::new();
+        scan_index
+            .expect_refresh_scan_index()
+            .times(1)
+            .in_sequence(&mut sequence)
+            .returning(|| Box::pin(async { Ok(()) }));
+        let service = UpdateCatalogService::new(
+            Arc::new(caller_streaming(vec![Ok(object("mkm", "1", "en"))])),
+            Arc::new(repository),
+            Arc::new(scan_index),
+        );
+
+        service.update_catalog().await.unwrap();
+    }
+
+    #[tokio::test]
+    async fn a_failing_scan_index_regeneration_is_reported() {
+        let mut repository = MockCatalogRepository::new();
+        repository
+            .expect_replace_all()
+            .returning(|_, _| Box::pin(async { Ok(()) }));
+        let mut scan_index = MockScanIndexUseCase::new();
+        scan_index
+            .expect_refresh_scan_index()
+            .returning(|| Box::pin(async { Err(failure("index")) }));
+        let service = UpdateCatalogService::new(
+            Arc::new(caller_streaming(vec![Ok(object("mkm", "1", "en"))])),
+            Arc::new(repository),
+            Arc::new(scan_index),
+        );
+
+        assert!(service.update_catalog().await.is_err());
+    }
+
+    /// A scan index that accepts being regenerated, for the tests that do not look at it.
+    fn refreshed_scan_index() -> Arc<dyn ScanIndexUseCase> {
+        let mut scan_index = MockScanIndexUseCase::new();
+        scan_index
+            .expect_refresh_scan_index()
+            .returning(|| Box::pin(async { Ok(()) }));
+        Arc::new(scan_index)
     }
 
     #[tokio::test]
@@ -722,6 +790,7 @@ mod tests {
         let service = Arc::new(UpdateCatalogService::new(
             Arc::new(caller),
             Arc::new(repository),
+            refreshed_scan_index(),
         ));
 
         let first = tokio::spawn({
