@@ -17,7 +17,7 @@ struct CollectorReading: Hashable, Sendable {
 ///
 /// A reading needs the set, the number and a known language together, otherwise nil. A token
 /// (rarity letter `T`) gives nil too: tokens are not scanned (no reliable Cardmarket product for a
-/// double-faced token in Scryfall or MTGJSON), they are added by search.
+/// double-faced token in Scryfall or MTGJSON), and never enter a collection.
 enum CollectorLineReader {
     // "•" is often recognised as "*", "·" or "-". Digits may come out as O, I or l.
     private static let digit = "[0-9OIl]"

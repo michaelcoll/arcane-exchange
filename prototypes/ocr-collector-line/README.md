@@ -124,7 +124,7 @@ face carries the same collector line as the front, so either face leads to the s
 
 Abandoned after the corpus pass (#646): Scryfall and MTGJSON give no reliable Cardmarket
 `productId` for a double-faced token, so a scanned token could not be priced. The reader returns no
-reading for rarity `T`, and tokens are added by search. What Scryfall does with tokens is recorded
+reading for rarity `T`, and tokens never enter a collection (#645). What Scryfall does with tokens is recorded
 in the report on #646.
 
 ## Known limits (not fixed)
