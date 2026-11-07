@@ -43,6 +43,14 @@ pub trait CardRepository: Send + Sync {
     /// `cards` is expected to already fit within a single statement's bound-parameter budget —
     /// callers importing a large collection chunk it themselves.
     async fn save_all(&self, user: &User, cards: &[ImportedCard]) -> Result<(), AppError>;
+    /// Creates the card `id` from its `catalog_card` (rarity, reference `scryfall_id`,
+    /// Cardmarket id, English name) unless it already exists, which is left untouched. Returns
+    /// whether it was created.
+    async fn create_if_absent(
+        &self,
+        id: &CardId,
+        catalog_card: &CatalogCard,
+    ) -> Result<bool, AppError>;
     async fn update_cardmarket_id(
         &self,
         id: CardId,
@@ -99,6 +107,13 @@ pub trait CatalogRepository: Send + Sync {
     /// `SetNameRepository::save_all`) in one transaction: a failure leaves the previous catalog
     /// untouched. No `Card` is ever read or written.
     async fn replace_all(&self, sets: &[SetName], cards: &[CatalogCard]) -> Result<(), AppError>;
+    /// The catalog card with this set and collector number (as the catalog stores it, without
+    /// leading zeros), if any.
+    async fn find(
+        &self,
+        set_code: &SetCode,
+        collector_number: &str,
+    ) -> Result<Option<CatalogCard>, AppError>;
 }
 
 #[async_trait]

@@ -1,5 +1,6 @@
 pub mod autocomplete;
 pub mod card;
+pub mod catalog;
 pub mod collection;
 pub mod maintenance;
 pub mod search;

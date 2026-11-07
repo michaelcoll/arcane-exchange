@@ -1,8 +1,10 @@
 use crate::application::error::AppError;
 use crate::application::repository::CatalogRepository;
 use crate::domain::catalog::CatalogCard;
-use crate::domain::set_name::SetName;
-use crate::infrastructure::adapter_out::repository::entities::cardmarket_id_to_db;
+use crate::domain::set_name::{SetCode, SetName};
+use crate::infrastructure::adapter_out::repository::entities::{
+    cardmarket_id_from_db, cardmarket_id_to_db, from_db_rarity,
+};
 use async_trait::async_trait;
 use sqlx::{Pool, Postgres, QueryBuilder};
 
@@ -68,13 +70,43 @@ impl CatalogRepository for CatalogRepositoryAdapter {
         tx.commit().await?;
         Ok(())
     }
+
+    #[tracing::instrument(name = "catalog_repo.find", skip_all, fields(sentry.op = "db"))]
+    async fn find(
+        &self,
+        set_code: &SetCode,
+        collector_number: &str,
+    ) -> Result<Option<CatalogCard>, AppError> {
+        let row = sqlx::query!(
+            "SELECT rarity, name, french_name, scryfall_id, cardmarket_id
+             FROM catalog_card
+             WHERE set_code = $1 AND collector_number = $2",
+            set_code.to_string(),
+            collector_number,
+        )
+        .fetch_optional(&self.pool)
+        .await?;
+
+        Ok(row
+            .map(|row| {
+                Ok::<_, AppError>(CatalogCard {
+                    set_code: set_code.clone(),
+                    collector_number: collector_number.to_string(),
+                    rarity: from_db_rarity(&row.rarity)?,
+                    name: row.name,
+                    french_name: row.french_name,
+                    scryfall_id: row.scryfall_id,
+                    cardmarket_id: row.cardmarket_id.map(cardmarket_id_from_db).transpose()?,
+                })
+            })
+            .transpose()?)
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::domain::rarity_code::RarityCode;
-    use crate::domain::set_name::SetCode;
     use crate::infrastructure::adapter_out::repository::common_repository_tests::{
         insert_card, insert_collection_entry, insert_set, insert_user,
     };
@@ -267,6 +299,46 @@ mod tests {
             .await
             .unwrap();
         assert_eq!(name, "Set MKM");
+    }
+
+    #[sqlx::test]
+    async fn find_returns_the_catalog_card_of_a_set_and_number(pool: PgPool) {
+        let adapter = CatalogRepositoryAdapter::new(pool.clone());
+        let mut without_cardmarket_id = catalog_card("MKM", "13");
+        without_cardmarket_id.french_name = None;
+        without_cardmarket_id.cardmarket_id = None;
+        let card = catalog_card("MKM", "12");
+        adapter
+            .replace_all(
+                &[set("MKM")],
+                &[card.clone(), without_cardmarket_id.clone()],
+            )
+            .await
+            .unwrap();
+
+        let found = adapter.find(&SetCode::new("MKM"), "12").await.unwrap();
+        let found_bare = adapter.find(&SetCode::new("MKM"), "13").await.unwrap();
+
+        assert_eq!(found, Some(card));
+        assert_eq!(found_bare, Some(without_cardmarket_id));
+    }
+
+    #[sqlx::test]
+    async fn find_returns_nothing_for_an_unknown_set_or_number(pool: PgPool) {
+        let adapter = CatalogRepositoryAdapter::new(pool.clone());
+        adapter
+            .replace_all(&[set("MKM")], &[catalog_card("MKM", "12")])
+            .await
+            .unwrap();
+
+        assert_eq!(
+            adapter.find(&SetCode::new("MKM"), "13").await.unwrap(),
+            None
+        );
+        assert_eq!(
+            adapter.find(&SetCode::new("TMKM"), "12").await.unwrap(),
+            None
+        );
     }
 
     #[sqlx::test]

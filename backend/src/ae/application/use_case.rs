@@ -2,7 +2,7 @@ use crate::application::error::AppError;
 use async_trait::async_trait;
 
 use crate::application::card_import_job::CardImportJob;
-use crate::domain::card::{Card, CollectionEntry, CopyId};
+use crate::domain::card::{Card, CardId, CollectionEntry, CopyId};
 use crate::domain::card_import::{CardImport, CardImportId};
 use crate::domain::card_offer::CardOfferSortField;
 use crate::domain::collection::{CollectionQuery, SearchQuery, SearchScope};
@@ -149,6 +149,18 @@ pub trait UpdateCatalogUseCase: Send + Sync {
     /// Reloads the catalog from the Scryfall bulk. A failure leaves the previous catalog in place.
     /// A call made while a load is running is ignored (and logged): there is one load at a time.
     async fn update_catalog(&self) -> Result<(), AppError>;
+}
+
+#[async_trait]
+#[cfg_attr(test, automock)]
+pub trait CreateCardUseCase: Send + Sync {
+    /// Makes sure the card exists, without any import, and returns its id (the collector number
+    /// without leading zeros). Idempotent: an existing card is returned untouched, even when the
+    /// catalog lacks it. The language is taken as read, not checked against Scryfall. A newly
+    /// created card enters the enrichment queues (Cardmarket id when the catalog lacks it,
+    /// images). `FunctionalError::CardNotInCatalog` when the card does not exist and no catalog
+    /// card has this set and number.
+    async fn create_card(&self, card_id: CardId) -> Result<CardId, AppError>;
 }
 
 #[async_trait]

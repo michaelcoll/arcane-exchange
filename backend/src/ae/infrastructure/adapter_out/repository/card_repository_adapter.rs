@@ -3,10 +3,11 @@ use crate::application::imported_card::ImportedCard;
 use crate::application::repository::{CardImageLookup, CardRepository};
 use crate::domain::card::{CardId, CollectionEntry};
 use crate::domain::card_image::{CardImageSource, EnglishImage};
+use crate::domain::catalog::CatalogCard;
 use crate::domain::language_code::LanguageCode;
 use crate::domain::user::User;
 use crate::infrastructure::adapter_out::repository::entities::{
-    CardIdEntity, CardImageLookupEntity,
+    CardIdEntity, CardImageLookupEntity, cardmarket_id_to_db,
 };
 use async_trait::async_trait;
 use sqlx::{Pool, Postgres, QueryBuilder};
@@ -178,6 +179,34 @@ impl CardRepository for CardRepositoryAdapter {
         Ok(())
     }
 
+    #[tracing::instrument(name = "card_repo.create_if_absent", skip_all, fields(sentry.op = "db"))]
+    async fn create_if_absent(
+        &self,
+        id: &CardId,
+        catalog_card: &CatalogCard,
+    ) -> Result<bool, AppError> {
+        let cardmarket_id = catalog_card
+            .cardmarket_id
+            .map(cardmarket_id_to_db)
+            .transpose()?;
+        let result = sqlx::query!(
+            r#"INSERT INTO card (set_code, collector_number, language_code, name, rarity, scryfall_id, cardmarket_id)
+               VALUES ($1, $2, $3, $4, $5, $6, $7)
+               ON CONFLICT (set_code, collector_number, language_code) DO NOTHING"#,
+            id.set_code.to_string(),
+            id.collector_number,
+            id.language_code.to_string(),
+            catalog_card.name,
+            catalog_card.rarity.to_string(),
+            catalog_card.scryfall_id,
+            cardmarket_id,
+        )
+        .execute(&self.pool)
+        .await?;
+
+        Ok(result.rows_affected() == 1)
+    }
+
     #[tracing::instrument(name = "card_repo.update_cardmarket_id", skip_all, fields(sentry.op = "db"))]
     async fn update_cardmarket_id(
         &self,
@@ -304,7 +333,7 @@ mod tests {
     use crate::domain::rarity_code::RarityCode;
     use crate::infrastructure::adapter_out::repository::common_repository_tests::{
         fetch_collection_entries, insert_card, insert_card_with_scryfall_id,
-        insert_card_without_cardmarket_id, insert_collection_entry, insert_user,
+        insert_card_without_cardmarket_id, insert_collection_entry, insert_set, insert_user,
     };
     use chrono::Utc;
     use sqlx::PgPool;
@@ -1074,5 +1103,94 @@ mod tests {
             .save_all(&User::for_testing(), &[])
             .await
             .unwrap();
+    }
+
+    fn catalog_card(cardmarket_id: Option<u32>) -> crate::domain::catalog::CatalogCard {
+        crate::domain::catalog::CatalogCard {
+            set_code: crate::domain::set_name::SetCode::new("MKM"),
+            collector_number: "12".to_string(),
+            rarity: RarityCode::M,
+            name: "English Name".to_string(),
+            french_name: Some("Nom français".to_string()),
+            scryfall_id: Uuid::from_u128(5),
+            cardmarket_id,
+        }
+    }
+
+    async fn fetch_card(
+        pool: &PgPool,
+        language: &str,
+    ) -> Vec<(String, String, Uuid, Option<i32>, Option<String>)> {
+        sqlx::query_as(
+            "SELECT name, rarity, scryfall_id, cardmarket_id, image_source
+             FROM card WHERE set_code = 'MKM' AND collector_number = '12' AND language_code = $1",
+        )
+        .bind(language)
+        .fetch_all(pool)
+        .await
+        .unwrap()
+    }
+
+    #[sqlx::test]
+    async fn create_if_absent_creates_the_card_from_the_catalog_card(pool: PgPool) {
+        insert_set(&pool, "MKM").await;
+        let repository = CardRepositoryAdapter::new(pool.clone());
+
+        let created = repository
+            .create_if_absent(
+                &CardId::new("MKM", "12", LanguageCode::JA),
+                &catalog_card(Some(77)),
+            )
+            .await
+            .unwrap();
+
+        assert!(created);
+        assert_eq!(
+            fetch_card(&pool, &LanguageCode::JA.to_string()).await,
+            vec![(
+                "English Name".to_string(),
+                "M".to_string(),
+                Uuid::from_u128(5),
+                Some(77),
+                None
+            )],
+            "English name, and the image still pending"
+        );
+    }
+
+    #[sqlx::test]
+    async fn create_if_absent_leaves_an_existing_card_untouched(pool: PgPool) {
+        insert_set(&pool, "MKM").await;
+        let repository = CardRepositoryAdapter::new(pool.clone());
+        let id = CardId::new("MKM", "12", LanguageCode::FR);
+        insert_card(&pool, "MKM", "12", &LanguageCode::FR.to_string(), "Old", 3).await;
+
+        let created = repository
+            .create_if_absent(&id, &catalog_card(Some(77)))
+            .await
+            .unwrap();
+
+        assert!(!created);
+        let rows = fetch_card(&pool, &LanguageCode::FR.to_string()).await;
+        assert_eq!(rows.len(), 1);
+        assert_eq!(rows[0].0, "Old");
+        assert_eq!(rows[0].3, Some(3));
+    }
+
+    #[sqlx::test]
+    async fn create_if_absent_without_cardmarket_id_leaves_it_empty(pool: PgPool) {
+        insert_set(&pool, "MKM").await;
+        let repository = CardRepositoryAdapter::new(pool.clone());
+
+        repository
+            .create_if_absent(
+                &CardId::new("MKM", "12", LanguageCode::EN),
+                &catalog_card(None),
+            )
+            .await
+            .unwrap();
+
+        let rows = fetch_card(&pool, &LanguageCode::EN.to_string()).await;
+        assert_eq!(rows[0].3, None);
     }
 }
