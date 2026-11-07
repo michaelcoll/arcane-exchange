@@ -31,8 +31,8 @@ _Avoid_ : illustration, scan, visuel Gatherer/Scryfall
 
 **Ligne d'impression** :
 Les deux lignes imprimées en bas d'une carte physique depuis 2014 environ : numéro, rareté, set et
-langue. Le scanner la lit pour retrouver la Card ; une carte qui n'en porte pas de lisible, ou un
-token, s'ajoute par recherche.
+langue. Le scanner la lit pour retrouver la Card ; une carte qui n'en porte pas de lisible
+s'ajoute par recherche.
 _Avoid_ : ligne de collection, collector line
 
 **Source d'image** :
@@ -127,9 +127,9 @@ L'import l'écarte silencieusement.
 _Avoid_ : copie, fausse carte, contrefaçon
 
 **Token** :
-Une carte de jeton imprimée par Wizards, simple ou double face. Un token possédé est un exemplaire
-comme un autre : il entre dans la collection, a une valeur et suit les mêmes règles de mise à
-l'échange. À ne pas confondre avec un **Proxy**, qui n'est jamais un exemplaire.
+Une carte de jeton imprimée par Wizards, simple ou double face. Un token n'est pas un exemplaire :
+faute de lien fiable avec son produit Cardmarket, il n'aurait pas de valeur. Il n'entre jamais dans
+une collection, et l'import l'écarte silencieusement, comme un **Proxy**.
 _Avoid_ : jeton, carte annexe
 
 **Vitrine** :

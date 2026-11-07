@@ -24,4 +24,5 @@ transform ou d'une modale porte la même ligne d'impression que son recto.
 - Seules les cartes portant une ligne d'impression lisible (2014 et après) sont scannables. Les
   autres s'ajoutent par recherche dans le catalogue, comme les numéros non numériques (`H13`, `★`).
 - Les tokens ne sont pas scannés : Scryfall et MTGJSON ne donnent pas de `productId` Cardmarket
-  fiable pour un token double face. Ils s'ajoutent par recherche dans le catalogue.
+  fiable pour un token double face. Un token n'est donc pas un exemplaire : il ne figure ni dans
+  l'index ni dans le catalogue, et ne s'ajoute pas par recherche.
