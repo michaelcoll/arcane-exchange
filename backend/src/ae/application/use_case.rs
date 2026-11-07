@@ -145,6 +145,14 @@ pub trait ImportPriceUseCase: Send + Sync {
 
 #[async_trait]
 #[cfg_attr(test, automock)]
+pub trait UpdateCatalogUseCase: Send + Sync {
+    /// Reloads the catalog from the Scryfall bulk. A failure leaves the previous catalog in place.
+    /// A call made while a load is running is ignored (and logged): there is one load at a time.
+    async fn update_catalog(&self) -> Result<(), AppError>;
+}
+
+#[async_trait]
+#[cfg_attr(test, automock)]
 pub trait StatsUseCase: Send + Sync {
     async fn get_stats(&self) -> Result<Stats, AppError>;
 }

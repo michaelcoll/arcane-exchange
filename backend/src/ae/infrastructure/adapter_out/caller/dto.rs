@@ -1,3 +1,4 @@
+use crate::application::caller::{ScryfallBulkCard, ScryfallBulkCardFace};
 use crate::domain::price::{FullPriceGuide, Price, PriceGuide};
 use chrono::{DateTime, Utc};
 
@@ -72,6 +73,76 @@ pub struct EdhRecJsonDict {
 pub struct EdhRecCard {
     pub inclusion: i32,
     pub potential_decks: i32,
+}
+
+/// The answer of `GET /bulk-data`.
+#[derive(Debug, serde::Deserialize)]
+pub struct ScryfallBulkDataList {
+    pub data: Vec<ScryfallBulkData>,
+}
+
+#[derive(Debug, serde::Deserialize)]
+pub struct ScryfallBulkData {
+    #[serde(rename = "type")]
+    pub kind: String,
+    /// The gzipped file, one card object per line.
+    pub jsonl_download_uri: Option<String>,
+}
+
+/// One line of the `all_cards` file: only what the catalog needs.
+#[derive(Debug, serde::Deserialize)]
+pub struct ScryfallBulkCardLine {
+    pub id: uuid::Uuid,
+    #[serde(rename = "set")]
+    pub set_code: String,
+    pub set_name: String,
+    pub set_type: String,
+    pub collector_number: String,
+    #[serde(rename = "lang")]
+    pub language: String,
+    pub layout: String,
+    pub rarity: String,
+    pub name: String,
+    pub printed_name: Option<String>,
+    /// Only on a multi-face card.
+    #[serde(default)]
+    pub card_faces: Vec<ScryfallBulkCardFaceLine>,
+    pub cardmarket_id: Option<u32>,
+    #[serde(default)]
+    pub digital: bool,
+}
+
+#[derive(Debug, serde::Deserialize)]
+pub struct ScryfallBulkCardFaceLine {
+    pub name: String,
+    pub printed_name: Option<String>,
+}
+
+impl From<ScryfallBulkCardLine> for ScryfallBulkCard {
+    fn from(line: ScryfallBulkCardLine) -> Self {
+        ScryfallBulkCard {
+            scryfall_id: line.id,
+            set_code: line.set_code,
+            set_name: line.set_name,
+            set_type: line.set_type,
+            collector_number: line.collector_number,
+            language: line.language,
+            layout: line.layout,
+            rarity: line.rarity,
+            name: line.name,
+            printed_name: line.printed_name,
+            faces: line
+                .card_faces
+                .into_iter()
+                .map(|face| ScryfallBulkCardFace {
+                    name: face.name,
+                    printed_name: face.printed_name,
+                })
+                .collect(),
+            cardmarket_id: line.cardmarket_id,
+            digital: line.digital,
+        }
+    }
 }
 
 #[derive(Debug, serde::Deserialize)]

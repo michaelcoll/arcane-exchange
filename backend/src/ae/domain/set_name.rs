@@ -7,11 +7,12 @@ pub struct SetCode(String);
 impl SetCode {
     pub fn try_new(s: impl Into<String>) -> Result<Self, FunctionalError> {
         let name = s.into().to_uppercase();
-        if name.chars().count() >= 3 && name.chars().count() <= 5 {
+        // Six for the longest Scryfall codes (`PMPS06` to `PMPS11`); `set_code` columns match.
+        if name.chars().count() >= 3 && name.chars().count() <= 6 {
             Ok(SetCode(name))
         } else {
             Err(FunctionalError::InvalidSetCode(format!(
-                "set code must be between 3 and 5 characters (got {})",
+                "set code must be between 3 and 6 characters (got {})",
                 name
             )))
         }
@@ -71,15 +72,22 @@ mod tests {
         let result = SetCode::try_new("AB");
         match result {
             Err(FunctionalError::InvalidSetCode(msg)) => {
-                assert!(msg.contains("set code must be between 3 and 5 characters"))
+                assert!(msg.contains("set code must be between 3 and 6 characters"))
             }
             _ => panic!("Expected InvalidSetCode variant"),
         }
     }
 
     #[test]
+    fn new_set_code_of_six_characters_creates_instance() {
+        // The longest Scryfall codes, the Magic Premiere Shop promos.
+        let code = SetCode::new("pmps06");
+        assert_eq!(code.0, "PMPS06");
+    }
+
+    #[test]
     fn new_set_code_with_too_long_returns_error() {
-        let result = SetCode::try_new("ABCDE1");
+        let result = SetCode::try_new("ABCDEF1");
         assert!(result.is_err());
     }
 

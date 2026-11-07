@@ -17,6 +17,7 @@ use crate::application::service::maintenance::card_collection_price_calculation:
 use crate::application::service::maintenance::enqueue_card_image::CardImageEnricher;
 use crate::application::service::maintenance::enqueue_cardmarket_id::CardMarketIdEnricher;
 use crate::application::service::maintenance::import_price::ImportPriceService;
+use crate::application::service::maintenance::update_catalog::UpdateCatalogService;
 use crate::application::service::search::search_cards::SearchCardsService;
 use crate::application::service::search::search_sets::SearchSetsService;
 use crate::application::service::sets::get::GetSetService;
@@ -53,6 +54,7 @@ use crate::application::use_case::{
     ListTradesUseCase, RateTradeUseCase, RegisterUserUseCase, RemoveTradeBinderUseCase,
     RemoveTradeCardUseCase, RunCardImportUseCase, SearchCardsUseCase, SearchSetsUseCase,
     SetCollectionVisibilityUseCase, SetRarityTradeFilterUseCase, StatsUseCase,
+    UpdateCatalogUseCase,
 };
 use crate::config::Config;
 use crate::infrastructure::adapter_in::autocomplete::controller::create_autocomplete_router;
@@ -84,6 +86,7 @@ use adapter_out::caller::scryfall_caller_adapter::ScryfallCallerAdapter;
 use adapter_out::repository::card_image_file_repository_adapter::CardImageFileRepositoryAdapter;
 use adapter_out::repository::card_import_repository_adapter::CardImportRepositoryAdapter;
 use adapter_out::repository::card_repository_adapter::CardRepositoryAdapter;
+use adapter_out::repository::catalog_repository_adapter::CatalogRepositoryAdapter;
 use adapter_out::repository::set_names_repository_adapter::SetNameRepositoryAdapter;
 use adapter_out::repository::user_repository_adapter::UserRepositoryAdapter;
 use axum::Router;
@@ -140,6 +143,7 @@ pub struct AppState {
     pub list_sets_use_case: Arc<dyn ListSetsUseCase>,
     pub get_set_use_case: Arc<dyn GetSetUseCase>,
     pub card_import_query_use_case: Arc<dyn GetCardImportUseCase>,
+    pub update_catalog_use_case: Arc<dyn UpdateCatalogUseCase>,
 }
 
 // ---- Repositories ----
@@ -157,6 +161,7 @@ struct Repositories {
     trading_binders: Arc<TradingBindersRepositoryAdapter>,
     collection_rarity_filters: Arc<CollectionRarityFiltersRepositoryAdapter>,
     card_import: Arc<CardImportRepositoryAdapter>,
+    catalog: Arc<CatalogRepositoryAdapter>,
 }
 
 fn create_repositories(pool: &Pool<Postgres>) -> Repositories {
@@ -178,6 +183,7 @@ fn create_repositories(pool: &Pool<Postgres>) -> Repositories {
             pool.clone(),
         )),
         card_import: Arc::new(CardImportRepositoryAdapter::new(pool.clone())),
+        catalog: Arc::new(CatalogRepositoryAdapter::new(pool.clone())),
     }
 }
 
@@ -325,6 +331,8 @@ fn create_app_state(
     ));
     let remove_trade_card_service: Arc<dyn RemoveTradeCardUseCase> =
         Arc::new(RemoveTradeCardService::new(repos.trade, repos.user));
+    let update_catalog_service: Arc<dyn UpdateCatalogUseCase> =
+        Arc::new(UpdateCatalogService::new(callers.scryfall, repos.catalog));
     let list_sets_service = Arc::new(ListSetsService::new(repos.set_name.clone()));
     let get_set_service = Arc::new(GetSetService::new(repos.set_name));
 
@@ -366,13 +374,23 @@ fn create_app_state(
         list_sets_use_case: list_sets_service,
         get_set_use_case: get_set_service,
         card_import_query_use_case: card_import_query_service,
+        update_catalog_use_case: update_catalog_service,
     }
 }
 
-async fn schedule_price_import_job(import_price_use_case: Arc<dyn ImportPriceUseCase>) {
+/// Runs `job` on the cron `expression` (UTC) for as long as the process lives.
+async fn schedule_job<F, Fut>(expression: &str, job: F)
+where
+    F: Fn() -> Fut + Send + Sync + 'static,
+    Fut: Future<Output = ()> + Send + 'static,
+{
     let mut cron = AsyncCron::new(Utc);
+    cron.add_fn(expression, job).await.unwrap();
+    cron.start().await;
+}
 
-    cron.add_fn("0 0 */12 * * *", move || {
+async fn schedule_price_import_job(import_price_use_case: Arc<dyn ImportPriceUseCase>) {
+    schedule_job("0 0 */12 * * *", move || {
         let service = import_price_use_case.clone();
         async move {
             if let Err(e) = service.import_prices_for_current_date().await {
@@ -380,10 +398,20 @@ async fn schedule_price_import_job(import_price_use_case: Arc<dyn ImportPriceUse
             }
         }
     })
-    .await
-    .unwrap();
+    .await;
+}
 
-    cron.start().await;
+async fn schedule_catalog_update_job(update_catalog_use_case: Arc<dyn UpdateCatalogUseCase>) {
+    // Daily, off the hours of the price import: Scryfall refreshes its bulk files every day.
+    schedule_job("0 0 4 * * *", move || {
+        let service = update_catalog_use_case.clone();
+        async move {
+            if let Err(e) = service.update_catalog().await {
+                tracing::error!(error = %e, "failed to update the catalog");
+            }
+        }
+    })
+    .await;
 }
 
 pub(crate) fn create_router(app_state: AppState) -> Router {
@@ -468,6 +496,7 @@ pub async fn create_infra(pool: Pool<Postgres>, config: &Config) -> Router {
     );
 
     schedule_price_import_job(app_state.import_price_use_case.clone()).await;
+    schedule_catalog_update_job(app_state.update_catalog_use_case.clone()).await;
 
     create_router(app_state)
 }

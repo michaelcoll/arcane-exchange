@@ -6,6 +6,9 @@ use crate::domain::rarity_code::RarityCode;
 use crate::domain::set_name::{SetCode, SetName};
 use std::fmt::{Display, Formatter};
 
+/// The longest collector number a Card, and the `collector_number` columns, accept.
+pub const MAX_COLLECTOR_NUMBER_LENGTH: usize = 10;
+
 /// Identifies a card **definition** in the catalog: one printing, in one language. Does not
 /// carry the finish — a definition is shared by its normal and foil copies (see [`CopyId`]).
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
@@ -22,9 +25,9 @@ impl CardId {
         language_code: LanguageCode,
     ) -> Result<Self, FunctionalError> {
         let collector_number = collector_number.into();
-        if collector_number.chars().count() > 10 {
+        if collector_number.chars().count() > MAX_COLLECTOR_NUMBER_LENGTH {
             return Err(FunctionalError::InvalidCollectorNumber(format!(
-                "collector number must be 10 characters or less (got {})",
+                "collector number must be {MAX_COLLECTOR_NUMBER_LENGTH} characters or less (got {})",
                 collector_number
             )));
         }

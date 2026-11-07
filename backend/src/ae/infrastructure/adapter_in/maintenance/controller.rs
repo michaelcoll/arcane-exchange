@@ -11,6 +11,21 @@ pub fn create_maintenance_router() -> axum::Router<AppState> {
         .route("/trigger-price-update", post(trigger_price_update))
         .route("/update-cardmarket-ids", post(update_cardmarket_ids))
         .route("/update-card-images", post(update_card_images))
+        .route("/update-catalog", post(update_catalog))
+}
+
+#[utoipa::path(
+    post,
+    path = "/maintenance/update-catalog",
+    responses(
+        (status = 204, description = "Catalog reloaded from the Scryfall bulk; a load already running makes this call a no-op"),
+    ),
+    tag = "maintenance",
+)]
+pub(crate) async fn update_catalog(State(state): State<AppState>) -> Result<StatusCode, AppError> {
+    state.update_catalog_use_case.update_catalog().await?;
+
+    Ok(StatusCode::NO_CONTENT)
 }
 
 #[utoipa::path(

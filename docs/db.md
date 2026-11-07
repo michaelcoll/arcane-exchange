@@ -3,7 +3,7 @@
 ```mermaid
 erDiagram
     card {
-        character_varying(5) set_code PK, FK
+        character_varying(6) set_code PK, FK
         character_varying(10) collector_number PK
         character_varying(2) language_code PK
         character_varying(255) name "not null"
@@ -37,8 +37,17 @@ erDiagram
         integer trend_foil
         integer avg_foil
     }
+    catalog_card {
+        character_varying(6) set_code PK, FK
+        character_varying(10) collector_number PK
+        character_varying(1) rarity "not null"
+        character_varying(255) name "not null"
+        character_varying(255) french_name
+        uuid scryfall_id "not null"
+        integer cardmarket_id
+    }
     collection_entry {
-        character_varying(5) set_code FK "not null"
+        character_varying(6) set_code FK "not null"
         character_varying(10) collector_number FK "not null"
         character_varying(2) language_code FK "not null"
         boolean foil "not null"
@@ -62,7 +71,7 @@ erDiagram
         smallint kept_copies "not null, default: 0"
     }
     mv_card_prices {
-        character_varying(5) set_code
+        character_varying(6) set_code
         character_varying(10) collector_number
         character_varying(2) language_code
         boolean foil
@@ -78,7 +87,7 @@ erDiagram
         integer avg
     }
     mv_last_cardmarket_prices {
-        character_varying(5) set_code
+        character_varying(6) set_code
         character_varying(10) collector_number
         boolean foil
         integer low
@@ -86,7 +95,7 @@ erDiagram
         integer avg
     }
     set_name {
-        character_varying(5) set_code PK
+        character_varying(6) set_code PK
         character_varying(255) name "not null"
     }
     trade {
@@ -109,7 +118,7 @@ erDiagram
     }
     trade_card {
         uuid trade_id PK, FK
-        character_varying(5) set_code PK, FK
+        character_varying(6) set_code PK, FK
         character_varying(10) collector_number PK, FK
         character_varying(2) language_code PK, FK
         boolean foil PK
@@ -128,7 +137,7 @@ erDiagram
     }
     v_tradable_entry {
         character_varying(50) user_id
-        character_varying(5) set_code
+        character_varying(6) set_code
         character_varying(10) collector_number
         character_varying(2) language_code
         boolean foil
@@ -136,6 +145,7 @@ erDiagram
     }
     set_name ||--o{ card : "set_code"
     users ||--o| card_import : "user_id"
+    set_name ||--o{ catalog_card : "set_code"
     card ||--o{ collection_entry : "set_code, collector_number, language_code"
     users ||--o{ collection_entry : "user_id"
     users ||--o{ collection_rarity_filters : "user_id"

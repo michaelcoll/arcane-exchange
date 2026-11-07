@@ -59,6 +59,13 @@ pub(crate) fn invalid_db_value(what: &str, value: &str) -> InfraError {
     InfraError::RepositoryError(format!("invalid {what} from database: {value}"))
 }
 
+/// Cardmarket ids are `INTEGER` in the database: one too large for it is refused, not truncated.
+pub(crate) fn cardmarket_id_to_db(id: u32) -> Result<i32, InfraError> {
+    i32::try_from(id).map_err(|_| {
+        InfraError::RepositoryError(format!("cardmarket id too large for the database: {id}"))
+    })
+}
+
 pub(crate) fn from_db_rarity(s: &str) -> Result<RarityCode, InfraError> {
     RarityCode::try_new(s).map_err(|_| invalid_db_value("rarity code", s))
 }
@@ -620,6 +627,17 @@ mod tests {
             set_name: "Foundations".to_string(),
             scryfall_id: Uuid::parse_str("4409a063-bf2a-4a49-803e-3ce6bd474353").unwrap(),
         }
+    }
+
+    #[test]
+    fn a_cardmarket_id_too_large_for_the_database_is_a_repository_error() {
+        assert_eq!(cardmarket_id_to_db(574956), Ok(574956));
+        assert_eq!(
+            cardmarket_id_to_db(u32::MAX),
+            Err(InfraError::RepositoryError(
+                "cardmarket id too large for the database: 4294967295".to_string()
+            ))
+        );
     }
 
     #[test]
