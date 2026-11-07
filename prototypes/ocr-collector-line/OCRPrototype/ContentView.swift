@@ -10,12 +10,16 @@ struct ContentView: View {
                 .frame(maxHeight: 320)
                 .overlay { Text(scanner.status).foregroundStyle(.secondary) }
             HStack {
-                Text(latencyLabel).font(.headline.monospacedDigit())
+                Text(ScanLabels.latency(scanner.latency)).font(.headline.monospacedDigit())
                 Spacer()
-                Text("\(scanner.ocrMilliseconds) ms / frame").font(.caption.monospacedDigit())
+                Text("\(scanner.ocrMilliseconds) ms / image").font(.caption.monospacedDigit())
             }
             .padding()
-            Text(readingLabel).font(.title3.monospaced().bold())
+            Text(ScanLabels.reading(scanner.reading)).font(.title3.monospaced().bold())
+            Text(ScanLabels.lookup(scanner.lookup))
+                .font(.callout)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.horizontal)
             ScrollView {
                 Text(scanner.lines.joined(separator: "\n"))
                     .font(.system(.body, design: .monospaced))
@@ -23,29 +27,20 @@ struct ContentView: View {
                     .padding(.horizontal)
             }
             HStack {
-                Button("Copy reading") { UIPasteboard.general.string = fixture }
-                ShareLink("Export", item: fixture)
+                Button("Copier le texte brut") { UIPasteboard.general.string = fixtureLines }
+                ShareLink("Exporter", item: fixtureLines)
             }
             .buttonStyle(.bordered)
-            .disabled(scanner.lastReading.isEmpty)
+            .disabled(scanner.lines.isEmpty)
             .padding()
         }
         .task { scanner.start() }
         .onDisappear { scanner.stop() }
     }
 
-    private var latencyLabel: String {
-        scanner.latency.map { String(format: "Read in %.2f s", $0) } ?? "No reading yet"
-    }
-
-    private var readingLabel: String {
-        guard let reading = scanner.reading else { return "-" }
-        let token = reading.isToken ? " (token)" : ""
-        return "\(reading.set.uppercased()) #\(reading.number) \(reading.language)\(token)"
-    }
-
-    /// The raw text frozen at the measure, one Vision line per row.
-    private var fixture: String { scanner.lastReading.joined(separator: "\n") }
+    /// The raw text of the current image, one Vision line per row, available even when no reading
+    /// was retained (a failed read is the fixture worth keeping).
+    private var fixtureLines: String { scanner.lines.joined(separator: "\n") }
 }
 
 private struct CameraPreview: UIViewRepresentable {

@@ -48,8 +48,9 @@ known printed formats, not captured): replace/extend them with real captures in 
 
 ## Fixtures
 
-`Copy reading` / `Export` give the raw lines frozen at the measure, one Vision line per row.
-Paste them into the test target as fixtures for the collector line reader (#657).
+`Copier le texte brut` / `Exporter` give the raw lines of the current image at any time (also when
+the read fails), one Vision line per row. Paste them into the test target as fixtures for the
+collector line reader (#657). The screen texts are in French.
 
 ## Tests
 
@@ -57,3 +58,33 @@ From this directory (outside `mise`, the prototype has no task): `xcodebuild tes
 OCRPrototype.xcodeproj -scheme OCRPrototype -destination 'platform=iOS Simulator,id=<simulator id>'
 CODE_SIGNING_ALLOWED=NO`. Use the id (`xcrun simctl list devices`): a device name matches several
 runtimes.
+
+## Scryfall et tokens (#659)
+
+From the Scryfall API (checked 2026-11-05), NOT yet checked against physical cards.
+
+- A retained reading triggers one lookup. Rarity `T`: only the token set, `/cards/t{set}/{number}`
+  (English, no language request). Any other rarity or none: `/cards/{set}/{number}/{lang}` (on 404
+  `/cards/{set}/{number}`) AND `/cards/t{set}/{number}`; every Card found is shown, labelled `CARTE`
+  or `TOKEN` (the `mkm/12` vs `tmkm/12` collision). When the English printing is shown for another
+  language read, the screen says so. One request per distinct reading, cached in memory per reading,
+  at most 10 req/s, `User-Agent` and `Accept` sent.
+- Double-faced token (`layout: double_faced_token`: Incubator // Phyrexian `tmom` 16-18, `teoc` 15,
+  `tfrc` 13; also Punchcard, Bounty/Wanted!, The Ring, speed cards): ONE object, ONE number, two
+  `card_faces`. Either face leads to the same Card. Transform and modal DFCs work the same way.
+- Regular and Commander tokens: one `layout: token` object per face, each with its own number, no
+  link between the two sides. If the physical card is printed back to back, reading each side gives
+  a different Card (unverified, gap against the "same Card per face" criterion).
+- Token set code = `t` + parent set code (`tmkm`), but the parent code collides: `mkm/12` is a card,
+  `tmkm/12` a token. Only the rarity `T` (or the type) tells them apart.
+- Scryfall has no non-English token at all: `tmkm/12/fr` is a 404, so a token goes straight to
+  English. The 404 body does not say whether set, number or language is wrong.
+- Numbers are stored without padding (`12`, not `0012`); some are not plain integers (`H13`, `T12`, `5★`).
+
+## Known limits (not fixed)
+
+- Post-2023 format: the layout "rarity then number" (`R 0123`) is unverified on real cards. The
+  reader accepts it merged with other text on a line, but only from synthetic fixtures.
+- Non-numeric collector numbers (`H13`, `★`...) are not read: no reading, no lookup.
+- Token detection rests on the rarity letter `T`; when it is misread or absent, both the Card and
+  the token set are looked up and shown (the disambiguation is left to the human).

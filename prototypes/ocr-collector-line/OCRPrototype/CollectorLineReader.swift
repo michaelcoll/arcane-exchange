@@ -2,7 +2,7 @@ import Foundation
 
 /// What the collector line of a card says. `set` is the printed set code, lowercased: for a token
 /// the Scryfall set is "t" + `set` (`isToken`), and `number` has no leading zero.
-struct CollectorReading: Equatable, Sendable {
+struct CollectorReading: Hashable, Sendable {
     let set: String
     let number: String
     /// Scryfall language code.
@@ -21,7 +21,9 @@ enum CollectorLineReader {
     // "•" is often recognised as "*", "·" or "-". Digits may come out as O, I or l.
     private static let digit = "[0-9OIl]"
     private static let oldNumber = try! Regex("\\b(\(digit){3,4})\\s*/\\s*\(digit){3,4}\\s*([A-Z])?(?![a-z])")
-    private static let newNumber = try! Regex("^([CURMLST])\\s+(\(digit){3,4})$")
+    // Not anchored: Vision may merge "R 0123" with the set line or the artist. The lookahead asks for
+    // one real digit so that a word like "S Ill" is not a number.
+    private static let newNumber = try! Regex("\\b([CURMLST])\\s+(?=[OIl]*[0-9])(\(digit){3,4})\\b")
     private static let setAndLanguage = try! Regex("\\b([A-Z0-9]{3,5})\\s*[•*·∙.\\-]\\s*([A-Z]{2})(?![A-Za-z])")
 
     /// Printed language code -> Scryfall language code.
@@ -48,14 +50,14 @@ enum CollectorLineReader {
 
     private static func number(in line: String) -> (String, Bool)? {
         let trimmed = line.trimmingCharacters(in: .whitespaces)
+        if let match = trimmed.firstMatch(of: oldNumber), let digits = match.output[1].substring,
+           let number = normalised(digits) {
+            return (number, match.output[2].substring == "T")
+        }
         if let match = trimmed.firstMatch(of: newNumber),
            let rarity = match.output[1].substring, let digits = match.output[2].substring,
            let number = normalised(digits) {
             return (number, rarity == "T")
-        }
-        if let match = trimmed.firstMatch(of: oldNumber), let digits = match.output[1].substring,
-           let number = normalised(digits) {
-            return (number, match.output[2].substring == "T")
         }
         return nil
     }
