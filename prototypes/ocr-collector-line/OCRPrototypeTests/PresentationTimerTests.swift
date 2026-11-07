@@ -48,6 +48,42 @@ struct PresentationTimerTests {
         #expect(timer.observe(lines: lines, reading: other, at: 5.25) == 0.25)
     }
 
+    @Test func aNewCardSwappedInWithoutEmptyingTheLensIsRetained() {
+        var timer = PresentationTimer()
+        _ = timer.observe(lines: lines, reading: reading, at: 0)
+        _ = timer.observe(lines: lines, reading: reading, at: 0.2)
+        _ = timer.observe(lines: lines, reading: nil, at: 0.4)
+        _ = timer.observe(lines: lines, reading: other, at: 0.6)
+        #expect(timer.observe(lines: lines, reading: other, at: 0.8) == 0.4)
+    }
+
+    @Test func aNewCardReadAtOnceIsMeasuredFromItsFirstFrame() {
+        var timer = PresentationTimer()
+        _ = timer.observe(lines: lines, reading: reading, at: 0)
+        _ = timer.observe(lines: lines, reading: reading, at: 0.2)
+        _ = timer.observe(lines: lines, reading: other, at: 0.5)
+        #expect(timer.observe(lines: lines, reading: other, at: 0.75) == 0.25)
+    }
+
+    @Test func theRetainedCardBlurredForAFrameIsNotRetainedAgain() {
+        var timer = PresentationTimer()
+        _ = timer.observe(lines: lines, reading: reading, at: 0)
+        _ = timer.observe(lines: lines, reading: reading, at: 0.2)
+        _ = timer.observe(lines: lines, reading: nil, at: 0.4)
+        #expect(timer.observe(lines: lines, reading: reading, at: 0.6) == nil)
+        #expect(timer.observe(lines: lines, reading: reading, at: 0.8) == nil)
+    }
+
+    @Test func aBlurredFrameOfTheRetainedCardDoesNotStartTheNextCardsClock() {
+        var timer = PresentationTimer()
+        _ = timer.observe(lines: lines, reading: reading, at: 0)
+        _ = timer.observe(lines: lines, reading: reading, at: 0.2)
+        _ = timer.observe(lines: lines, reading: nil, at: 0.4)
+        _ = timer.observe(lines: lines, reading: reading, at: 0.6)
+        _ = timer.observe(lines: lines, reading: other, at: 1.0)
+        #expect(timer.observe(lines: lines, reading: other, at: 1.25) == 0.25)
+    }
+
     @Test func tooFewLinesIsNoCard() {
         var timer = PresentationTimer()
         #expect(timer.observe(lines: ["a"], reading: reading, at: 0) == nil)

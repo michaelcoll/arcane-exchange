@@ -12,6 +12,13 @@ struct ScanLabelsTests {
         #expect(ScanLabels.latency(nil) == "Pas encore de lecture")
     }
 
+    @Test func onlyTheContourModeSaysWhetherACardIsDetected() {
+        let contour = CardContour(topLeft: .zero, topRight: .zero, bottomRight: .zero, bottomLeft: .zero)
+        #expect(ScanLabels.contour(contour, in: .cardContour) == "Carte détectée")
+        #expect(ScanLabels.contour(nil, in: .cardContour) == "Aucune carte détectée")
+        #expect(ScanLabels.contour(contour, in: .fixedStrip) == nil)
+    }
+
     @Test func readingSaysWhetherTheRarityMakesItAToken() {
         let token = CollectorReading(set: "mkm", number: "12", language: "en", isToken: true)
         #expect(ScanLabels.reading(token).contains("rareté T : token"))
