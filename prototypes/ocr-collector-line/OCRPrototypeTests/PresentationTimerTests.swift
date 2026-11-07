@@ -2,8 +2,8 @@ import Testing
 @testable import OCRPrototype
 
 struct PresentationTimerTests {
-    let reading = CollectorReading(set: "mom", number: "123", language: "en", isToken: false)
-    let other = CollectorReading(set: "mom", number: "124", language: "en", isToken: false)
+    let reading = CollectorReading(set: "mom", number: "123", language: "en")
+    let other = CollectorReading(set: "mom", number: "124", language: "en")
     let lines = ["Elesh Norn", "R 0123", "MOM • EN"]
 
     @Test func retainsAReadingSeenOnTwoConsecutiveFramesAndReportsTheLatency() {

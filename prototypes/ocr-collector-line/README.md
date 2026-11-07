@@ -2,7 +2,8 @@
 
 Throwaway app: opens the iPhone camera, runs Vision text recognition (accurate level, no language
 correction) on every frame, and shows the raw recognised text and the time to a stable reading.
-Never merged into `main`; nothing here touches `ios-app/`.
+Kept in `main` as the starting point of the real scanner (report on #646); nothing here touches
+`ios-app/`.
 
 ## Run
 
@@ -80,12 +81,12 @@ frame, so the figure is a lower bound.
 ## Collector line reader (#657)
 
 `CollectorLineReader.read(lines:)` is a pure function: Vision's lines of one frame in, a
-`CollectorReading {set, number, language, isToken}` or nil out. Understood formats (2014-2022 then since 2023), the two lines being separate or merged:
+`CollectorReading {set, number, language}` or nil out. Understood formats (2014-2022 then since 2023), the two lines being separate or merged:
 
 - `0123/0280 R` then `DMU • FR  Artist`
 - `R 0123` then `MOM • EN`
 
-Rarity `T` = token (the Scryfall set is then `t` + `set`). The "•" may come as `*`, `·`, `-`;
+Rarity `T` (a token) gives no reading: tokens are not scanned (see below). The "•" may come as `*`, `·`, `-`;
 O/I/l in the number are read as 0/1; leading zeros are stripped; printed languages map to Scryfall
 codes (SP -> es, JP -> ja...). A reading needs set, number and a known language together. No
 bounding boxes are used.
@@ -109,34 +110,28 @@ OCRPrototype.xcodeproj -scheme OCRPrototype -destination 'platform=iOS Simulator
 CODE_SIGNING_ALLOWED=NO`. Use the id (`xcrun simctl list devices`): a device name matches several
 runtimes.
 
-## Scryfall et tokens (#659)
+## Scryfall lookup (#659)
 
-From the Scryfall API (checked 2026-11-05), NOT yet checked against physical cards.
+A retained reading triggers one lookup: `/cards/{set}/{number}/{lang}`, then on 404
+`/cards/{set}/{number}`. When the English printing is shown for another language read, the screen
+says so. One request per distinct reading, cached in memory per reading, at most 10 req/s,
+`User-Agent` and `Accept` sent. Numbers are stored without padding (`12`, not `0012`).
 
-- A retained reading triggers one lookup. Rarity `T`: only the token set, `/cards/t{set}/{number}`
-  (English, no language request). Any other rarity or none: `/cards/{set}/{number}/{lang}` (on 404
-  `/cards/{set}/{number}`) AND `/cards/t{set}/{number}`; every Card found is shown, labelled `CARTE`
-  or `TOKEN` (the `mkm/12` vs `tmkm/12` collision). When the English printing is shown for another
-  language read, the screen says so. One request per distinct reading, cached in memory per reading,
-  at most 10 req/s, `User-Agent` and `Accept` sent.
-- Double-faced token (`layout: double_faced_token`: Incubator // Phyrexian `tmom` 16-18, `teoc` 15,
-  `tfrc` 13; also Punchcard, Bounty/Wanted!, The Ring, speed cards): ONE object, ONE number, two
-  `card_faces`. Either face leads to the same Card. Transform and modal DFCs work the same way.
-- Regular and Commander tokens: one `layout: token` object per face, each with its own number, no
-  link between the two sides. If the physical card is printed back to back, reading each side gives
-  a different Card (unverified, gap against the "same Card per face" criterion).
-- Token set code = `t` + parent set code (`tmkm`), but the parent code collides: `mkm/12` is a card,
-  `tmkm/12` a token. Only the rarity `T` (or the type) tells them apart.
-- Scryfall has no non-English token at all: `tmkm/12/fr` is a 404, so a token goes straight to
-  English. The 404 body does not say whether set, number or language is wrong.
-- Numbers are stored without padding (`12`, not `0012`); some are not plain integers (`H13`, `T12`, `5★`).
+Transform and modal DFCs are one Scryfall object with one number and two `card_faces`; their back
+face carries the same collector line as the front, so either face leads to the same Card.
+
+## Tokens: not scanned
+
+Abandoned after the corpus pass (#646): Scryfall and MTGJSON give no reliable Cardmarket
+`productId` for a double-faced token, so a scanned token could not be priced. The reader returns no
+reading for rarity `T`, and tokens are added by search. What Scryfall does with tokens is recorded
+in the report on #646.
 
 ## Known limits (not fixed)
 
 - Two copies of the same printing in a row are one card: the second is only retained after the
   lens has been empty for 1 s, since nothing in the reading tells them apart.
-- Post-2023 format: the layout "rarity then number" (`R 0123`) is unverified on real cards. The
-  reader accepts it merged with other text on a line, but only from synthetic fixtures.
+- The reader fixtures are still synthetic, not captured on real cards.
 - Non-numeric collector numbers (`H13`, `★`...) are not read: no reading, no lookup.
-- Token detection rests on the rarity letter `T`; when it is misread or absent, both the Card and
-  the token set are looked up and shown (the disambiguation is left to the human).
+- A token whose rarity `T` is misread gives a reading and looks up the Card with the same set and
+  number (`mkm/12` instead of the token `tmkm/12`).

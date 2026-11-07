@@ -29,6 +29,12 @@ physique (transform, modale, meld). Les cartes split, aventure ou flip n'ont qu'
 sans image est en attente, jamais en erreur.
 _Avoid_ : illustration, scan, visuel Gatherer/Scryfall
 
+**Ligne d'impression** :
+Les deux lignes imprimées en bas d'une carte physique depuis 2014 environ : numéro, rareté, set et
+langue. Le scanner la lit pour retrouver la Card ; une carte qui n'en porte pas de lisible, ou un
+token, s'ajoute par recherche.
+_Avoid_ : ligne de collection, collector line
+
 **Source d'image** :
 L'origine retenue pour les images d'une Card, par ordre de préférence : Gatherer dans la langue de
 la carte, Gatherer en anglais, puis Scryfall. Une source n'est retenue que si elle fournit toutes les

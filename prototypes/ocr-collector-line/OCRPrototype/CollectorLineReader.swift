@@ -1,22 +1,23 @@
 import Foundation
 
-/// What the collector line of a card says. `set` is the printed set code, lowercased: for a token
-/// the Scryfall set is "t" + `set` (`isToken`), and `number` has no leading zero.
+/// What the collector line of a card says. `set` is the printed set code, lowercased, and `number`
+/// has no leading zero.
 struct CollectorReading: Hashable, Sendable {
     let set: String
     let number: String
     /// Scryfall language code.
     let language: String
-    let isToken: Bool
 }
 
 /// Reads the collector line out of the text lines Vision recognised in one frame.
 ///
-/// Two printed formats are understood (rarity letter `T` = token):
+/// Two printed formats are understood:
 /// - 2014-2022: `0123/0280 R` then `DMU • FR  Artist`
 /// - since 2023: `R 0123` then `MOM • EN`
 ///
-/// A reading needs the set, the number and a known language together, otherwise nil.
+/// A reading needs the set, the number and a known language together, otherwise nil. A token
+/// (rarity letter `T`) gives nil too: tokens are not scanned (no reliable Cardmarket product for a
+/// double-faced token in Scryfall or MTGJSON), they are added by search.
 enum CollectorLineReader {
     // "•" is often recognised as "*", "·" or "-". Digits may come out as O, I or l.
     private static let digit = "[0-9OIl]"
@@ -34,9 +35,9 @@ enum CollectorLineReader {
 
     static func read(lines: [String]) -> CollectorReading? {
         guard let (set, language) = lines.lazy.compactMap(setAndLanguage(in:)).first,
-              let (number, isToken) = lines.lazy.compactMap(number(in:)).first
+              let (number, isToken) = lines.lazy.compactMap(number(in:)).first, !isToken
         else { return nil }
-        return CollectorReading(set: set, number: number, language: language, isToken: isToken)
+        return CollectorReading(set: set, number: number, language: language)
     }
 
     private static func setAndLanguage(in line: String) -> (String, String)? {
