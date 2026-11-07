@@ -4,6 +4,7 @@ use crate::domain::card::{Card, CardId, CollectionEntry, CopyId};
 use crate::domain::card_image::{CardImageSource, CardImages, EnglishImage};
 use crate::domain::card_import::{CardImport, CardImportId, CardImportStatus};
 use crate::domain::card_offer::CardOfferSortField;
+use crate::domain::catalog::CatalogCard;
 use crate::domain::collection::{CollectionQuery, SearchQuery, SearchScope};
 use crate::domain::collection_stats::CollectionStats;
 use crate::domain::pagination::{Paginated, Pagination};
@@ -89,6 +90,15 @@ pub trait SetNameRepository: Send + Sync {
     /// All known sets, ordered by name.
     async fn find_all(&self) -> Result<Vec<SetName>, AppError>;
     async fn find_by_code(&self, code: SetCode) -> Result<Option<SetName>, AppError>;
+}
+
+#[async_trait]
+#[cfg_attr(test, automock)]
+pub trait CatalogRepository: Send + Sync {
+    /// Replaces the whole catalog with `cards` and writes `sets` (`ON CONFLICT DO NOTHING`, like
+    /// `SetNameRepository::save_all`) in one transaction: a failure leaves the previous catalog
+    /// untouched. No `Card` is ever read or written.
+    async fn replace_all(&self, sets: &[SetName], cards: &[CatalogCard]) -> Result<(), AppError>;
 }
 
 #[async_trait]

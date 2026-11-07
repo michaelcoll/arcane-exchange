@@ -16,6 +16,18 @@ pub fn client() -> Client {
         .unwrap()
 }
 
+/// A client for a body read as a stream (the ~400 MB Scryfall bulk): no total deadline, which a
+/// long download would always exceed, but the same patience for the server to answer and to send
+/// the next bytes.
+pub fn streaming_client() -> Client {
+    Client::builder()
+        .user_agent("reqwest")
+        .connect_timeout(TIMEOUT)
+        .read_timeout(TIMEOUT)
+        .build()
+        .unwrap()
+}
+
 /// Waits for a token of `ratelimiter` (`source` is only used in errors).
 pub async fn throttle(ratelimiter: &Ratelimiter, source: &str) -> Result<(), AppError> {
     match ratelimiter.try_wait() {

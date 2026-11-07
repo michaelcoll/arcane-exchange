@@ -48,6 +48,7 @@ use utoipa::OpenApi;
         super::showcase::controller::get_showcase,
         super::maintenance::controller::trigger_price_update,
         super::maintenance::controller::update_cardmarket_ids,
+        super::maintenance::controller::update_catalog,
         super::user::controller::register,
         super::user::controller::get_user_profile,
         super::trade::controller::create_trade,

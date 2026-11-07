@@ -630,6 +630,14 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/EnqueueResponse'
+  /maintenance/update-catalog:
+    post:
+      tags:
+      - maintenance
+      operationId: update_catalog
+      responses:
+        '204':
+          description: Catalog reloaded from the Scryfall bulk; a load already running makes this call a no-op
   /search/card:
     get:
       tags:
@@ -784,7 +792,7 @@ paths:
       parameters:
       - name: set_code
         in: path
-        description: Set code, 3 to 5 characters
+        description: Set code, 3 to 6 characters
         required: true
         schema:
           type: string

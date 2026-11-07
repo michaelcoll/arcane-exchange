@@ -6,7 +6,9 @@ use crate::domain::price::FullPriceGuide;
 use crate::domain::set_name::SetCode;
 use async_trait::async_trait;
 use chrono::NaiveDate;
+use futures::Stream;
 use std::fmt::{Display, Formatter};
+use std::pin::Pin;
 use uuid::Uuid;
 
 #[cfg(test)]
@@ -32,6 +34,46 @@ pub trait ScryfallCaller: Send + Sync {
     /// The card's `normal` images (488 × 680), converted to WebP, or `None` when Scryfall does not know the
     /// card or has no image for it. A technical failure (timeout, 5xx, rate limit) is an error.
     async fn get_card_images(&self, id: Uuid) -> Result<Option<CardImages>, AppError>;
+
+    /// Every object of the `all_cards` bulk, in the order Scryfall gives them, read as a stream so the
+    /// ~2 GB file is never held in memory. The objects are only decoded: filtering is the caller's job.
+    /// A failure while reading (network, truncated or malformed file) ends the stream with an error.
+    async fn stream_bulk_cards(&self) -> Result<ScryfallBulkCardStream, AppError>;
+}
+
+pub type ScryfallBulkCardStream =
+    Pin<Box<dyn Stream<Item = Result<ScryfallBulkCard, AppError>> + Send>>;
+
+/// An object of the Scryfall bulk, as decoded.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct ScryfallBulkCard {
+    pub scryfall_id: Uuid,
+    pub set_code: String,
+    pub set_name: String,
+    /// `token` for the set of a token (`tmkm`), whatever its code.
+    pub set_type: String,
+    pub collector_number: String,
+    pub language: String,
+    pub layout: String,
+    pub rarity: String,
+    /// The English name.
+    pub name: String,
+    /// The name as printed, only on a card not printed in English. Empty on a multi-face card:
+    /// Scryfall puts it on the faces then.
+    pub printed_name: Option<String>,
+    /// The faces of a multi-face card (transform, modal, split...), empty on a single-face one.
+    pub faces: Vec<ScryfallBulkCardFace>,
+    pub cardmarket_id: Option<u32>,
+    pub digital: bool,
+}
+
+/// A face of a multi-face object of the Scryfall bulk.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct ScryfallBulkCardFace {
+    /// The English name of the face.
+    pub name: String,
+    /// The name of the face as printed, only on a card not printed in English.
+    pub printed_name: Option<String>,
 }
 
 /// What Gatherer answered for a card in one language.

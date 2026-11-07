@@ -137,6 +137,11 @@ Tout tourne dans le même processus que l'API, sans ordonnanceur externe :
   jamais retéléchargée automatiquement : `POST /maintenance/update-card-images` remet en file les
   cartes en fallback et celles en attente.
 - **Import des prix** : tâche planifiée (cron in-process) toutes les 12 heures.
+- **Chargement du catalogue** : tâche planifiée quotidienne (cron in-process) ou
+  `POST /maintenance/update-catalog`, un seul à la fois. Le bulk Scryfall `all_cards` (~2 Go décompressé)
+  est lu en flux, ligne par ligne, par le `ScryfallCaller` ; les règles (tokens écartés, une impression par
+  set et numéro) vivent dans le use case. Le catalogue remplace l'ancien en une transaction en fin de
+  lecture : un échec le laisse intact. Il ne crée aucune Card et n'alimente aucune file.
 
 Corollaire : le backend est **stateful en mémoire** (files, dédup). Il n'est pas conçu pour tourner
 en plusieurs répliques en l'état.

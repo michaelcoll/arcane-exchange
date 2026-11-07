@@ -18,6 +18,12 @@ L'identité d'une Card : le triplet set / numéro de collection / langue. C'est 
 d'une carte ; les identifiants des catalogues externes n'en font jamais partie.
 _Avoid_ : scryfall_id, cardmarket_id comme identité
 
+**Catalogue** :
+L'ensemble des impressions de cartes connues de la plateforme, chargé depuis Scryfall, sans les
+tokens et indépendant de la possession : une impression peut y figurer sans que personne ne la
+possède. Une entrée est clé par set et numéro, sans langue ; elle ne crée aucune Card.
+_Avoid_ : base de cartes, référentiel
+
 **Finition** :
 Le fait qu'un exemplaire soit foil ou normal. Propriété de l'exemplaire possédé ou échangé, jamais de
 la Card.

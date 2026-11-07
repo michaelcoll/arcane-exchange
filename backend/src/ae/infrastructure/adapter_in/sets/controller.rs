@@ -31,7 +31,7 @@ pub(crate) async fn list_sets(
     get,
     path = "/sets/{set_code}",
     params(
-        ("set_code" = String, Path, description = "Set code, 3 to 5 characters"),
+        ("set_code" = String, Path, description = "Set code, 3 to 6 characters"),
     ),
     responses(
         (status = 200, description = "The set matching set_code", body = SetInfoResponse),
