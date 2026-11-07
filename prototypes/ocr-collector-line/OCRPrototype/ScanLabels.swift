@@ -6,6 +6,19 @@ enum ScanLabels {
         latency.map { String(format: "Lu en %.2f s", $0) } ?? "Pas encore de lecture"
     }
 
+    static func mode(_ mode: ScanMode) -> String {
+        switch mode {
+        case .fixedStrip: "Bande fixe"
+        case .cardContour: "Contour de la carte"
+        }
+    }
+
+    /// Nil in the fixed strip mode, which does not look for the card.
+    static func contour(_ contour: CardContour?, in mode: ScanMode) -> String? {
+        guard mode == .cardContour else { return nil }
+        return contour == nil ? "Aucune carte détectée" : "Carte détectée"
+    }
+
     static func reading(_ reading: CollectorReading?) -> String {
         guard let reading else { return "-" }
         let rarity = reading.isToken ? "rareté T : token" : "rareté autre que T ou absente : carte ou token"
