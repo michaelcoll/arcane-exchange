@@ -462,6 +462,136 @@ paths:
                 $ref: '#/components/schemas/ErrorResponse'
       security:
       - bearer_auth: []
+  /collection/cards/{set_code}/{collector_number}/{language_code}/entries:
+    get:
+      tags:
+      - collection
+      operationId: get_collection_entries
+      parameters:
+      - name: set_code
+        in: path
+        description: Set code of the card
+        required: true
+        schema:
+          type: string
+      - name: collector_number
+        in: path
+        description: Collector number of the card
+        required: true
+        schema:
+          type: string
+      - name: language_code
+        in: path
+        description: Language code of the card
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          description: 'What the caller owns of the card in both finishes, with the quantity committed by accepted trades per finish. Read from the collection itself: an edit shows at once'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CardEntriesResponse'
+        '400':
+          description: Invalid language code or collector number
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Missing or invalid token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      security:
+      - bearer_auth: []
+  /collection/entries/{id}:
+    delete:
+      tags:
+      - collection
+      operationId: remove_collection_entry
+      parameters:
+      - name: id
+        in: path
+        description: Collection entry id
+        required: true
+        schema:
+          type: string
+      responses:
+        '204':
+          description: Entry removed
+        '401':
+          description: Missing or invalid token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Entry not found, or not owned by the caller (`collection_entry_not_found`)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: The removal would take the owned copies under what accepted trades committed (`reserved_quantity_exceeded`)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      security:
+      - bearer_auth: []
+    patch:
+      tags:
+      - collection
+      operationId: update_collection_entry
+      parameters:
+      - name: id
+        in: path
+        description: Collection entry id
+        required: true
+        schema:
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateCollectionEntryRequest'
+        required: true
+      responses:
+        '200':
+          description: 'The entries of the card, after the edit. A finish change onto an existing entry merges the two: quantities add up, purchase price is the average of the prices present weighted by quantity, added date is the earliest'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CardEntriesResponse'
+        '400':
+          description: Quantity out of 1 to 255 (`invalid_quantity`), also when a merge goes over 255
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Missing or invalid token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Entry not found, or not owned by the caller (`collection_entry_not_found`)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: The edit would take the owned copies under what accepted trades committed (`reserved_quantity_exceeded`)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      security:
+      - bearer_auth: []
   /collection/import:
     get:
       tags:
@@ -1587,6 +1717,22 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/BinderResponse'
+    CardEntriesResponse:
+      type: object
+      description: What the caller owns of a card in both finishes, with what the accepted Trades committed.
+      required:
+      - entries
+      - reserved_quantity
+      properties:
+        entries:
+          type: array
+          items:
+            $ref: '#/components/schemas/CollectionEntryDetailResponse'
+        reserved_quantity:
+          $ref: '#/components/schemas/ReservedQuantityResponse'
+          description: |-
+            The owned quantity of a finish, all binders together, cannot go under its reserved
+            quantity.
     CardImportLineErrorResponse:
       type: object
       required:
@@ -1760,6 +1906,37 @@ components:
           type: string
         set_code:
           type: string
+    CollectionEntryDetailResponse:
+      type: object
+      description: 'One Collection entry of the caller: the copies of a card in one finish and one binder.'
+      required:
+      - id
+      - foil
+      - quantity
+      - added_at
+      properties:
+        added_at:
+          type: string
+          description: RFC 3339 timestamp
+        binder:
+          $ref: '#/components/schemas/EntryBinderResponse'
+          description: Absent for an entry stored in no binder.
+        foil:
+          type: boolean
+        id:
+          type: string
+          description: Designates the entry in `PATCH` and `DELETE /collection/entries/{id}`.
+        purchase_price:
+          type:
+          - integer
+          - 'null'
+          format: int32
+          description: Price in cents; `null` when the copies have no purchase price.
+          minimum: 0
+        quantity:
+          type: integer
+          format: int32
+          minimum: 0
     CollectionEntryResponse:
       type: object
       required:
@@ -1844,6 +2021,16 @@ components:
         enqueued:
           type: integer
           minimum: 0
+    EntryBinderResponse:
+      type: object
+      required:
+      - id
+      - name
+      properties:
+        id:
+          type: string
+        name:
+          type: string
     ErrorResponse:
       type: object
       description: |-
@@ -2050,6 +2237,21 @@ components:
           type: string
         set_code:
           type: string
+    ReservedQuantityResponse:
+      type: object
+      description: Copies committed by the accepted Trades, per finish.
+      required:
+      - normal
+      - foil
+      properties:
+        foil:
+          type: integer
+          format: int32
+          minimum: 0
+        normal:
+          type: integer
+          format: int32
+          minimum: 0
     ScanIndexEntryResponse:
       type: object
       description: |-
@@ -2307,6 +2509,22 @@ components:
         updated_at:
           type: string
           description: RFC 3339 timestamp
+    UpdateCollectionEntryRequest:
+      type: object
+      properties:
+        foil:
+          type:
+          - boolean
+          - 'null'
+          description: New finish. A change onto an existing entry merges the two.
+        quantity:
+          type:
+          - integer
+          - 'null'
+          format: int32
+          description: |-
+            New quantity, 1 to 255. Signed so an out-of-range value fails with `invalid_quantity`
+            (400) instead of a JSON extractor rejection.
     UserProfileResponse:
       type: object
       required:

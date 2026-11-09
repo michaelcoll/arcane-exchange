@@ -1,6 +1,9 @@
+pub mod edit_entry;
 pub mod get;
 pub mod get_card_import;
+pub mod get_entries;
 pub mod get_price_history;
 pub mod get_stats;
 pub mod import_card;
+pub mod remove_entry;
 pub mod run_card_import;

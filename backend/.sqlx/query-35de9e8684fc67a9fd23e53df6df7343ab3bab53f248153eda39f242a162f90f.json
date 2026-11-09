@@ -1,0 +1,38 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT tc.foil, SUM(tc.quantity)::BIGINT AS \"reserved!\"\n        FROM trade_card tc\n                 JOIN trade t ON t.id = tc.trade_id\n        WHERE tc.owner_user_id = $1\n          AND tc.set_code = $2 AND tc.collector_number = $3 AND tc.language_code = $4\n          AND t.status IN ('ONE_ACCEPTED', 'FULLY_ACCEPTED')\n        GROUP BY tc.foil\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "foil",
+        "type_info": "Bool",
+        "origin": {
+          "Table": {
+            "table": "trade_card",
+            "name": "foil"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "reserved!",
+        "type_info": "Int8",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text",
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": [
+      false,
+      null
+    ]
+  },
+  "hash": "35de9e8684fc67a9fd23e53df6df7343ab3bab53f248153eda39f242a162f90f"
+}

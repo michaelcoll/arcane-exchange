@@ -7,11 +7,13 @@ struct CardDetailView: View {
     let card: CollectionCard
 
     @State private var model: CardDetailViewModel
+    @State private var entriesModel: CollectionEntriesViewModel
     @Environment(\.tradeNavigator) private var openTrade
 
     init(card: CollectionCard, api: any APIProtocol) {
         self.card = card
         _model = State(initialValue: CardDetailViewModel(card: card, api: api))
+        _entriesModel = State(initialValue: CollectionEntriesViewModel(card: card, api: api))
     }
 
     var body: some View {
@@ -25,7 +27,12 @@ struct CardDetailView: View {
                 CardPriceGuide(guide: card.price_guide, history: model.history)
                 ownersSection
                 if let entry = card.collection_entry {
-                    CardOwnedCopies(entry: entry, trendCents: card.price_guide?.trend.map(Int.init))
+                    CardOwnedCopies(
+                        entry: entry,
+                        foil: card.foil,
+                        trendCents: card.price_guide?.trend.map(Int.init),
+                        entries: entriesModel
+                    )
                 }
             }
             .padding(.horizontal, 16)
@@ -36,6 +43,11 @@ struct CardDetailView: View {
         .task { await model.loadHistory() }
         .task { await model.loadSetName() }
         .task { await model.loadOffers() }
+        .task {
+            if card.collection_entry != nil {
+                await entriesModel.load()
+            }
+        }
         .alert(
             "Échange impossible",
             isPresented: Binding(get: { model.tradeOpener.startError != nil }, set: {

@@ -5,6 +5,7 @@ pub mod card_import;
 pub mod card_offer;
 pub mod catalog;
 pub mod collection;
+pub mod collection_entry;
 pub mod collection_stats;
 pub mod error;
 pub mod language_code;

@@ -67,6 +67,12 @@ pub enum FunctionalError {
     CardNotInCatalog,
     /// No catalog is loaded yet, so there is no scan index to serve.
     ScanIndexUnavailable,
+    /// No Collection entry has this identifier for the caller, whoever else it belongs to.
+    CollectionEntryNotFound,
+    /// A quantity outside the 1 to 255 an entry holds.
+    InvalidQuantity,
+    /// The edit would take the copies a player owns under what the accepted Trades committed.
+    ReservedQuantityExceeded,
 }
 
 impl FunctionalError {
@@ -120,6 +126,9 @@ impl FunctionalError {
             FunctionalError::ImportNotFound => "import_not_found",
             FunctionalError::CardNotInCatalog => "card_not_in_catalog",
             FunctionalError::ScanIndexUnavailable => "scan_index_unavailable",
+            FunctionalError::CollectionEntryNotFound => "collection_entry_not_found",
+            FunctionalError::InvalidQuantity => "invalid_quantity",
+            FunctionalError::ReservedQuantityExceeded => "reserved_quantity_exceeded",
         }
     }
 }
@@ -230,6 +239,11 @@ impl From<FunctionalError> for String {
                 "No card of the catalog has this set and collector number".to_string()
             }
             FunctionalError::ScanIndexUnavailable => "No catalog loaded yet".to_string(),
+            FunctionalError::CollectionEntryNotFound => "Collection entry not found".to_string(),
+            FunctionalError::InvalidQuantity => "Quantity must be between 1 and 255".to_string(),
+            FunctionalError::ReservedQuantityExceeded => {
+                "The edit would leave fewer copies than the accepted trades committed".to_string()
+            }
         }
     }
 }
