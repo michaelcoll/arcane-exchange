@@ -38,7 +38,7 @@ swift = "latest"
 # `lint-ios` is in, `build-ios` / `test-ios` are deliberately out: lefthook.yml has no per-folder
 # scoping, so they would fire Xcode on every commit regardless of what changed.
 description = "Runs all the checks for the project"
-depends = ["rebuild-docs", "sqlx-prepare", "test-backend", "test-frontend", "lint-backend", "lint-frontend", "lint-ios"]
+depends = ["rebuild-docs", "sqlx-prepare", "test-backend", "test-frontend", "lint-backend", "lint-frontend", "lint-ios", "test-release-announcement"]
 
 [tasks.clean-backend]
 dir = "backend"
@@ -304,6 +304,11 @@ description = "Tests the iOS app"
 dir = "ios-app"
 depends = ["generate-ios", "boot-ios-simulator"]
 run = "xcodebuild -scheme ArcaneExchange -destination 'platform=iOS Simulator,name=iPhone 17' test"
+
+[tasks.test-release-announcement]
+description = "Tests the script that announces each release on Discord (node:test, no dependency)"
+dir = ".github/scripts/release-announcement"
+run = "node --test"
 
 [tasks.lint-ios]
 description = "Lints the iOS app"

@@ -11,3 +11,5 @@ target
 ios-app
 ../.claude/worktrees
 maquette
+# Release bodies copied as GitHub generates them: reformatting would break the parser's input.
+../.github/scripts/release-announcement/fixtures
