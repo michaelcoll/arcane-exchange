@@ -569,14 +569,15 @@ impl TryFrom<CardWithPriceEntity> for Card {
             None
         };
 
-        let collection_entry = match (e.purchase_price, e.added_at) {
-            (Some(purchase_price), Some(added_at)) => CollectionEntry::Mine {
+        // `added_at` is masked for the public search: it tells the owner's row from the aggregate.
+        let collection_entry = match e.added_at {
+            Some(added_at) => CollectionEntry::Mine {
                 quantity: e.quantity as u8,
-                purchase_price: purchase_price as u32,
+                purchase_price: e.purchase_price.map(|p| p as u32),
                 added_at,
                 reserved: e.reserved,
             },
-            _ => CollectionEntry::Public {
+            None => CollectionEntry::Public {
                 owner_count: e.owner_count as u64,
                 reserved: e.reserved,
             },

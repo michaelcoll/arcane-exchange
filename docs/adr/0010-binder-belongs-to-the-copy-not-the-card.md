@@ -15,7 +15,7 @@ de distinguer ce qui est proposé de ce qui est gardé.
 ## Conséquences
 
 - Toute lecture qui présente « une carte d'un joueur » doit agréger ses entrées : quantités sommées et
-  plafonnées explicitement, prix d'achat moyenné par les quantités, date d'ajout la plus ancienne.
+  plafonnées explicitement, prix d'achat moyenné par les quantités des exemplaires qui en ont un, date d'ajout la plus ancienne.
   Une lecture non agrégée est un défaut, pas une variante.
 - Une entrée peut n'avoir aucun binder : l'unicité d'une entrée doit traiter cette absence comme une
   valeur à part entière.

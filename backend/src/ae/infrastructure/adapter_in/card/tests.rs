@@ -467,7 +467,7 @@ fn from_collection_entry_owned_propagates_reserved() {
 fn from_collection_entry_mine_panics() {
     let entry = CollectionEntry::Mine {
         quantity: 2,
-        purchase_price: 100,
+        purchase_price: Some(100),
         added_at: chrono::Utc::now(),
         reserved: false,
     };

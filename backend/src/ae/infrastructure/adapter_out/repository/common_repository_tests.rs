@@ -124,10 +124,36 @@ pub async fn insert_collection_entry_with_binder(
     .unwrap();
 }
 
+#[allow(clippy::too_many_arguments)]
+pub async fn insert_collection_entry_without_price(
+    pool: &PgPool,
+    set_code: &str,
+    collector_number: &str,
+    language_code: &str,
+    foil: bool,
+    user_id: &str,
+    quantity: i32,
+    date: chrono::DateTime<chrono::Utc>,
+) {
+    sqlx::query(
+        r#"INSERT INTO collection_entry (set_code, collector_number, language_code, foil, user_id, quantity, purchase_price, added_at)
+            VALUES ($1, $2, $3, $4, $5, $6, NULL, $7)"#)
+        .bind(set_code)
+        .bind(collector_number)
+        .bind(language_code)
+        .bind(foil)
+        .bind(user_id)
+        .bind(quantity)
+        .bind(date)
+    .execute(pool)
+    .await
+    .unwrap();
+}
+
 pub struct CollectionEntryRow {
     pub binder_name: Option<String>,
     pub quantity: i32,
-    pub purchase_price: i32,
+    pub purchase_price: Option<i32>,
 }
 
 pub async fn fetch_collection_entries(pool: &PgPool, user_id: &str) -> Vec<CollectionEntryRow> {

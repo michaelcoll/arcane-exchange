@@ -188,7 +188,7 @@ impl CardRepository for CardRepositoryAdapter {
                 .push_bind(card.id.foil)
                 .push_bind(user.id.as_str())
                 .push_bind(*quantity as i32)
-                .push_bind(*purchase_price as i32)
+                .push_bind(purchase_price.map(|p| p as i32))
                 .push_bind(*added_at)
                 .push_bind(
                     imported
@@ -419,7 +419,7 @@ mod tests {
         let rows = fetch_collection_entries(&pool, "test-user-id").await;
         assert_eq!(rows.len(), 1);
         assert_eq!(rows[0].quantity, 5);
-        assert_eq!(rows[0].purchase_price, 1500);
+        assert_eq!(rows[0].purchase_price, Some(1500));
     }
 
     #[sqlx::test]
@@ -1121,7 +1121,39 @@ mod tests {
         let entries = fetch_collection_entries(&pool, "test-user-id").await;
         assert_eq!(entries.len(), 1);
         assert_eq!(entries[0].quantity, 5);
-        assert_eq!(entries[0].purchase_price, 1500);
+        assert_eq!(entries[0].purchase_price, Some(1500));
+    }
+
+    #[sqlx::test]
+    async fn save_all_stores_an_absent_purchase_price_as_null(pool: PgPool) {
+        insert_user(&pool, "test-user-id", "testuser").await;
+        let repository = CardRepositoryAdapter::new(pool.clone());
+        let mut without_price = imported_card("87", 3, 0, None);
+        if let CollectionEntry::Mine { purchase_price, .. } =
+            &mut without_price.card.collection_entry
+        {
+            *purchase_price = None;
+        }
+
+        repository
+            .save_all(
+                &User::for_testing(),
+                &[without_price, imported_card("88", 2, 0, None)],
+            )
+            .await
+            .unwrap();
+
+        let entries = fetch_collection_entries(&pool, "test-user-id").await;
+        assert_eq!(entries.len(), 2);
+        let price_of = |quantity: i32| {
+            entries
+                .iter()
+                .find(|e| e.quantity == quantity)
+                .unwrap()
+                .purchase_price
+        };
+        assert_eq!(price_of(3), None);
+        assert_eq!(price_of(2), Some(0), "an explicit 0 is kept as is");
     }
 
     #[sqlx::test]

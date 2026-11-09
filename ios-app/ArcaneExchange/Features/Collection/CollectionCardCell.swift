@@ -12,7 +12,7 @@ struct CollectionCardCell: View {
     }
 
     private var purchaseCents: Int? {
-        card.collection_entry.map { Int($0.purchase_price) }
+        card.collection_entry?.purchase_price.map(Int.init)
     }
 
     private var trendCents: Int? {

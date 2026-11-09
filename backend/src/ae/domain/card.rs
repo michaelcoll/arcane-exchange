@@ -112,8 +112,8 @@ impl Display for CopyId {
 pub enum CollectionEntry {
     Mine {
         quantity: u8,
-        /// Price in cents
-        purchase_price: u32,
+        /// Price in cents; `None` when the copies have no purchase price (ADR-0023).
+        purchase_price: Option<u32>,
         added_at: chrono::DateTime<chrono::Utc>,
         /// `true` if this card is engaged in one of the owner's trades in `ONE_ACCEPTED` or
         /// `FULLY_ACCEPTED` status.
@@ -176,7 +176,7 @@ impl Card {
             rarity_code,
             collection_entry: CollectionEntry::Mine {
                 quantity,
-                purchase_price,
+                purchase_price: Some(purchase_price),
                 added_at: chrono::Utc::now(),
                 reserved: false,
             },
