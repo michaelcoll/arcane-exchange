@@ -27,6 +27,18 @@ export default defineConfig({
           name: 'nuxt',
           include: ['test/nuxt/*.{test,spec}.ts'],
           environment: 'nuxt',
+          // The Nuxt app boots the Clerk plugin, which fetches its scripts from Clerk's CDN when a
+          // publishable key is set. A test file that ends before the fetch does aborts it, and
+          // @clerk/shared rethrows that failure in a detached promise: Vitest then reports an
+          // unhandled error and exits non-zero. happy-dom loads no external script at all here.
+          environmentOptions: {
+            happyDom: {
+              settings: {
+                disableJavaScriptFileLoading: true,
+                handleDisabledFileLoadingAsSuccess: true,
+              },
+            },
+          },
         },
       }),
     ],
