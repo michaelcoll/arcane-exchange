@@ -144,3 +144,16 @@ private struct ShowcaseColumn: View {
         }
     }
 }
+
+#Preview("Vitrine") {
+    let hues: [CGFloat] = [0.0, 0.08, 0.15, 0.3, 0.45, 0.55, 0.65, 0.78, 0.9]
+    let size = CGSize(width: 252, height: 352)
+    let images = hues.map { hue in
+        UIGraphicsImageRenderer(size: size).image { context in
+            UIColor(hue: hue, saturation: 0.55, brightness: 0.75, alpha: 1).setFill()
+            context.fill(CGRect(origin: .zero, size: size))
+        }
+    }
+    return ShowcaseWall(images: images)
+        .ignoresSafeArea()
+}
