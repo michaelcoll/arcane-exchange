@@ -1,6 +1,7 @@
 import SwiftUI
 
-/// Edits one entry of a card: its quantity and finish, or removes it. A refusal (a quantity under
+/// Edits one entry of a card: its quantity and finish, moves all or some of its copies to another
+/// binder (or out of any binder), or removes it. A refusal (a quantity under
 /// what an accepted trade committed, say) stays in the model's `writeError`, shown as an alert.
 struct CollectionEntryEditSheet: View {
     let entry: CollectionEntryDetail
@@ -9,12 +10,20 @@ struct CollectionEntryEditSheet: View {
     @Environment(\.dismiss) private var dismiss
     @State private var quantity: Int
     @State private var foil: Bool
+    @State private var targetBinderID: String?
+    @State private var movedQuantity: Int
 
     init(entry: CollectionEntryDetail, model: CollectionEntriesViewModel) {
         self.entry = entry
         self.model = model
         _quantity = State(initialValue: Int(entry.quantity))
         _foil = State(initialValue: entry.foil)
+        _movedQuantity = State(initialValue: Int(entry.quantity))
+    }
+
+    /// A move needs a target other than the binder the entry is already in.
+    private var canMove: Bool {
+        targetBinderID != entry.binder?.id
     }
 
     var body: some View {
@@ -31,6 +40,25 @@ struct CollectionEntryEditSheet: View {
                         Text("Binder : \(binder.name)")
                     }
                 }
+                Section("Déplacer") {
+                    Picker("Vers", selection: $targetBinderID) {
+                        if entry.binder != nil {
+                            Text("Sans binder").tag(String?.none)
+                        }
+                        ForEach(model.binders.filter { $0.id != entry.binder?.id }, id: \.id) { binder in
+                            Text(binder.name).tag(String?.some(binder.id))
+                        }
+                    }
+                    Stepper("Quantité : \(movedQuantity)", value: $movedQuantity, in: 1 ... Int(entry.quantity))
+                    Button("Déplacer") {
+                        Task {
+                            if await model.move(entry, to: targetBinderID, quantity: movedQuantity) {
+                                dismiss()
+                            }
+                        }
+                    }
+                    .disabled(!canMove)
+                }
                 Section {
                     Button("Retirer de ma collection", role: .destructive) {
                         Task {
@@ -42,6 +70,7 @@ struct CollectionEntryEditSheet: View {
                 }
             }
             .disabled(model.isWriting)
+            .task { await model.loadBinders() }
             .navigationTitle("Exemplaire")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -69,6 +98,6 @@ struct CollectionEntryEditSheet: View {
                 message: { Text(model.writeError ?? "") }
             )
         }
-        .presentationDetents([.medium])
+        .presentationDetents([.medium, .large])
     }
 }

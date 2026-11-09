@@ -186,6 +186,15 @@ final class FakeAPI: APIProtocol, @unchecked Sendable {
         return try await onUpdateCollectionEntry(input)
     }
 
+    var onMoveCollectionEntry: (Operations.move_collection_entry.Input) async throws -> Operations.move_collection_entry.Output = { _ in
+        throw NotStubbed(operation: "move_collection_entry")
+    }
+
+    func move_collection_entry(_ input: Operations.move_collection_entry.Input) async throws -> Operations.move_collection_entry.Output {
+        record("move_collection_entry")
+        return try await onMoveCollectionEntry(input)
+    }
+
     var onRemoveCollectionEntry: (Operations.remove_collection_entry.Input) async throws -> Operations.remove_collection_entry.Output = { _ in
         throw NotStubbed(operation: "remove_collection_entry")
     }

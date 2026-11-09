@@ -1,9 +1,10 @@
 use super::dto::{
     CardEntriesResponse, CardImportResponse, CardImportStartedResponse, CollectionCardResponse,
-    CollectionParams, CollectionStatsResponse, PaginatedCollectionResponse,
-    UpdateCollectionEntryRequest,
+    CollectionParams, CollectionStatsResponse, MoveCollectionEntryRequest,
+    PaginatedCollectionResponse, UpdateCollectionEntryRequest,
 };
 use crate::application::error::AppError;
+use crate::domain::binder::BinderId;
 use crate::domain::card::CardId;
 use crate::domain::card_import::CardImportId;
 use crate::domain::collection::CollectionQuery;
@@ -31,6 +32,7 @@ pub fn create_collection_router() -> axum::Router<AppState> {
             "/cards/{set_code}/{collector_number}/{language_code}/entries",
             get(get_collection_entries),
         )
+        .route("/entries/{id}/move", post(move_collection_entry))
         .route(
             "/entries/{id}",
             patch(update_collection_entry).delete(remove_collection_entry),
@@ -326,6 +328,45 @@ pub(crate) async fn update_collection_entry(
             payload.quantity,
             payload.foil,
         )
+        .await?;
+
+    Ok(axum::Json(CardEntriesResponse::from(entries)))
+}
+
+#[utoipa::path(
+    post,
+    path = "/collection/entries/{id}/move",
+    params(("id" = String, Path, description = "Collection entry id")),
+    request_body = MoveCollectionEntryRequest,
+    responses(
+        (status = 200, description = "The entries of the card, after the move. The copies merge into the entry already in the target binder, with the same finish: quantities add up, purchase price is the average of the prices present weighted by quantity, added date is the earliest. The source entry is removed when it empties. A reserved card may be moved: the owned copies do not change", body = CardEntriesResponse),
+        (status = 400, description = "Quantity of 0 or over the entry's (`invalid_quantity`), also when a merge goes over 255"),
+        (status = 401, description = "Missing or invalid token"),
+        (status = 404, description = "Entry not found, or not owned by the caller (`collection_entry_not_found`); binder not found, also another player's (`binder_not_found`)"),
+    ),
+    security(("bearer_auth" = [])),
+    tag = "collection",
+)]
+pub(crate) async fn move_collection_entry(
+    AuthenticatedUser(user): AuthenticatedUser,
+    State(state): State<AppState>,
+    Path(id): Path<String>,
+    axum::Json(payload): axum::Json<MoveCollectionEntryRequest>,
+) -> Result<axum::Json<CardEntriesResponse>, AppError> {
+    // An identifier that is not a UUID designates no binder.
+    let binder_id = payload
+        .binder_id
+        .map(|binder_id| {
+            binder_id
+                .parse()
+                .map(BinderId)
+                .map_err(|_| AppError::from(FunctionalError::BinderNotFound))
+        })
+        .transpose()?;
+
+    let entries = state
+        .move_collection_entry_use_case
+        .move_collection_entry(&user.id, parse_entry_id(&id)?, binder_id, payload.quantity)
         .await?;
 
     Ok(axum::Json(CardEntriesResponse::from(entries)))

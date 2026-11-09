@@ -741,6 +741,35 @@ extension Components {
                 case message
             }
         }
+        /// - Remark: Generated from `#/components/schemas/MoveCollectionEntryRequest`.
+        public struct MoveCollectionEntryRequest: Codable, Hashable, Sendable {
+            /// Target binder; `null` or absent moves the copies out of any binder.
+            ///
+            /// - Remark: Generated from `#/components/schemas/MoveCollectionEntryRequest/binder_id`.
+            public var binder_id: Swift.String?
+            /// Copies to move, 1 up to the entry's quantity; all of them when absent. Signed so an
+            /// out-of-range value fails with `invalid_quantity` (400) instead of a JSON extractor
+            /// rejection.
+            ///
+            /// - Remark: Generated from `#/components/schemas/MoveCollectionEntryRequest/quantity`.
+            public var quantity: Swift.Int32?
+            /// Creates a new `MoveCollectionEntryRequest`.
+            ///
+            /// - Parameters:
+            ///   - binder_id: Target binder; `null` or absent moves the copies out of any binder.
+            ///   - quantity: Copies to move, 1 up to the entry's quantity; all of them when absent. Signed so an
+            public init(
+                binder_id: Swift.String? = nil,
+                quantity: Swift.Int32? = nil
+            ) {
+                self.binder_id = binder_id
+                self.quantity = quantity
+            }
+            public enum CodingKeys: String, CodingKey {
+                case binder_id
+                case quantity
+            }
+        }
         /// - Remark: Generated from `#/components/schemas/PaginatedCardOffersResponse`.
         public struct PaginatedCardOffersResponse: Codable, Hashable, Sendable {
             /// - Remark: Generated from `#/components/schemas/PaginatedCardOffersResponse/items`.

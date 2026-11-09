@@ -592,6 +592,51 @@ paths:
                 $ref: '#/components/schemas/ErrorResponse'
       security:
       - bearer_auth: []
+  /collection/entries/{id}/move:
+    post:
+      tags:
+      - collection
+      operationId: move_collection_entry
+      parameters:
+      - name: id
+        in: path
+        description: Collection entry id
+        required: true
+        schema:
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MoveCollectionEntryRequest'
+        required: true
+      responses:
+        '200':
+          description: 'The entries of the card, after the move. The copies merge into the entry already in the target binder, with the same finish: quantities add up, purchase price is the average of the prices present weighted by quantity, added date is the earliest. The source entry is removed when it empties. A reserved card may be moved: the owned copies do not change'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CardEntriesResponse'
+        '400':
+          description: Quantity of 0 or over the entry's (`invalid_quantity`), also when a merge goes over 255
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Missing or invalid token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Entry not found, or not owned by the caller (`collection_entry_not_found`); binder not found, also another player's (`binder_not_found`)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      security:
+      - bearer_auth: []
   /collection/import:
     get:
       tags:
@@ -2053,6 +2098,23 @@ components:
       properties:
         message:
           type: string
+    MoveCollectionEntryRequest:
+      type: object
+      properties:
+        binder_id:
+          type:
+          - string
+          - 'null'
+          description: Target binder; `null` or absent moves the copies out of any binder.
+        quantity:
+          type:
+          - integer
+          - 'null'
+          format: int32
+          description: |-
+            Copies to move, 1 up to the entry's quantity; all of them when absent. Signed so an
+            out-of-range value fails with `invalid_quantity` (400) instead of a JSON extractor
+            rejection.
     PaginatedCardOffersResponse:
       type: object
       required:

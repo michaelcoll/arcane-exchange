@@ -121,6 +121,10 @@ async fn every_route_refuses_an_anonymous_request() {
             "/collection/entries/6f2f0e5e-6b52-4b3e-9f0c-0d2c3f1d9a11",
         ),
         (
+            Method::POST,
+            "/collection/entries/6f2f0e5e-6b52-4b3e-9f0c-0d2c3f1d9a11/move",
+        ),
+        (
             Method::DELETE,
             "/collection/entries/6f2f0e5e-6b52-4b3e-9f0c-0d2c3f1d9a11",
         ),
@@ -1119,7 +1123,7 @@ mod entries {
     use super::*;
     use crate::application::use_case::{
         MockEditCollectionEntryUseCase, MockGetCollectionEntriesUseCase,
-        MockRemoveCollectionEntryUseCase,
+        MockMoveCollectionEntryUseCase, MockRemoveCollectionEntryUseCase,
     };
     use crate::domain::binder::BinderId;
     use crate::domain::collection_entry::{
@@ -1288,6 +1292,126 @@ mod entries {
             "collection_entry_not_found",
         )
         .await;
+    }
+
+    const BINDER_ID: &str = "0b1c2d3e-4f50-4a61-8b72-93a4b5c6d7e8";
+
+    fn move_app(mock: MockMoveCollectionEntryUseCase) -> axum::Router {
+        create_router(AppState {
+            move_collection_entry_use_case: Arc::new(mock),
+            ..AppState::for_testing()
+        })
+    }
+
+    #[tokio::test]
+    async fn move_returns_the_entries_after_the_move() {
+        let mut mock = MockMoveCollectionEntryUseCase::new();
+        mock.expect_move_collection_entry()
+            .times(1)
+            .withf(|_, id, binder, quantity| {
+                id.0.to_string() == ENTRY_ID
+                    && binder.map(|b| b.0.to_string()).as_deref() == Some(BINDER_ID)
+                    && *quantity == Some(2)
+            })
+            .returning(|_, _, _, _| Box::pin(async { Ok(card_entries()) }));
+
+        let response = authed_json(
+            move_app(mock),
+            Method::POST,
+            &format!("/collection/entries/{ENTRY_ID}/move"),
+            json!({ "binder_id": BINDER_ID, "quantity": 2 }),
+        )
+        .await;
+
+        assert_eq!(response.status(), StatusCode::OK);
+        assert_eq!(
+            json_of(response).await["entries"].as_array().unwrap().len(),
+            2
+        );
+    }
+
+    #[tokio::test]
+    async fn move_without_binder_nor_quantity_moves_everything_out_of_any_binder() {
+        let mut mock = MockMoveCollectionEntryUseCase::new();
+        mock.expect_move_collection_entry()
+            .times(1)
+            .withf(|_, _, binder, quantity| binder.is_none() && quantity.is_none())
+            .returning(|_, _, _, _| Box::pin(async { Ok(card_entries()) }));
+
+        let response = authed_json(
+            move_app(mock),
+            Method::POST,
+            &format!("/collection/entries/{ENTRY_ID}/move"),
+            json!({}),
+        )
+        .await;
+
+        assert_eq!(response.status(), StatusCode::OK);
+    }
+
+    #[tokio::test]
+    async fn move_maps_each_refusal_to_its_status_and_code() {
+        let cases = [
+            (
+                FunctionalError::InvalidQuantity,
+                StatusCode::BAD_REQUEST,
+                "invalid_quantity",
+            ),
+            (
+                FunctionalError::CollectionEntryNotFound,
+                StatusCode::NOT_FOUND,
+                "collection_entry_not_found",
+            ),
+            (
+                FunctionalError::BinderNotFound,
+                StatusCode::NOT_FOUND,
+                "binder_not_found",
+            ),
+        ];
+        for (error, status, code) in cases {
+            let mut mock = MockMoveCollectionEntryUseCase::new();
+            mock.expect_move_collection_entry()
+                .returning(move |_, _, _, _| {
+                    let error = error.clone();
+                    Box::pin(async move { Err(error.into()) })
+                });
+
+            let response = authed_json(
+                move_app(mock),
+                Method::POST,
+                &format!("/collection/entries/{ENTRY_ID}/move"),
+                json!({ "binder_id": BINDER_ID }),
+            )
+            .await;
+
+            assert_error(response, status, code).await;
+        }
+    }
+
+    #[tokio::test]
+    async fn move_treats_identifiers_that_are_not_uuids_as_unknown() {
+        let response = authed_json(
+            create_router(AppState::for_testing()),
+            Method::POST,
+            "/collection/entries/not-a-uuid/move",
+            json!({}),
+        )
+        .await;
+        assert_error(
+            response,
+            StatusCode::NOT_FOUND,
+            "collection_entry_not_found",
+        )
+        .await;
+
+        let response = authed_json(
+            create_router(AppState::for_testing()),
+            Method::POST,
+            &format!("/collection/entries/{ENTRY_ID}/move"),
+            json!({ "binder_id": "not-a-uuid" }),
+        )
+        .await;
+        assert_error(response, StatusCode::NOT_FOUND, "binder_not_found").await;
     }
 
     #[tokio::test]

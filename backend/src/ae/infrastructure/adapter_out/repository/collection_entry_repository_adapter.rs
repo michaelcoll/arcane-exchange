@@ -263,6 +263,40 @@ async fn write_stock(
     Ok(())
 }
 
+async fn insert_entry(
+    conn: &mut PgConnection,
+    user_id: &UserId,
+    card_id: &CardId,
+    foil: bool,
+    binder_id: Option<Uuid>,
+    stock: &EntryStock,
+) -> Result<(), AppError> {
+    let (set_code, collector_number, language_code) = card_columns(card_id);
+    sqlx::query!(
+        r#"
+        INSERT INTO collection_entry
+            (set_code, collector_number, language_code, foil, user_id, quantity, purchase_price,
+             added_at, binder_id)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+        "#,
+        set_code,
+        collector_number,
+        language_code,
+        foil,
+        user_id.as_str(),
+        i32::try_from(stock.quantity).map_err(|_| corrupt("quantity"))?,
+        stock
+            .purchase_price
+            .map(|price| i32::try_from(price).map_err(|_| corrupt("purchase price")))
+            .transpose()?,
+        stock.added_at,
+        binder_id,
+    )
+    .execute(conn)
+    .await?;
+    Ok(())
+}
+
 #[async_trait]
 impl CollectionEntryRepository for CollectionEntryRepositoryAdapter {
     #[tracing::instrument(name = "collection_entry_repo.find_by_card", skip_all, fields(sentry.op = "db"))]
@@ -334,6 +368,96 @@ impl CollectionEntryRepository for CollectionEntryRepositoryAdapter {
                     .execute(&mut *tx)
                     .await?;
                 }
+            }
+        }
+
+        let entries = find_card_entries(&mut tx, user_id, &card_id).await?;
+        tx.commit().await?;
+        Ok(entries)
+    }
+
+    #[tracing::instrument(name = "collection_entry_repo.move_to_binder", skip_all, fields(sentry.op = "db"))]
+    async fn move_to_binder(
+        &self,
+        user_id: &UserId,
+        id: CollectionEntryId,
+        binder_id: Option<BinderId>,
+        quantity: Option<u8>,
+    ) -> Result<CardEntries, AppError> {
+        let mut tx = self.pool.begin().await?;
+        let card_id = card_of_entry(&mut tx, user_id, id).await?;
+        let locked = lock_card_entries(&mut tx, user_id, &card_id).await?;
+        let entry = locked
+            .iter()
+            .find(|entry| entry.id == id.0)
+            .ok_or(FunctionalError::CollectionEntryNotFound)?;
+
+        if let Some(BinderId(binder)) = binder_id {
+            let owned_binder = sqlx::query_scalar!(
+                r#"SELECT id FROM binder WHERE id = $1 AND user_id = $2"#,
+                binder,
+                user_id.as_str(),
+            )
+            .fetch_optional(&mut *tx)
+            .await?;
+            if owned_binder.is_none() {
+                return Err(FunctionalError::BinderNotFound.into());
+            }
+        }
+
+        let moved = quantity.map_or(entry.quantity, u32::from);
+        if moved > entry.quantity {
+            return Err(FunctionalError::InvalidQuantity.into());
+        }
+        let target_binder = binder_id.map(|binder| binder.0);
+
+        // Moving into the binder the entry already is in leaves everything as it is.
+        if target_binder != entry.binder_id {
+            let target = locked
+                .iter()
+                .find(|other| other.foil == entry.foil && other.binder_id == target_binder);
+            let moved_stock = EntryStock {
+                quantity: moved,
+                ..entry.stock()
+            };
+
+            match target {
+                Some(target) => {
+                    let merged = target.stock().merge(&moved_stock)?;
+                    write_stock(&mut tx, target.id, &merged).await?;
+                }
+                None if moved == entry.quantity => {
+                    sqlx::query!(
+                        "UPDATE collection_entry SET binder_id = $2 WHERE id = $1",
+                        entry.id,
+                        target_binder
+                    )
+                    .execute(&mut *tx)
+                    .await?;
+                }
+                None => {
+                    insert_entry(
+                        &mut tx,
+                        user_id,
+                        &card_id,
+                        entry.foil,
+                        target_binder,
+                        &moved_stock,
+                    )
+                    .await?;
+                }
+            }
+
+            if moved < entry.quantity {
+                let left = EntryStock {
+                    quantity: entry.quantity - moved,
+                    ..entry.stock()
+                };
+                write_stock(&mut tx, entry.id, &left).await?;
+            } else if target.is_some() {
+                sqlx::query!("DELETE FROM collection_entry WHERE id = $1", entry.id)
+                    .execute(&mut *tx)
+                    .await?;
             }
         }
 
@@ -837,5 +961,238 @@ mod tests {
         let result = adapter(pool).delete(&user(), normal).await;
 
         assert!(result.is_ok());
+    }
+
+    // ---- move_to_binder ----
+
+    #[sqlx::test]
+    async fn move_all_into_an_empty_binder_keeps_the_entry(pool: PgPool) {
+        seed(&pool).await;
+        let id = insert_entry(&pool, USER, false, 3, Some(500), day(2), None).await;
+        let target = insert_binder(&pool, USER, "Trade").await;
+
+        let entries = adapter(pool)
+            .move_to_binder(&user(), id, Some(BinderId(target)), None)
+            .await
+            .unwrap();
+
+        assert_eq!(entries.entries.len(), 1);
+        let entry = &entries.entries[0];
+        assert_eq!(entry.id, id);
+        assert_eq!(entry.binder.as_ref().unwrap().name, "Trade");
+        assert_eq!(entry.quantity, 3);
+        assert_eq!(entry.purchase_price, Some(500));
+    }
+
+    #[sqlx::test]
+    async fn move_some_splits_the_entry_and_keeps_price_and_date(pool: PgPool) {
+        seed(&pool).await;
+        let id = insert_entry(&pool, USER, true, 4, Some(500), day(2), Some("A")).await;
+        let target = insert_binder(&pool, USER, "B").await;
+
+        let entries = adapter(pool)
+            .move_to_binder(&user(), id, Some(BinderId(target)), Some(1))
+            .await
+            .unwrap();
+
+        assert_eq!(entries.entries.len(), 2);
+        let source = entries.entries.iter().find(|e| e.id == id).unwrap();
+        assert_eq!(source.quantity, 3);
+        let moved = entries.entries.iter().find(|e| e.id != id).unwrap();
+        assert_eq!(moved.binder.as_ref().unwrap().name, "B");
+        assert_eq!(moved.quantity, 1);
+        assert!(moved.foil);
+        assert_eq!(moved.purchase_price, Some(500));
+        assert_eq!(moved.added_at, day(2));
+    }
+
+    #[sqlx::test]
+    async fn move_out_of_any_binder(pool: PgPool) {
+        seed(&pool).await;
+        let id = insert_entry(&pool, USER, false, 2, None, day(1), Some("A")).await;
+
+        let entries = adapter(pool)
+            .move_to_binder(&user(), id, None, Some(1))
+            .await
+            .unwrap();
+
+        assert_eq!(entries.entries.len(), 2);
+        assert!(
+            entries
+                .entries
+                .iter()
+                .any(|e| e.binder.is_none() && e.quantity == 1)
+        );
+        assert!(
+            entries
+                .entries
+                .iter()
+                .any(|e| e.binder.is_some() && e.quantity == 1)
+        );
+    }
+
+    #[sqlx::test]
+    async fn move_all_merges_into_the_target_and_removes_the_source(pool: PgPool) {
+        seed(&pool).await;
+        let source = insert_entry(&pool, USER, false, 2, Some(1000), day(5), Some("A")).await;
+        let target = insert_entry(&pool, USER, false, 1, Some(400), day(2), Some("B")).await;
+        let binder = insert_binder(&pool, USER, "B").await;
+
+        let entries = adapter(pool)
+            .move_to_binder(&user(), source, Some(BinderId(binder)), None)
+            .await
+            .unwrap();
+
+        assert_eq!(entries.entries.len(), 1);
+        let merged = &entries.entries[0];
+        assert_eq!(merged.id, target);
+        assert_eq!(merged.quantity, 3);
+        // (2 * 1000 + 1 * 400) / 3
+        assert_eq!(merged.purchase_price, Some(800));
+        assert_eq!(merged.added_at, day(2));
+    }
+
+    #[sqlx::test]
+    async fn move_some_merges_into_the_target_and_leaves_the_rest(pool: PgPool) {
+        seed(&pool).await;
+        let source = insert_entry(&pool, USER, false, 4, None, day(1), Some("A")).await;
+        let target = insert_entry(&pool, USER, false, 1, None, day(1), None).await;
+
+        let entries = adapter(pool)
+            .move_to_binder(&user(), source, None, Some(3))
+            .await
+            .unwrap();
+
+        assert_eq!(entries.entries.len(), 2);
+        assert_eq!(
+            entries
+                .entries
+                .iter()
+                .find(|e| e.id == source)
+                .unwrap()
+                .quantity,
+            1
+        );
+        assert_eq!(
+            entries
+                .entries
+                .iter()
+                .find(|e| e.id == target)
+                .unwrap()
+                .quantity,
+            4
+        );
+    }
+
+    #[sqlx::test]
+    async fn move_does_not_merge_across_finishes(pool: PgPool) {
+        seed(&pool).await;
+        let source = insert_entry(&pool, USER, false, 1, None, day(1), Some("A")).await;
+        insert_entry(&pool, USER, true, 1, None, day(1), None).await;
+
+        let entries = adapter(pool)
+            .move_to_binder(&user(), source, None, None)
+            .await
+            .unwrap();
+
+        assert_eq!(entries.entries.len(), 2);
+    }
+
+    #[sqlx::test]
+    async fn move_into_the_same_binder_changes_nothing(pool: PgPool) {
+        seed(&pool).await;
+        let id = insert_entry(&pool, USER, false, 2, None, day(1), Some("A")).await;
+        let same = insert_binder(&pool, USER, "A").await;
+
+        let entries = adapter(pool)
+            .move_to_binder(&user(), id, Some(BinderId(same)), Some(1))
+            .await
+            .unwrap();
+
+        assert_eq!(entries.entries.len(), 1);
+        assert_eq!(entries.entries[0].quantity, 2);
+    }
+
+    #[sqlx::test]
+    async fn move_is_accepted_for_a_reserved_card(pool: PgPool) {
+        seed(&pool).await;
+        let id = insert_entry(&pool, USER, false, 2, None, day(1), Some("A")).await;
+        commit(&pool, "FULLY_ACCEPTED", false, 2).await;
+
+        let entries = adapter(pool)
+            .move_to_binder(&user(), id, None, None)
+            .await
+            .unwrap();
+
+        assert_eq!(entries.entries[0].binder, None);
+        assert_eq!(entries.reserved_normal, 2);
+    }
+
+    #[sqlx::test]
+    async fn move_refuses_a_quantity_over_the_entrys(pool: PgPool) {
+        seed(&pool).await;
+        let id = insert_entry(&pool, USER, false, 2, None, day(1), Some("A")).await;
+
+        let error = adapter(pool)
+            .move_to_binder(&user(), id, None, Some(3))
+            .await
+            .unwrap_err();
+
+        assert_eq!(error.code(), "invalid_quantity");
+    }
+
+    #[sqlx::test]
+    async fn move_refuses_a_merge_over_the_bound(pool: PgPool) {
+        seed(&pool).await;
+        let source = insert_entry(&pool, USER, false, 200, None, day(1), Some("A")).await;
+        insert_entry(&pool, USER, false, 56, None, day(1), None).await;
+        let adapter = adapter(pool);
+
+        let error = adapter
+            .move_to_binder(&user(), source, None, None)
+            .await
+            .unwrap_err();
+
+        assert_eq!(error.code(), "invalid_quantity");
+        assert_eq!(
+            adapter
+                .find_by_card(&user(), &card())
+                .await
+                .unwrap()
+                .entries
+                .len(),
+            2
+        );
+    }
+
+    #[sqlx::test]
+    async fn move_refuses_an_unknown_entry_and_another_players(pool: PgPool) {
+        seed(&pool).await;
+        let foreign = insert_entry(&pool, OTHER, false, 1, None, day(1), None).await;
+        let adapter = adapter(pool);
+
+        for id in [foreign, CollectionEntryId(Uuid::new_v4())] {
+            let error = adapter
+                .move_to_binder(&user(), id, None, None)
+                .await
+                .unwrap_err();
+            assert_eq!(error.code(), "collection_entry_not_found");
+        }
+    }
+
+    #[sqlx::test]
+    async fn move_refuses_an_unknown_binder_and_another_players(pool: PgPool) {
+        seed(&pool).await;
+        let id = insert_entry(&pool, USER, false, 1, None, day(1), None).await;
+        let foreign = insert_binder(&pool, OTHER, "Bob's").await;
+        let adapter = adapter(pool);
+
+        for binder in [foreign, Uuid::new_v4()] {
+            let error = adapter
+                .move_to_binder(&user(), id, Some(BinderId(binder)), None)
+                .await
+                .unwrap_err();
+            assert_eq!(error.code(), "binder_not_found");
+        }
     }
 }
