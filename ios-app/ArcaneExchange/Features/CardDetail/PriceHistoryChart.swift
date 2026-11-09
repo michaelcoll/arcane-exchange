@@ -114,3 +114,9 @@ struct PriceHistoryChart: View {
         .font(.caption2)
     }
 }
+
+#Preview {
+    PriceHistoryChart(points: PricePoint.previewSeries)
+        .frame(height: 150)
+        .padding()
+}

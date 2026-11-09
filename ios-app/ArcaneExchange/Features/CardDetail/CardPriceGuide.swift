@@ -70,3 +70,18 @@ struct CardPriceGuide: View {
             .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 }
+
+#Preview("Historique en chargement") {
+    CardPriceGuide(guide: .preview, history: .loading)
+        .padding()
+}
+
+#Preview("Historique chargé") {
+    CardPriceGuide(guide: .preview, history: .ready(PricePoint.previewSeries))
+        .padding()
+}
+
+#Preview("Historique en erreur") {
+    CardPriceGuide(guide: .preview, history: .failed)
+        .padding()
+}
