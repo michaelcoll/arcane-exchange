@@ -101,3 +101,10 @@ struct CollectionEntryEditSheet: View {
         .presentationDetents([.medium, .large])
     }
 }
+
+#Preview {
+    CollectionEntryEditSheet(
+        entry: .preview,
+        model: CollectionEntriesViewModel(card: CollectionCard.previewGrid[0], api: APIClientFactory.preview)
+    )
+}
