@@ -1,6 +1,10 @@
 import APIClient
 import SwiftUI
 
+/// No `#Preview` here on purpose: the screen builds a Clerk-backed `accountToolbar()` and hits
+/// the API on `.task`, which hangs and crashes the Xcode preview agent. The pieces it composes
+/// (`CollectionCardGrid`, `CollectionCardCell`, `CollectionFilterRail`, `CollectionEmptyView`,
+/// `CollectionErrorView`) carry the previews instead.
 struct CollectionView: View {
     @State private var model: CollectionViewModel
     private let api: any APIProtocol
