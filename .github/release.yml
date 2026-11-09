@@ -2,14 +2,13 @@ changelog:
   categories:
     - title: 🎁 Features
       labels:
-        - "*"
-      exclude:
-        labels:
-          - dependencies
-          - fix
+        - feat
     - title: 🔧 Fixes
       labels:
         - fix
     - title: 📦 Dependencies
       labels:
         - dependencies
+    - title: 🧹 Maintenance
+      labels:
+        - "*"
