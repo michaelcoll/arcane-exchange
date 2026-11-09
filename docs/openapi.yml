@@ -318,6 +318,150 @@ paths:
                 $ref: '#/components/schemas/ErrorResponse'
       security:
       - bearer_auth: []
+  /collection/binders:
+    get:
+      tags:
+      - binders
+      operationId: list_binders
+      responses:
+        '200':
+          description: The binders of the authenticated user, empty ones included, sorted by name
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BindersResponse'
+        '401':
+          description: Missing or invalid token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      security:
+      - bearer_auth: []
+    post:
+      tags:
+      - binders
+      operationId: create_binder
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BinderNameRequest'
+        required: true
+      responses:
+        '201':
+          description: Binder created, closed to trade
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BinderResponse'
+        '400':
+          description: Blank or too long name; `code` is `invalid_binder_name`
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Missing or invalid token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: The user already has a binder of this name; `code` is `binder_name_taken`
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      security:
+      - bearer_auth: []
+  /collection/binders/{id}:
+    delete:
+      tags:
+      - binders
+      operationId: delete_binder
+      parameters:
+      - name: id
+        in: path
+        description: Binder id
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        '204':
+          description: Empty binder deleted, with its trade opening
+        '401':
+          description: Missing or invalid token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Binder not found, or not owned by the caller; `code` is `binder_not_found`
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: The binder still holds copies; `code` is `binder_not_empty`
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      security:
+      - bearer_auth: []
+    patch:
+      tags:
+      - binders
+      operationId: rename_binder
+      parameters:
+      - name: id
+        in: path
+        description: Binder id
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BinderNameRequest'
+        required: true
+      responses:
+        '200':
+          description: Binder renamed, its trade opening kept
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BinderResponse'
+        '400':
+          description: Blank or too long name; `code` is `invalid_binder_name`
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Missing or invalid token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Binder not found, or not owned by the caller; `code` is `binder_not_found`
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: The user already has a binder of this name; `code` is `binder_name_taken`
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      security:
+      - bearer_auth: []
   /collection/import:
     get:
       tags:
@@ -1406,6 +1550,43 @@ components:
           minimum: 0
         name:
           type: string
+    BinderNameRequest:
+      type: object
+      description: Body of the creation and of the renaming of a binder.
+      required:
+      - name
+      properties:
+        name:
+          type: string
+    BinderResponse:
+      type: object
+      required:
+      - id
+      - name
+      - copies
+      - is_open
+      properties:
+        copies:
+          type: integer
+          format: int64
+          description: 'Copies stored in the binder: the sum of its entries'' quantities, 0 when it is empty.'
+          minimum: 0
+        id:
+          type: string
+        is_open:
+          type: boolean
+          description: Whether the binder is open for trade.
+        name:
+          type: string
+    BindersResponse:
+      type: object
+      required:
+      - binders
+      properties:
+        binders:
+          type: array
+          items:
+            $ref: '#/components/schemas/BinderResponse'
     CardImportLineErrorResponse:
       type: object
       required:
@@ -2183,6 +2364,8 @@ tags:
   description: Single card lookup, price history and sale offers (authentication required)
 - name: collection
   description: Player's private collection (authentication required, no public catalog)
+- name: binders
+  description: 'Binders a player stores their collection in: list, creation, renaming, deletion of an empty one (authentication required)'
 - name: trade-settings
   description: 'Settings deciding what of a player''s collection is exposed for trade: visibility, binders open for trade, rarity filters (authentication required)'
 - name: search

@@ -10,6 +10,7 @@ struct AccountSettingsView: View {
         case visibility
         case binders
         case rarities
+        case manageBinders
 
         var id: String {
             rawValue
@@ -19,11 +20,14 @@ struct AccountSettingsView: View {
     @Environment(Clerk.self) private var clerk
     @Environment(\.dismiss) private var dismiss
 
+    private let api: any APIProtocol
+
     @State private var model: TradeSettingsViewModel
     @State private var drawer: Drawer?
     @State private var isConfirmingSignOut = false
 
     init(api: any APIProtocol) {
+        self.api = api
         _model = State(initialValue: TradeSettingsViewModel(api: api))
     }
 
@@ -43,6 +47,7 @@ struct AccountSettingsView: View {
                     case .visibility: TradeSettingsVisibilitySheet(model: model)
                     case .binders: TradeSettingsBindersSheet(model: model)
                     case .rarities: TradeSettingsRaritiesSheet(model: model)
+                    case .manageBinders: BindersView(api: api)
                     }
                 }
                 .writeErrorAlert(model)
@@ -58,6 +63,12 @@ struct AccountSettingsView: View {
     private var content: some View {
         List {
             AccountSection()
+            Section {
+                drawerRow(title: "Binders", systemImage: "books.vertical", value: "", drawer: .manageBinders)
+            } header: {
+                Text("Ma collection")
+                    .sectionCaptionStyle()
+            }
             // The error goes inline rather than replacing the screen: an expired session fails
             // this load, and "Se déconnecter" is exactly what the user needs to reach then.
             if let error = model.loadError {

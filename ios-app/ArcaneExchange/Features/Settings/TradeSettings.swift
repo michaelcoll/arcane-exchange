@@ -2,7 +2,6 @@ import APIClient
 
 /// Short names for the schema types the trade settings work with.
 typealias CollectionVisibility = Components.Schemas.CollectionVisibilityParam
-typealias BinderInfo = Components.Schemas.BinderInfoResponse
 typealias RarityFilter = Components.Schemas.RarityFilterResponse
 
 extension CollectionVisibility {

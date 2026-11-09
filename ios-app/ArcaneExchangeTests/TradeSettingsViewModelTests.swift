@@ -11,13 +11,13 @@ private func rarity(_ code: String, isOpen: Bool = true, copies: Int64 = 10, pro
 private func loadableAPI(rarities: [RarityFilter] = [rarity("C")]) -> FakeAPI {
     let api = FakeAPI()
     api.onGetTradeVisibility = { _ in .ok(.init(body: .json(.init(visibility: .trade)))) }
-    api.onGetCollectionStats = { _ in
-        .ok(.init(body: .json(.init(
-            binders: [.init(card_count: 3, name: "Binder 10"), .init(card_count: 5, name: "Binder 2")],
-            sets: [],
-            total_cards: 8,
-            unique_cards: 8
-        ))))
+    // An empty binder is listed too: it can be opened to trade.
+    api.onListBinders = { _ in
+        .ok(.init(body: .json(.init(binders: [
+            Binder(copies: 3, id: "1", is_open: false, name: "Binder 10"),
+            Binder(copies: 5, id: "2", is_open: true, name: "Binder 2"),
+            Binder(copies: 0, id: "3", is_open: false, name: "Empty"),
+        ]))))
     }
     api.onGetTradeBinders = { _ in .ok(.init(body: .json(.init(binders: ["Binder 2"])))) }
     api.onGetTradeRarityFilters = { _ in .ok(.init(body: .json(.init(rarities: rarities)))) }
@@ -33,13 +33,13 @@ struct TradeSettingsViewModelTests {
         await model.load()
 
         #expect(model.visibility == .trade)
-        #expect(model.binders.map(\.name) == ["Binder 2", "Binder 10"])
+        #expect(model.binders.map(\.name) == ["Binder 2", "Binder 10", "Empty"])
         #expect(model.selectedBinders == ["Binder 2"])
         #expect(model.rarities.map(\.rarity) == ["C"])
         #expect(model.loadError == nil)
         #expect(!model.isLoading)
         #expect(Set(api.calls) == [
-            "get_trade_visibility", "get_collection_stats", "get_trade_binders", "get_trade_rarity_filters",
+            "get_trade_visibility", "list_binders", "get_trade_binders", "get_trade_rarity_filters",
         ])
     }
 

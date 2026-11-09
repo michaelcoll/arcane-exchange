@@ -5,6 +5,10 @@ use crate::application::enrichment_queue::EnrichmentQueue;
 use crate::application::error::{AppError, InfraError};
 use crate::application::repository::CardImportRepository;
 use crate::application::service::autocomplete::users::AutocompleteUserService;
+use crate::application::service::binder::create::CreateBinderService;
+use crate::application::service::binder::delete::DeleteBinderService;
+use crate::application::service::binder::list::ListBindersService;
+use crate::application::service::binder::rename::RenameBinderService;
 use crate::application::service::card::get_offers::CardOfferService;
 use crate::application::service::card::get_price_history::CardPriceHistoryService;
 use crate::application::service::catalog::scan_index::ScanIndexService;
@@ -46,19 +50,21 @@ use crate::application::service::user::register::RegisterUserService;
 use crate::application::token_validator::TokenValidator;
 use crate::application::use_case::{
     AbandonTradeUseCase, AcceptTradeUseCase, AddTradeBinderUseCase, AddTradeCardUseCase,
-    AutocompleteUsersUseCase, ConfirmTradeUseCase, CreateTradeUseCase,
-    EnqueueCardImageUpdateUseCase, EnqueueCardMarketIdUpdateUseCase, GetCardImportUseCase,
-    GetCardOffersUseCase, GetCardPriceHistoryUseCase, GetCollectionPriceHistoryUseCase,
-    GetCollectionStatsUseCase, GetCollectionUseCase, GetCollectionVisibilityUseCase,
-    GetRarityTradeFiltersUseCase, GetSetUseCase, GetShowcaseUseCase, GetTradeBindersUseCase,
-    GetTradeUseCase, GetUserProfileUseCase, ImportCardUseCase, ImportPriceUseCase, ListSetsUseCase,
-    ListTradesUseCase, RateTradeUseCase, RegisterUserUseCase, RemoveTradeBinderUseCase,
-    RemoveTradeCardUseCase, RunCardImportUseCase, ScanIndexUseCase, SearchCardsUseCase,
+    AutocompleteUsersUseCase, ConfirmTradeUseCase, CreateBinderUseCase, CreateTradeUseCase,
+    DeleteBinderUseCase, EnqueueCardImageUpdateUseCase, EnqueueCardMarketIdUpdateUseCase,
+    GetCardImportUseCase, GetCardOffersUseCase, GetCardPriceHistoryUseCase,
+    GetCollectionPriceHistoryUseCase, GetCollectionStatsUseCase, GetCollectionUseCase,
+    GetCollectionVisibilityUseCase, GetRarityTradeFiltersUseCase, GetSetUseCase,
+    GetShowcaseUseCase, GetTradeBindersUseCase, GetTradeUseCase, GetUserProfileUseCase,
+    ImportCardUseCase, ImportPriceUseCase, ListBindersUseCase, ListSetsUseCase, ListTradesUseCase,
+    RateTradeUseCase, RegisterUserUseCase, RemoveTradeBinderUseCase, RemoveTradeCardUseCase,
+    RenameBinderUseCase, RunCardImportUseCase, ScanIndexUseCase, SearchCardsUseCase,
     SearchSetsUseCase, SetCollectionVisibilityUseCase, SetRarityTradeFilterUseCase, StatsUseCase,
     UpdateCatalogUseCase,
 };
 use crate::config::Config;
 use crate::infrastructure::adapter_in::autocomplete::controller::create_autocomplete_router;
+use crate::infrastructure::adapter_in::binder::controller::create_binder_router;
 use crate::infrastructure::adapter_in::card::controller::create_card_router;
 use crate::infrastructure::adapter_in::catalog::controller::create_catalog_router;
 use crate::infrastructure::adapter_in::collection::controller::create_collection_router;
@@ -71,6 +77,7 @@ use crate::infrastructure::adapter_in::with_error_body;
 use crate::infrastructure::adapter_out::caller::cardmarket_caller_adapter::CardMarketCallerAdapter;
 use crate::infrastructure::adapter_out::caller::edhrec_caller_adapter::EdhRecCallerAdapter;
 use crate::infrastructure::adapter_out::clerk_token_validator_adapter::ClerkTokenValidatorAdapter;
+use crate::infrastructure::adapter_out::repository::binder_repository_adapter::BinderRepositoryAdapter;
 use crate::infrastructure::adapter_out::repository::card_prices_view_repository_adapter::CardPricesViewRepositoryAdapter;
 use crate::infrastructure::adapter_out::repository::cardmarket_price_repository_adapter::CardMarketPriceRepositoryAdapter;
 use crate::infrastructure::adapter_out::repository::collection_price_history_repository_adapter::CollectionPriceHistoryRepositoryAdapter;
@@ -137,6 +144,10 @@ pub struct AppState {
     pub remove_trade_card_use_case: Arc<dyn RemoveTradeCardUseCase>,
     pub get_collection_visibility_use_case: Arc<dyn GetCollectionVisibilityUseCase>,
     pub set_collection_visibility_use_case: Arc<dyn SetCollectionVisibilityUseCase>,
+    pub list_binders_use_case: Arc<dyn ListBindersUseCase>,
+    pub create_binder_use_case: Arc<dyn CreateBinderUseCase>,
+    pub rename_binder_use_case: Arc<dyn RenameBinderUseCase>,
+    pub delete_binder_use_case: Arc<dyn DeleteBinderUseCase>,
     pub get_trade_binders_use_case: Arc<dyn GetTradeBindersUseCase>,
     pub add_trade_binder_use_case: Arc<dyn AddTradeBinderUseCase>,
     pub remove_trade_binder_use_case: Arc<dyn RemoveTradeBinderUseCase>,
@@ -162,6 +173,7 @@ struct Repositories {
     collection_price_history: Arc<CollectionPriceHistoryRepositoryAdapter>,
     collection_stats: Arc<CollectionStatsRepositoryAdapter>,
     trading_binders: Arc<TradingBindersRepositoryAdapter>,
+    binder: Arc<BinderRepositoryAdapter>,
     collection_rarity_filters: Arc<CollectionRarityFiltersRepositoryAdapter>,
     card_import: Arc<CardImportRepositoryAdapter>,
     catalog: Arc<CatalogRepositoryAdapter>,
@@ -182,6 +194,7 @@ fn create_repositories(pool: &Pool<Postgres>) -> Repositories {
         )),
         collection_stats: Arc::new(CollectionStatsRepositoryAdapter::new(pool.clone())),
         trading_binders: Arc::new(TradingBindersRepositoryAdapter::new(pool.clone())),
+        binder: Arc::new(BinderRepositoryAdapter::new(pool.clone())),
         collection_rarity_filters: Arc::new(CollectionRarityFiltersRepositoryAdapter::new(
             pool.clone(),
         )),
@@ -294,6 +307,14 @@ fn create_app_state(
         Arc::new(GetCollectionVisibilityService::new(repos.user.clone()));
     let set_collection_visibility_service: Arc<dyn SetCollectionVisibilityUseCase> =
         Arc::new(SetCollectionVisibilityService::new(repos.user.clone()));
+    let list_binders_service: Arc<dyn ListBindersUseCase> =
+        Arc::new(ListBindersService::new(repos.binder.clone()));
+    let create_binder_service: Arc<dyn CreateBinderUseCase> =
+        Arc::new(CreateBinderService::new(repos.binder.clone()));
+    let rename_binder_service: Arc<dyn RenameBinderUseCase> =
+        Arc::new(RenameBinderService::new(repos.binder.clone()));
+    let delete_binder_service: Arc<dyn DeleteBinderUseCase> =
+        Arc::new(DeleteBinderService::new(repos.binder));
     let get_trade_binders_service: Arc<dyn GetTradeBindersUseCase> =
         Arc::new(GetTradeBindersService::new(repos.trading_binders.clone()));
     let add_trade_binder_service: Arc<dyn AddTradeBinderUseCase> =
@@ -372,6 +393,10 @@ fn create_app_state(
         remove_trade_card_use_case: remove_trade_card_service,
         get_collection_visibility_use_case: get_collection_visibility_service,
         set_collection_visibility_use_case: set_collection_visibility_service,
+        list_binders_use_case: list_binders_service,
+        create_binder_use_case: create_binder_service,
+        rename_binder_use_case: rename_binder_service,
+        delete_binder_use_case: delete_binder_service,
         get_trade_binders_use_case: get_trade_binders_service,
         add_trade_binder_use_case: add_trade_binder_service,
         remove_trade_binder_use_case: remove_trade_binder_service,
@@ -427,6 +452,7 @@ pub(crate) fn create_router(app_state: AppState) -> Router {
         .nest("/card", create_card_router())
         .nest("/catalog", create_catalog_router())
         .nest("/collection", create_collection_router())
+        .nest("/collection/binders", create_binder_router())
         .nest("/collection/trade-settings", create_trade_settings_router())
         .nest("/search", create_search_router())
         .nest("/sets", create_set_router())

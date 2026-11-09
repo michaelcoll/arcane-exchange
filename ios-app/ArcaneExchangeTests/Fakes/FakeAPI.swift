@@ -168,6 +168,42 @@ final class FakeAPI: APIProtocol, @unchecked Sendable {
         return try await onRemoveTradeBinder(input)
     }
 
+    var onListBinders: (Operations.list_binders.Input) async throws -> Operations.list_binders.Output = { _ in
+        throw NotStubbed(operation: "list_binders")
+    }
+
+    func list_binders(_ input: Operations.list_binders.Input) async throws -> Operations.list_binders.Output {
+        record("list_binders")
+        return try await onListBinders(input)
+    }
+
+    var onCreateBinder: (Operations.create_binder.Input) async throws -> Operations.create_binder.Output = { _ in
+        throw NotStubbed(operation: "create_binder")
+    }
+
+    func create_binder(_ input: Operations.create_binder.Input) async throws -> Operations.create_binder.Output {
+        record("create_binder")
+        return try await onCreateBinder(input)
+    }
+
+    var onRenameBinder: (Operations.rename_binder.Input) async throws -> Operations.rename_binder.Output = { _ in
+        throw NotStubbed(operation: "rename_binder")
+    }
+
+    func rename_binder(_ input: Operations.rename_binder.Input) async throws -> Operations.rename_binder.Output {
+        record("rename_binder")
+        return try await onRenameBinder(input)
+    }
+
+    var onDeleteBinder: (Operations.delete_binder.Input) async throws -> Operations.delete_binder.Output = { _ in
+        throw NotStubbed(operation: "delete_binder")
+    }
+
+    func delete_binder(_ input: Operations.delete_binder.Input) async throws -> Operations.delete_binder.Output {
+        record("delete_binder")
+        return try await onDeleteBinder(input)
+    }
+
     var onGetTradeRarityFilters: (Operations.get_trade_rarity_filters.Input) async throws -> Operations.get_trade_rarity_filters.Output = { _ in
         throw NotStubbed(operation: "get_trade_rarity_filters")
     }

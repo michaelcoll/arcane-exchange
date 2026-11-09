@@ -14,7 +14,7 @@ final class TradeSettingsViewModel {
     }
 
     private(set) var visibility: CollectionVisibility = ._private
-    private(set) var binders: [BinderInfo] = []
+    private(set) var binders: [Binder] = []
     private(set) var selectedBinders: Set<String> = []
     private(set) var rarities: [RarityFilter] = []
 
@@ -137,8 +137,9 @@ final class TradeSettingsViewModel {
         try await api.get_trade_visibility().ok.body.json.visibility
     }
 
-    private func fetchBinders() async throws -> [BinderInfo] {
-        try await api.get_collection_stats().ok.body.json.binders
+    /// The player's binders, empty ones included: an empty binder can be opened to trade too.
+    private func fetchBinders() async throws -> [Binder] {
+        try await api.list_binders().ok.body.json.binders
             .sorted { $0.name.localizedStandardCompare($1.name) == .orderedAscending }
     }
 

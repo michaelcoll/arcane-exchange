@@ -98,6 +98,9 @@ enum APIErrorMessages {
         "trade_card_not_found": "Cette carte ne fait plus partie de l'échange.",
         "card_already_reserved": "Cette carte est déjà réservée dans un autre échange.",
         "binder_not_found": "Ce binder n'existe plus dans ta collection.",
+        "binder_name_taken": "Tu as déjà un binder avec ce nom.",
+        "invalid_binder_name": "Le nom d'un binder ne peut pas être vide ni dépasser 255 caractères.",
+        "binder_not_empty": "Ce binder contient encore des cartes : déplace-les ou retire-les d'abord.",
         "user_not_found": "Ce joueur est introuvable.",
         // Also what adding a card to a trade answers when its owner no longer offers it.
         "card_not_found": "Cette carte est introuvable ou n'est plus disponible.",

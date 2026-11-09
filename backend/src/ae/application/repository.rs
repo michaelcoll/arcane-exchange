@@ -1,5 +1,6 @@
 use crate::application::error::AppError;
 use crate::application::imported_card::ImportedCard;
+use crate::domain::binder::{Binder, BinderId, BinderName};
 use crate::domain::card::{Card, CardId, CollectionEntry, CopyId};
 use crate::domain::card_image::{CardImageSource, CardImages, EnglishImage};
 use crate::domain::card_import::{CardImport, CardImportId, CardImportStatus};
@@ -265,6 +266,30 @@ pub trait TradingBinderRepository: Send + Sync {
     /// Deletes `user_id`'s binders that no `collection_entry` row refers to, with their trade
     /// opening. Run at the end of an import, which replaces the player's binders.
     async fn purge_missing(&self, user_id: &UserId) -> Result<(), AppError>;
+}
+
+#[async_trait]
+#[cfg_attr(test, automock)]
+pub trait BinderRepository: Send + Sync {
+    /// `user_id`'s binders, empty ones included, sorted by name.
+    async fn list(&self, user_id: &UserId) -> Result<Vec<Binder>, AppError>;
+
+    /// Creates a binder, closed to trade. `BinderNameTaken` if `user_id` already has one of this
+    /// name.
+    async fn create(&self, user_id: &UserId, name: &BinderName) -> Result<Binder, AppError>;
+
+    /// Renames `id`, which keeps its trade opening. `BinderNotFound` if it is not one of
+    /// `user_id`'s binders, `BinderNameTaken` if another of their binders has the name.
+    async fn rename(
+        &self,
+        user_id: &UserId,
+        id: BinderId,
+        name: &BinderName,
+    ) -> Result<Binder, AppError>;
+
+    /// Deletes the empty binder `id`, with its trade opening. `BinderNotFound` if it is not one
+    /// of `user_id`'s binders, `BinderNotEmpty` if a collection entry is stored in it.
+    async fn delete(&self, user_id: &UserId, id: BinderId) -> Result<(), AppError>;
 }
 
 #[async_trait]

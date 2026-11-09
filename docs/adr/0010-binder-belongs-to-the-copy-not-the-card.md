@@ -1,4 +1,5 @@
 ---
+status: amended by ADR-0022
 date: 2026-08-16
 ---
 
@@ -21,3 +22,5 @@ de distinguer ce qui est proposé de ce qui est gardé.
   valeur à part entière.
 - Les binders ne sont ni créés, ni renommés, ni supprimés par la plateforme. L'import fait foi, et un
   binder disparu d'un nouvel export emporte les sélections d'échange qui le visaient.
+  _Amendé par l'ADR-0022 : cette conséquence ne tient plus. Le joueur crée, renomme et supprime ses
+  binders depuis la plateforme, qui fait foi pour sa collection._
