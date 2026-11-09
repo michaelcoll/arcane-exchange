@@ -1583,15 +1583,17 @@ components:
       type: object
       required:
       - quantity
-      - purchase_price
       - added_at
       properties:
         added_at:
           type: string
           description: RFC 3339 timestamp
         purchase_price:
-          type: integer
+          type:
+          - integer
+          - 'null'
           format: int32
+          description: Price in cents; `null` when the copies have no purchase price.
           minimum: 0
         quantity:
           type: integer

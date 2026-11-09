@@ -1,4 +1,4 @@
-# arcane_t648 — public schema
+# postgres — public schema
 
 ```mermaid
 erDiagram
@@ -58,7 +58,7 @@ erDiagram
         boolean foil "not null"
         character_varying(50) user_id FK "not null"
         integer quantity "not null"
-        integer purchase_price "not null"
+        integer purchase_price
         timestamp_with_time_zone added_at
         uuid binder_id FK
     }

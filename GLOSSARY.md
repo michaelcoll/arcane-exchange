@@ -89,7 +89,7 @@ _Avoid_ : inventaire, stock
 
 **Collection entry** :
 La possession, par un joueur, d'un certain nombre d'exemplaires d'une carte dans une finition donnée
-et un binder donné. Porte la quantité, le prix d'achat et la date d'ajout.
+et un binder donné. Porte la quantité, le prix d'achat, qui peut être absent, et la date d'ajout.
 _Avoid_ : ligne de collection, possession, card quantity
 
 **Écart depuis l'achat** :

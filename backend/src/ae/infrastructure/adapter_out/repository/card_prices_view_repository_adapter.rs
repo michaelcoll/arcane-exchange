@@ -461,9 +461,9 @@ mod tests {
     use crate::domain::rarity_code::RarityCode;
     use crate::infrastructure::adapter_out::repository::common_repository_tests::{
         insert_card, insert_card_with_rarity, insert_card_without_cardmarket_id,
-        insert_collection_entry, insert_collection_entry_with_binder, insert_price,
-        insert_rarity_filter, insert_set, insert_trading_binder, insert_user,
-        insert_user_with_visibility, refresh_view,
+        insert_collection_entry, insert_collection_entry_with_binder,
+        insert_collection_entry_without_price, insert_price, insert_rarity_filter, insert_set,
+        insert_trading_binder, insert_user, insert_user_with_visibility, refresh_view,
     };
     use crate::infrastructure::adapter_out::repository::entities::{
         CardMarketPriceEntity, PriceGuideEntity,
@@ -921,11 +921,95 @@ mod tests {
             } => {
                 assert_eq!(quantity, 5, "quantity must be summed across binders");
                 // weighted average, truncated like the import parser: (2*100+3*200)/5 = 800/5 = 160
-                assert_eq!(purchase_price, 160);
+                assert_eq!(purchase_price, Some(160));
                 assert_eq!(added_at, older, "added_at must be the earliest of the two");
             }
             _ => panic!("expected CollectionEntry::Mine"),
         }
+    }
+
+    #[sqlx::test]
+    async fn get_paginated_averages_the_purchase_price_over_the_priced_copies_only(pool: PgPool) {
+        insert_set(&pool, "TST").await;
+        insert_card(&pool, "TST", "1", "EN", "Test Card", 1).await;
+        insert_user(&pool, "user1", "User1").await;
+        insert_collection_entry(&pool, "TST", "1", "EN", false, "user1", 2, 1000, Utc::now()).await;
+        insert_collection_entry_with_binder(
+            &pool,
+            "TST",
+            "1",
+            "EN",
+            false,
+            "user1",
+            3,
+            0,
+            Utc::now(),
+            Some("booster"),
+        )
+        .await;
+        sqlx::query(
+            "UPDATE collection_entry SET purchase_price = NULL WHERE binder_id IS NOT NULL",
+        )
+        .execute(&pool)
+        .await
+        .unwrap();
+        refresh_view(&pool).await;
+
+        let result = CardPricesViewRepositoryAdapter::new(pool)
+            .get_paginated(&UserId::new("user1"), CollectionQuery::default())
+            .await
+            .unwrap();
+
+        let CollectionEntry::Mine {
+            quantity,
+            purchase_price,
+            ..
+        } = result.items[0].collection_entry
+        else {
+            panic!("expected CollectionEntry::Mine");
+        };
+        assert_eq!(quantity, 5);
+        assert_eq!(
+            purchase_price,
+            Some(1000),
+            "the 3 unpriced copies do not count as 0"
+        );
+    }
+
+    #[sqlx::test]
+    async fn get_paginated_purchase_price_is_absent_when_no_copy_has_one(pool: PgPool) {
+        insert_set(&pool, "TST").await;
+        insert_card(&pool, "TST", "1", "EN", "Test Card", 1).await;
+        insert_user(&pool, "user1", "User1").await;
+        insert_collection_entry_without_price(
+            &pool,
+            "TST",
+            "1",
+            "EN",
+            false,
+            "user1",
+            4,
+            Utc::now(),
+        )
+        .await;
+        refresh_view(&pool).await;
+
+        let result = CardPricesViewRepositoryAdapter::new(pool)
+            .get_paginated(&UserId::new("user1"), CollectionQuery::default())
+            .await
+            .unwrap();
+
+        assert_eq!(result.items.len(), 1);
+        let CollectionEntry::Mine {
+            quantity,
+            purchase_price,
+            ..
+        } = result.items[0].collection_entry
+        else {
+            panic!("expected CollectionEntry::Mine");
+        };
+        assert_eq!(quantity, 4);
+        assert_eq!(purchase_price, None);
     }
 
     #[sqlx::test]
@@ -2377,7 +2461,7 @@ mod tests {
             panic!("expected CollectionEntry::Mine");
         };
         assert_eq!(*quantity, 7);
-        assert_eq!(*purchase_price, 1234);
+        assert_eq!(*purchase_price, Some(1234));
     }
 
     #[sqlx::test]

@@ -345,6 +345,30 @@ async fn get_collection_maps_foil_card_correctly() {
 }
 
 #[tokio::test]
+async fn get_collection_serialises_an_absent_purchase_price_as_null() {
+    let mut card = make_card("FDN", "42");
+    if let CollectionEntry::Mine { purchase_price, .. } = &mut card.collection_entry {
+        *purchase_price = None;
+    }
+
+    let mut mock = MockGetCollectionUseCase::new();
+    mock.expect_get_collection()
+        .times(1)
+        .returning(move |_, _| {
+            let c = card.clone();
+            Box::pin(async move { Ok(make_paginated(vec![c], 0, 20)) })
+        });
+
+    let response = authed(collection_app(mock), Method::GET, "/collection").await;
+
+    assert_eq!(response.status(), StatusCode::OK);
+    let body = json_of(response).await;
+    let entry = &body["items"][0]["collection_entry"];
+    assert_eq!(entry["quantity"], 1);
+    assert_eq!(entry["purchase_price"], json!(null));
+}
+
+#[tokio::test]
 async fn get_collection_masks_collection_entry_for_search_style_entries() {
     let mut card = make_card("FDN", "42");
     card.collection_entry = CollectionEntry::Public {

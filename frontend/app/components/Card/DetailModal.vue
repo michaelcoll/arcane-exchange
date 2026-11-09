@@ -224,9 +224,12 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
                 <dt class="text-slate-500 dark:text-slate-400">Exemplaires</dt>
                 <dd class="font-mono font-semibold">×{{ card.collection_entry.quantity }}</dd>
               </div>
-              <div class="flex items-center justify-between gap-3">
+              <div
+                v-if="card.collection_entry.purchase_price != null"
+                class="flex items-center justify-between gap-3"
+              >
                 <dt class="text-slate-500 dark:text-slate-400">Prix d'achat</dt>
-                <dd class="font-mono font-semibold">
+                <dd class="font-mono font-semibold" data-testid="purchase-price">
                   {{ formatPrice(card.collection_entry.purchase_price) }}
                 </dd>
               </div>

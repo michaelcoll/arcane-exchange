@@ -313,7 +313,8 @@ impl From<PriceGuide> for PriceGuideResponse {
 #[ts(export)]
 pub struct CollectionEntryResponse {
     pub quantity: u8,
-    pub purchase_price: u32,
+    /// Price in cents; `null` when the copies have no purchase price.
+    pub purchase_price: Option<u32>,
     /// RFC 3339 timestamp
     pub added_at: String,
 }

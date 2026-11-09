@@ -178,7 +178,7 @@ mod tests {
                 None,
                 CollectionEntry::Mine {
                     quantity: 3,
-                    purchase_price: 8,
+                    purchase_price: Some(8),
                     added_at: DateTime::parse_from_rfc3339("2026-02-05T20:44:45.815Z")
                         .unwrap()
                         .with_timezone(&Utc),

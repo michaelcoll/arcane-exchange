@@ -286,6 +286,39 @@ describe('CardDetailModal', () => {
     expect(wrapper.find('i.ss').classes()).toContain(NEUTRAL_COLOR_CLASS);
   });
 
+  it('shows neither the purchase price nor the spread when the copies have no purchase price', async () => {
+    wrapper = mount(CardDetailModal, {
+      props: {
+        card: {
+          ...baseCard,
+          collection_entry: { quantity: 2, purchase_price: null, added_at: '2026-01-05T10:00:00Z' },
+          price_guide: { low: 100, avg: 120, trend: 150 },
+        },
+      },
+      global: { stubs },
+    });
+    await flushPromises();
+    expect(wrapper.text()).toContain('Dans ma collection');
+    expect(wrapper.text()).not.toContain("Prix d'achat");
+    expect(wrapper.text()).not.toContain("Écart depuis l'achat");
+  });
+
+  it('shows the purchase price and the spread when there is one', async () => {
+    wrapper = mount(CardDetailModal, {
+      props: {
+        card: {
+          ...baseCard,
+          collection_entry: { quantity: 2, purchase_price: 100, added_at: '2026-01-05T10:00:00Z' },
+          price_guide: { low: 100, avg: 120, trend: 150 },
+        },
+      },
+      global: { stubs },
+    });
+    await flushPromises();
+    expect(wrapper.find('[data-testid="purchase-price"]').text()).toBe(formatPrice(100));
+    expect(wrapper.text()).toContain("Écart depuis l'achat");
+  });
+
   it('says the prices and the offers failed to load for the card on screen', async () => {
     getCardPriceHistoryMock.mockRejectedValue(new Error('boom'));
     wrapper = mount(CardDetailModal, {

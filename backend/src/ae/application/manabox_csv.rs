@@ -2,6 +2,7 @@ use crate::application::error::AppError;
 use crate::application::imported_card::ImportedCard;
 use crate::domain::card::{Card, CardId, CollectionEntry, CopyId};
 use crate::domain::card_import::CardImportLineError;
+use crate::domain::collection_entry::EntryCopies;
 use crate::domain::error::FunctionalError;
 use crate::domain::language_code::LanguageCode;
 use crate::domain::rarity_code::RarityCode;
@@ -182,15 +183,23 @@ pub fn parse_cards(csv: &str) -> Result<ParsedCollection, AppError> {
                 unreachable!("parsed cards always carry a CollectionEntry::Mine");
             };
 
-            let new_qty = existing_quantity as u32 + new_quantity as u32;
-            let total_cost = existing_purchase_price * existing_quantity as u32
-                + new_purchase_price * new_quantity as u32;
-            let added_at = existing_added_at.min(new_added_at);
+            // The merge rule of the Collection entries (ADR-0010), saturating at 255 copies.
+            let merged = EntryCopies {
+                quantity: u32::from(existing_quantity),
+                purchase_price: existing_purchase_price,
+                added_at: existing_added_at,
+            }
+            .merge_saturating(&EntryCopies {
+                quantity: u32::from(new_quantity),
+                purchase_price: new_purchase_price,
+                added_at: new_added_at,
+            });
 
             existing.card.collection_entry = CollectionEntry::Mine {
-                quantity: new_qty.min(u8::MAX as u32) as u8,
-                purchase_price: total_cost / new_qty,
-                added_at,
+                // At most `MAX_ENTRY_QUANTITY`, which is `u8::MAX`.
+                quantity: u8::try_from(merged.quantity).unwrap_or(u8::MAX),
+                purchase_price: merged.purchase_price,
+                added_at: merged.added_at,
                 reserved: false,
             };
         } else {
@@ -272,13 +281,13 @@ fn parse_line(
 
     let raw_purchase_price = field_refs[columns.purchase_price];
     let purchase_price = if raw_purchase_price.is_empty() {
-        0
+        None
     } else {
         let purchase_price_float: f32 = raw_purchase_price
             .parse()
             .map_err(|_e| line_error(line_number, "purchase_price", raw_purchase_price))?;
 
-        (purchase_price_float * 100.0).round() as u32
+        Some((purchase_price_float * 100.0).round() as u32)
     };
 
     let added_at: DateTime<Utc> = {
@@ -363,7 +372,7 @@ mod tests {
             panic!("expected CollectionEntry::Mine");
         };
         assert_eq!(q0, 3);
-        assert_eq!(p0, 8);
+        assert_eq!(p0, Some(8));
 
         assert_eq!(cards[1].card.id.card_id.set_code, SetCode::new("GPT"));
         assert_eq!(cards[1].card.id.card_id.collector_number, "32");
@@ -378,7 +387,7 @@ mod tests {
             panic!("expected CollectionEntry::Mine");
         };
         assert_eq!(q1, 2);
-        assert_eq!(p1, 17);
+        assert_eq!(p1, Some(17));
 
         assert_eq!(cards[2].card.id.card_id.set_code, SetCode::new("FDN"));
         assert_eq!(cards[2].card.id.card_id.collector_number, "217");
@@ -393,7 +402,7 @@ mod tests {
             panic!("expected CollectionEntry::Mine");
         };
         assert_eq!(q2, 2);
-        assert_eq!(p2, 20);
+        assert_eq!(p2, Some(20));
 
         Ok(())
     }
@@ -422,7 +431,7 @@ mod tests {
             panic!("expected CollectionEntry::Mine");
         };
         assert_eq!(quantity, 2);
-        assert_eq!(purchase_price, 17);
+        assert_eq!(purchase_price, Some(17));
         assert_eq!(added_at.to_rfc3339(), "2026-02-05T20:44:45.815+00:00");
 
         Ok(())
@@ -612,7 +621,7 @@ mod tests {
         };
         assert_eq!(quantity, 5);
         // weighted average: (3*8 + 2*10) / 5 = (24+20)/5 = 44/5 = 8
-        assert_eq!(purchase_price, 8);
+        assert_eq!(purchase_price, Some(8));
         // earliest date kept
         assert_eq!(added_at.to_rfc3339(), "2026-02-05T20:44:45.815+00:00");
     }
@@ -777,7 +786,7 @@ mod tests {
     }
 
     #[test]
-    fn import_cards_treats_empty_purchase_price_as_zero() {
+    fn import_cards_reads_an_empty_purchase_price_as_absent() {
         let csv = "Binder Name,Binder Type,Name,Set code,Set name,Collector number,Foil,Rarity,Quantity,ManaBox ID,Scryfall ID,Purchase price,Misprint,Altered,Signed,Condition,Language,Proxy,Purchase price currency,Added\n\
                    bulk,binder,Goblin Boarders,FDN,Foundations,87,normal,common,3,101506,4409a063-bf2a-4a49-803e-3ce6bd474353,,false,false,false,near_mint,fr,false,EUR,2026-02-05T20:44:45.815Z";
 
@@ -787,7 +796,27 @@ mod tests {
         let CollectionEntry::Mine { purchase_price, .. } = cards[0].card.collection_entry else {
             panic!("expected CollectionEntry::Mine");
         };
-        assert_eq!(purchase_price, 0);
+        assert_eq!(purchase_price, None);
+    }
+
+    #[test]
+    fn import_cards_averages_only_the_priced_duplicates() {
+        let csv = "Binder Name,Binder Type,Name,Set code,Set name,Collector number,Foil,Rarity,Quantity,ManaBox ID,Scryfall ID,Purchase price,Misprint,Altered,Signed,Condition,Language,Proxy,Purchase price currency,Added\n\
+                   bulk,binder,Goblin Boarders,FDN,Foundations,87,normal,common,1,101506,4409a063-bf2a-4a49-803e-3ce6bd474353,0.10,false,false,false,near_mint,fr,false,EUR,2026-02-05T20:44:45.815Z\n\
+                   bulk,binder,Goblin Boarders,FDN,Foundations,87,normal,common,1,101506,4409a063-bf2a-4a49-803e-3ce6bd474353,,false,false,false,near_mint,fr,false,EUR,2026-02-05T20:44:45.815Z";
+
+        let cards = parse_cards(csv).unwrap().cards;
+
+        let CollectionEntry::Mine {
+            quantity,
+            purchase_price,
+            ..
+        } = cards[0].card.collection_entry
+        else {
+            panic!("expected CollectionEntry::Mine");
+        };
+        assert_eq!(quantity, 2);
+        assert_eq!(purchase_price, Some(10));
     }
 
     #[test]
@@ -809,7 +838,7 @@ mod tests {
             None,
             CollectionEntry::Mine {
                 quantity: 1,
-                purchase_price: 76,
+                purchase_price: Some(76),
                 added_at: DateTime::parse_from_rfc3339("2026-02-05T20:44:45.815Z")
                     .unwrap()
                     .with_timezone(&Utc),

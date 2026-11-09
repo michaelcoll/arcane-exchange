@@ -392,19 +392,21 @@ extension Components {
             ///
             /// - Remark: Generated from `#/components/schemas/CollectionEntryResponse/added_at`.
             public var added_at: Swift.String
+            /// Price in cents; `null` when the copies have no purchase price.
+            ///
             /// - Remark: Generated from `#/components/schemas/CollectionEntryResponse/purchase_price`.
-            public var purchase_price: Swift.Int32
+            public var purchase_price: Swift.Int32?
             /// - Remark: Generated from `#/components/schemas/CollectionEntryResponse/quantity`.
             public var quantity: Swift.Int32
             /// Creates a new `CollectionEntryResponse`.
             ///
             /// - Parameters:
             ///   - added_at: RFC 3339 timestamp
-            ///   - purchase_price:
+            ///   - purchase_price: Price in cents; `null` when the copies have no purchase price.
             ///   - quantity:
             public init(
                 added_at: Swift.String,
-                purchase_price: Swift.Int32,
+                purchase_price: Swift.Int32? = nil,
                 quantity: Swift.Int32
             ) {
                 self.added_at = added_at

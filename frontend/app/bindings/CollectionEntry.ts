@@ -2,7 +2,10 @@
 
 export type CollectionEntry = {
   quantity: number;
-  purchase_price: number;
+  /**
+   * Price in cents; `null` when the copies have no purchase price.
+   */
+  purchase_price: number | null;
   /**
    * RFC 3339 timestamp
    */
