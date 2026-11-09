@@ -38,14 +38,58 @@ function parseEntries(body) {
   return entries;
 }
 
-function renderLine({ description, url, number }) {
-  return `• ${description} ([#${number}](${url}))`;
+// Player-facing name of a scope; any other scope is shown as is.
+const SCOPE_TAGS = {
+  web: "Site",
+  frontend: "Site", // kept for the PRs titled before the naming rule (which bans this scope)
+  backend: "Serveur",
+  api: "Serveur",
+};
+
+// Scopes left out of the announcement (experiments).
+const HIDDEN_SCOPES = ["prototype"];
+
+const IOS_SCOPE = "ios";
+
+// Discord's limit for an embed description.
+const MAX_DESCRIPTION = 4096;
+
+function renderLine({ description, url, number }, tag) {
+  return `• ${tag}${description} ([#${number}](${url}))`;
 }
 
-function renderSection(title, entries) {
+const renderTaggedLine = (entry) =>
+  renderLine(
+    entry,
+    entry.scope ? `**${SCOPE_TAGS[entry.scope] ?? entry.scope}** · ` : "",
+  );
+
+// The iOS section already says where the line comes from.
+const renderUntaggedLine = (entry) => renderLine(entry, "");
+
+function renderSection(title, entries, render = renderTaggedLine) {
   return entries.length === 0
     ? undefined
-    : [`### ${title}`, ...entries.map(renderLine)].join("\n");
+    : [`### ${title}`, ...entries.map(render)].join("\n");
+}
+
+/** Cuts the description at a line end so that it, plus the link to the release, fits in an embed. */
+function truncate(description, url) {
+  if (description.length <= MAX_DESCRIPTION) return description;
+
+  const suffix = `\n\n[Voir la release](${url})`;
+  const lines = description.split("\n");
+  while (
+    lines.length > 0 &&
+    (lines.join("\n") + suffix).length > MAX_DESCRIPTION
+  ) {
+    lines.pop();
+  }
+  // A heading or a blank line left at the end would head nothing.
+  while (lines.length > 0 && !lines.at(-1).startsWith("•")) {
+    lines.pop();
+  }
+  return lines.join("\n").trimEnd() + suffix;
 }
 
 /**
@@ -53,17 +97,32 @@ function renderSection(title, entries) {
  * @returns the Discord webhook payload
  */
 export function buildAnnouncement({ body, tag, url, publishedAt }) {
-  const { feat, fix } = parseEntries(body);
+  const entries = parseEntries(body);
+  const shown = (list) => list.filter((e) => !HIDDEN_SCOPES.includes(e.scope));
+  const isIos = (e) => e.scope === IOS_SCOPE;
+  const feat = shown(entries.feat);
+  const fix = shown(entries.fix);
 
   const sections = [
-    renderSection("🎁 Nouveautés", feat),
-    renderSection("🔧 Corrections", fix),
+    renderSection(
+      "🎁 Nouveautés",
+      feat.filter((e) => !isIos(e)),
+    ),
+    renderSection(
+      "🔧 Corrections",
+      fix.filter((e) => !isIos(e)),
+    ),
+    renderSection(
+      "📱 App iOS (en développement)",
+      [...feat, ...fix].filter(isIos),
+      renderUntaggedLine,
+    ),
   ].filter(Boolean);
 
   const description =
     sections.length === 0
       ? `Version ${tag} : améliorations techniques ([Voir la release](${url}))`
-      : sections.join("\n\n");
+      : truncate(sections.join("\n\n"), url);
 
   return {
     embeds: [
