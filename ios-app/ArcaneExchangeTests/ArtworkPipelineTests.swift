@@ -5,12 +5,11 @@ import UIKit
 
 @testable import ArcaneExchange
 
-/// Asserts on `ImagePipeline.shared` rather than on a freshly built configuration: the test
-/// host runs `ArcaneExchangeApp.init()` — and so `ArtworkPipeline.install()` — before the
-/// suite, so this checks what the app actually loads artwork through.
+/// Asserts on `ArtworkPipeline.configuration`, the one `install()` hands to
+/// `ImagePipeline.shared`: the test host never launches the app (`AppEntryPoint`).
 struct ArtworkPipelineTests {
     private var configuration: ImagePipeline.Configuration {
-        ImagePipeline.shared.configuration
+        ArtworkPipeline.configuration
     }
 
     @Test func keepsArtworkInAnAggressiveDiskCache() {

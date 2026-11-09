@@ -46,8 +46,8 @@ enum AppConfig {
     /// Clerk instance the app authenticates against, baked in from `CLERK_PUBLISHABLE_KEY`.
     ///
     /// Blank on a clone without `Config/Local.xcconfig` — `Shared.xcconfig` declares an empty
-    /// default so the app still builds and runs. Sign-in is what fails then; copy
-    /// `Config/Local.xcconfig.example` and fill the key in.
+    /// default so the app still builds, and shows `MissingClerkKeyView` instead of signing in;
+    /// copy `Config/Local.xcconfig.example` and fill the key in.
     static var clerkPublishableKey: String {
         guard let value = Bundle.main.object(forInfoDictionaryKey: "CLERK_PUBLISHABLE_KEY") as? String else {
             fatalError("Missing CLERK_PUBLISHABLE_KEY in Info.plist")

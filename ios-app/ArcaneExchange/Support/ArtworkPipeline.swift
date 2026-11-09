@@ -14,12 +14,13 @@ enum ArtworkPipeline {
     /// On top of that, `ImageCache.shared` keeps *decoded* images, so a tile reappearing on
     /// scroll does not flash its placeholder.
     static func install() {
-        ImagePipeline.shared = ImagePipeline(
-            configuration: .withDataCache(
-                name: "fr.piconsoft.arcane-exchange.artwork",
-                sizeLimit: diskSizeLimit
-            )
-        )
+        ImagePipeline.shared = ImagePipeline(configuration: configuration)
+    }
+
+    /// What `install()` sets up. The tests read it here: their host never launches the app,
+    /// so `ImagePipeline.shared` keeps Nuke's default there.
+    static var configuration: ImagePipeline.Configuration {
+        .withDataCache(name: "fr.piconsoft.arcane-exchange.artwork", sizeLimit: diskSizeLimit)
     }
 
     /// Warms artwork the user has not scrolled to yet.

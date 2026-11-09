@@ -5,17 +5,17 @@ import Foundation
 /// The Clerk session the app opened, read from the shared Keychain.
 @MainActor
 enum WidgetSession {
-    private static var isConfigured = false
+    /// Whether Clerk is configured, decided on first use. A build without a publishable key
+    /// leaves Clerk unconfigured: the widgets then show their signed-out state.
+    private static var hasClerk: Bool?
 
     /// Configures Clerk on first use — it restores the cached session synchronously — and
     /// reports whether there is one. The token itself is refreshed by `ClerkAuthMiddleware`
     /// on each request, as in the app.
     static func isSignedIn() -> Bool {
-        if !isConfigured {
-            ClerkSetup.configure()
-            isConfigured = true
-        }
-        return Clerk.shared.session != nil
+        let hasClerk = hasClerk ?? ClerkSetup.configure()
+        self.hasClerk = hasClerk
+        return hasClerk && Clerk.shared.session != nil
     }
 }
 
