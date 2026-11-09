@@ -440,6 +440,27 @@ pub trait EditCollectionEntryUseCase: Send + Sync {
 
 #[async_trait]
 #[cfg_attr(test, automock)]
+pub trait MoveCollectionEntryUseCase: Send + Sync {
+    /// Moves `quantity` copies of an entry (all of them when `None`) into `binder_id`, or out of
+    /// any binder when `None`, and returns the entries of its card. It merges into the entry
+    /// already there and removes the source entry when it empties. It does not change what the
+    /// player owns, so the reservation guard does not apply. Then asks for a refresh of the card
+    /// prices views without waiting for it.
+    ///
+    /// Refused with `CollectionEntryNotFound` (`404`) for an absent entry or another player's,
+    /// `BinderNotFound` (`404`), also for a binder of another player, and `InvalidQuantity`
+    /// (`400`) for a quantity of 0 or over the entry's.
+    async fn move_collection_entry(
+        &self,
+        user_id: &UserId,
+        id: CollectionEntryId,
+        binder_id: Option<BinderId>,
+        quantity: Option<i32>,
+    ) -> Result<CardEntries, AppError>;
+}
+
+#[async_trait]
+#[cfg_attr(test, automock)]
 pub trait RemoveCollectionEntryUseCase: Send + Sync {
     /// Removes an entry, then asks for a refresh of the card prices views without waiting for it.
     /// Refused like [`EditCollectionEntryUseCase::edit_collection_entry`], minus the quantity.

@@ -52,6 +52,28 @@ struct CollectionEntriesViewModelTests {
         #expect(asked?.language_code == "FR")
     }
 
+    @Test func knowsOnceTheEntriesWereRead() async {
+        let api = FakeAPI()
+        api.onGetCollectionEntries = { _ in .ok(.init(body: .json(entries([])))) }
+        let model = CollectionEntriesViewModel(card: card, api: api)
+        #expect(!model.hasLoaded)
+
+        await model.load()
+
+        // An empty answer is an answer: the card is no longer in the collection.
+        #expect(model.hasLoaded)
+    }
+
+    @Test func aFailedReadIsNotAnAnswer() async {
+        let api = FakeAPI()
+        api.onGetCollectionEntries = { _ in throw APIError(code: "internal", status: 500) }
+        let model = CollectionEntriesViewModel(card: card, api: api)
+
+        await model.load()
+
+        #expect(!model.hasLoaded)
+    }
+
     @Test func editSendsOnlyWhatChangedAndShowsTheAnswer() async {
         let api = FakeAPI()
         nonisolated(unsafe) var sent: Components.Schemas.UpdateCollectionEntryRequest?
@@ -114,6 +136,66 @@ struct CollectionEntriesViewModelTests {
         #expect(removed)
         #expect(model.entries.isEmpty)
         #expect(api.calls == ["get_collection_entries", "remove_collection_entry", "get_collection_entries"])
+    }
+
+    @Test func loadsTheBindersAsMoveTargets() async {
+        let api = FakeAPI()
+        api.onListBinders = { _ in
+            .ok(.init(body: .json(.init(binders: [Binder(copies: 0, id: "b-1", is_open: false, name: "Bulk")]))))
+        }
+        let model = CollectionEntriesViewModel(card: card, api: api)
+
+        await model.loadBinders()
+
+        #expect(model.binders.map(\.name) == ["Bulk"])
+    }
+
+    @Test func moveSendsTheTargetAndTheQuantityAndShowsTheAnswer() async {
+        let api = FakeAPI()
+        nonisolated(unsafe) var sent: Components.Schemas.MoveCollectionEntryRequest?
+        nonisolated(unsafe) var movedID: String?
+        api.onMoveCollectionEntry = { input in
+            movedID = input.path.id
+            if case let .json(body) = input.body { sent = body }
+            return .ok(.init(body: .json(entries([entry("e-1", quantity: 3), entry("e-2", quantity: 1, binder: "B")]))))
+        }
+        let model = CollectionEntriesViewModel(card: card, api: api)
+
+        let accepted = await model.move(entry("e-1", quantity: 4), to: "b-B", quantity: 1)
+
+        #expect(accepted)
+        #expect(movedID == "e-1")
+        #expect(sent?.binder_id == "b-B")
+        #expect(sent?.quantity == 1)
+        #expect(model.entries.map(\.id) == ["e-1", "e-2"])
+    }
+
+    @Test func moveOutOfAnyBinderSendsNoBinder() async {
+        let api = FakeAPI()
+        nonisolated(unsafe) var sent: Components.Schemas.MoveCollectionEntryRequest?
+        api.onMoveCollectionEntry = { input in
+            if case let .json(body) = input.body { sent = body }
+            return .ok(.init(body: .json(entries([entry("e-1")]))))
+        }
+        let model = CollectionEntriesViewModel(card: card, api: api)
+
+        _ = await model.move(entry("e-1", binder: "A"), to: nil, quantity: 2)
+
+        #expect(sent?.binder_id == nil)
+    }
+
+    @Test func translatesAMoveRefusedBecauseTheBinderIsGone() async {
+        let api = FakeAPI()
+        api.onGetCollectionEntries = { _ in .ok(.init(body: .json(entries([entry("e-1")])))) }
+        api.onMoveCollectionEntry = { _ in throw APIError(code: "binder_not_found", status: 404) }
+        let model = CollectionEntriesViewModel(card: card, api: api)
+        await model.load()
+
+        let accepted = await model.move(entry("e-1"), to: "b-1", quantity: 1)
+
+        #expect(!accepted)
+        #expect(model.writeError == "Ce binder n'existe plus dans ta collection.")
+        #expect(model.entries.map(\.id) == ["e-1"])
     }
 
     @Test func translatesAnEntryThatIsGone() async {

@@ -30,11 +30,12 @@ use crate::application::use_case::{
     MockGetCollectionVisibilityUseCase, MockGetRarityTradeFiltersUseCase, MockGetSetUseCase,
     MockGetShowcaseUseCase, MockGetTradeBindersUseCase, MockGetTradeUseCase,
     MockGetUserProfileUseCase, MockImportCardUseCase, MockImportPriceUseCase,
-    MockListBindersUseCase, MockListSetsUseCase, MockListTradesUseCase, MockRateTradeUseCase,
-    MockRegisterUserUseCase, MockRemoveCollectionEntryUseCase, MockRemoveTradeBinderUseCase,
-    MockRemoveTradeCardUseCase, MockRenameBinderUseCase, MockScanIndexUseCase,
-    MockSearchCardsUseCase, MockSearchSetsUseCase, MockSetCollectionVisibilityUseCase,
-    MockSetRarityTradeFilterUseCase, MockStatsUseCase, MockUpdateCatalogUseCase,
+    MockListBindersUseCase, MockListSetsUseCase, MockListTradesUseCase,
+    MockMoveCollectionEntryUseCase, MockRateTradeUseCase, MockRegisterUserUseCase,
+    MockRemoveCollectionEntryUseCase, MockRemoveTradeBinderUseCase, MockRemoveTradeCardUseCase,
+    MockRenameBinderUseCase, MockScanIndexUseCase, MockSearchCardsUseCase, MockSearchSetsUseCase,
+    MockSetCollectionVisibilityUseCase, MockSetRarityTradeFilterUseCase, MockStatsUseCase,
+    MockUpdateCatalogUseCase,
 };
 use crate::domain::card::CardInfo;
 use crate::domain::card_import::CardImportId;
@@ -221,6 +222,7 @@ impl AppState {
             set_collection_visibility_use_case: Arc::new(MockSetCollectionVisibilityUseCase::new()),
             get_collection_entries_use_case: Arc::new(MockGetCollectionEntriesUseCase::new()),
             edit_collection_entry_use_case: Arc::new(MockEditCollectionEntryUseCase::new()),
+            move_collection_entry_use_case: Arc::new(MockMoveCollectionEntryUseCase::new()),
             remove_collection_entry_use_case: Arc::new(MockRemoveCollectionEntryUseCase::new()),
             list_binders_use_case: Arc::new(MockListBindersUseCase::new()),
             create_binder_use_case: Arc::new(MockCreateBinderUseCase::new()),

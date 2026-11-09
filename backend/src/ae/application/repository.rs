@@ -461,6 +461,25 @@ pub trait CollectionEntryRepository: Send + Sync {
         edit: EntryEdit,
     ) -> Result<CardEntries, AppError>;
 
+    /// Moves `quantity` copies of the entry (all of them when `None`) into `binder_id`, or out of
+    /// any binder when `None`, and returns the entries of its card. The copies merge into the
+    /// entry already there ([`EntryStock::merge`](crate::domain::collection_entry::EntryStock::merge)),
+    /// and the source entry is removed when it empties. The owned copies do not change, so no
+    /// reservation guard applies.
+    ///
+    /// # Errors
+    ///
+    /// - `CollectionEntryNotFound` when the entry is absent or another player's;
+    /// - `BinderNotFound` when `binder_id` is absent or another player's;
+    /// - `InvalidQuantity` when `quantity` is over the entry's, or a merge goes over 255.
+    async fn move_to_binder(
+        &self,
+        user_id: &UserId,
+        id: CollectionEntryId,
+        binder_id: Option<BinderId>,
+        quantity: Option<u8>,
+    ) -> Result<CardEntries, AppError>;
+
     /// Removes the entry, under the same guard and transaction as [`Self::update`].
     ///
     /// # Errors

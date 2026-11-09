@@ -56,6 +56,9 @@ public protocol APIProtocol: Sendable {
     /// - Remark: HTTP `DELETE /collection/entries/{id}`.
     /// - Remark: Generated from `#/paths//collection/entries/{id}/delete(remove_collection_entry)`.
     func remove_collection_entry(_ input: Operations.remove_collection_entry.Input) async throws -> Operations.remove_collection_entry.Output
+    /// - Remark: HTTP `POST /collection/entries/{id}/move`.
+    /// - Remark: Generated from `#/paths//collection/entries/{id}/move/post(move_collection_entry)`.
+    func move_collection_entry(_ input: Operations.move_collection_entry.Input) async throws -> Operations.move_collection_entry.Output
     /// - Remark: HTTP `GET /collection/import`.
     /// - Remark: Generated from `#/paths//collection/import/get(list_card_imports)`.
     func list_card_imports(_ input: Operations.list_card_imports.Input) async throws -> Operations.list_card_imports.Output
@@ -285,6 +288,19 @@ extension APIProtocol {
         try await remove_collection_entry(Operations.remove_collection_entry.Input(
             path: path,
             headers: headers
+        ))
+    }
+    /// - Remark: HTTP `POST /collection/entries/{id}/move`.
+    /// - Remark: Generated from `#/paths//collection/entries/{id}/move/post(move_collection_entry)`.
+    public func move_collection_entry(
+        path: Operations.move_collection_entry.Input.Path,
+        headers: Operations.move_collection_entry.Input.Headers = .init(),
+        body: Operations.move_collection_entry.Input.Body
+    ) async throws -> Operations.move_collection_entry.Output {
+        try await move_collection_entry(Operations.move_collection_entry.Input(
+            path: path,
+            headers: headers,
+            body: body
         ))
     }
     /// - Remark: HTTP `GET /collection/import`.

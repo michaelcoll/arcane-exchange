@@ -405,6 +405,18 @@ pub(crate) struct UpdateCollectionEntryRequest {
     pub(crate) foil: Option<bool>,
 }
 
+#[derive(Deserialize, Debug, TS, ToSchema)]
+#[serde(rename = "MoveCollectionEntryRequest")]
+#[ts(export)]
+pub(crate) struct MoveCollectionEntryRequest {
+    /// Target binder; `null` or absent moves the copies out of any binder.
+    pub(crate) binder_id: Option<String>,
+    /// Copies to move, 1 up to the entry's quantity; all of them when absent. Signed so an
+    /// out-of-range value fails with `invalid_quantity` (400) instead of a JSON extractor
+    /// rejection.
+    pub(crate) quantity: Option<i32>,
+}
+
 #[derive(Serialize, TS, ToSchema)]
 #[serde(rename = "CollectionEntry")]
 #[ts(export)]

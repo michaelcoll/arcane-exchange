@@ -18,9 +18,14 @@ final class CollectionEntriesViewModel {
     }
 
     private(set) var entries: [CollectionEntryDetail] = []
+    /// Whether the server answered with the entries: until then, and after a failed read, the
+    /// screen keeps what the card list showed.
+    private(set) var hasLoaded = false
     /// Copies committed by the accepted trades, per finish: the owned quantity cannot go under.
     private(set) var reservedNormal = 0
     private(set) var reservedFoil = 0
+    /// The player's binders, the targets of a move. Empty until `loadBinders()` answered.
+    private(set) var binders: [Binder] = []
     private(set) var isWriting = false
     /// Set when a write was refused: the list is intact. French message, ready to show.
     var writeError: String?
@@ -36,6 +41,7 @@ final class CollectionEntriesViewModel {
         } catch {
             // The entries are an addition to the card screen: a failed read leaves it without them.
             entries = []
+            hasLoaded = false
         }
     }
 
@@ -55,6 +61,24 @@ final class CollectionEntriesViewModel {
         }
     }
 
+    func loadBinders() async {
+        // A failed read leaves the move with "Sans binder" as its only target.
+        binders = await (try? api.list_binders().ok.body.json.binders) ?? []
+    }
+
+    /// Moves `quantity` copies of the entry into the binder, or out of any binder when
+    /// `binderID` is nil. Returns whether the move was accepted, so the sheet that asked can close.
+    func move(_ entry: CollectionEntryDetail, to binderID: String?, quantity: Int) async -> Bool {
+        await write {
+            let body = Components.Schemas.MoveCollectionEntryRequest(
+                binder_id: binderID,
+                quantity: Int32(quantity)
+            )
+            let output = try await self.api.move_collection_entry(path: .init(id: entry.id), body: .json(body))
+            try self.apply(output.ok.body.json)
+        }
+    }
+
     /// Returns whether the entry was removed, so the sheet that asked can close.
     func remove(_ entry: CollectionEntryDetail) async -> Bool {
         await write {
@@ -67,6 +91,7 @@ final class CollectionEntriesViewModel {
 
     private func apply(_ response: Components.Schemas.CardEntriesResponse) {
         entries = response.entries
+        hasLoaded = true
         reservedNormal = Int(response.reserved_quantity.normal)
         reservedFoil = Int(response.reserved_quantity.foil)
     }
