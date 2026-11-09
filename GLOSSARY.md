@@ -21,7 +21,9 @@ _Avoid_ : scryfall_id, cardmarket_id comme identité
 **Catalogue** :
 L'ensemble des impressions de cartes connues de la plateforme, chargé depuis Scryfall, sans les
 tokens et indépendant de la possession : une impression peut y figurer sans que personne ne la
-possède. Une entrée est clé par set et numéro, sans langue ; elle ne crée aucune Card.
+possède. Une entrée est clé par set et numéro, sans langue ; elle ne crée aucune Card. Elle garde
+l'URL de l'image Scryfall de l'impression, que le client charge telle quelle : ce n'est pas
+l'image d'une Card. Le joueur y cherche par nom, anglais ou français, pour ajouter une carte à sa collection.
 _Avoid_ : base de cartes, référentiel
 
 **Finition** :
@@ -211,7 +213,9 @@ _Avoid_ : trade ouvert, négociation en cours
 
 **Carte réservée** :
 Une carte engagée dans un Trade qu'au moins une partie a accepté. La réservation se lit dans la
-collection de son propriétaire ; elle n'est pas une action, elle découle de l'état du Trade.
+collection de son propriétaire ; elle n'est pas une action, elle découle de l'état du Trade. La
+quantité possédée d'une carte, dans une finition et tous binders confondus, ne peut pas descendre sous
+la quantité engagée par les Trades acceptés : déplacer une carte réservée d'un binder à un autre reste permis.
 _Avoid_ : carte bloquée, carte verrouillée
 
 **Delta cash** :

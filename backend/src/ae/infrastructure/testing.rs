@@ -20,10 +20,10 @@ use crate::application::service::showcase::get::ShowcaseService;
 use crate::application::service::stats::get::StatsService;
 use crate::application::token_validator::MockTokenValidator;
 use crate::application::use_case::{
-    MockAbandonTradeUseCase, MockAcceptTradeUseCase, MockAddTradeBinderUseCase,
-    MockAddTradeCardUseCase, MockAutocompleteUsersUseCase, MockConfirmTradeUseCase,
-    MockCreateBinderUseCase, MockCreateTradeUseCase, MockDeleteBinderUseCase,
-    MockEditCollectionEntryUseCase, MockEnqueueCardImageUpdateUseCase,
+    MockAbandonTradeUseCase, MockAcceptTradeUseCase, MockAddCollectionEntryUseCase,
+    MockAddTradeBinderUseCase, MockAddTradeCardUseCase, MockAutocompleteUsersUseCase,
+    MockConfirmTradeUseCase, MockCreateBinderUseCase, MockCreateTradeUseCase,
+    MockDeleteBinderUseCase, MockEnqueueCardImageUpdateUseCase,
     MockEnqueueCardMarketIdUpdateUseCase, MockGetCardImportUseCase, MockGetCardOffersUseCase,
     MockGetCardPriceHistoryUseCase, MockGetCollectionEntriesUseCase,
     MockGetCollectionPriceHistoryUseCase, MockGetCollectionStatsUseCase, MockGetCollectionUseCase,
@@ -33,9 +33,10 @@ use crate::application::use_case::{
     MockListBindersUseCase, MockListSetsUseCase, MockListTradesUseCase,
     MockMoveCollectionEntryUseCase, MockRateTradeUseCase, MockRegisterUserUseCase,
     MockRemoveCollectionEntryUseCase, MockRemoveTradeBinderUseCase, MockRemoveTradeCardUseCase,
-    MockRenameBinderUseCase, MockScanIndexUseCase, MockSearchCardsUseCase, MockSearchSetsUseCase,
-    MockSetCollectionVisibilityUseCase, MockSetRarityTradeFilterUseCase, MockStatsUseCase,
-    MockUpdateCatalogUseCase,
+    MockRenameBinderUseCase, MockScanIndexUseCase, MockSearchCardsUseCase,
+    MockSearchCatalogUseCase, MockSearchSetsUseCase, MockSetCollectionVisibilityUseCase,
+    MockSetRarityTradeFilterUseCase, MockStatsUseCase, MockUpdateCatalogUseCase,
+    MockUpdateCollectionEntryUseCase,
 };
 use crate::domain::card::CardInfo;
 use crate::domain::card_import::CardImportId;
@@ -221,7 +222,8 @@ impl AppState {
             get_collection_visibility_use_case: Arc::new(MockGetCollectionVisibilityUseCase::new()),
             set_collection_visibility_use_case: Arc::new(MockSetCollectionVisibilityUseCase::new()),
             get_collection_entries_use_case: Arc::new(MockGetCollectionEntriesUseCase::new()),
-            edit_collection_entry_use_case: Arc::new(MockEditCollectionEntryUseCase::new()),
+            add_collection_entry_use_case: Arc::new(MockAddCollectionEntryUseCase::new()),
+            update_collection_entry_use_case: Arc::new(MockUpdateCollectionEntryUseCase::new()),
             move_collection_entry_use_case: Arc::new(MockMoveCollectionEntryUseCase::new()),
             remove_collection_entry_use_case: Arc::new(MockRemoveCollectionEntryUseCase::new()),
             list_binders_use_case: Arc::new(MockListBindersUseCase::new()),
@@ -238,6 +240,7 @@ impl AppState {
             card_import_query_use_case: Arc::new(MockGetCardImportUseCase::new()),
             update_catalog_use_case: Arc::new(MockUpdateCatalogUseCase::new()),
             scan_index_use_case: Arc::new(MockScanIndexUseCase::new()),
+            search_catalog_use_case: Arc::new(MockSearchCatalogUseCase::new()),
         }
     }
 }

@@ -487,6 +487,7 @@ mod tests {
                     faces: vec![],
                     cardmarket_id: None,
                     digital: false,
+                    image_url: Some("https://cards.scryfall.io/normal/front/f/0/f0b00465-03ba-42ee-b2dc-319443044df6.jpg?1706239968".to_string()),
                 },
                 ScryfallBulkCard {
                     scryfall_id: "54d4e7c3-294d-4900-8b70-faafda17cc33".parse().unwrap(),
@@ -505,6 +506,8 @@ mod tests {
                     ],
                     cardmarket_id: Some(574956),
                     digital: false,
+                    // The front face of a double-faced card.
+                    image_url: Some("https://cards.scryfall.io/normal/front/5/4/54d4e7c3-294d-4900-8b70-faafda17cc33.jpg?1634349160".to_string()),
                 },
                 ScryfallBulkCard {
                     scryfall_id: "94153f04-c319-4f03-b324-84919e794a9e".parse().unwrap(),
@@ -524,6 +527,7 @@ mod tests {
                     ],
                     cardmarket_id: None,
                     digital: false,
+                    image_url: Some("https://cards.scryfall.io/normal/front/9/4/94153f04-c319-4f03-b324-84919e794a9e.jpg?1634349160".to_string()),
                 },
                 ScryfallBulkCard {
                     scryfall_id: "f4588570-bde4-4c2f-8469-81a3e15fb57b".parse().unwrap(),
@@ -539,6 +543,7 @@ mod tests {
                     faces: vec![],
                     cardmarket_id: Some(754218),
                     digital: false,
+                    image_url: None,
                 },
             ]
         );

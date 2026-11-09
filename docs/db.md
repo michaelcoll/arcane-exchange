@@ -50,6 +50,7 @@ erDiagram
         character_varying(255) french_name
         uuid scryfall_id "not null"
         integer cardmarket_id
+        text image_url
     }
     collection_entry {
         character_varying(6) set_code FK "not null"
@@ -188,6 +189,11 @@ erDiagram
 - unique index `card_import_one_active_per_user` (`user_id`)
 - index `card_import_user_created_at` (`user_id`, `created_at`)
 - check constraint `card_import_status_check`: `CHECK ((status = ANY (ARRAY['pending'::text, 'running'::text, 'completed'::text, 'failed'::text])))`
+
+### catalog_card
+
+- index `idx_catalog_card_french_name_trgm` (`french_name`)
+- index `idx_catalog_card_name_trgm` (`name`)
 
 ### collection_entry
 

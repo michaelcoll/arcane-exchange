@@ -100,6 +100,7 @@ private struct WidgetsReloadMiddleware: ClientMiddleware {
         Operations.create_binder.id: .collection,
         Operations.rename_binder.id: .collection,
         Operations.delete_binder.id: .collection,
+        Operations.add_collection_entry.id: .collection,
         Operations.update_collection_entry.id: .collection,
         Operations.move_collection_entry.id: .collection,
         Operations.remove_collection_entry.id: .collection

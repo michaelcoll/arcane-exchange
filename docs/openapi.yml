@@ -183,6 +183,61 @@ paths:
                 $ref: '#/components/schemas/ErrorResponse'
       security:
       - bearer_auth: []
+  /catalog/cards:
+    get:
+      tags:
+      - catalog
+      operationId: search_catalog
+      parameters:
+      - name: q
+        in: query
+        description: 'Name to search, English or French: substring or trigram similarity. Blank or absent matches every card'
+        required: false
+        schema:
+          type: string
+      - name: set_code
+        in: query
+        description: Restricts the search to a set
+        required: false
+        schema:
+          type: string
+      - name: page
+        in: query
+        description: Page number, 0-based (default 0). `page * page_size` must not exceed 1000
+        required: false
+        schema:
+          type: integer
+          format: int32
+          minimum: 0
+      - name: page_size
+        in: query
+        description: Items per page, 1 to 100 (default 20)
+        required: false
+        schema:
+          type: integer
+          format: int32
+          minimum: 0
+      responses:
+        '200':
+          description: The impressions of the catalog matching the search, by decreasing similarity of the name, then set code, then collector number. Tokens are not in the catalog
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedCatalogResponse'
+        '400':
+          description: Pagination out of bounds, or invalid set code
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Missing or invalid token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      security:
+      - bearer_auth: []
   /catalog/scan-index:
     get:
       tags:
@@ -501,6 +556,44 @@ paths:
                 $ref: '#/components/schemas/ErrorResponse'
         '401':
           description: Missing or invalid token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      security:
+      - bearer_auth: []
+  /collection/entries:
+    post:
+      tags:
+      - collection
+      operationId: add_collection_entry
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AddCollectionEntryRequest'
+        required: true
+      responses:
+        '201':
+          description: The entries of the card, after the addition. The copies join the entry of the same finish and binder when there is one (quantities add up, purchase price kept, earliest added date), otherwise a new entry without purchase price is written. The card is created when it does not exist yet
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CardEntriesResponse'
+        '400':
+          description: Quantity out of 1 to 255 (`invalid_quantity`), also when a merge goes over 255; invalid set code, collector number or language code
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Missing or invalid token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: No catalog card has this set and collector number (`card_not_in_catalog`), or the binder is not one of the caller's (`binder_not_found`)
           content:
             application/json:
               schema:
@@ -1687,6 +1780,38 @@ paths:
       - bearer_auth: []
 components:
   schemas:
+    AddCollectionEntryRequest:
+      type: object
+      description: A copy to add to the collection, without purchase price.
+      required:
+      - set_code
+      - collector_number
+      - language_code
+      - foil
+      - quantity
+      properties:
+        binder_id:
+          type:
+          - string
+          - 'null'
+          description: Binder to store the copies in; absent for none.
+        collector_number:
+          type: string
+          description: Collector number of the catalog card.
+        foil:
+          type: boolean
+        language_code:
+          type: string
+          description: 'Language of the copy: not checked against Scryfall, which may not have the card in it.'
+        quantity:
+          type: integer
+          format: int32
+          description: |-
+            Copies added, 1 to 255. Signed so an out-of-range value fails with `invalid_quantity`
+            (400) instead of a JSON extractor rejection.
+        set_code:
+          type: string
+          description: Set code of the catalog card.
     AddTradeBinderRequest:
       type: object
       required:
@@ -1891,6 +2016,37 @@ components:
       type: string
       enum:
       - selling_price
+    CatalogCardResponse:
+      type: object
+      description: 'One impression of the catalog: a set and a collector number, without language or finish.'
+      required:
+      - set
+      - collector_number
+      - rarity_code
+      - name
+      properties:
+        collector_number:
+          type: string
+        french_name:
+          type:
+          - string
+          - 'null'
+          description: French name; absent when Scryfall has none.
+        image_url:
+          type:
+          - string
+          - 'null'
+          description: |-
+            Scryfall image of the impression (its front face for a double-faced card), to load from
+            Scryfall's CDN as is; `null` when Scryfall has none. It is not the image of a Card.
+        name:
+          type: string
+          description: English name.
+        rarity_code:
+          type: string
+          description: 'Rarity code: `C`, `U`, `R`, `M` or `S`.'
+        set:
+          $ref: '#/components/schemas/SetInfoResponse'
     CollectionCardResponse:
       type: object
       required:
@@ -2139,6 +2295,30 @@ components:
           type: integer
           format: int64
           minimum: 0
+    PaginatedCatalogResponse:
+      type: object
+      required:
+      - items
+      - total
+      - page
+      - page_size
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/CatalogCardResponse'
+        page:
+          type: integer
+          format: int32
+          minimum: 0
+        page_size:
+          type: integer
+          format: int32
+          minimum: 0
+        total:
+          type: integer
+          format: int64
+          minimum: 0
     PaginatedCollectionResponse:
       type: object
       required:
@@ -2347,6 +2527,7 @@ components:
           description: Set code, 3 to 6 uppercase characters.
     SetInfoResponse:
       type: object
+      description: A set, as several resources show it.
       required:
       - code
       - name

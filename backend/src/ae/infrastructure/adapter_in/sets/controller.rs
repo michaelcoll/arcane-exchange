@@ -1,7 +1,7 @@
 use crate::application::error::AppError;
 use crate::domain::set_name::SetCode;
 use crate::infrastructure::AppState;
-use crate::infrastructure::adapter_in::collection::dto::SetInfoResponse;
+use crate::infrastructure::adapter_in::SetInfoResponse;
 use axum::extract::{Path, State};
 use axum::routing::get;
 

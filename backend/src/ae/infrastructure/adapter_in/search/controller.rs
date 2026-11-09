@@ -3,9 +3,10 @@ use crate::application::error::AppError;
 use crate::domain::collection::{CollectionQuery, SearchQuery, SearchScope};
 use crate::domain::pagination::PageRequest;
 use crate::infrastructure::AppState;
+use crate::infrastructure::adapter_in::SetInfoResponse;
 use crate::infrastructure::adapter_in::auth_extractor::AuthenticatedUser;
 use crate::infrastructure::adapter_in::collection::dto::{
-    CollectionCardResponse, PaginatedCollectionResponse, SetInfoResponse,
+    CollectionCardResponse, PaginatedCollectionResponse,
 };
 use axum::extract::State;
 use axum::routing::get;

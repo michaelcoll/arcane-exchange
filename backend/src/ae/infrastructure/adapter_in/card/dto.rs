@@ -1,6 +1,6 @@
 use crate::domain::card::CollectionEntry;
 use crate::domain::card_offer::CardOfferSortField;
-use crate::infrastructure::adapter_in::collection::dto::default_page_size;
+use crate::infrastructure::adapter_in::default_page_size;
 use chrono::NaiveDate;
 use serde::{Deserialize, Serialize};
 use ts_rs::TS;

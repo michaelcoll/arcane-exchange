@@ -29,6 +29,9 @@ public protocol APIProtocol: Sendable {
     /// - Remark: HTTP `GET /card/{scryfall_id}/price-history`.
     /// - Remark: Generated from `#/paths//card/{scryfall_id}/price-history/get(get_card_price_history)`.
     func get_card_price_history(_ input: Operations.get_card_price_history.Input) async throws -> Operations.get_card_price_history.Output
+    /// - Remark: HTTP `GET /catalog/cards`.
+    /// - Remark: Generated from `#/paths//catalog/cards/get(search_catalog)`.
+    func search_catalog(_ input: Operations.search_catalog.Input) async throws -> Operations.search_catalog.Output
     /// - Remark: HTTP `GET /catalog/scan-index`.
     /// - Remark: Generated from `#/paths//catalog/scan-index/get(get_scan_index)`.
     func get_scan_index(_ input: Operations.get_scan_index.Input) async throws -> Operations.get_scan_index.Output
@@ -50,6 +53,9 @@ public protocol APIProtocol: Sendable {
     /// - Remark: HTTP `GET /collection/cards/{set_code}/{collector_number}/{language_code}/entries`.
     /// - Remark: Generated from `#/paths//collection/cards/{set_code}/{collector_number}/{language_code}/entries/get(get_collection_entries)`.
     func get_collection_entries(_ input: Operations.get_collection_entries.Input) async throws -> Operations.get_collection_entries.Output
+    /// - Remark: HTTP `POST /collection/entries`.
+    /// - Remark: Generated from `#/paths//collection/entries/post(add_collection_entry)`.
+    func add_collection_entry(_ input: Operations.add_collection_entry.Input) async throws -> Operations.add_collection_entry.Output
     /// - Remark: HTTP `PATCH /collection/entries/{id}`.
     /// - Remark: Generated from `#/paths//collection/entries/{id}/patch(update_collection_entry)`.
     func update_collection_entry(_ input: Operations.update_collection_entry.Input) async throws -> Operations.update_collection_entry.Output
@@ -199,6 +205,17 @@ extension APIProtocol {
             headers: headers
         ))
     }
+    /// - Remark: HTTP `GET /catalog/cards`.
+    /// - Remark: Generated from `#/paths//catalog/cards/get(search_catalog)`.
+    public func search_catalog(
+        query: Operations.search_catalog.Input.Query = .init(),
+        headers: Operations.search_catalog.Input.Headers = .init()
+    ) async throws -> Operations.search_catalog.Output {
+        try await search_catalog(Operations.search_catalog.Input(
+            query: query,
+            headers: headers
+        ))
+    }
     /// - Remark: HTTP `GET /catalog/scan-index`.
     /// - Remark: Generated from `#/paths//catalog/scan-index/get(get_scan_index)`.
     public func get_scan_index(headers: Operations.get_scan_index.Input.Headers = .init()) async throws -> Operations.get_scan_index.Output {
@@ -264,6 +281,17 @@ extension APIProtocol {
         try await get_collection_entries(Operations.get_collection_entries.Input(
             path: path,
             headers: headers
+        ))
+    }
+    /// - Remark: HTTP `POST /collection/entries`.
+    /// - Remark: Generated from `#/paths//collection/entries/post(add_collection_entry)`.
+    public func add_collection_entry(
+        headers: Operations.add_collection_entry.Input.Headers = .init(),
+        body: Operations.add_collection_entry.Input.Body
+    ) async throws -> Operations.add_collection_entry.Output {
+        try await add_collection_entry(Operations.add_collection_entry.Input(
+            headers: headers,
+            body: body
         ))
     }
     /// - Remark: HTTP `PATCH /collection/entries/{id}`.

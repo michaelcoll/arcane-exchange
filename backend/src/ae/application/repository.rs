@@ -5,9 +5,9 @@ use crate::domain::card::{Card, CardId, CollectionEntry, CopyId};
 use crate::domain::card_image::{CardImageSource, CardImages, EnglishImage};
 use crate::domain::card_import::{CardImport, CardImportId, CardImportStatus};
 use crate::domain::card_offer::CardOfferSortField;
-use crate::domain::catalog::{CatalogCard, ScanIndexEntry};
+use crate::domain::catalog::{CatalogCard, CatalogSearchItem, ScanIndexEntry};
 use crate::domain::collection::{CollectionQuery, SearchQuery, SearchScope};
-use crate::domain::collection_entry::{CardEntries, CollectionEntryId, EntryEdit};
+use crate::domain::collection_entry::{CardEntries, CollectionEntryId, EntryUpdate};
 use crate::domain::collection_stats::CollectionStats;
 use crate::domain::pagination::{Paginated, Pagination};
 use crate::domain::price::{FullPriceGuide, PriceHistoryEntry};
@@ -120,6 +120,16 @@ pub trait CatalogRepository: Send + Sync {
     /// The catalog cards of the scan index: those whose collector number is purely numeric, ordered by
     /// set then number. Empty when no catalog is loaded.
     async fn scan_index_entries(&self) -> Result<Vec<ScanIndexEntry>, AppError>;
+
+    /// The catalog cards matching `name` (English or French name: substring or trigram
+    /// similarity) and, when given, `set_code`, ordered by decreasing similarity of the name, then
+    /// set code, then collector number. Without `name` every card of the set matches.
+    async fn search(
+        &self,
+        name: Option<&str>,
+        set_code: Option<&SetCode>,
+        pagination: Pagination,
+    ) -> Result<Paginated<CatalogSearchItem>, AppError>;
 }
 
 #[async_trait]
@@ -193,6 +203,16 @@ pub trait CardPricesViewRepository: Send + Sync {
         sort_by: CardOfferSortField,
         pagination: Pagination,
     ) -> Result<Paginated<CollectionEntry>, AppError>;
+}
+
+/// The request side of the card prices views refresh, run in the background by
+/// [`CardPricesRefresher`](crate::application::card_prices_refresher::CardPricesRefresher).
+#[cfg_attr(test, automock)]
+pub trait CardPricesRefreshRequester: Send + Sync {
+    /// Asks for a refresh of the card prices views and returns at once, without waiting for it.
+    /// Requests received while a refresh runs are coalesced into a single further refresh. A
+    /// failed refresh is logged and never reaches the caller.
+    fn request_card_prices_refresh(&self);
 }
 
 #[async_trait]
@@ -444,26 +464,45 @@ pub trait CollectionEntryRepository: Send + Sync {
         card_id: &CardId,
     ) -> Result<CardEntries, AppError>;
 
-    /// Applies `edit` to the entry and returns the entries of its card. The reservation guard and
-    /// the write share one transaction, with the card's entries locked. An edit onto an entry
-    /// that already exists merges the two ([`EntryStock::merge`](crate::domain::collection_entry::EntryStock::merge)).
+    /// Adds `quantity` copies of the card in the finish, stored in `binder_id` (or in no binder).
+    /// The card must exist. An entry of the same card, finish and binder absorbs them
+    /// ([`EntryCopies::merge`](crate::domain::collection_entry::EntryCopies::merge)), otherwise a new
+    /// entry without purchase price is written. Returns the entries of the card.
+    ///
+    /// # Errors
+    ///
+    /// - `BinderNotFound` when the binder is absent or another player's;
+    /// - `InvalidQuantity` when the merge goes over 255.
+    async fn add(
+        &self,
+        user_id: &UserId,
+        card_id: &CardId,
+        foil: bool,
+        quantity: u8,
+        binder_id: Option<BinderId>,
+    ) -> Result<CardEntries, AppError>;
+
+    /// Applies `update` to the entry and returns the entries of its card. The reservation guard
+    /// and the write share one transaction, with the card's entries locked and the Trades that
+    /// hold the card kept from moving on until it commits. An update onto an entry that already
+    /// exists merges the two ([`EntryCopies::merge`](crate::domain::collection_entry::EntryCopies::merge)).
     ///
     /// # Errors
     ///
     /// - `CollectionEntryNotFound` when the entry is absent or another player's;
-    /// - `ReservedQuantityExceeded` when the edit takes the owned copies of a finish under what
+    /// - `ReservedQuantityExceeded` when the update takes the owned copies of a finish under what
     ///   the accepted Trades committed of it;
     /// - `InvalidQuantity` when a merge goes over 255.
     async fn update(
         &self,
         user_id: &UserId,
         id: CollectionEntryId,
-        edit: EntryEdit,
+        update: EntryUpdate,
     ) -> Result<CardEntries, AppError>;
 
     /// Moves `quantity` copies of the entry (all of them when `None`) into `binder_id`, or out of
     /// any binder when `None`, and returns the entries of its card. The copies merge into the
-    /// entry already there ([`EntryStock::merge`](crate::domain::collection_entry::EntryStock::merge)),
+    /// entry already there ([`EntryCopies::merge`](crate::domain::collection_entry::EntryCopies::merge)),
     /// and the source entry is removed when it empties. The owned copies do not change, so no
     /// reservation guard applies.
     ///
@@ -485,5 +524,5 @@ pub trait CollectionEntryRepository: Send + Sync {
     /// # Errors
     ///
     /// `CollectionEntryNotFound` and `ReservedQuantityExceeded`, as for [`Self::update`].
-    async fn delete(&self, user_id: &UserId, id: CollectionEntryId) -> Result<(), AppError>;
+    async fn remove(&self, user_id: &UserId, id: CollectionEntryId) -> Result<(), AppError>;
 }

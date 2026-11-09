@@ -79,6 +79,7 @@ struct DeviceMemoryTests {
     /// sign-out never erases.
     @Test func pinsTheStoredKeyNames() {
         #expect(PlayerKey.allCases.map(\.rawValue).sorted() == [
+            "collection.addCard.language",
             "collection.filters",
             "home_widget_snapshot.CollectionWidget",
             "home_widget_snapshot.TradesWidget",

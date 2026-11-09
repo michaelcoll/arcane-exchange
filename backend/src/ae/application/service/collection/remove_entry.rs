@@ -1,6 +1,6 @@
 use crate::application::error::AppError;
-use crate::application::repository::CollectionEntryRepository;
-use crate::application::use_case::{RemoveCollectionEntryUseCase, RequestCardPricesRefreshUseCase};
+use crate::application::repository::{CardPricesRefreshRequester, CollectionEntryRepository};
+use crate::application::use_case::RemoveCollectionEntryUseCase;
 use crate::domain::collection_entry::CollectionEntryId;
 use crate::domain::user::UserId;
 use async_trait::async_trait;
@@ -8,13 +8,13 @@ use std::sync::Arc;
 
 pub struct RemoveCollectionEntryService {
     repository: Arc<dyn CollectionEntryRepository>,
-    card_prices_refresh: Arc<dyn RequestCardPricesRefreshUseCase>,
+    card_prices_refresh: Arc<dyn CardPricesRefreshRequester>,
 }
 
 impl RemoveCollectionEntryService {
     pub fn new(
         repository: Arc<dyn CollectionEntryRepository>,
-        card_prices_refresh: Arc<dyn RequestCardPricesRefreshUseCase>,
+        card_prices_refresh: Arc<dyn CardPricesRefreshRequester>,
     ) -> Self {
         Self {
             repository,
@@ -31,7 +31,7 @@ impl RemoveCollectionEntryUseCase for RemoveCollectionEntryService {
         user_id: &UserId,
         id: CollectionEntryId,
     ) -> Result<(), AppError> {
-        self.repository.delete(user_id, id).await?;
+        self.repository.remove(user_id, id).await?;
         self.card_prices_refresh.request_card_prices_refresh();
 
         Ok(())
@@ -42,7 +42,7 @@ impl RemoveCollectionEntryUseCase for RemoveCollectionEntryService {
 mod tests {
     use super::*;
     use crate::application::repository::MockCollectionEntryRepository;
-    use crate::application::use_case::MockRequestCardPricesRefreshUseCase;
+    use crate::application::service::collection::test_fixtures::refresh;
     use crate::domain::error::FunctionalError;
     use uuid::Uuid;
 
@@ -50,20 +50,11 @@ mod tests {
         CollectionEntryId(Uuid::from_u128(1))
     }
 
-    fn refresh(times: usize) -> MockRequestCardPricesRefreshUseCase {
-        let mut refresh = MockRequestCardPricesRefreshUseCase::new();
-        refresh
-            .expect_request_card_prices_refresh()
-            .times(times)
-            .return_const(());
-        refresh
-    }
-
     #[tokio::test]
     async fn removes_the_entry_and_requests_a_refresh_once() {
         let mut repository = MockCollectionEntryRepository::new();
         repository
-            .expect_delete()
+            .expect_remove()
             .withf(|user_id, id| user_id.as_str() == "user_1" && *id == entry_id())
             .times(1)
             .returning(|_, _| Box::pin(async { Ok(()) }));
@@ -79,7 +70,7 @@ mod tests {
     #[tokio::test]
     async fn a_refused_removal_requests_no_refresh_and_keeps_its_error() {
         let mut repository = MockCollectionEntryRepository::new();
-        repository.expect_delete().returning(|_, _| {
+        repository.expect_remove().returning(|_, _| {
             Box::pin(async { Err(FunctionalError::CollectionEntryNotFound.into()) })
         });
         let service = RemoveCollectionEntryService::new(Arc::new(repository), Arc::new(refresh(0)));

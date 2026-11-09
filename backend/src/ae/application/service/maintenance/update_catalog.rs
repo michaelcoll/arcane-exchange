@@ -217,6 +217,7 @@ fn to_catalog_card(entry: Entry) -> Result<(CatalogCard, String), String> {
         french_name,
         scryfall_id: reference.scryfall_id,
         cardmarket_id: reference.cardmarket_id,
+        image_url: reference.image_url,
     };
     Ok((card, reference.set_name))
 }
@@ -266,6 +267,7 @@ mod tests {
             faces: vec![],
             cardmarket_id: None,
             digital: false,
+            image_url: None,
         }
     }
 
@@ -463,6 +465,29 @@ mod tests {
         assert_eq!(card.rarity, RarityCode::M);
         assert_eq!(card.scryfall_id, english_id);
         assert_eq!(card.cardmarket_id, Some(751193));
+    }
+
+    #[tokio::test]
+    async fn the_image_url_is_the_one_of_the_english_reference_object() {
+        let mut english = object("mkm", "12", "en");
+        english.image_url = Some("https://img.example/en.jpg".to_string());
+        let mut french = object("mkm", "12", "fr");
+        french.image_url = Some("https://img.example/fr.jpg".to_string());
+
+        // The French object comes last: it does not take the image over.
+        let loaded = load(vec![english, french]).await.unwrap();
+
+        assert_eq!(
+            loaded.card("MKM", "12").unwrap().image_url.as_deref(),
+            Some("https://img.example/en.jpg")
+        );
+    }
+
+    #[tokio::test]
+    async fn an_object_without_an_image_gives_a_catalog_card_without_one() {
+        let loaded = load(vec![object("mkm", "12", "en")]).await.unwrap();
+
+        assert_eq!(loaded.card("MKM", "12").unwrap().image_url, None);
     }
 
     #[tokio::test]

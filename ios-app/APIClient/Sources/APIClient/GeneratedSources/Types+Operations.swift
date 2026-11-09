@@ -928,6 +928,259 @@ public enum Operations {
             }
         }
     }
+    /// - Remark: HTTP `GET /catalog/cards`.
+    /// - Remark: Generated from `#/paths//catalog/cards/get(search_catalog)`.
+    public enum search_catalog {
+        public static let id: Swift.String = "search_catalog"
+        public struct Input: Sendable, Hashable {
+            /// - Remark: Generated from `#/paths/catalog/cards/GET/query`.
+            public struct Query: Sendable, Hashable {
+                /// Name to search, English or French: substring or trigram similarity. Blank or absent matches every card
+                ///
+                /// - Remark: Generated from `#/paths/catalog/cards/GET/query/q`.
+                public var q: Swift.String?
+                /// Restricts the search to a set
+                ///
+                /// - Remark: Generated from `#/paths/catalog/cards/GET/query/set_code`.
+                public var set_code: Swift.String?
+                /// Page number, 0-based (default 0). `page * page_size` must not exceed 1000
+                ///
+                /// - Remark: Generated from `#/paths/catalog/cards/GET/query/page`.
+                public var page: Swift.Int32?
+                /// Items per page, 1 to 100 (default 20)
+                ///
+                /// - Remark: Generated from `#/paths/catalog/cards/GET/query/page_size`.
+                public var page_size: Swift.Int32?
+                /// Creates a new `Query`.
+                ///
+                /// - Parameters:
+                ///   - q: Name to search, English or French: substring or trigram similarity. Blank or absent matches every card
+                ///   - set_code: Restricts the search to a set
+                ///   - page: Page number, 0-based (default 0). `page * page_size` must not exceed 1000
+                ///   - page_size: Items per page, 1 to 100 (default 20)
+                public init(
+                    q: Swift.String? = nil,
+                    set_code: Swift.String? = nil,
+                    page: Swift.Int32? = nil,
+                    page_size: Swift.Int32? = nil
+                ) {
+                    self.q = q
+                    self.set_code = set_code
+                    self.page = page
+                    self.page_size = page_size
+                }
+            }
+            public var query: Operations.search_catalog.Input.Query
+            /// - Remark: Generated from `#/paths/catalog/cards/GET/header`.
+            public struct Headers: Sendable, Hashable {
+                public var accept: [OpenAPIRuntime.AcceptHeaderContentType<Operations.search_catalog.AcceptableContentType>]
+                /// Creates a new `Headers`.
+                ///
+                /// - Parameters:
+                ///   - accept:
+                public init(accept: [OpenAPIRuntime.AcceptHeaderContentType<Operations.search_catalog.AcceptableContentType>] = .defaultValues()) {
+                    self.accept = accept
+                }
+            }
+            public var headers: Operations.search_catalog.Input.Headers
+            /// Creates a new `Input`.
+            ///
+            /// - Parameters:
+            ///   - query:
+            ///   - headers:
+            public init(
+                query: Operations.search_catalog.Input.Query = .init(),
+                headers: Operations.search_catalog.Input.Headers = .init()
+            ) {
+                self.query = query
+                self.headers = headers
+            }
+        }
+        @frozen public enum Output: Sendable, Hashable {
+            public struct Ok: Sendable, Hashable {
+                /// - Remark: Generated from `#/paths/catalog/cards/GET/responses/200/content`.
+                @frozen public enum Body: Sendable, Hashable {
+                    /// - Remark: Generated from `#/paths/catalog/cards/GET/responses/200/content/application\/json`.
+                    case json(Components.Schemas.PaginatedCatalogResponse)
+                    /// The associated value of the enum case if `self` is `.json`.
+                    ///
+                    /// - Throws: An error if `self` is not `.json`.
+                    /// - SeeAlso: `.json`.
+                    public var json: Components.Schemas.PaginatedCatalogResponse {
+                        get throws {
+                            switch self {
+                            case let .json(body):
+                                return body
+                            }
+                        }
+                    }
+                }
+                /// Received HTTP response body
+                public var body: Operations.search_catalog.Output.Ok.Body
+                /// Creates a new `Ok`.
+                ///
+                /// - Parameters:
+                ///   - body: Received HTTP response body
+                public init(body: Operations.search_catalog.Output.Ok.Body) {
+                    self.body = body
+                }
+            }
+            /// The impressions of the catalog matching the search, by decreasing similarity of the name, then set code, then collector number. Tokens are not in the catalog
+            ///
+            /// - Remark: Generated from `#/paths//catalog/cards/get(search_catalog)/responses/200`.
+            ///
+            /// HTTP response code: `200 ok`.
+            case ok(Operations.search_catalog.Output.Ok)
+            /// The associated value of the enum case if `self` is `.ok`.
+            ///
+            /// - Throws: An error if `self` is not `.ok`.
+            /// - SeeAlso: `.ok`.
+            public var ok: Operations.search_catalog.Output.Ok {
+                get throws {
+                    switch self {
+                    case let .ok(response):
+                        return response
+                    default:
+                        try throwUnexpectedResponseStatus(
+                            expectedStatus: "ok",
+                            response: self
+                        )
+                    }
+                }
+            }
+            public struct BadRequest: Sendable, Hashable {
+                /// - Remark: Generated from `#/paths/catalog/cards/GET/responses/400/content`.
+                @frozen public enum Body: Sendable, Hashable {
+                    /// - Remark: Generated from `#/paths/catalog/cards/GET/responses/400/content/application\/json`.
+                    case json(Components.Schemas.ErrorResponse)
+                    /// The associated value of the enum case if `self` is `.json`.
+                    ///
+                    /// - Throws: An error if `self` is not `.json`.
+                    /// - SeeAlso: `.json`.
+                    public var json: Components.Schemas.ErrorResponse {
+                        get throws {
+                            switch self {
+                            case let .json(body):
+                                return body
+                            }
+                        }
+                    }
+                }
+                /// Received HTTP response body
+                public var body: Operations.search_catalog.Output.BadRequest.Body
+                /// Creates a new `BadRequest`.
+                ///
+                /// - Parameters:
+                ///   - body: Received HTTP response body
+                public init(body: Operations.search_catalog.Output.BadRequest.Body) {
+                    self.body = body
+                }
+            }
+            /// Pagination out of bounds, or invalid set code
+            ///
+            /// - Remark: Generated from `#/paths//catalog/cards/get(search_catalog)/responses/400`.
+            ///
+            /// HTTP response code: `400 badRequest`.
+            case badRequest(Operations.search_catalog.Output.BadRequest)
+            /// The associated value of the enum case if `self` is `.badRequest`.
+            ///
+            /// - Throws: An error if `self` is not `.badRequest`.
+            /// - SeeAlso: `.badRequest`.
+            public var badRequest: Operations.search_catalog.Output.BadRequest {
+                get throws {
+                    switch self {
+                    case let .badRequest(response):
+                        return response
+                    default:
+                        try throwUnexpectedResponseStatus(
+                            expectedStatus: "badRequest",
+                            response: self
+                        )
+                    }
+                }
+            }
+            public struct Unauthorized: Sendable, Hashable {
+                /// - Remark: Generated from `#/paths/catalog/cards/GET/responses/401/content`.
+                @frozen public enum Body: Sendable, Hashable {
+                    /// - Remark: Generated from `#/paths/catalog/cards/GET/responses/401/content/application\/json`.
+                    case json(Components.Schemas.ErrorResponse)
+                    /// The associated value of the enum case if `self` is `.json`.
+                    ///
+                    /// - Throws: An error if `self` is not `.json`.
+                    /// - SeeAlso: `.json`.
+                    public var json: Components.Schemas.ErrorResponse {
+                        get throws {
+                            switch self {
+                            case let .json(body):
+                                return body
+                            }
+                        }
+                    }
+                }
+                /// Received HTTP response body
+                public var body: Operations.search_catalog.Output.Unauthorized.Body
+                /// Creates a new `Unauthorized`.
+                ///
+                /// - Parameters:
+                ///   - body: Received HTTP response body
+                public init(body: Operations.search_catalog.Output.Unauthorized.Body) {
+                    self.body = body
+                }
+            }
+            /// Missing or invalid token
+            ///
+            /// - Remark: Generated from `#/paths//catalog/cards/get(search_catalog)/responses/401`.
+            ///
+            /// HTTP response code: `401 unauthorized`.
+            case unauthorized(Operations.search_catalog.Output.Unauthorized)
+            /// The associated value of the enum case if `self` is `.unauthorized`.
+            ///
+            /// - Throws: An error if `self` is not `.unauthorized`.
+            /// - SeeAlso: `.unauthorized`.
+            public var unauthorized: Operations.search_catalog.Output.Unauthorized {
+                get throws {
+                    switch self {
+                    case let .unauthorized(response):
+                        return response
+                    default:
+                        try throwUnexpectedResponseStatus(
+                            expectedStatus: "unauthorized",
+                            response: self
+                        )
+                    }
+                }
+            }
+            /// Undocumented response.
+            ///
+            /// A response with a code that is not documented in the OpenAPI document.
+            case undocumented(statusCode: Swift.Int, OpenAPIRuntime.UndocumentedPayload)
+        }
+        @frozen public enum AcceptableContentType: AcceptableProtocol {
+            case json
+            case other(Swift.String)
+            public init?(rawValue: Swift.String) {
+                switch rawValue.lowercased() {
+                case "application/json":
+                    self = .json
+                default:
+                    self = .other(rawValue)
+                }
+            }
+            public var rawValue: Swift.String {
+                switch self {
+                case let .other(string):
+                    return string
+                case .json:
+                    return "application/json"
+                }
+            }
+            public static var allCases: [Self] {
+                [
+                    .json
+                ]
+            }
+        }
+    }
     /// - Remark: HTTP `GET /catalog/scan-index`.
     /// - Remark: Generated from `#/paths//catalog/scan-index/get(get_scan_index)`.
     public enum get_scan_index {
@@ -2738,6 +2991,278 @@ public enum Operations {
                     default:
                         try throwUnexpectedResponseStatus(
                             expectedStatus: "unauthorized",
+                            response: self
+                        )
+                    }
+                }
+            }
+            /// Undocumented response.
+            ///
+            /// A response with a code that is not documented in the OpenAPI document.
+            case undocumented(statusCode: Swift.Int, OpenAPIRuntime.UndocumentedPayload)
+        }
+        @frozen public enum AcceptableContentType: AcceptableProtocol {
+            case json
+            case other(Swift.String)
+            public init?(rawValue: Swift.String) {
+                switch rawValue.lowercased() {
+                case "application/json":
+                    self = .json
+                default:
+                    self = .other(rawValue)
+                }
+            }
+            public var rawValue: Swift.String {
+                switch self {
+                case let .other(string):
+                    return string
+                case .json:
+                    return "application/json"
+                }
+            }
+            public static var allCases: [Self] {
+                [
+                    .json
+                ]
+            }
+        }
+    }
+    /// - Remark: HTTP `POST /collection/entries`.
+    /// - Remark: Generated from `#/paths//collection/entries/post(add_collection_entry)`.
+    public enum add_collection_entry {
+        public static let id: Swift.String = "add_collection_entry"
+        public struct Input: Sendable, Hashable {
+            /// - Remark: Generated from `#/paths/collection/entries/POST/header`.
+            public struct Headers: Sendable, Hashable {
+                public var accept: [OpenAPIRuntime.AcceptHeaderContentType<Operations.add_collection_entry.AcceptableContentType>]
+                /// Creates a new `Headers`.
+                ///
+                /// - Parameters:
+                ///   - accept:
+                public init(accept: [OpenAPIRuntime.AcceptHeaderContentType<Operations.add_collection_entry.AcceptableContentType>] = .defaultValues()) {
+                    self.accept = accept
+                }
+            }
+            public var headers: Operations.add_collection_entry.Input.Headers
+            /// - Remark: Generated from `#/paths/collection/entries/POST/requestBody`.
+            @frozen public enum Body: Sendable, Hashable {
+                /// - Remark: Generated from `#/paths/collection/entries/POST/requestBody/content/application\/json`.
+                case json(Components.Schemas.AddCollectionEntryRequest)
+            }
+            public var body: Operations.add_collection_entry.Input.Body
+            /// Creates a new `Input`.
+            ///
+            /// - Parameters:
+            ///   - headers:
+            ///   - body:
+            public init(
+                headers: Operations.add_collection_entry.Input.Headers = .init(),
+                body: Operations.add_collection_entry.Input.Body
+            ) {
+                self.headers = headers
+                self.body = body
+            }
+        }
+        @frozen public enum Output: Sendable, Hashable {
+            public struct Created: Sendable, Hashable {
+                /// - Remark: Generated from `#/paths/collection/entries/POST/responses/201/content`.
+                @frozen public enum Body: Sendable, Hashable {
+                    /// - Remark: Generated from `#/paths/collection/entries/POST/responses/201/content/application\/json`.
+                    case json(Components.Schemas.CardEntriesResponse)
+                    /// The associated value of the enum case if `self` is `.json`.
+                    ///
+                    /// - Throws: An error if `self` is not `.json`.
+                    /// - SeeAlso: `.json`.
+                    public var json: Components.Schemas.CardEntriesResponse {
+                        get throws {
+                            switch self {
+                            case let .json(body):
+                                return body
+                            }
+                        }
+                    }
+                }
+                /// Received HTTP response body
+                public var body: Operations.add_collection_entry.Output.Created.Body
+                /// Creates a new `Created`.
+                ///
+                /// - Parameters:
+                ///   - body: Received HTTP response body
+                public init(body: Operations.add_collection_entry.Output.Created.Body) {
+                    self.body = body
+                }
+            }
+            /// The entries of the card, after the addition. The copies join the entry of the same finish and binder when there is one (quantities add up, purchase price kept, earliest added date), otherwise a new entry without purchase price is written. The card is created when it does not exist yet
+            ///
+            /// - Remark: Generated from `#/paths//collection/entries/post(add_collection_entry)/responses/201`.
+            ///
+            /// HTTP response code: `201 created`.
+            case created(Operations.add_collection_entry.Output.Created)
+            /// The associated value of the enum case if `self` is `.created`.
+            ///
+            /// - Throws: An error if `self` is not `.created`.
+            /// - SeeAlso: `.created`.
+            public var created: Operations.add_collection_entry.Output.Created {
+                get throws {
+                    switch self {
+                    case let .created(response):
+                        return response
+                    default:
+                        try throwUnexpectedResponseStatus(
+                            expectedStatus: "created",
+                            response: self
+                        )
+                    }
+                }
+            }
+            public struct BadRequest: Sendable, Hashable {
+                /// - Remark: Generated from `#/paths/collection/entries/POST/responses/400/content`.
+                @frozen public enum Body: Sendable, Hashable {
+                    /// - Remark: Generated from `#/paths/collection/entries/POST/responses/400/content/application\/json`.
+                    case json(Components.Schemas.ErrorResponse)
+                    /// The associated value of the enum case if `self` is `.json`.
+                    ///
+                    /// - Throws: An error if `self` is not `.json`.
+                    /// - SeeAlso: `.json`.
+                    public var json: Components.Schemas.ErrorResponse {
+                        get throws {
+                            switch self {
+                            case let .json(body):
+                                return body
+                            }
+                        }
+                    }
+                }
+                /// Received HTTP response body
+                public var body: Operations.add_collection_entry.Output.BadRequest.Body
+                /// Creates a new `BadRequest`.
+                ///
+                /// - Parameters:
+                ///   - body: Received HTTP response body
+                public init(body: Operations.add_collection_entry.Output.BadRequest.Body) {
+                    self.body = body
+                }
+            }
+            /// Quantity out of 1 to 255 (`invalid_quantity`), also when a merge goes over 255; invalid set code, collector number or language code
+            ///
+            /// - Remark: Generated from `#/paths//collection/entries/post(add_collection_entry)/responses/400`.
+            ///
+            /// HTTP response code: `400 badRequest`.
+            case badRequest(Operations.add_collection_entry.Output.BadRequest)
+            /// The associated value of the enum case if `self` is `.badRequest`.
+            ///
+            /// - Throws: An error if `self` is not `.badRequest`.
+            /// - SeeAlso: `.badRequest`.
+            public var badRequest: Operations.add_collection_entry.Output.BadRequest {
+                get throws {
+                    switch self {
+                    case let .badRequest(response):
+                        return response
+                    default:
+                        try throwUnexpectedResponseStatus(
+                            expectedStatus: "badRequest",
+                            response: self
+                        )
+                    }
+                }
+            }
+            public struct Unauthorized: Sendable, Hashable {
+                /// - Remark: Generated from `#/paths/collection/entries/POST/responses/401/content`.
+                @frozen public enum Body: Sendable, Hashable {
+                    /// - Remark: Generated from `#/paths/collection/entries/POST/responses/401/content/application\/json`.
+                    case json(Components.Schemas.ErrorResponse)
+                    /// The associated value of the enum case if `self` is `.json`.
+                    ///
+                    /// - Throws: An error if `self` is not `.json`.
+                    /// - SeeAlso: `.json`.
+                    public var json: Components.Schemas.ErrorResponse {
+                        get throws {
+                            switch self {
+                            case let .json(body):
+                                return body
+                            }
+                        }
+                    }
+                }
+                /// Received HTTP response body
+                public var body: Operations.add_collection_entry.Output.Unauthorized.Body
+                /// Creates a new `Unauthorized`.
+                ///
+                /// - Parameters:
+                ///   - body: Received HTTP response body
+                public init(body: Operations.add_collection_entry.Output.Unauthorized.Body) {
+                    self.body = body
+                }
+            }
+            /// Missing or invalid token
+            ///
+            /// - Remark: Generated from `#/paths//collection/entries/post(add_collection_entry)/responses/401`.
+            ///
+            /// HTTP response code: `401 unauthorized`.
+            case unauthorized(Operations.add_collection_entry.Output.Unauthorized)
+            /// The associated value of the enum case if `self` is `.unauthorized`.
+            ///
+            /// - Throws: An error if `self` is not `.unauthorized`.
+            /// - SeeAlso: `.unauthorized`.
+            public var unauthorized: Operations.add_collection_entry.Output.Unauthorized {
+                get throws {
+                    switch self {
+                    case let .unauthorized(response):
+                        return response
+                    default:
+                        try throwUnexpectedResponseStatus(
+                            expectedStatus: "unauthorized",
+                            response: self
+                        )
+                    }
+                }
+            }
+            public struct NotFound: Sendable, Hashable {
+                /// - Remark: Generated from `#/paths/collection/entries/POST/responses/404/content`.
+                @frozen public enum Body: Sendable, Hashable {
+                    /// - Remark: Generated from `#/paths/collection/entries/POST/responses/404/content/application\/json`.
+                    case json(Components.Schemas.ErrorResponse)
+                    /// The associated value of the enum case if `self` is `.json`.
+                    ///
+                    /// - Throws: An error if `self` is not `.json`.
+                    /// - SeeAlso: `.json`.
+                    public var json: Components.Schemas.ErrorResponse {
+                        get throws {
+                            switch self {
+                            case let .json(body):
+                                return body
+                            }
+                        }
+                    }
+                }
+                /// Received HTTP response body
+                public var body: Operations.add_collection_entry.Output.NotFound.Body
+                /// Creates a new `NotFound`.
+                ///
+                /// - Parameters:
+                ///   - body: Received HTTP response body
+                public init(body: Operations.add_collection_entry.Output.NotFound.Body) {
+                    self.body = body
+                }
+            }
+            /// No catalog card has this set and collector number (`card_not_in_catalog`), or the binder is not one of the caller's (`binder_not_found`)
+            ///
+            /// - Remark: Generated from `#/paths//collection/entries/post(add_collection_entry)/responses/404`.
+            ///
+            /// HTTP response code: `404 notFound`.
+            case notFound(Operations.add_collection_entry.Output.NotFound)
+            /// The associated value of the enum case if `self` is `.notFound`.
+            ///
+            /// - Throws: An error if `self` is not `.notFound`.
+            /// - SeeAlso: `.notFound`.
+            public var notFound: Operations.add_collection_entry.Output.NotFound {
+                get throws {
+                    switch self {
+                    case let .notFound(response):
+                        return response
+                    default:
+                        try throwUnexpectedResponseStatus(
+                            expectedStatus: "notFound",
                             response: self
                         )
                     }

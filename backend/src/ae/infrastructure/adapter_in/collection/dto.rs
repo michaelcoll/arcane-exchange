@@ -6,7 +6,7 @@ use crate::domain::collection_entry::{CardEntries, CollectionEntryDetail, EntryB
 use crate::domain::collection_stats::{BinderInfo, CollectionStats};
 use crate::domain::price::PriceGuide;
 use crate::domain::rarity_code::RarityCode;
-use crate::domain::set_name::SetName;
+use crate::infrastructure::adapter_in::{SetInfoResponse, default_page_size};
 use serde::{Deserialize, Serialize};
 use ts_rs::TS;
 use utoipa::ToSchema;
@@ -94,23 +94,6 @@ impl From<CardImport> for CardImportResponse {
 }
 
 // --- Collection stats ---
-#[derive(Serialize, Debug, TS, ToSchema)]
-#[serde(rename = "SetInfo")]
-#[ts(export)]
-pub struct SetInfoResponse {
-    pub code: String,
-    pub name: String,
-}
-
-impl From<SetName> for SetInfoResponse {
-    fn from(s: SetName) -> Self {
-        Self {
-            code: s.code.to_string(),
-            name: s.name,
-        }
-    }
-}
-
 #[derive(Serialize, Debug, TS, ToSchema)]
 #[serde(rename = "BinderInfo")]
 #[ts(export)]
@@ -240,10 +223,6 @@ pub(crate) fn card_image_urls(
         ))
     };
     (url(CardFace::Front), url(CardFace::Back))
-}
-
-pub(crate) fn default_page_size() -> u32 {
-    crate::domain::pagination::DEFAULT_PAGE_SIZE
 }
 
 #[derive(Deserialize, TS)]
@@ -392,6 +371,27 @@ impl From<CardEntries> for CardEntriesResponse {
             },
         }
     }
+}
+
+/// A copy to add to the collection, without purchase price.
+#[derive(Deserialize, Debug, TS, ToSchema)]
+#[serde(rename = "AddCollectionEntryRequest")]
+#[ts(export)]
+pub(crate) struct AddCollectionEntryRequest {
+    /// Set code of the catalog card.
+    pub(crate) set_code: String,
+    /// Collector number of the catalog card.
+    pub(crate) collector_number: String,
+    /// Language of the copy: not checked against Scryfall, which may not have the card in it.
+    pub(crate) language_code: String,
+    pub(crate) foil: bool,
+    /// Copies added, 1 to 255. Signed so an out-of-range value fails with `invalid_quantity`
+    /// (400) instead of a JSON extractor rejection.
+    pub(crate) quantity: i32,
+    /// Binder to store the copies in; absent for none.
+    #[serde(default)]
+    #[ts(optional)]
+    pub(crate) binder_id: Option<String>,
 }
 
 #[derive(Deserialize, Debug, TS, ToSchema)]

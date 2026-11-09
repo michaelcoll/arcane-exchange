@@ -186,6 +186,24 @@ final class FakeAPI: APIProtocol, @unchecked Sendable {
         return try await onUpdateCollectionEntry(input)
     }
 
+    var onAddCollectionEntry: (Operations.add_collection_entry.Input) async throws -> Operations.add_collection_entry.Output = { _ in
+        throw NotStubbed(operation: "add_collection_entry")
+    }
+
+    func add_collection_entry(_ input: Operations.add_collection_entry.Input) async throws -> Operations.add_collection_entry.Output {
+        record("add_collection_entry")
+        return try await onAddCollectionEntry(input)
+    }
+
+    var onSearchCatalog: (Operations.search_catalog.Input) async throws -> Operations.search_catalog.Output = { _ in
+        throw NotStubbed(operation: "search_catalog")
+    }
+
+    func search_catalog(_ input: Operations.search_catalog.Input) async throws -> Operations.search_catalog.Output {
+        record("search_catalog")
+        return try await onSearchCatalog(input)
+    }
+
     var onMoveCollectionEntry: (Operations.move_collection_entry.Input) async throws -> Operations.move_collection_entry.Output = { _ in
         throw NotStubbed(operation: "move_collection_entry")
     }

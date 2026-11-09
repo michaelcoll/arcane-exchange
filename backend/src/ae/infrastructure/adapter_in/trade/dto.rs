@@ -1,9 +1,8 @@
 use crate::domain::trade::{
     TradeCardDetail, TradeDetail, TradePartyState, TradeStatus, TradeSummary,
 };
-use crate::infrastructure::adapter_in::collection::dto::{
-    PriceGuideResponse, card_image_urls, default_page_size,
-};
+use crate::infrastructure::adapter_in::collection::dto::{PriceGuideResponse, card_image_urls};
+use crate::infrastructure::adapter_in::default_page_size;
 use serde::{Deserialize, Serialize};
 use ts_rs::TS;
 use utoipa::ToSchema;

@@ -1,6 +1,7 @@
 pub(crate) use crate::infrastructure::adapter_in::collection::dto::{
-    RarityCodeParam, SortByParam, SortDirParam, default_page_size,
+    RarityCodeParam, SortByParam, SortDirParam,
 };
+use crate::infrastructure::adapter_in::default_page_size;
 use serde::Deserialize;
 use ts_rs::TS;
 

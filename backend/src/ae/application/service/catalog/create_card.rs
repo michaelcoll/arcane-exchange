@@ -106,6 +106,7 @@ mod tests {
             french_name: Some("Carte exemple".to_string()),
             scryfall_id: Uuid::from_u128(7),
             cardmarket_id,
+            image_url: None,
         }
     }
 
