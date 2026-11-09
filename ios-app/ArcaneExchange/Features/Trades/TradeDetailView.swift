@@ -8,6 +8,10 @@ import SwiftUI
 ///
 /// Hides the tab bar: this is a commitment screen (accept, confirm, rate — money and cards
 /// change hands), not a place to browse from. One bottom region, one decision.
+///
+/// No `#Preview` here on purpose: the screen reads the Clerk environment and hits the API on
+/// `.task`, which hangs and crashes the Xcode preview agent. The pieces it composes
+/// (`TradeCardRail`, `TradeStepsView`, `TradeStatusIndicator`) carry the previews instead.
 struct TradeDetailView: View {
     let route: TradeDetailRoute
 
