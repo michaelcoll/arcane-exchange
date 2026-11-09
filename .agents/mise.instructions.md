@@ -37,4 +37,4 @@ Pour l'iOS, copier en plus `ios-app/Config/Local.xcconfig.example` vers `Local.x
 - **`mise run sqlx-prepare` exige une base qui tourne** et repart de zéro (`rm -fr backend/.sqlx`). Les requêtes SQLx sont
   vérifiées à la compilation, donc une requête modifiée sans `sqlx-prepare` casse le build offline et la CI.
 - **`mise run checks`** est le filet complet avant de pousser : docs régénérées, métadonnées SQLx, tests et lints
-  (lint iOS compris).
+  (lint iOS et tests du script d'annonce de release compris).

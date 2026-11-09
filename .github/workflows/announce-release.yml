@@ -1,0 +1,44 @@
+name: Announce release
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Tag of the release to announce
+        type: string
+        required: true
+      dry_run:
+        description: Print the payload instead of posting it
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+
+jobs:
+  announce:
+    name: Announce on Discord
+    # A pre-release is never announced; a manual run always goes through.
+    if: github.event_name == 'workflow_dispatch' || !github.event.release.prerelease
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 26
+
+      - name: Test the announcement script
+        working-directory: .github/scripts/release-announcement
+        run: node --test
+
+      - name: Announce the release
+        working-directory: .github/scripts/release-announcement
+        env:
+          TAG: ${{ inputs.tag || github.event.release.tag_name }}
+          DRY_RUN: ${{ inputs.dry_run }}
+          GITHUB_TOKEN: ${{ github.token }}
+          DISCORD_RELEASE_WEBHOOK_URL: ${{ secrets.DISCORD_RELEASE_WEBHOOK_URL }}
+        run: node announce.mjs
