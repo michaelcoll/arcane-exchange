@@ -59,3 +59,18 @@ struct CatalogCardSetLine: View {
         .lineLimit(1)
     }
 }
+
+#Preview("Ligne") {
+    List(CatalogCard.previewCatalog, id: \.self) { CatalogCardRow(card: $0) }
+        .listStyle(.plain)
+}
+
+#Preview("Image") {
+    CatalogCardImage(card: CatalogCard.previewCatalog[0])
+        .frame(width: 120)
+}
+
+#Preview("Ligne de set") {
+    CatalogCardSetLine(card: CatalogCard.previewCatalog[0])
+        .padding()
+}

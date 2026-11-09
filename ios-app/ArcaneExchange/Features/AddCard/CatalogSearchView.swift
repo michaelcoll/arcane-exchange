@@ -98,3 +98,7 @@ struct CatalogSearchView: View {
         .listStyle(.plain)
     }
 }
+
+#Preview {
+    CatalogSearchView(api: APIClientFactory.preview, onAdded: {})
+}

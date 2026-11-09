@@ -72,3 +72,9 @@ struct AddCollectionEntryForm: View {
         )
     }
 }
+
+#Preview {
+    NavigationStack {
+        AddCollectionEntryForm(card: CatalogCard.previewCatalog[0], api: APIClientFactory.preview, onAdded: {})
+    }
+}
