@@ -7,8 +7,9 @@ CODE_SIGN_STYLE = Automatic
 // build talks to. Copy Local.xcconfig.example to Local.xcconfig and fill both in.
 //
 // The empty default below keeps `$(CLERK_PUBLISHABLE_KEY)` resolvable without that file, so
-// a fresh clone — and CI — still builds and tests. Only sign-in needs the real key, and
-// neither exercises it.
+// a fresh clone — and CI — still builds and tests. Clerk traps on a blank key: the app then
+// leaves it unconfigured and shows a "missing key" screen (`ClerkSetup.configure`), and the
+// test host never configures it (`AppEntryPoint`).
 CLERK_PUBLISHABLE_KEY =
 
 #include? "Local.xcconfig"
