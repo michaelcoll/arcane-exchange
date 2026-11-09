@@ -53,3 +53,7 @@ struct TradeSettingsBindersSheet: View {
         )
     }
 }
+
+#Preview {
+    TradeSettingsBindersSheet(model: TradeSettingsViewModel(api: APIClientFactory.preview))
+}

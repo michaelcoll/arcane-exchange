@@ -52,3 +52,7 @@ struct TradeSettingsVisibilitySheet: View {
         Task { await model.setVisibility(option) }
     }
 }
+
+#Preview {
+    TradeSettingsVisibilitySheet(model: TradeSettingsViewModel(api: APIClientFactory.preview))
+}
