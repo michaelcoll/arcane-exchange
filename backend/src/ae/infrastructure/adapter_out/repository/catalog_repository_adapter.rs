@@ -4,7 +4,7 @@ use crate::domain::catalog::{CatalogCard, CatalogSearchItem, ScanIndexEntry};
 use crate::domain::pagination::{Paginated, Pagination};
 use crate::domain::set_name::{SetCode, SetName};
 use crate::infrastructure::adapter_out::repository::entities::{
-    cardmarket_id_from_db, cardmarket_id_to_db, from_db_rarity,
+    cardmarket_id_from_db, cardmarket_id_to_db, from_db_rarity, invalid_db_value,
 };
 use async_trait::async_trait;
 use sqlx::{Pool, Postgres, QueryBuilder};
@@ -168,7 +168,8 @@ impl CatalogRepository for CatalogRepositoryAdapter {
 
         Ok(Paginated {
             items,
-            total: u64::try_from(total).unwrap_or_default(),
+            total: u64::try_from(total)
+                .map_err(|_| invalid_db_value("catalog total", &total.to_string()))?,
             pagination,
         })
     }

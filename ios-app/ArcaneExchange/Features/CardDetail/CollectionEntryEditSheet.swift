@@ -43,7 +43,7 @@ struct CollectionEntryEditSheet: View {
                 Section("Déplacer") {
                     Picker("Vers", selection: $targetBinderID) {
                         if entry.binder != nil {
-                            Text("Sans binder").tag(String?.none)
+                            Text(BinderCopy.noBinder).tag(String?.none)
                         }
                         ForEach(model.binders.filter { $0.id != entry.binder?.id }, id: \.id) { binder in
                             Text(binder.name).tag(String?.some(binder.id))

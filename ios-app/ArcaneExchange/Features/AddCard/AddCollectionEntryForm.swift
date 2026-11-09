@@ -37,7 +37,7 @@ struct AddCollectionEntryForm: View {
                 }
                 Stepper("Quantité : \(model.quantity)", value: $model.quantity, in: 1 ... 255)
                 Picker("Binder", selection: $model.binderID) {
-                    Text("Sans binder").tag(String?.none)
+                    Text(BinderCopy.noBinder).tag(String?.none)
                     ForEach(model.binders, id: \.id) { binder in
                         Text(binder.name).tag(String?.some(binder.id))
                     }

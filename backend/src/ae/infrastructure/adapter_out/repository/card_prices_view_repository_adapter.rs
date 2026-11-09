@@ -933,7 +933,6 @@ mod tests {
         insert_set(&pool, "TST").await;
         insert_card(&pool, "TST", "1", "EN", "Test Card", 1).await;
         insert_user(&pool, "user1", "User1").await;
-        insert_collection_entry(&pool, "TST", "1", "EN", false, "user1", 2, 1000, Utc::now()).await;
         insert_collection_entry_with_binder(
             &pool,
             "TST",
@@ -941,18 +940,23 @@ mod tests {
             "EN",
             false,
             "user1",
-            3,
-            0,
+            2,
+            1000,
             Utc::now(),
             Some("booster"),
         )
         .await;
-        sqlx::query(
-            "UPDATE collection_entry SET purchase_price = NULL WHERE binder_id IS NOT NULL",
+        insert_collection_entry_without_price(
+            &pool,
+            "TST",
+            "1",
+            "EN",
+            false,
+            "user1",
+            3,
+            Utc::now(),
         )
-        .execute(&pool)
-        .await
-        .unwrap();
+        .await;
         refresh_view(&pool).await;
 
         let result = CardPricesViewRepositoryAdapter::new(pool)

@@ -79,3 +79,10 @@ final class BindersViewModel {
         binders.sorted { $0.name.localizedStandardCompare($1.name) == .orderedAscending }
     }
 }
+
+extension APIProtocol {
+    /// The player's binders; empty when the read failed, so a caller falls back on "no binder".
+    func bindersOrEmpty() async -> [Binder] {
+        await (try? list_binders().ok.body.json.binders) ?? []
+    }
+}
