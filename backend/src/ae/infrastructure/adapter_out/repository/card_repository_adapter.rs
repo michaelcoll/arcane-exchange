@@ -11,7 +11,8 @@ use crate::infrastructure::adapter_out::repository::entities::{
 };
 use async_trait::async_trait;
 use sqlx::{Pool, Postgres, QueryBuilder};
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
+use uuid::Uuid;
 
 pub struct CardRepositoryAdapter {
     pool: Pool<Postgres>,
@@ -144,9 +145,31 @@ impl CardRepository for CardRepositoryAdapter {
         );
         qb.build().execute(&mut *tx).await?;
 
+        // The binders of the export are created, or reused by name: a reused binder keeps its
+        // trade opening.
+        let binder_names: Vec<String> = cards
+            .iter()
+            .filter_map(|imported| imported.binder_name.clone())
+            .collect::<HashSet<_>>()
+            .into_iter()
+            .collect();
+        let binder_ids: HashMap<String, Uuid> = sqlx::query!(
+            r#"INSERT INTO binder (user_id, name)
+               SELECT $1, UNNEST($2::VARCHAR[])
+               ON CONFLICT (user_id, name) DO UPDATE SET name = EXCLUDED.name
+               RETURNING id, name"#,
+            user.id.as_str(),
+            &binder_names
+        )
+        .fetch_all(&mut *tx)
+        .await?
+        .into_iter()
+        .map(|row| (row.name, row.id))
+        .collect();
+
         let mut qb: QueryBuilder<Postgres> = QueryBuilder::new(
             "INSERT INTO collection_entry
-                (set_code, collector_number, language_code, foil, user_id, quantity, purchase_price, added_at, binder_name)",
+                (set_code, collector_number, language_code, foil, user_id, quantity, purchase_price, added_at, binder_id)",
         );
         qb.push_values(cards, |mut b, imported| {
             let card = &imported.card;
@@ -167,10 +190,15 @@ impl CardRepository for CardRepositoryAdapter {
                 .push_bind(*quantity as i32)
                 .push_bind(*purchase_price as i32)
                 .push_bind(*added_at)
-                .push_bind(imported.binder_name.clone());
+                .push_bind(
+                    imported
+                        .binder_name
+                        .as_ref()
+                        .and_then(|name| binder_ids.get(name).copied()),
+                );
         });
         qb.push(
-            "ON CONFLICT (set_code, collector_number, language_code, foil, user_id, binder_name)
+            "ON CONFLICT (set_code, collector_number, language_code, foil, user_id, binder_id)
              DO UPDATE SET quantity = EXCLUDED.quantity, purchase_price = EXCLUDED.purchase_price, added_at = EXCLUDED.added_at",
         );
         qb.build().execute(&mut *tx).await?;
@@ -1192,5 +1220,49 @@ mod tests {
 
         let rows = fetch_card(&pool, &LanguageCode::EN.to_string()).await;
         assert_eq!(rows[0].3, None);
+    }
+
+    #[sqlx::test]
+    async fn reimport_keeps_the_opening_of_a_kept_binder_and_drops_an_absent_one(pool: PgPool) {
+        use crate::application::repository::TradingBinderRepository;
+        use crate::infrastructure::adapter_out::repository::trading_binders_repository_adapter::TradingBindersRepositoryAdapter;
+
+        insert_user(&pool, "test-user-id", "testuser").await;
+        let user = User::for_testing();
+        let repository = CardRepositoryAdapter::new(pool.clone());
+        let trading_binders = TradingBindersRepositoryAdapter::new(pool.clone());
+        repository
+            .save_all(
+                &user,
+                &[
+                    imported_card("1", 1, 100, Some("Kept")),
+                    imported_card("2", 1, 100, Some("Gone")),
+                ],
+            )
+            .await
+            .unwrap();
+        trading_binders.add(&user.id, "Kept").await.unwrap();
+        trading_binders.add(&user.id, "Gone").await.unwrap();
+
+        repository.delete_all(user.clone()).await.unwrap();
+        repository
+            .save_all(&user, &[imported_card("3", 2, 100, Some("Kept"))])
+            .await
+            .unwrap();
+        trading_binders.purge_missing(&user.id).await.unwrap();
+
+        assert_eq!(
+            trading_binders.list(&user.id).await.unwrap(),
+            vec!["Kept".to_string()]
+        );
+        assert!(
+            !trading_binders
+                .binder_exists(&user.id, "Gone")
+                .await
+                .unwrap()
+        );
+        let rows = fetch_collection_entries(&pool, "test-user-id").await;
+        assert_eq!(rows.len(), 1);
+        assert_eq!(rows[0].binder_name.as_deref(), Some("Kept"));
     }
 }

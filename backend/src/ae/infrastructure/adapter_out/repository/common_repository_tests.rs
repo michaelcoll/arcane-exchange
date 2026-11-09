@@ -103,8 +103,12 @@ pub async fn insert_collection_entry_with_binder(
     date: chrono::DateTime<chrono::Utc>,
     binder_name: Option<&str>,
 ) {
+    let binder_id = match binder_name {
+        Some(name) => Some(insert_binder(pool, user_id, name).await),
+        None => None,
+    };
     sqlx::query(
-        r#"INSERT INTO collection_entry (set_code, collector_number, language_code, foil, user_id, quantity, purchase_price, added_at, binder_name)
+        r#"INSERT INTO collection_entry (set_code, collector_number, language_code, foil, user_id, quantity, purchase_price, added_at, binder_id)
             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)"#)
         .bind(set_code)
         .bind(collector_number)
@@ -114,7 +118,7 @@ pub async fn insert_collection_entry_with_binder(
         .bind(quantity)
         .bind(purchase_price)
         .bind(date)
-        .bind(binder_name)
+        .bind(binder_id)
     .execute(pool)
     .await
     .unwrap();
@@ -129,8 +133,9 @@ pub struct CollectionEntryRow {
 pub async fn fetch_collection_entries(pool: &PgPool, user_id: &str) -> Vec<CollectionEntryRow> {
     sqlx::query_as!(
         CollectionEntryRow,
-        r#"SELECT binder_name, quantity, purchase_price FROM collection_entry
-             WHERE user_id = $1 ORDER BY binder_name"#,
+        r#"SELECT b.name AS "binder_name?", ce.quantity, ce.purchase_price FROM collection_entry ce
+             LEFT JOIN binder b ON b.id = ce.binder_id
+             WHERE ce.user_id = $1 ORDER BY b.name"#,
         user_id
     )
     .fetch_all(pool)
@@ -310,10 +315,24 @@ pub async fn insert_rarity_filter(
     .unwrap();
 }
 
+/// Creates the binder `name` of `user_id`, or returns the existing one's identifier.
+pub async fn insert_binder(pool: &PgPool, user_id: &str, name: &str) -> Uuid {
+    sqlx::query_scalar(
+        r#"INSERT INTO binder (user_id, name) VALUES ($1, $2)
+             ON CONFLICT (user_id, name) DO UPDATE SET name = EXCLUDED.name
+             RETURNING id"#,
+    )
+    .bind(user_id)
+    .bind(name)
+    .fetch_one(pool)
+    .await
+    .unwrap()
+}
+
 pub async fn insert_trading_binder(pool: &PgPool, user_id: &str, binder_name: &str) {
-    sqlx::query(r#"INSERT INTO trading_binders (user_id, binder_name) VALUES ($1, $2)"#)
-        .bind(user_id)
-        .bind(binder_name)
+    let binder_id = insert_binder(pool, user_id, binder_name).await;
+    sqlx::query(r#"INSERT INTO trading_binders (binder_id) VALUES ($1)"#)
+        .bind(binder_id)
         .execute(pool)
         .await
         .unwrap();

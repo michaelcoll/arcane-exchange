@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            INSERT INTO trading_binders (binder_id)\n            SELECT id\n            FROM binder\n            WHERE user_id = $1 AND name = $2\n            ON CONFLICT (binder_id) DO NOTHING\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "8df30e1db54d2fa31cbeab8e37548a2526be932ed4bab08c42570bdae6c2e7b4"
+}

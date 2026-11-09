@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n            SELECT EXISTS (\n                SELECT 1\n                FROM collection_entry\n                WHERE user_id = $1 AND binder_name = $2\n            ) AS \"exists!\"\n            ",
+  "query": "\n            SELECT EXISTS (\n                SELECT 1\n                FROM binder\n                WHERE user_id = $1 AND name = $2\n            ) AS \"exists!\"\n            ",
   "describe": {
     "columns": [
       {
@@ -20,5 +20,5 @@
       null
     ]
   },
-  "hash": "8c767ef085b93ad1d9f5c5a16b7f7aab334e0930df135db18cef37ce44415c80"
+  "hash": "6b593f7ce61ae92e3f099987049488aa89dfc3b6d9292a7eb27a3b7070be1840"
 }

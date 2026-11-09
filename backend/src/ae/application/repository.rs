@@ -259,13 +259,11 @@ pub trait TradingBinderRepository: Send + Sync {
     /// is a no-op.
     async fn remove(&self, user_id: &UserId, binder_name: &str) -> Result<(), AppError>;
 
-    /// `true` if `binder_name` is used by at least one of `user_id`'s `collection_entry` rows.
-    /// Reads `collection_entry` (read-only) rather than `trading_binders`.
+    /// `true` if `user_id` has a binder named `binder_name`.
     async fn binder_exists(&self, user_id: &UserId, binder_name: &str) -> Result<bool, AppError>;
 
-    /// Removes `user_id`'s selected binders that no longer match any of their
-    /// `collection_entry` rows. Reads `collection_entry` (read-only) to determine which
-    /// selections are now orphaned.
+    /// Deletes `user_id`'s binders that no `collection_entry` row refers to, with their trade
+    /// opening. Run at the end of an import, which replaces the player's binders.
     async fn purge_missing(&self, user_id: &UserId) -> Result<(), AppError>;
 }
 
