@@ -32,7 +32,7 @@ final class AddCollectionEntryViewModel {
 
     func loadBinders() async {
         // A failed read leaves "Sans binder" as the only choice.
-        binders = await (try? api.list_binders().ok.body.json.binders) ?? []
+        binders = await api.bindersOrEmpty()
     }
 
     /// Returns whether the copies were added, so the form can close.

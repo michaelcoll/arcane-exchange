@@ -53,13 +53,8 @@ mod tests {
     use crate::application::repository::{
         MockCardPricesRefreshRequester, MockCollectionEntryRepository,
     };
-    use crate::application::service::collection::test_fixtures::refresh;
+    use crate::application::service::collection::test_fixtures::{entry_id, refresh};
     use crate::domain::error::FunctionalError;
-    use uuid::Uuid;
-
-    fn entry_id() -> CollectionEntryId {
-        CollectionEntryId(Uuid::from_u128(1))
-    }
 
     fn service(
         repository: MockCollectionEntryRepository,

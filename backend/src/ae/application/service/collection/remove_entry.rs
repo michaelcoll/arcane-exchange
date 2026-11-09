@@ -42,13 +42,8 @@ impl RemoveCollectionEntryUseCase for RemoveCollectionEntryService {
 mod tests {
     use super::*;
     use crate::application::repository::MockCollectionEntryRepository;
-    use crate::application::service::collection::test_fixtures::refresh;
+    use crate::application::service::collection::test_fixtures::{entry_id, refresh};
     use crate::domain::error::FunctionalError;
-    use uuid::Uuid;
-
-    fn entry_id() -> CollectionEntryId {
-        CollectionEntryId(Uuid::from_u128(1))
-    }
 
     #[tokio::test]
     async fn removes_the_entry_and_requests_a_refresh_once() {

@@ -63,7 +63,7 @@ final class CollectionEntriesViewModel {
 
     func loadBinders() async {
         // A failed read leaves the move with "Sans binder" as its only target.
-        binders = await (try? api.list_binders().ok.body.json.binders) ?? []
+        binders = await api.bindersOrEmpty()
     }
 
     /// Moves `quantity` copies of the entry into the binder, or out of any binder when

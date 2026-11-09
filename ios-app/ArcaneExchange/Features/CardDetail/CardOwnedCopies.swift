@@ -101,7 +101,7 @@ struct CardOwnedCopies: View {
 /// The words of an entry row: its binder and finish, and what was paid for its copies.
 enum OwnedEntryLabel {
     static func text(for entry: CollectionEntryDetail) -> String {
-        let binder = entry.binder?.name ?? "Sans binder"
+        let binder = entry.binder?.name ?? BinderCopy.noBinder
         return entry.foil ? "\(binder) · Foil" : binder
     }
 

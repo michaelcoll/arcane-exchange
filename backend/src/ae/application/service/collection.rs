@@ -14,6 +14,12 @@ pub mod update_entry;
 #[cfg(test)]
 mod test_fixtures {
     use crate::application::repository::MockCardPricesRefreshRequester;
+    use crate::domain::collection_entry::CollectionEntryId;
+    use uuid::Uuid;
+
+    pub(super) fn entry_id() -> CollectionEntryId {
+        CollectionEntryId(Uuid::from_u128(1))
+    }
 
     /// A refresh requester that expects to be asked exactly `times` times.
     pub(super) fn refresh(times: usize) -> MockCardPricesRefreshRequester {
