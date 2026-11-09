@@ -1,0 +1,17 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE collection_entry SET quantity = $2, purchase_price = $3, added_at = $4 WHERE id = $1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Int4",
+        "Int4",
+        "Timestamptz"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "031d7044fde49be975270847381b94c717bfded52022131adaa367ea9eba4512"
+}

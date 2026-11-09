@@ -115,6 +115,15 @@ async fn every_route_refuses_an_anonymous_request() {
         ),
         (Method::GET, "/collection/stats"),
         (Method::GET, "/collection/price-history"),
+        (Method::GET, "/collection/cards/FDN/1/EN/entries"),
+        (
+            Method::PATCH,
+            "/collection/entries/6f2f0e5e-6b52-4b3e-9f0c-0d2c3f1d9a11",
+        ),
+        (
+            Method::DELETE,
+            "/collection/entries/6f2f0e5e-6b52-4b3e-9f0c-0d2c3f1d9a11",
+        ),
     ];
 
     assert_routes_refuse_anonymous(|| create_router(AppState::for_testing()), &routes).await;
@@ -1100,4 +1109,227 @@ fn collection_params_default_values() {
     assert!(params.sets.is_none());
     assert!(params.price_min.is_none());
     assert!(params.price_max.is_none());
+}
+
+// ============================================================
+// Collection entries of a card
+// ============================================================
+
+mod entries {
+    use super::*;
+    use crate::application::use_case::{
+        MockEditCollectionEntryUseCase, MockGetCollectionEntriesUseCase,
+        MockRemoveCollectionEntryUseCase,
+    };
+    use crate::domain::binder::BinderId;
+    use crate::domain::collection_entry::{
+        CardEntries, CollectionEntryDetail, CollectionEntryId, EntryBinder,
+    };
+    use crate::infrastructure::testing::authed_json;
+    use chrono::{TimeZone, Utc};
+    use uuid::Uuid;
+
+    const ENTRY_ID: &str = "6f2f0e5e-6b52-4b3e-9f0c-0d2c3f1d9a11";
+
+    fn card_entries() -> CardEntries {
+        CardEntries {
+            entries: vec![
+                CollectionEntryDetail {
+                    id: CollectionEntryId(ENTRY_ID.parse().unwrap()),
+                    foil: false,
+                    binder: Some(EntryBinder {
+                        id: BinderId(Uuid::nil()),
+                        name: "Trade".to_string(),
+                    }),
+                    quantity: 2,
+                    purchase_price: Some(500),
+                    added_at: Utc.with_ymd_and_hms(2026, 1, 2, 3, 4, 5).unwrap(),
+                },
+                CollectionEntryDetail {
+                    id: CollectionEntryId(Uuid::nil()),
+                    foil: true,
+                    binder: None,
+                    quantity: 1,
+                    purchase_price: None,
+                    added_at: Utc.with_ymd_and_hms(2026, 1, 2, 3, 4, 5).unwrap(),
+                },
+            ],
+            reserved_normal: 1,
+            reserved_foil: 0,
+        }
+    }
+
+    #[tokio::test]
+    async fn get_returns_the_entries_with_the_reserved_quantity() {
+        let mut mock = MockGetCollectionEntriesUseCase::new();
+        mock.expect_get_collection_entries()
+            .times(1)
+            .withf(|_, card_id| {
+                card_id.collector_number == "1" && card_id.set_code.to_string() == "FDN"
+            })
+            .returning(|_, _| Box::pin(async { Ok(card_entries()) }));
+        let app = create_router(AppState {
+            get_collection_entries_use_case: Arc::new(mock),
+            ..AppState::for_testing()
+        });
+
+        let response = authed(app, Method::GET, "/collection/cards/FDN/1/FR/entries").await;
+
+        assert_eq!(response.status(), StatusCode::OK);
+        let body = json_of(response).await;
+        assert_eq!(body["reserved_quantity"], json!({ "normal": 1, "foil": 0 }));
+        assert_eq!(body["entries"][0]["id"], ENTRY_ID);
+        assert_eq!(
+            body["entries"][0]["binder"],
+            json!({ "id": Uuid::nil().to_string(), "name": "Trade" })
+        );
+        assert_eq!(body["entries"][0]["purchase_price"], 500);
+        assert!(body["entries"][1].get("binder").is_none_or(|b| b.is_null()));
+        assert!(body["entries"][1]["purchase_price"].is_null());
+    }
+
+    #[tokio::test]
+    async fn get_refuses_an_unknown_language() {
+        let response = authed(
+            create_router(AppState::for_testing()),
+            Method::GET,
+            "/collection/cards/FDN/1/XX/entries",
+        )
+        .await;
+
+        assert_error(response, StatusCode::BAD_REQUEST, "invalid_language_code").await;
+    }
+
+    #[tokio::test]
+    async fn patch_returns_the_entries_after_the_edit() {
+        let mut mock = MockEditCollectionEntryUseCase::new();
+        mock.expect_edit_collection_entry()
+            .times(1)
+            .withf(|_, id, quantity, foil| {
+                id.0.to_string() == ENTRY_ID && *quantity == Some(3) && *foil == Some(true)
+            })
+            .returning(|_, _, _, _| Box::pin(async { Ok(card_entries()) }));
+        let app = create_router(AppState {
+            edit_collection_entry_use_case: Arc::new(mock),
+            ..AppState::for_testing()
+        });
+
+        let response = authed_json(
+            app,
+            Method::PATCH,
+            &format!("/collection/entries/{ENTRY_ID}"),
+            json!({ "quantity": 3, "foil": true }),
+        )
+        .await;
+
+        assert_eq!(response.status(), StatusCode::OK);
+        assert_eq!(
+            json_of(response).await["entries"].as_array().unwrap().len(),
+            2
+        );
+    }
+
+    #[tokio::test]
+    async fn patch_maps_each_refusal_to_its_status_and_code() {
+        let cases = [
+            (
+                FunctionalError::InvalidQuantity,
+                StatusCode::BAD_REQUEST,
+                "invalid_quantity",
+            ),
+            (
+                FunctionalError::CollectionEntryNotFound,
+                StatusCode::NOT_FOUND,
+                "collection_entry_not_found",
+            ),
+            (
+                FunctionalError::ReservedQuantityExceeded,
+                StatusCode::CONFLICT,
+                "reserved_quantity_exceeded",
+            ),
+        ];
+        for (error, status, code) in cases {
+            let mut mock = MockEditCollectionEntryUseCase::new();
+            mock.expect_edit_collection_entry()
+                .returning(move |_, _, _, _| {
+                    let error = error.clone();
+                    Box::pin(async move { Err(error.into()) })
+                });
+            let app = create_router(AppState {
+                edit_collection_entry_use_case: Arc::new(mock),
+                ..AppState::for_testing()
+            });
+
+            let response = authed_json(
+                app,
+                Method::PATCH,
+                &format!("/collection/entries/{ENTRY_ID}"),
+                json!({ "quantity": 1 }),
+            )
+            .await;
+
+            assert_error(response, status, code).await;
+        }
+    }
+
+    #[tokio::test]
+    async fn patch_treats_an_identifier_that_is_not_a_uuid_as_unknown() {
+        let response = authed_json(
+            create_router(AppState::for_testing()),
+            Method::PATCH,
+            "/collection/entries/not-a-uuid",
+            json!({ "quantity": 1 }),
+        )
+        .await;
+
+        assert_error(
+            response,
+            StatusCode::NOT_FOUND,
+            "collection_entry_not_found",
+        )
+        .await;
+    }
+
+    #[tokio::test]
+    async fn delete_returns_no_content() {
+        let mut mock = MockRemoveCollectionEntryUseCase::new();
+        mock.expect_remove_collection_entry()
+            .times(1)
+            .withf(|_, id| id.0.to_string() == ENTRY_ID)
+            .returning(|_, _| Box::pin(async { Ok(()) }));
+        let app = create_router(AppState {
+            remove_collection_entry_use_case: Arc::new(mock),
+            ..AppState::for_testing()
+        });
+
+        let response = authed(
+            app,
+            Method::DELETE,
+            &format!("/collection/entries/{ENTRY_ID}"),
+        )
+        .await;
+
+        assert_eq!(response.status(), StatusCode::NO_CONTENT);
+    }
+
+    #[tokio::test]
+    async fn delete_maps_the_reservation_refusal_to_conflict() {
+        let mut mock = MockRemoveCollectionEntryUseCase::new();
+        mock.expect_remove_collection_entry().returning(|_, _| {
+            Box::pin(async { Err(FunctionalError::ReservedQuantityExceeded.into()) })
+        });
+        let app = create_router(AppState {
+            remove_collection_entry_use_case: Arc::new(mock),
+            ..AppState::for_testing()
+        });
+
+        let response = authed(
+            app,
+            Method::DELETE,
+            &format!("/collection/entries/{ENTRY_ID}"),
+        )
+        .await;
+
+        assert_error(response, StatusCode::CONFLICT, "reserved_quantity_exceeded").await;
+    }
 }

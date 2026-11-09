@@ -168,6 +168,33 @@ final class FakeAPI: APIProtocol, @unchecked Sendable {
         return try await onRemoveTradeBinder(input)
     }
 
+    var onGetCollectionEntries: (Operations.get_collection_entries.Input) async throws -> Operations.get_collection_entries.Output = { _ in
+        throw NotStubbed(operation: "get_collection_entries")
+    }
+
+    func get_collection_entries(_ input: Operations.get_collection_entries.Input) async throws -> Operations.get_collection_entries.Output {
+        record("get_collection_entries")
+        return try await onGetCollectionEntries(input)
+    }
+
+    var onUpdateCollectionEntry: (Operations.update_collection_entry.Input) async throws -> Operations.update_collection_entry.Output = { _ in
+        throw NotStubbed(operation: "update_collection_entry")
+    }
+
+    func update_collection_entry(_ input: Operations.update_collection_entry.Input) async throws -> Operations.update_collection_entry.Output {
+        record("update_collection_entry")
+        return try await onUpdateCollectionEntry(input)
+    }
+
+    var onRemoveCollectionEntry: (Operations.remove_collection_entry.Input) async throws -> Operations.remove_collection_entry.Output = { _ in
+        throw NotStubbed(operation: "remove_collection_entry")
+    }
+
+    func remove_collection_entry(_ input: Operations.remove_collection_entry.Input) async throws -> Operations.remove_collection_entry.Output {
+        record("remove_collection_entry")
+        return try await onRemoveCollectionEntry(input)
+    }
+
     var onListBinders: (Operations.list_binders.Input) async throws -> Operations.list_binders.Output = { _ in
         throw NotStubbed(operation: "list_binders")
     }

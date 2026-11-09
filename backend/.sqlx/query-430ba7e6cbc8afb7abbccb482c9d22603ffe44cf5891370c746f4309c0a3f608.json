@@ -1,0 +1,98 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT ce.id,\n               ce.foil,\n               b.id AS \"binder_id?\",\n               b.name AS \"binder_name?\",\n               ce.quantity,\n               ce.purchase_price,\n               COALESCE(ce.added_at, NOW()) AS \"added_at!\"\n        FROM collection_entry ce\n                 LEFT JOIN binder b ON b.id = ce.binder_id\n        WHERE ce.user_id = $1 AND ce.set_code = $2 AND ce.collector_number = $3\n          AND ce.language_code = $4\n        ORDER BY ce.foil, b.name NULLS FIRST, ce.id\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "collection_entry",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "foil",
+        "type_info": "Bool",
+        "origin": {
+          "Table": {
+            "table": "collection_entry",
+            "name": "foil"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "binder_id?",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "binder",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "binder_name?",
+        "type_info": "Varchar",
+        "origin": {
+          "Table": {
+            "table": "binder",
+            "name": "name"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "quantity",
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "collection_entry",
+            "name": "quantity"
+          }
+        }
+      },
+      {
+        "ordinal": 5,
+        "name": "purchase_price",
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "collection_entry",
+            "name": "purchase_price"
+          }
+        }
+      },
+      {
+        "ordinal": 6,
+        "name": "added_at!",
+        "type_info": "Timestamptz",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text",
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      true,
+      null
+    ]
+  },
+  "hash": "430ba7e6cbc8afb7abbccb482c9d22603ffe44cf5891370c746f4309c0a3f608"
+}

@@ -498,6 +498,30 @@ impl TradeRepository for TradeRepositoryAdapter {
         let trade_id = transition.trade_id();
         let mut tx = self.pool.begin().await?;
 
+        // The reservation guard of a Collection entry edit reads what the Trades reserve, then
+        // writes, under a lock on the card's entries. Taking the same locks (shared, ordered by
+        // id as the edit does) before committing a reservation keeps the two from interleaving:
+        // an edit in flight finishes first, and a later one sees this reservation.
+        if transition.reserves_cards() {
+            sqlx::query!(
+                r#"SELECT ce.id
+                    FROM collection_entry ce
+                    WHERE EXISTS (
+                        SELECT 1 FROM trade_card tc
+                        WHERE tc.trade_id = $1
+                          AND tc.owner_user_id = ce.user_id
+                          AND tc.set_code = ce.set_code
+                          AND tc.collector_number = ce.collector_number
+                          AND tc.language_code = ce.language_code
+                    )
+                    ORDER BY ce.id
+                    FOR SHARE"#,
+                trade_id.0,
+            )
+            .fetch_all(&mut *tx)
+            .await?;
+        }
+
         if !write_transition(&mut *tx, transition).await? {
             return Ok(false);
         }
@@ -1906,6 +1930,53 @@ mod tests {
             find(&repository, other_trade_id).await.status,
             TradeStatus::Pending
         );
+    }
+
+    #[sqlx::test]
+    async fn a_first_acceptance_waits_for_an_edit_of_the_cards_entries_in_flight(pool: PgPool) {
+        insert_user(&pool, "user_a", "alice").await;
+        insert_user(&pool, "user_b", "bob").await;
+        insert_card(&pool, "FDN", "87", "FR", "Goblin Boarders", 1).await;
+        insert_collection_entry(
+            &pool,
+            "FDN",
+            "87",
+            "FR",
+            false,
+            "user_b",
+            3,
+            100,
+            chrono::Utc::now(),
+        )
+        .await;
+        let trade_id = uuid::Uuid::new_v4();
+        insert_trade(&pool, trade_id, "user_a", "user_b", "PENDING").await;
+        insert_trade_card(&pool, trade_id, "FDN", "87", "FR", false, "user_b", 2).await;
+        let repository = TradeRepositoryAdapter::new(pool.clone());
+        let cards = repository
+            .find_trade_cards(TradeId(trade_id))
+            .await
+            .unwrap();
+        let transition = find(&repository, trade_id)
+            .await
+            .accept(Party::Initiator, &cards)
+            .unwrap();
+        // An edit of the card, in flight: it holds the lock of its entries until it commits.
+        let mut edit = pool.begin().await.unwrap();
+        sqlx::query("SELECT id FROM collection_entry WHERE user_id = 'user_b' FOR UPDATE")
+            .fetch_all(&mut *edit)
+            .await
+            .unwrap();
+
+        let acceptance =
+            tokio::spawn(async move { repository.apply_transition(&transition).await });
+        tokio::pin!(acceptance);
+        let waiting =
+            tokio::time::timeout(std::time::Duration::from_millis(300), &mut acceptance).await;
+
+        assert!(waiting.is_err(), "the acceptance did not wait for the edit");
+        edit.commit().await.unwrap();
+        assert!(acceptance.await.unwrap().unwrap());
     }
 
     #[sqlx::test]

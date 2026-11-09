@@ -1,7 +1,10 @@
 use crate::application::error::{AppError, InfraError};
+use crate::domain::binder::BinderId;
 use crate::domain::card::CopyId;
+use crate::domain::collection_entry::CollectionEntryId;
 use crate::domain::error::FunctionalError;
 use crate::domain::language_code::LanguageCode;
+use crate::domain::set_name::SetName;
 use axum::Json;
 use axum::http::StatusCode;
 use axum::response::{IntoResponse, Response};
@@ -29,6 +32,29 @@ pub mod user;
 /// are imported every 12 hours, and half that keeps an answer at most one import late.
 pub(crate) const PRICE_BOUND_CACHE_CONTROL: &str = "public, max-age=21600";
 
+/// Default `page_size` of the paginated routes.
+pub(crate) fn default_page_size() -> u32 {
+    crate::domain::pagination::DEFAULT_PAGE_SIZE
+}
+
+/// A set, as several resources show it.
+#[derive(Serialize, Debug, TS, ToSchema)]
+#[serde(rename = "SetInfo")]
+#[ts(export)]
+pub struct SetInfoResponse {
+    pub code: String,
+    pub name: String,
+}
+
+impl From<SetName> for SetInfoResponse {
+    fn from(s: SetName) -> Self {
+        Self {
+            code: s.code.to_string(),
+            name: s.name,
+        }
+    }
+}
+
 /// Builds the card copy a request designates by its raw `set_code` / `collector_number` /
 /// `language_code` / `foil` fields. An unknown language code or an invalid collector number is a
 /// functional error (400).
@@ -45,6 +71,22 @@ pub(crate) fn parse_copy_id(
         language_code,
         foil,
     )?)
+}
+
+/// The binder a request designates by its raw identifier. One that is not a UUID designates no
+/// binder: `BinderNotFound` (404), like an unknown one.
+pub(crate) fn parse_binder_id(id: &str) -> Result<BinderId, AppError> {
+    id.parse()
+        .map(BinderId)
+        .map_err(|_| FunctionalError::BinderNotFound.into())
+}
+
+/// The Collection entry a request designates by its raw identifier. One that is not a UUID
+/// designates no entry: `CollectionEntryNotFound` (404), like an unknown one.
+pub(crate) fn parse_entry_id(id: &str) -> Result<CollectionEntryId, AppError> {
+    id.parse()
+        .map(CollectionEntryId)
+        .map_err(|_| FunctionalError::CollectionEntryNotFound.into())
 }
 
 /// Body of every error response. `error` is a technical message, for diagnosis only; clients
@@ -78,6 +120,7 @@ impl IntoResponse for AppError {
                 | FunctionalError::InvalidPageSize { .. }
                 | FunctionalError::PaginationTooDeep { .. }
                 | FunctionalError::AddedAtSortRequiresPlayerUsername
+                | FunctionalError::InvalidQuantity
                 | FunctionalError::SelfTrade => StatusCode::BAD_REQUEST,
                 FunctionalError::PriceNotFound
                 | FunctionalError::CardNotFound
@@ -87,7 +130,8 @@ impl IntoResponse for AppError {
                 | FunctionalError::TradeCardNotFound
                 | FunctionalError::BinderNotFound
                 | FunctionalError::ImportNotFound
-                | FunctionalError::CardNotInCatalog => StatusCode::NOT_FOUND,
+                | FunctionalError::CardNotInCatalog
+                | FunctionalError::CollectionEntryNotFound => StatusCode::NOT_FOUND,
                 FunctionalError::TradeAccessDenied => StatusCode::FORBIDDEN,
                 FunctionalError::TradeNotModifiable
                 | FunctionalError::TradeNotAcceptable
@@ -102,6 +146,7 @@ impl IntoResponse for AppError {
                 | FunctionalError::TradeConcurrentlyModified
                 | FunctionalError::TradeEmpty
                 | FunctionalError::CardAlreadyReserved
+                | FunctionalError::ReservedQuantityExceeded
                 | FunctionalError::BinderNameTaken
                 | FunctionalError::BinderNotEmpty
                 | FunctionalError::ImportAlreadyRunning => StatusCode::CONFLICT,

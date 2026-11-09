@@ -47,6 +47,15 @@ public protocol APIProtocol: Sendable {
     /// - Remark: HTTP `DELETE /collection/binders/{id}`.
     /// - Remark: Generated from `#/paths//collection/binders/{id}/delete(delete_binder)`.
     func delete_binder(_ input: Operations.delete_binder.Input) async throws -> Operations.delete_binder.Output
+    /// - Remark: HTTP `GET /collection/cards/{set_code}/{collector_number}/{language_code}/entries`.
+    /// - Remark: Generated from `#/paths//collection/cards/{set_code}/{collector_number}/{language_code}/entries/get(get_collection_entries)`.
+    func get_collection_entries(_ input: Operations.get_collection_entries.Input) async throws -> Operations.get_collection_entries.Output
+    /// - Remark: HTTP `PATCH /collection/entries/{id}`.
+    /// - Remark: Generated from `#/paths//collection/entries/{id}/patch(update_collection_entry)`.
+    func update_collection_entry(_ input: Operations.update_collection_entry.Input) async throws -> Operations.update_collection_entry.Output
+    /// - Remark: HTTP `DELETE /collection/entries/{id}`.
+    /// - Remark: Generated from `#/paths//collection/entries/{id}/delete(remove_collection_entry)`.
+    func remove_collection_entry(_ input: Operations.remove_collection_entry.Input) async throws -> Operations.remove_collection_entry.Output
     /// - Remark: HTTP `GET /collection/import`.
     /// - Remark: Generated from `#/paths//collection/import/get(list_card_imports)`.
     func list_card_imports(_ input: Operations.list_card_imports.Input) async throws -> Operations.list_card_imports.Output
@@ -239,6 +248,41 @@ extension APIProtocol {
         headers: Operations.delete_binder.Input.Headers = .init()
     ) async throws -> Operations.delete_binder.Output {
         try await delete_binder(Operations.delete_binder.Input(
+            path: path,
+            headers: headers
+        ))
+    }
+    /// - Remark: HTTP `GET /collection/cards/{set_code}/{collector_number}/{language_code}/entries`.
+    /// - Remark: Generated from `#/paths//collection/cards/{set_code}/{collector_number}/{language_code}/entries/get(get_collection_entries)`.
+    public func get_collection_entries(
+        path: Operations.get_collection_entries.Input.Path,
+        headers: Operations.get_collection_entries.Input.Headers = .init()
+    ) async throws -> Operations.get_collection_entries.Output {
+        try await get_collection_entries(Operations.get_collection_entries.Input(
+            path: path,
+            headers: headers
+        ))
+    }
+    /// - Remark: HTTP `PATCH /collection/entries/{id}`.
+    /// - Remark: Generated from `#/paths//collection/entries/{id}/patch(update_collection_entry)`.
+    public func update_collection_entry(
+        path: Operations.update_collection_entry.Input.Path,
+        headers: Operations.update_collection_entry.Input.Headers = .init(),
+        body: Operations.update_collection_entry.Input.Body
+    ) async throws -> Operations.update_collection_entry.Output {
+        try await update_collection_entry(Operations.update_collection_entry.Input(
+            path: path,
+            headers: headers,
+            body: body
+        ))
+    }
+    /// - Remark: HTTP `DELETE /collection/entries/{id}`.
+    /// - Remark: Generated from `#/paths//collection/entries/{id}/delete(remove_collection_entry)`.
+    public func remove_collection_entry(
+        path: Operations.remove_collection_entry.Input.Path,
+        headers: Operations.remove_collection_entry.Input.Headers = .init()
+    ) async throws -> Operations.remove_collection_entry.Output {
+        try await remove_collection_entry(Operations.remove_collection_entry.Input(
             path: path,
             headers: headers
         ))

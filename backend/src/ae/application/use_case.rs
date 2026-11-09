@@ -8,6 +8,7 @@ use crate::domain::card_import::{CardImport, CardImportId};
 use crate::domain::card_offer::CardOfferSortField;
 use crate::domain::catalog::ScanIndex;
 use crate::domain::collection::{CollectionQuery, SearchQuery, SearchScope};
+use crate::domain::collection_entry::{CardEntries, CollectionEntryId};
 use crate::domain::collection_stats::CollectionStats;
 use crate::domain::pagination::{PageRequest, Paginated};
 use crate::domain::price::PriceHistoryEntry;
@@ -404,4 +405,47 @@ pub trait ListSetsUseCase: Send + Sync {
 #[cfg_attr(test, automock)]
 pub trait GetSetUseCase: Send + Sync {
     async fn get_set(&self, code: SetCode) -> Result<SetName, AppError>;
+}
+
+#[async_trait]
+#[cfg_attr(test, automock)]
+pub trait GetCollectionEntriesUseCase: Send + Sync {
+    /// What the player owns of a card, in both finishes, and what the accepted Trades committed
+    /// of each. Empty entries for a card the player does not own.
+    async fn get_collection_entries(
+        &self,
+        user_id: &UserId,
+        card_id: CardId,
+    ) -> Result<CardEntries, AppError>;
+}
+
+#[async_trait]
+#[cfg_attr(test, automock)]
+pub trait EditCollectionEntryUseCase: Send + Sync {
+    /// Changes the quantity and/or the finish of an entry and returns the entries of its card,
+    /// then asks for a refresh of the card prices views without waiting for it. A finish change
+    /// onto an existing entry merges the two.
+    ///
+    /// Refused with `InvalidQuantity` (`400`) outside 1 to 255, `CollectionEntryNotFound`
+    /// (`404`) for an absent entry or another player's, and `ReservedQuantityExceeded` (`409`)
+    /// when it takes the owned copies under what the accepted Trades committed.
+    async fn edit_collection_entry(
+        &self,
+        user_id: &UserId,
+        id: CollectionEntryId,
+        quantity: Option<i32>,
+        foil: Option<bool>,
+    ) -> Result<CardEntries, AppError>;
+}
+
+#[async_trait]
+#[cfg_attr(test, automock)]
+pub trait RemoveCollectionEntryUseCase: Send + Sync {
+    /// Removes an entry, then asks for a refresh of the card prices views without waiting for it.
+    /// Refused like [`EditCollectionEntryUseCase::edit_collection_entry`], minus the quantity.
+    async fn remove_collection_entry(
+        &self,
+        user_id: &UserId,
+        id: CollectionEntryId,
+    ) -> Result<(), AppError>;
 }

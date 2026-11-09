@@ -7,6 +7,7 @@ use crate::domain::card_import::{CardImport, CardImportId, CardImportStatus};
 use crate::domain::card_offer::CardOfferSortField;
 use crate::domain::catalog::{CatalogCard, ScanIndexEntry};
 use crate::domain::collection::{CollectionQuery, SearchQuery, SearchScope};
+use crate::domain::collection_entry::{CardEntries, CollectionEntryId, EntryEdit};
 use crate::domain::collection_stats::CollectionStats;
 use crate::domain::pagination::{Paginated, Pagination};
 use crate::domain::price::{FullPriceGuide, PriceHistoryEntry};
@@ -430,4 +431,40 @@ pub trait CardImportRepository: Send + Sync {
     /// Deletes the user's completed/failed imports beyond the `keep` most recent ones. An active
     /// (`Pending`/`Running`) import is never purged.
     async fn purge_old(&self, user_id: &UserId, keep: i64) -> Result<(), AppError>;
+}
+
+#[async_trait]
+#[cfg_attr(test, automock)]
+pub trait CollectionEntryRepository: Send + Sync {
+    /// What `user_id` owns of the card, in both finishes, and what the accepted Trades committed
+    /// of each finish. Read from `collection_entry`, so it reflects an edit at once.
+    async fn find_by_card(
+        &self,
+        user_id: &UserId,
+        card_id: &CardId,
+    ) -> Result<CardEntries, AppError>;
+
+    /// Applies `edit` to the entry and returns the entries of its card. The reservation guard and
+    /// the write share one transaction, with the card's entries locked. An edit onto an entry
+    /// that already exists merges the two ([`EntryStock::merge`](crate::domain::collection_entry::EntryStock::merge)).
+    ///
+    /// # Errors
+    ///
+    /// - `CollectionEntryNotFound` when the entry is absent or another player's;
+    /// - `ReservedQuantityExceeded` when the edit takes the owned copies of a finish under what
+    ///   the accepted Trades committed of it;
+    /// - `InvalidQuantity` when a merge goes over 255.
+    async fn update(
+        &self,
+        user_id: &UserId,
+        id: CollectionEntryId,
+        edit: EntryEdit,
+    ) -> Result<CardEntries, AppError>;
+
+    /// Removes the entry, under the same guard and transaction as [`Self::update`].
+    ///
+    /// # Errors
+    ///
+    /// `CollectionEntryNotFound` and `ReservedQuantityExceeded`, as for [`Self::update`].
+    async fn delete(&self, user_id: &UserId, id: CollectionEntryId) -> Result<(), AppError>;
 }

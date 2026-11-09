@@ -6,9 +6,11 @@ use super::card::dto::{
     PriceHistoryEntryResponse,
 };
 use super::collection::dto::{
-    BinderInfoResponse, CardImportLineErrorResponse, CardImportResponse, CardImportStartedResponse,
-    CollectionCardResponse, CollectionStatsResponse, MessageResponse, PaginatedCollectionResponse,
-    PriceGuideResponse, RarityCodeParam, SetInfoResponse, SortByParam, SortDirParam,
+    BinderInfoResponse, CardEntriesResponse, CardImportLineErrorResponse, CardImportResponse,
+    CardImportStartedResponse, CollectionCardResponse, CollectionEntryDetailResponse,
+    CollectionStatsResponse, EntryBinderResponse, MessageResponse, PaginatedCollectionResponse,
+    PriceGuideResponse, RarityCodeParam, ReservedQuantityResponse, SetInfoResponse, SortByParam,
+    SortDirParam, UpdateCollectionEntryRequest,
 };
 use super::maintenance::dto::EnqueueResponse;
 use super::stats::dto::StatsResponse;
@@ -33,6 +35,9 @@ use utoipa::OpenApi;
         super::collection::controller::get_card_import,
         super::collection::controller::get_collection_stats,
         super::collection::controller::get_collection_price_history,
+        super::collection::controller::get_collection_entries,
+        super::collection::controller::update_collection_entry,
+        super::collection::controller::remove_collection_entry,
         super::binder::controller::list_binders,
         super::binder::controller::create_binder,
         super::binder::controller::rename_binder,
@@ -85,6 +90,11 @@ use utoipa::OpenApi;
         CollectionStatsResponse,
         SetInfoResponse,
         BinderInfoResponse,
+        CardEntriesResponse,
+        CollectionEntryDetailResponse,
+        EntryBinderResponse,
+        ReservedQuantityResponse,
+        UpdateCollectionEntryRequest,
         BinderResponse,
         BindersResponse,
         BinderNameRequest,

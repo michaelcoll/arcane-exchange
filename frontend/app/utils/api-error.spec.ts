@@ -117,6 +117,12 @@ describe('readApiError', () => {
       'binder_not_empty',
       "Ce binder contient encore des cartes : déplace-les ou retire-les d'abord.",
     ],
+    ['collection_entry_not_found', "Cet exemplaire n'existe plus dans ta collection."],
+    ['invalid_quantity', 'La quantité doit être comprise entre 1 et 255.'],
+    [
+      'reserved_quantity_exceeded',
+      'Des cartes sont réservées par un échange accepté : tu ne peux pas descendre sous cette quantité.',
+    ],
     ['user_not_found', 'Ce joueur est introuvable.'],
     ['card_not_found', "Cette carte est introuvable ou n'est plus disponible."],
     ['set_not_found', 'Ce set est introuvable.'],

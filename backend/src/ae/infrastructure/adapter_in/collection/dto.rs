@@ -2,6 +2,7 @@ use crate::domain::card::{Card, CardId, CollectionEntry};
 use crate::domain::card_image::{CardFace, CardImage};
 use crate::domain::card_import::{CardImport, CardImportLineError};
 use crate::domain::collection::{CollectionSortField, SortDirection};
+use crate::domain::collection_entry::{CardEntries, CollectionEntryDetail, EntryBinder};
 use crate::domain::collection_stats::{BinderInfo, CollectionStats};
 use crate::domain::price::PriceGuide;
 use crate::domain::rarity_code::RarityCode;
@@ -306,6 +307,102 @@ impl From<PriceGuide> for PriceGuideResponse {
             trend: pg.trend.value,
         }
     }
+}
+
+// --- Collection entries of a card ---
+#[derive(Serialize, Debug, TS, ToSchema)]
+#[serde(rename = "EntryBinder")]
+#[ts(export)]
+pub struct EntryBinderResponse {
+    pub id: String,
+    pub name: String,
+}
+
+impl From<EntryBinder> for EntryBinderResponse {
+    fn from(b: EntryBinder) -> Self {
+        Self {
+            id: b.id.to_string(),
+            name: b.name,
+        }
+    }
+}
+
+/// One Collection entry of the caller: the copies of a card in one finish and one binder.
+#[derive(Serialize, Debug, TS, ToSchema)]
+#[serde(rename = "CollectionEntryDetail")]
+#[ts(export)]
+pub struct CollectionEntryDetailResponse {
+    /// Designates the entry in `PATCH` and `DELETE /collection/entries/{id}`.
+    pub id: String,
+    pub foil: bool,
+    /// Absent for an entry stored in no binder.
+    #[schema(value_type = EntryBinderResponse, required = false)]
+    pub binder: Option<EntryBinderResponse>,
+    pub quantity: u8,
+    /// Price in cents; `null` when the copies have no purchase price.
+    pub purchase_price: Option<u32>,
+    /// RFC 3339 timestamp
+    pub added_at: String,
+}
+
+impl From<CollectionEntryDetail> for CollectionEntryDetailResponse {
+    fn from(e: CollectionEntryDetail) -> Self {
+        Self {
+            id: e.id.to_string(),
+            foil: e.foil,
+            binder: e.binder.map(EntryBinderResponse::from),
+            quantity: e.quantity,
+            purchase_price: e.purchase_price,
+            added_at: e.added_at.to_rfc3339(),
+        }
+    }
+}
+
+/// Copies committed by the accepted Trades, per finish.
+#[derive(Serialize, Debug, TS, ToSchema)]
+#[serde(rename = "ReservedQuantity")]
+#[ts(export)]
+pub struct ReservedQuantityResponse {
+    pub normal: u32,
+    pub foil: u32,
+}
+
+/// What the caller owns of a card in both finishes, with what the accepted Trades committed.
+#[derive(Serialize, Debug, TS, ToSchema)]
+#[serde(rename = "CardEntries")]
+#[ts(export)]
+pub struct CardEntriesResponse {
+    pub entries: Vec<CollectionEntryDetailResponse>,
+    /// The owned quantity of a finish, all binders together, cannot go under its reserved
+    /// quantity.
+    pub reserved_quantity: ReservedQuantityResponse,
+}
+
+impl From<CardEntries> for CardEntriesResponse {
+    fn from(c: CardEntries) -> Self {
+        Self {
+            entries: c
+                .entries
+                .into_iter()
+                .map(CollectionEntryDetailResponse::from)
+                .collect(),
+            reserved_quantity: ReservedQuantityResponse {
+                normal: c.reserved_normal,
+                foil: c.reserved_foil,
+            },
+        }
+    }
+}
+
+#[derive(Deserialize, Debug, TS, ToSchema)]
+#[serde(rename = "UpdateCollectionEntryRequest")]
+#[ts(export)]
+pub(crate) struct UpdateCollectionEntryRequest {
+    /// New quantity, 1 to 255. Signed so an out-of-range value fails with `invalid_quantity`
+    /// (400) instead of a JSON extractor rejection.
+    pub(crate) quantity: Option<i32>,
+    /// New finish. A change onto an existing entry merges the two.
+    pub(crate) foil: Option<bool>,
 }
 
 #[derive(Serialize, TS, ToSchema)]

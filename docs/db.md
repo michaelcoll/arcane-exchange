@@ -61,6 +61,7 @@ erDiagram
         integer purchase_price
         timestamp_with_time_zone added_at
         uuid binder_id FK
+        uuid id PK "default: gen_random_uuid()"
     }
     collection_price_history {
         date date PK

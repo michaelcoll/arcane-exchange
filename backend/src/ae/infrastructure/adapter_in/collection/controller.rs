@@ -1,11 +1,15 @@
 use super::dto::{
-    CardImportResponse, CardImportStartedResponse, CollectionCardResponse, CollectionParams,
-    CollectionStatsResponse, PaginatedCollectionResponse,
+    CardEntriesResponse, CardImportResponse, CardImportStartedResponse, CollectionCardResponse,
+    CollectionParams, CollectionStatsResponse, PaginatedCollectionResponse,
+    UpdateCollectionEntryRequest,
 };
 use crate::application::error::AppError;
+use crate::domain::card::CardId;
 use crate::domain::card_import::CardImportId;
 use crate::domain::collection::CollectionQuery;
+use crate::domain::collection_entry::CollectionEntryId;
 use crate::domain::error::FunctionalError;
+use crate::domain::language_code::LanguageCode;
 use crate::domain::pagination::PageRequest;
 use crate::infrastructure::AppState;
 use crate::infrastructure::adapter_in::auth_extractor::AuthenticatedUser;
@@ -13,7 +17,7 @@ use crate::infrastructure::adapter_in::card::dto::{PriceHistoryEntryResponse, Pr
 use axum::body::to_bytes;
 use axum::extract::{Path, State};
 use axum::http::StatusCode;
-use axum::routing::{get, post};
+use axum::routing::{get, patch, post};
 use axum_extra::extract::Query;
 
 pub fn create_collection_router() -> axum::Router<AppState> {
@@ -23,6 +27,21 @@ pub fn create_collection_router() -> axum::Router<AppState> {
         .route("/import/{id}", get(get_card_import))
         .route("/stats", get(get_collection_stats))
         .route("/price-history", get(get_collection_price_history))
+        .route(
+            "/cards/{set_code}/{collector_number}/{language_code}/entries",
+            get(get_collection_entries),
+        )
+        .route(
+            "/entries/{id}",
+            patch(update_collection_entry).delete(remove_collection_entry),
+        )
+}
+
+/// An identifier that is not a UUID designates no entry.
+fn parse_entry_id(id: &str) -> Result<CollectionEntryId, AppError> {
+    id.parse()
+        .map(CollectionEntryId)
+        .map_err(|_| FunctionalError::CollectionEntryNotFound.into())
 }
 
 #[utoipa::path(
@@ -241,4 +260,99 @@ pub(crate) async fn get_collection_price_history(
             })
             .collect(),
     ))
+}
+
+#[utoipa::path(
+    get,
+    path = "/collection/cards/{set_code}/{collector_number}/{language_code}/entries",
+    params(
+        ("set_code" = String, Path, description = "Set code of the card"),
+        ("collector_number" = String, Path, description = "Collector number of the card"),
+        ("language_code" = String, Path, description = "Language code of the card"),
+    ),
+    responses(
+        (status = 200, description = "What the caller owns of the card in both finishes, with the quantity committed by accepted trades per finish. Read from the collection itself: an edit shows at once", body = CardEntriesResponse),
+        (status = 400, description = "Invalid language code or collector number"),
+        (status = 401, description = "Missing or invalid token"),
+    ),
+    security(("bearer_auth" = [])),
+    tag = "collection",
+)]
+pub(crate) async fn get_collection_entries(
+    AuthenticatedUser(user): AuthenticatedUser,
+    State(state): State<AppState>,
+    Path((set_code, collector_number, language_code)): Path<(String, String, String)>,
+) -> Result<axum::Json<CardEntriesResponse>, AppError> {
+    let card_id = CardId::try_new(
+        set_code.as_str(),
+        collector_number,
+        LanguageCode::try_new(&language_code)?,
+    )?;
+
+    let entries = state
+        .get_collection_entries_use_case
+        .get_collection_entries(&user.id, card_id)
+        .await?;
+
+    Ok(axum::Json(CardEntriesResponse::from(entries)))
+}
+
+#[utoipa::path(
+    patch,
+    path = "/collection/entries/{id}",
+    params(("id" = String, Path, description = "Collection entry id")),
+    request_body = UpdateCollectionEntryRequest,
+    responses(
+        (status = 200, description = "The entries of the card, after the edit. A finish change onto an existing entry merges the two: quantities add up, purchase price is the average of the prices present weighted by quantity, added date is the earliest", body = CardEntriesResponse),
+        (status = 400, description = "Quantity out of 1 to 255 (`invalid_quantity`), also when a merge goes over 255"),
+        (status = 401, description = "Missing or invalid token"),
+        (status = 404, description = "Entry not found, or not owned by the caller (`collection_entry_not_found`)"),
+        (status = 409, description = "The edit would take the owned copies under what accepted trades committed (`reserved_quantity_exceeded`)"),
+    ),
+    security(("bearer_auth" = [])),
+    tag = "collection",
+)]
+pub(crate) async fn update_collection_entry(
+    AuthenticatedUser(user): AuthenticatedUser,
+    State(state): State<AppState>,
+    Path(id): Path<String>,
+    axum::Json(payload): axum::Json<UpdateCollectionEntryRequest>,
+) -> Result<axum::Json<CardEntriesResponse>, AppError> {
+    let entries = state
+        .edit_collection_entry_use_case
+        .edit_collection_entry(
+            &user.id,
+            parse_entry_id(&id)?,
+            payload.quantity,
+            payload.foil,
+        )
+        .await?;
+
+    Ok(axum::Json(CardEntriesResponse::from(entries)))
+}
+
+#[utoipa::path(
+    delete,
+    path = "/collection/entries/{id}",
+    params(("id" = String, Path, description = "Collection entry id")),
+    responses(
+        (status = 204, description = "Entry removed"),
+        (status = 401, description = "Missing or invalid token"),
+        (status = 404, description = "Entry not found, or not owned by the caller (`collection_entry_not_found`)"),
+        (status = 409, description = "The removal would take the owned copies under what accepted trades committed (`reserved_quantity_exceeded`)"),
+    ),
+    security(("bearer_auth" = [])),
+    tag = "collection",
+)]
+pub(crate) async fn remove_collection_entry(
+    AuthenticatedUser(user): AuthenticatedUser,
+    State(state): State<AppState>,
+    Path(id): Path<String>,
+) -> Result<StatusCode, AppError> {
+    state
+        .remove_collection_entry_use_case
+        .remove_collection_entry(&user.id, parse_entry_id(&id)?)
+        .await?;
+
+    Ok(StatusCode::NO_CONTENT)
 }

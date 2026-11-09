@@ -1,0 +1,53 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT set_code, collector_number, language_code\n        FROM collection_entry\n        WHERE id = $1 AND user_id = $2\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "set_code",
+        "type_info": "Varchar",
+        "origin": {
+          "Table": {
+            "table": "collection_entry",
+            "name": "set_code"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "collector_number",
+        "type_info": "Varchar",
+        "origin": {
+          "Table": {
+            "table": "collection_entry",
+            "name": "collector_number"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "language_code",
+        "type_info": "Varchar",
+        "origin": {
+          "Table": {
+            "table": "collection_entry",
+            "name": "language_code"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Text"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "da66e88f8737676aa2428e3be75d204b1369bc822229d21e1d30e75c0776993b"
+}

@@ -168,6 +168,34 @@ extension Components {
                 case binders
             }
         }
+        /// What the caller owns of a card in both finishes, with what the accepted Trades committed.
+        ///
+        /// - Remark: Generated from `#/components/schemas/CardEntriesResponse`.
+        public struct CardEntriesResponse: Codable, Hashable, Sendable {
+            /// - Remark: Generated from `#/components/schemas/CardEntriesResponse/entries`.
+            public var entries: [Components.Schemas.CollectionEntryDetailResponse]
+            /// The owned quantity of a finish, all binders together, cannot go under its reserved
+            /// quantity.
+            ///
+            /// - Remark: Generated from `#/components/schemas/CardEntriesResponse/reserved_quantity`.
+            public var reserved_quantity: Components.Schemas.ReservedQuantityResponse
+            /// Creates a new `CardEntriesResponse`.
+            ///
+            /// - Parameters:
+            ///   - entries:
+            ///   - reserved_quantity: The owned quantity of a finish, all binders together, cannot go under its reserved
+            public init(
+                entries: [Components.Schemas.CollectionEntryDetailResponse],
+                reserved_quantity: Components.Schemas.ReservedQuantityResponse
+            ) {
+                self.entries = entries
+                self.reserved_quantity = reserved_quantity
+            }
+            public enum CodingKeys: String, CodingKey {
+                case entries
+                case reserved_quantity
+            }
+        }
         /// - Remark: Generated from `#/components/schemas/CardImportLineErrorResponse`.
         public struct CardImportLineErrorResponse: Codable, Hashable, Sendable {
             /// - Remark: Generated from `#/components/schemas/CardImportLineErrorResponse/field`.
@@ -457,6 +485,63 @@ extension Components {
                 case set_code
             }
         }
+        /// One Collection entry of the caller: the copies of a card in one finish and one binder.
+        ///
+        /// - Remark: Generated from `#/components/schemas/CollectionEntryDetailResponse`.
+        public struct CollectionEntryDetailResponse: Codable, Hashable, Sendable {
+            /// RFC 3339 timestamp
+            ///
+            /// - Remark: Generated from `#/components/schemas/CollectionEntryDetailResponse/added_at`.
+            public var added_at: Swift.String
+            /// Absent for an entry stored in no binder.
+            ///
+            /// - Remark: Generated from `#/components/schemas/CollectionEntryDetailResponse/binder`.
+            public var binder: Components.Schemas.EntryBinderResponse?
+            /// - Remark: Generated from `#/components/schemas/CollectionEntryDetailResponse/foil`.
+            public var foil: Swift.Bool
+            /// Designates the entry in `PATCH` and `DELETE /collection/entries/{id}`.
+            ///
+            /// - Remark: Generated from `#/components/schemas/CollectionEntryDetailResponse/id`.
+            public var id: Swift.String
+            /// Price in cents; `null` when the copies have no purchase price.
+            ///
+            /// - Remark: Generated from `#/components/schemas/CollectionEntryDetailResponse/purchase_price`.
+            public var purchase_price: Swift.Int32?
+            /// - Remark: Generated from `#/components/schemas/CollectionEntryDetailResponse/quantity`.
+            public var quantity: Swift.Int32
+            /// Creates a new `CollectionEntryDetailResponse`.
+            ///
+            /// - Parameters:
+            ///   - added_at: RFC 3339 timestamp
+            ///   - binder: Absent for an entry stored in no binder.
+            ///   - foil:
+            ///   - id: Designates the entry in `PATCH` and `DELETE /collection/entries/{id}`.
+            ///   - purchase_price: Price in cents; `null` when the copies have no purchase price.
+            ///   - quantity:
+            public init(
+                added_at: Swift.String,
+                binder: Components.Schemas.EntryBinderResponse? = nil,
+                foil: Swift.Bool,
+                id: Swift.String,
+                purchase_price: Swift.Int32? = nil,
+                quantity: Swift.Int32
+            ) {
+                self.added_at = added_at
+                self.binder = binder
+                self.foil = foil
+                self.id = id
+                self.purchase_price = purchase_price
+                self.quantity = quantity
+            }
+            public enum CodingKeys: String, CodingKey {
+                case added_at
+                case binder
+                case foil
+                case id
+                case purchase_price
+                case quantity
+            }
+        }
         /// - Remark: Generated from `#/components/schemas/CollectionEntryResponse`.
         public struct CollectionEntryResponse: Codable, Hashable, Sendable {
             /// RFC 3339 timestamp
@@ -586,6 +671,29 @@ extension Components {
             }
             public enum CodingKeys: String, CodingKey {
                 case enqueued
+            }
+        }
+        /// - Remark: Generated from `#/components/schemas/EntryBinderResponse`.
+        public struct EntryBinderResponse: Codable, Hashable, Sendable {
+            /// - Remark: Generated from `#/components/schemas/EntryBinderResponse/id`.
+            public var id: Swift.String
+            /// - Remark: Generated from `#/components/schemas/EntryBinderResponse/name`.
+            public var name: Swift.String
+            /// Creates a new `EntryBinderResponse`.
+            ///
+            /// - Parameters:
+            ///   - id:
+            ///   - name:
+            public init(
+                id: Swift.String,
+                name: Swift.String
+            ) {
+                self.id = id
+                self.name = name
+            }
+            public enum CodingKeys: String, CodingKey {
+                case id
+                case name
             }
         }
         /// Body of every error response. `error` is a technical message, for diagnosis only; clients
@@ -924,6 +1032,31 @@ extension Components {
                 case language_code
                 case owner_username
                 case set_code
+            }
+        }
+        /// Copies committed by the accepted Trades, per finish.
+        ///
+        /// - Remark: Generated from `#/components/schemas/ReservedQuantityResponse`.
+        public struct ReservedQuantityResponse: Codable, Hashable, Sendable {
+            /// - Remark: Generated from `#/components/schemas/ReservedQuantityResponse/foil`.
+            public var foil: Swift.Int32
+            /// - Remark: Generated from `#/components/schemas/ReservedQuantityResponse/normal`.
+            public var normal: Swift.Int32
+            /// Creates a new `ReservedQuantityResponse`.
+            ///
+            /// - Parameters:
+            ///   - foil:
+            ///   - normal:
+            public init(
+                foil: Swift.Int32,
+                normal: Swift.Int32
+            ) {
+                self.foil = foil
+                self.normal = normal
+            }
+            public enum CodingKeys: String, CodingKey {
+                case foil
+                case normal
             }
         }
         /// One entry of the scan index, keyed by set and collector number.
@@ -1364,6 +1497,34 @@ extension Components {
                 case partner_username
                 case status
                 case updated_at
+            }
+        }
+        /// - Remark: Generated from `#/components/schemas/UpdateCollectionEntryRequest`.
+        public struct UpdateCollectionEntryRequest: Codable, Hashable, Sendable {
+            /// New finish. A change onto an existing entry merges the two.
+            ///
+            /// - Remark: Generated from `#/components/schemas/UpdateCollectionEntryRequest/foil`.
+            public var foil: Swift.Bool?
+            /// New quantity, 1 to 255. Signed so an out-of-range value fails with `invalid_quantity`
+            /// (400) instead of a JSON extractor rejection.
+            ///
+            /// - Remark: Generated from `#/components/schemas/UpdateCollectionEntryRequest/quantity`.
+            public var quantity: Swift.Int32?
+            /// Creates a new `UpdateCollectionEntryRequest`.
+            ///
+            /// - Parameters:
+            ///   - foil: New finish. A change onto an existing entry merges the two.
+            ///   - quantity: New quantity, 1 to 255. Signed so an out-of-range value fails with `invalid_quantity`
+            public init(
+                foil: Swift.Bool? = nil,
+                quantity: Swift.Int32? = nil
+            ) {
+                self.foil = foil
+                self.quantity = quantity
+            }
+            public enum CodingKeys: String, CodingKey {
+                case foil
+                case quantity
             }
         }
         /// - Remark: Generated from `#/components/schemas/UserProfileResponse`.
