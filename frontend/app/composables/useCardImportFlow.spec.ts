@@ -186,6 +186,51 @@ describe('useCardImportFlow', () => {
     expect(flow.failureMessage.value).toBeNull();
   });
 
+  describe('confirmation before replacing the collection', () => {
+    const makeServices = (): CardImportServices => ({
+      importCards: vi.fn().mockResolvedValue({ id: 'import-1' }),
+      getCardImport: vi.fn().mockResolvedValue(makeImport({ status: 'running' })),
+      listCardImports: vi.fn(),
+    });
+
+    it('imports straight away when the collection is empty', async () => {
+      const services = makeServices();
+      const flow = useCardImportFlow(services, { hasCollection: () => false });
+
+      await flow.submit('csv-content');
+
+      expect(flow.pendingCsv.value).toBeNull();
+      expect(services.importCards).toHaveBeenCalledWith('csv-content');
+    });
+
+    it('holds the file until confirmed when the collection is not empty', async () => {
+      const services = makeServices();
+      const flow = useCardImportFlow(services, { hasCollection: () => true });
+
+      await flow.submit('csv-content');
+
+      expect(flow.pendingCsv.value).toBe('csv-content');
+      expect(services.importCards).not.toHaveBeenCalled();
+
+      await flow.confirmReplace();
+
+      expect(flow.pendingCsv.value).toBeNull();
+      expect(services.importCards).toHaveBeenCalledWith('csv-content');
+    });
+
+    it('does not import when the confirmation is cancelled', async () => {
+      const services = makeServices();
+      const flow = useCardImportFlow(services, { hasCollection: () => true });
+
+      await flow.submit('csv-content');
+      flow.cancelReplace();
+      await flow.confirmReplace();
+
+      expect(flow.pendingCsv.value).toBeNull();
+      expect(services.importCards).not.toHaveBeenCalled();
+    });
+  });
+
   it('reset stops polling and clears state', async () => {
     const getCardImport = vi.fn().mockResolvedValue(makeImport({ status: 'running' }));
     const services: CardImportServices = {
