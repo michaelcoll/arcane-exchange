@@ -1,0 +1,23 @@
+meta {
+  name: update entry
+  type: http
+  seq: 11
+}
+
+patch {
+  url: {{baseUrl}}/collection/entries/{{entryId}}
+  body: json
+  auth: inherit
+}
+
+body:json {
+  {
+    "quantity": 2,
+    "foil": false
+  }
+}
+
+docs {
+  Both fields are optional. A finish change onto an existing entry merges the two.
+  `reserved_quantity_exceeded` (409) when lowering below the copies engaged in accepted Trades.
+}

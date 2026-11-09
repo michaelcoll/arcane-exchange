@@ -1,0 +1,15 @@
+meta {
+  name: list binders
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{baseUrl}}/collection/binders
+  body: none
+  auth: inherit
+}
+
+docs {
+  The player's binders, empty ones included. Copy an `id` into the `binderId` variable.
+}
