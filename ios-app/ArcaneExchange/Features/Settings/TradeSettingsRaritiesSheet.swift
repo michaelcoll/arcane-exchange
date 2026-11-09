@@ -110,3 +110,7 @@ struct TradeSettingsRaritiesSheet: View {
         }
     }
 }
+
+#Preview {
+    TradeSettingsRaritiesSheet(model: TradeSettingsViewModel(api: APIClientFactory.preview))
+}
