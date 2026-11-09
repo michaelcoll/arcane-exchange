@@ -65,7 +65,15 @@ gates, notably:
 
 - Use [Conventional Commits](https://www.conventionalcommits.org/) (`feat:`, `fix:`, `refactor:`, `docs:`, `build:`,
   `chore:`, …), with an optional scope such as `feat(ios):` or `fix(web):`.
-- Use the same convention for pull request titles: they are labelled automatically from them.
+- Use the same convention for pull request titles: `type(scope): description`, in English, in the imperative mood.
+  - `feat` and `fix` are reserved for changes players can see. Everything else (`refactor`, `test`, `docs`, `build`,
+    `chore`, `ci`, …) is maintenance.
+  - Canonical scopes: `web`, `ios`, `backend`, `api`, plus the domain scopes (e.g. `trade`, `collection`). Never
+    `frontend`. Use `prototype` for experiments. Omit the scope when the PR touches several clients.
+  - The description is shown to players: write it so that they can understand it. No issue reference in the title:
+    it goes in the PR body.
+  - The title decides the section of the GitHub release notes and of the Discord announcement. Only titles starting
+    with `feat` / `fix` get the matching label; any other PR lands in "Maintenance".
 - Issues are tracked in [GitHub Issues](https://github.com/michaelcoll/arcane-exchange/issues).
 
 ## Documentation

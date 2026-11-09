@@ -30,6 +30,15 @@
   - rustc `error communicating with database`: PostgreSQL is down, and the errors stay until rust-analyzer re-checks.
     Check with `mise run lint-clippy`, which runs offline
 
+## PR TITLES
+
+- Format `type(scope): description`, in English, imperative. Players read the description (release notes, Discord)
+- No issue reference in the title: it goes in the PR body
+- `feat` / `fix` only for player-visible changes; anything else is `refactor`, `test`, `docs`, `build`, `chore`, `ci`…
+- Scopes: `web`, `ios`, `backend`, `api`, or a domain scope. Never `frontend`. `prototype` for experiments. No scope
+  when the PR touches several clients
+- Details: [CONTRIBUTING.md](CONTRIBUTING.md)
+
 ## Architecture
 
 Vue d'ensemble technique (couches, contrats générés, traitements asynchrones, clients, déploiement) :
