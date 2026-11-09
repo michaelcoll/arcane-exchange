@@ -17,6 +17,11 @@ export interface CardImportFlowOptions {
   pollIntervalMs?: number;
   /** Called once, right when the import reaches `completed`. */
   onCompleted?: () => void;
+  /**
+   * Whether the player already owns at least one card. The import replaces the whole collection,
+   * so `submit` asks for a confirmation first when this is true. Defaults to false (no confirmation).
+   */
+  hasCollection?: () => boolean;
 }
 
 /**
@@ -34,6 +39,8 @@ export const useCardImportFlow = (
   const status = ref<CardImport | null>(null);
   const error = ref<string | null>(null);
   const wasAlreadyRunning = ref(false);
+  /** The file waiting for the player to confirm that it replaces the collection; `null` if none. */
+  const pendingCsv = ref<string | null>(null);
   let pollHandle: ReturnType<typeof setInterval> | null = null;
 
   const progressPercent = computed(() => {
@@ -61,6 +68,7 @@ export const useCardImportFlow = (
     status.value = null;
     error.value = null;
     wasAlreadyRunning.value = false;
+    pendingCsv.value = null;
   };
 
   const poll = (id: string) => {
@@ -115,8 +123,32 @@ export const useCardImportFlow = (
     }
   };
 
+  /** Starts the import, or holds the file until `confirmReplace` when it would replace a collection. */
+  const submit = async (csv: string): Promise<void> => {
+    if (options.hasCollection?.()) {
+      error.value = null;
+      pendingCsv.value = csv;
+      return;
+    }
+    await start(csv);
+  };
+
+  const confirmReplace = async (): Promise<void> => {
+    const csv = pendingCsv.value;
+    pendingCsv.value = null;
+    if (csv !== null) await start(csv);
+  };
+
+  const cancelReplace = () => {
+    pendingCsv.value = null;
+  };
+
   return {
     step,
+    pendingCsv,
+    submit,
+    confirmReplace,
+    cancelReplace,
     status,
     error,
     wasAlreadyRunning,

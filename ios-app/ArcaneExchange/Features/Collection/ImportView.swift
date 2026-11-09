@@ -6,7 +6,6 @@ import UniformTypeIdentifiers
 /// progress, then show the compte-rendu (cards imported, line errors).
 struct ImportView: View {
     @State private var model: ImportViewModel
-    @State private var isPickingFile = false
     @State private var pickError: String?
 
     @Environment(\.dismiss) private var dismiss
@@ -25,8 +24,21 @@ struct ImportView: View {
                         CloseButton { dismiss() }
                     }
                 }
+                .confirmationDialog(
+                    "Remplacer toute ta collection ?",
+                    isPresented: $model.isConfirmingReplace,
+                    titleVisibility: .visible
+                ) {
+                    Button("Tout remplacer", role: .destructive) { model.confirmReplace() }
+                    Button("Annuler", role: .cancel) { model.cancelReplace() }
+                } message: {
+                    Text(
+                        "Ta collection actuelle sera entièrement écrasée par le fichier, "
+                            + "y compris ce que tu as saisi sur la plateforme."
+                    )
+                }
                 .fileImporter(
-                    isPresented: $isPickingFile,
+                    isPresented: $model.isPickingFile,
                     allowedContentTypes: [.commaSeparatedText],
                     onCompletion: handlePick
                 )
@@ -51,11 +63,14 @@ struct ImportView: View {
             Image(systemName: "square.and.arrow.down")
                 .font(.system(size: 40))
                 .foregroundStyle(.tint)
-            Text("Exporte ta collection en .csv depuis ManaBox, puis sélectionne-la ici.")
-                .multilineTextAlignment(.center)
-                .foregroundStyle(.secondary)
+            Text(
+                "L'import sert à charger ta collection au départ, ou à la remettre à zéro : "
+                    + "il remplace tout. Exporte-la en .csv depuis ManaBox, puis sélectionne-la ici."
+            )
+            .multilineTextAlignment(.center)
+            .foregroundStyle(.secondary)
 
-            Button("Choisir un fichier") { isPickingFile = true }
+            Button("Choisir un fichier") { Task { await model.requestImport() } }
                 .buttonStyle(.borderedProminent)
 
             if let error = model.loadError {

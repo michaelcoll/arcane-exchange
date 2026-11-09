@@ -157,6 +157,67 @@ struct ImportViewModelTests {
         #expect(model.loadError == nil)
     }
 
+    private func apiWithCollection(totalCards: Int64) -> FakeAPI {
+        let api = FakeAPI()
+        api.onGetCollectionStats = { _ in
+            .ok(.init(body: .json(.init(binders: [], sets: [], total_cards: totalCards, unique_cards: totalCards))))
+        }
+        return api
+    }
+
+    @Test func anEmptyCollectionOpensThePickerWithoutConfirmation() async {
+        let model = ImportViewModel(api: apiWithCollection(totalCards: 0))
+
+        await model.requestImport()
+
+        #expect(model.isPickingFile)
+        #expect(!model.isConfirmingReplace)
+    }
+
+    @Test func aNonEmptyCollectionAsksForConfirmationBeforeThePicker() async {
+        let model = ImportViewModel(api: apiWithCollection(totalCards: 3))
+
+        await model.requestImport()
+
+        #expect(model.isConfirmingReplace)
+        #expect(!model.isPickingFile)
+    }
+
+    @Test func confirmingTheReplacementOpensThePicker() async {
+        let model = ImportViewModel(api: apiWithCollection(totalCards: 3))
+
+        await model.requestImport()
+        model.confirmReplace()
+
+        #expect(!model.isConfirmingReplace)
+        #expect(model.isPickingFile)
+    }
+
+    @Test func cancellingTheConfirmationNeverStartsTheImport() async {
+        let api = apiWithCollection(totalCards: 3)
+        let model = ImportViewModel(api: api)
+
+        await model.requestImport()
+        model.cancelReplace()
+
+        #expect(!model.isConfirmingReplace)
+        #expect(!model.isPickingFile)
+        #expect(model.step == .pick)
+        #expect(!api.calls.contains("import_cards"))
+    }
+
+    @Test func anUnreadableCollectionOpensNothing() async {
+        let api = FakeAPI()
+        api.onGetCollectionStats = { _ in throw APIError(code: nil, status: nil, isNetworkFailure: true) }
+        let model = ImportViewModel(api: api)
+
+        await model.requestImport()
+
+        #expect(model.loadError == APIErrorMessages.network)
+        #expect(!model.isConfirmingReplace)
+        #expect(!model.isPickingFile)
+    }
+
     @Test func aConflictWithNoActiveImportShowsTheAlreadyRunningMessage() async {
         let api = FakeAPI()
         api.onImportCards = { _ in throw APIError(code: "import_already_running", status: 409) }

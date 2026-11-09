@@ -27,7 +27,38 @@ final class ImportViewModel {
     private(set) var loadError: String?
     private(set) var wasAlreadyRunning = false
 
+    /// The import replaces the whole collection: asked first when the player owns a card.
+    var isConfirmingReplace = false
+    /// Set once the import is allowed to go on (empty collection, or replacement confirmed).
+    var isPickingFile = false
+
     private var pollTask: Task<Void, Never>?
+
+    /// Entry point of the "Choisir un fichier" button: a collection with at least one card asks
+    /// for a confirmation before the file picker opens, an empty one goes straight to it. When the
+    /// collection cannot be read, nothing opens: better no import than a silent overwrite.
+    func requestImport() async {
+        loadError = nil
+        do {
+            let stats = try await api.get_collection_stats().ok.body.json
+            if stats.total_cards > 0 {
+                isConfirmingReplace = true
+            } else {
+                isPickingFile = true
+            }
+        } catch {
+            loadError = APIError.read(error).message
+        }
+    }
+
+    func confirmReplace() {
+        isConfirmingReplace = false
+        isPickingFile = true
+    }
+
+    func cancelReplace() {
+        isConfirmingReplace = false
+    }
 
     var progressFraction: Double {
         guard let status, status.total_lines > 0 else {
@@ -51,6 +82,8 @@ final class ImportViewModel {
         status = nil
         loadError = nil
         wasAlreadyRunning = false
+        isConfirmingReplace = false
+        isPickingFile = false
     }
 
     func start(csv: String) async {

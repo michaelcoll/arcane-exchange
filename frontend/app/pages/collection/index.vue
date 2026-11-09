@@ -26,9 +26,11 @@ const isDesktop = useMediaQuery('(min-width: 768px)');
 const pageSize = useCardPageSize(size, isDesktop);
 
 // Same key and options as every other reader of the stats, so they share one cache entry.
-const { data: statsData } = await useAsyncData('collection-stats', () => getCollectionStats(), {
-  lazy: true,
-});
+const { data: statsData, refresh: refreshStats } = await useAsyncData(
+  'collection-stats',
+  () => getCollectionStats(),
+  { lazy: true },
+);
 
 const setList = computed(() => statsData.value?.sets ?? []);
 
@@ -84,12 +86,23 @@ const {
   wasAlreadyRunning: importWasAlreadyRunning,
   progressPercent: importProgressPercent,
   failureMessage: importFailureMessage,
-  start: startImportFlow,
+  pendingCsv: importPendingCsv,
+  submit: submitImport,
+  confirmReplace: confirmImportReplace,
+  cancelReplace: cancelImportReplace,
   stopPolling: stopImportPolling,
   reset: resetImportFlow,
 } = useCardImportFlow(
   { importCards, getCardImport, listCardImports },
-  { onCompleted: list.reload },
+  {
+    onCompleted: () => {
+      void list.reload();
+      void refreshStats();
+    },
+    // Unknown stats count as a non-empty collection: better one confirmation too many than a
+    // silent overwrite.
+    hasCollection: () => statsData.value?.total_cards !== 0,
+  },
 );
 const detail = ref<CollectionCard | null>(null);
 
@@ -135,7 +148,7 @@ const handleFile = async (file: File) => {
   importLoading.value = true;
   try {
     const csv = await file.text();
-    await startImportFlow(csv);
+    await submitImport(csv);
   } finally {
     importLoading.value = false;
     if (fileInputRef.value) fileInputRef.value.value = '';
@@ -404,9 +417,31 @@ const onDragLeave = () => {
           </button>
         </div>
 
-        <template v-if="importStep === 'idle'">
+        <template v-if="importStep === 'idle' && importPendingCsv !== null">
           <p class="mt-0 text-sm text-slate-600 dark:text-slate-300">
-            Exporte ta collection en
+            Ta collection sera <strong>entièrement remplacée</strong> par ce fichier, y compris ce
+            que tu as saisi sur la plateforme. Cette action est irréversible.
+          </p>
+          <div class="mt-4 flex justify-end gap-2">
+            <button
+              class="cursor-pointer rounded-xl bg-slate-100 px-4 py-2 text-sm transition-colors hover:bg-slate-200 dark:bg-zinc-800 dark:hover:bg-zinc-700"
+              @click="cancelImportReplace"
+            >
+              Annuler
+            </button>
+            <button
+              class="cursor-pointer rounded-xl bg-red-500 px-4 py-2 text-sm font-bold text-white transition-colors hover:bg-red-600"
+              @click="confirmImportReplace"
+            >
+              Tout remplacer
+            </button>
+          </div>
+        </template>
+
+        <template v-else-if="importStep === 'idle'">
+          <p class="mt-0 text-sm text-slate-600 dark:text-slate-300">
+            L'import sert à charger ta collection au départ, ou à la remettre à zéro : il remplace
+            tout. Exporte ta collection en
             <span class="font-mono tracking-tight">.csv</span>
             depuis Manabox, puis dépose-la ici.
           </p>
