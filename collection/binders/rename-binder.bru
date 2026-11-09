@@ -1,0 +1,21 @@
+meta {
+  name: rename binder
+  type: http
+  seq: 3
+}
+
+patch {
+  url: {{baseUrl}}/collection/binders/{{binderId}}
+  body: json
+  auth: inherit
+}
+
+body:json {
+  {
+    "name": "Renamed Binder"
+  }
+}
+
+docs {
+  The binder keeps its trade opening. `binder_not_found` (404), `binder_name_taken` (409).
+}

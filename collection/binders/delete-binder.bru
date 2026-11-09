@@ -1,0 +1,15 @@
+meta {
+  name: delete binder
+  type: http
+  seq: 4
+}
+
+delete {
+  url: {{baseUrl}}/collection/binders/{{binderId}}
+  body: none
+  auth: inherit
+}
+
+docs {
+  `204`. Only an empty binder can be deleted: `binder_not_empty` (409) otherwise.
+}

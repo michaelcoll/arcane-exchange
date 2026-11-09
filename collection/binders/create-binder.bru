@@ -1,0 +1,22 @@
+meta {
+  name: create binder
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{baseUrl}}/collection/binders
+  body: json
+  auth: inherit
+}
+
+body:json {
+  {
+    "name": "Trade Binder"
+  }
+}
+
+docs {
+  `201` with the binder. `binder_name_taken` (409) when the player already has that name,
+  `invalid_binder_name` (400) when it is blank or over 255 characters.
+}

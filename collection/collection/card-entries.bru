@@ -1,0 +1,16 @@
+meta {
+  name: card entries
+  type: http
+  seq: 9
+}
+
+get {
+  url: {{baseUrl}}/collection/cards/ECL/166/FR/entries
+  body: none
+  auth: inherit
+}
+
+docs {
+  The player's entries of one card (one per binder and finish). Copy an `id` into the `entryId`
+  variable.
+}

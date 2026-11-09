@@ -1,0 +1,23 @@
+meta {
+  name: search catalog
+  type: http
+  seq: 2
+}
+
+get {
+  url: {{baseUrl}}/catalog/cards?q=Lightning&set_code=&page=0&page_size=20
+  body: none
+  auth: inherit
+}
+
+params:query {
+  q: Lightning
+  set_code:
+  page: 0
+  page_size: 20
+}
+
+docs {
+  Searches the catalog by English or French name, optionally within a set. Run
+  `maintenance/update catalog` first.
+}

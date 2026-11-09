@@ -1,0 +1,23 @@
+meta {
+  name: move entry
+  type: http
+  seq: 12
+}
+
+post {
+  url: {{baseUrl}}/collection/entries/{{entryId}}/move
+  body: json
+  auth: inherit
+}
+
+body:json {
+  {
+    "binder_id": "{{binderId}}",
+    "quantity": 1
+  }
+}
+
+docs {
+  Moves `quantity` copies (all of them when absent) into the binder, or out of any binder when
+  `binder_id` is `null`. Merges into the target entry.
+}

@@ -1,0 +1,15 @@
+meta {
+  name: remove entry
+  type: http
+  seq: 13
+}
+
+delete {
+  url: {{baseUrl}}/collection/entries/{{entryId}}
+  body: none
+  auth: inherit
+}
+
+docs {
+  `204`. `reserved_quantity_exceeded` (409) when copies are engaged in accepted Trades.
+}

@@ -1,0 +1,28 @@
+meta {
+  name: add entry
+  type: http
+  seq: 10
+}
+
+post {
+  url: {{baseUrl}}/collection/entries
+  body: json
+  auth: inherit
+}
+
+body:json {
+  {
+    "set_code": "ECL",
+    "collector_number": "166",
+    "language_code": "FR",
+    "foil": false,
+    "quantity": 1,
+    "binder_id": null
+  }
+}
+
+docs {
+  `201`. Merges into the existing entry of the same card, finish and binder. Set `binder_id` to
+  `{{binderId}}` to store the copies in a binder. `card_not_in_catalog` (404),
+  `invalid_quantity` (400, outside 1 to 255).
+}
