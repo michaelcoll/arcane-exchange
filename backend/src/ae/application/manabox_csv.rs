@@ -233,7 +233,8 @@ fn parse_line(
         _ => return Err(line_error(line_number, "proxy", raw_proxy)),
     }
 
-    let binder_name = field_refs[columns.binder_name];
+    // Trimmed like the `binder` table requires; a blank name means no binder.
+    let binder_name = field_refs[columns.binder_name].trim();
     let binder_name = (!binder_name.is_empty()).then(|| binder_name.to_string());
 
     let name = field_refs[columns.name];
@@ -319,6 +320,20 @@ mod tests {
     use super::*;
     use crate::domain::language_code::LanguageCode;
     use crate::domain::set_name::SetCode;
+
+    #[test]
+    fn parse_cards_trims_the_binder_name_and_reads_a_blank_one_as_no_binder() -> Result<(), AppError>
+    {
+        let csv = "Binder Name,Binder Type,Name,Set code,Set name,Collector number,Foil,Rarity,Quantity,ManaBox ID,Scryfall ID,Purchase price,Misprint,Altered,Signed,Condition,Language,Proxy,Purchase price currency,Added\n\
+                   \"  bulk \",binder,Goblin Boarders,FDN,Foundations,87,normal,common,3,101506,4409a063-bf2a-4a49-803e-3ce6bd474353,0.08,false,false,false,near_mint,fr,false,EUR,2026-02-05T20:44:45.815Z\n\
+                   \"   \",binder,Repeal,GPT,Guildpact,32,normal,common,2,27563,9e7dd929-4bba-46a6-86c9-b8ed853eb721,0.17,false,false,false,near_mint,fr,false,EUR,2026-02-05T20:44:45.815Z";
+
+        let cards = parse_cards(csv)?.cards;
+
+        assert_eq!(cards[0].binder_name, Some("bulk".to_string()));
+        assert_eq!(cards[1].binder_name, None);
+        Ok(())
+    }
 
     #[test]
     fn import_cards_parses_valid_csv() -> Result<(), AppError> {

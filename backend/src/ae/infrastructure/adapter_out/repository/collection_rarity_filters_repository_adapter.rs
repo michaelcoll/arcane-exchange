@@ -38,9 +38,7 @@ impl RarityTradeFilterRepository for CollectionRarityFiltersRepositoryAdapter {
                 ON  c.set_code         = ce.set_code
                 AND c.collector_number = ce.collector_number
                 AND c.language_code    = ce.language_code
-            JOIN trading_binders tb
-                ON  tb.user_id     = ce.user_id
-                AND tb.binder_name = ce.binder_name
+            JOIN trading_binders tb ON tb.binder_id = ce.binder_id
             LEFT JOIN collection_rarity_filters f
                 ON  f.user_id = ce.user_id
                 AND f.rarity  = c.rarity

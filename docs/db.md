@@ -1,7 +1,12 @@
-# postgres — public schema
+# arcane_t648 — public schema
 
 ```mermaid
 erDiagram
+    binder {
+        uuid id PK "default: gen_random_uuid()"
+        character_varying(50) user_id FK "not null"
+        character_varying(255) name "not null"
+    }
     card {
         character_varying(6) set_code PK, FK
         character_varying(10) collector_number PK
@@ -55,7 +60,7 @@ erDiagram
         integer quantity "not null"
         integer purchase_price "not null"
         timestamp_with_time_zone added_at
-        character_varying(255) binder_name
+        uuid binder_id FK
     }
     collection_price_history {
         date date PK
@@ -126,8 +131,7 @@ erDiagram
         integer quantity "not null"
     }
     trading_binders {
-        character_varying(50) user_id PK, FK
-        character_varying(255) binder_name PK
+        uuid binder_id PK, FK
     }
     users {
         character_varying(50) id PK
@@ -143,9 +147,11 @@ erDiagram
         boolean foil
         integer proposed_quantity
     }
+    users ||--o{ binder : "user_id"
     set_name ||--o{ card : "set_code"
     users ||--o| card_import : "user_id"
     set_name ||--o{ catalog_card : "set_code"
+    binder |o--o{ collection_entry : "binder_id"
     card ||--o{ collection_entry : "set_code, collector_number, language_code"
     users ||--o{ collection_entry : "user_id"
     users ||--o{ collection_rarity_filters : "user_id"
@@ -154,7 +160,7 @@ erDiagram
     card ||--o{ trade_card : "set_code, collector_number, language_code"
     users ||--o{ trade_card : "owner_user_id"
     trade ||--o{ trade_card : "trade_id"
-    users ||--o{ trading_binders : "user_id"
+    binder ||--o{ trading_binders : "binder_id"
 ```
 
 ## Views
@@ -164,6 +170,12 @@ erDiagram
 - `v_tradable_entry` (view)
 
 ## Indexes and constraints
+
+### binder
+
+- unique index `binder_user_name_uk` (`user_id`, `name`)
+- unique constraint `binder_user_name_uk` (`user_id`, `name`)
+- check constraint `binder_name_trimmed`: `CHECK ((((name)::text = btrim((name)::text)) AND ((name)::text <> ''::text)))`
 
 ### card
 
@@ -178,8 +190,8 @@ erDiagram
 
 ### collection_entry
 
-- unique index `collection_entry_uk` (`set_code`, `collector_number`, `language_code`, `foil`, `user_id`, `binder_name`)
-- unique constraint `collection_entry_uk` (`set_code`, `collector_number`, `language_code`, `foil`, `user_id`, `binder_name`)
+- unique index `collection_entry_uk` (`set_code`, `collector_number`, `language_code`, `foil`, `user_id`, `binder_id`)
+- unique constraint `collection_entry_uk` (`set_code`, `collector_number`, `language_code`, `foil`, `user_id`, `binder_id`)
 
 ### collection_rarity_filters
 

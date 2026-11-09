@@ -72,11 +72,12 @@ impl CollectionStatsRepository for CollectionStatsRepositoryAdapter {
 
         let binders = sqlx::query!(
             r#"
-            SELECT ce.binder_name AS "binder_name!", SUM(ce.quantity)::BIGINT AS "card_count!"
+            SELECT b.name AS "binder_name!", SUM(ce.quantity)::BIGINT AS "card_count!"
             FROM collection_entry ce
-            WHERE ce.user_id = $1 AND ce.binder_name IS NOT NULL
-            GROUP BY ce.binder_name
-            ORDER BY SUM(ce.quantity) DESC, ce.binder_name
+            JOIN binder b ON b.id = ce.binder_id
+            WHERE ce.user_id = $1
+            GROUP BY b.id, b.name
+            ORDER BY SUM(ce.quantity) DESC, b.name
             "#,
             user_id.as_str()
         )

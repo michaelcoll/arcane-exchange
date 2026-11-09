@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            DELETE FROM binder b\n            WHERE b.user_id = $1\n              AND NOT EXISTS (SELECT 1 FROM collection_entry ce WHERE ce.binder_id = b.id)\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "0d3987048ba69dc33cb14c344df620e9502d90676d3f766fa7dcf12edb8ecf22"
+}
