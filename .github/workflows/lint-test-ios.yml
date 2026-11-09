@@ -65,5 +65,20 @@ jobs:
         run: |
           set -o pipefail
           xcodebuild -scheme ArcaneExchange -destination 'platform=iOS Simulator,name=iPhone 17' \
-            -clonedSourcePackagesDirPath .spm-cache -skipPackagePluginValidation test \
+            -clonedSourcePackagesDirPath .spm-cache -skipPackagePluginValidation \
+            -resultBundlePath "$RUNNER_TEMP/TestResults.xcresult" test \
             | xcbeautify --renderer github-actions
+
+      # A crash of the host app at launch leaves nothing readable in the log ("Test crashed
+      # with signal trap before establishing connection"): its stack trace is only in the
+      # result bundle and in the simulator's crash reports.
+      - name: Upload the test results and crash reports
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: ios-test-results
+          path: |
+            ${{ runner.temp }}/TestResults.xcresult
+            ~/Library/Logs/DiagnosticReports
+          if-no-files-found: ignore
+          retention-days: 7
