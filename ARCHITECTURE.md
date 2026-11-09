@@ -128,6 +128,12 @@ Tout tourne dans le même processus que l'API, sans ordonnanceur externe :
   canal, l'ensemble des cartes en file (une carte n'y est jamais deux fois) et le rafraîchissement
   des vues quand la file se vide. Chaque source n'est qu'un `Enricher` (cartes en attente +
   résolution d'une carte) ; une nouvelle source coûte un `Enricher`.
+- **Rafraîchissement des vues de prix à la demande** : `CardPricesRefresher`
+  (`application/card_prices_refresher.rs`, derrière le port `CardPricesRefreshRequester` de
+  `repository.rs`) reçoit des demandes sans jamais bloquer l'appelant et les
+  regroupe : un seul rafraîchissement à la fois, et les demandes reçues pendant qu'il tourne n'en
+  déclenchent qu'un de plus. Un échec est journalisé et n'échoue pas l'appelant. L'import et
+  l'import des prix gardent leur rafraîchissement synchrone.
 - **Images de cartes** : l'`Enricher` d'images essaie Gatherer dans la langue de la carte, Gatherer
   en anglais, puis Scryfall, et garde la première source qui fournit toutes les faces assez larges.
   Seul un « introuvable » fait passer à la source suivante ; une erreur technique laisse la carte en

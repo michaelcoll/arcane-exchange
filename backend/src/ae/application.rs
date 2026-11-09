@@ -1,6 +1,7 @@
 pub mod caller;
 pub mod card_import_job;
 pub mod card_import_worker;
+pub mod card_prices_refresher;
 pub(crate) mod date_range;
 pub mod enrichment_queue;
 pub mod error;

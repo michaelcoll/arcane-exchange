@@ -133,6 +133,14 @@ pub trait EnqueueCardImageUpdateUseCase: Send + Sync {
     async fn enqueue_fallback_and_pending_updates(&self) -> Result<usize, AppError>;
 }
 
+#[cfg_attr(test, automock)]
+pub trait RequestCardPricesRefreshUseCase: Send + Sync {
+    /// Asks for a refresh of the card prices views and returns at once, without waiting for it.
+    /// Requests received while a refresh runs are coalesced into a single further refresh. A
+    /// failed refresh is logged and never reaches the caller.
+    fn request_card_prices_refresh(&self);
+}
+
 #[async_trait]
 #[cfg_attr(test, automock)]
 pub trait CardCollectionPriceCalculationUseCase: Send + Sync {
