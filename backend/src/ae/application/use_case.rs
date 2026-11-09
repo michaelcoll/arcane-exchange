@@ -2,6 +2,7 @@ use crate::application::error::AppError;
 use async_trait::async_trait;
 
 use crate::application::card_import_job::CardImportJob;
+use crate::domain::binder::{Binder, BinderId};
 use crate::domain::card::{Card, CardId, CollectionEntry, CopyId};
 use crate::domain::card_import::{CardImport, CardImportId};
 use crate::domain::card_offer::CardOfferSortField;
@@ -97,6 +98,41 @@ pub trait RemoveTradeBinderUseCase: Send + Sync {
         user_id: UserId,
         binder_name: String,
     ) -> Result<(), AppError>;
+}
+
+#[async_trait]
+#[cfg_attr(test, automock)]
+pub trait ListBindersUseCase: Send + Sync {
+    async fn list_binders(&self, user_id: UserId) -> Result<Vec<Binder>, AppError>;
+}
+
+#[async_trait]
+#[cfg_attr(test, automock)]
+pub trait CreateBinderUseCase: Send + Sync {
+    /// Creates a binder closed to trade. `InvalidBinderName` (`400`) for a blank or too long name,
+    /// `BinderNameTaken` (`409`) for a name the player already uses.
+    async fn create_binder(&self, user_id: UserId, name: &str) -> Result<Binder, AppError>;
+}
+
+#[async_trait]
+#[cfg_attr(test, automock)]
+pub trait RenameBinderUseCase: Send + Sync {
+    /// Renames a binder, which keeps its trade opening. Same refusals as creation, plus
+    /// `BinderNotFound` (`404`), also for a binder of another player.
+    async fn rename_binder(
+        &self,
+        user_id: UserId,
+        id: BinderId,
+        name: &str,
+    ) -> Result<Binder, AppError>;
+}
+
+#[async_trait]
+#[cfg_attr(test, automock)]
+pub trait DeleteBinderUseCase: Send + Sync {
+    /// Deletes an empty binder with its trade opening. `BinderNotFound` (`404`), also for a binder
+    /// of another player, `BinderNotEmpty` (`409`) if it still holds copies.
+    async fn delete_binder(&self, user_id: UserId, id: BinderId) -> Result<(), AppError>;
 }
 
 #[async_trait]

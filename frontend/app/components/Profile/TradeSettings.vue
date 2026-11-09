@@ -3,19 +3,19 @@ import type { RarityCode } from '~/bindings/RarityCode';
 import { MAX_KEPT_COPIES, fmtInt } from '~/utils/trade-settings';
 import { RARITY_COLOR_CLASS, RARITY_LABELS } from '~/utils/rarity';
 
-const { getCollectionStats } = useCollectionService();
+const { getBinders } = useCollectionService();
 const { getTradeBinders, addTradeBinder, removeTradeBinder, getRarityFilters, setRarityFilter } =
   useTradeSettingsService();
 const { showError } = useToast();
 
 // useAsyncData must be called synchronously during setup, not inside onMounted.
-// Same key and options as every other reader of the stats, so they share one cache entry.
+// The binders of the player, empty ones included: an empty binder can be opened to trade too.
 const {
-  data: statsData,
-  pending: statsPending,
-  error: statsError,
-} = useAsyncData('collection-stats', () => getCollectionStats(), { lazy: true });
-const binders = computed(() => statsData.value?.binders ?? []);
+  data: bindersData,
+  pending: bindersPending,
+  error: bindersError,
+} = useAsyncData('collection-binders', () => getBinders(), { lazy: true });
+const binders = computed(() => bindersData.value?.binders ?? []);
 
 const {
   data: filtersData,
@@ -25,7 +25,7 @@ const {
 } = useAsyncData('collection-rarity-filters', () => getRarityFilters(), { lazy: true });
 const rows = computed(() => filtersData.value?.rarities ?? []);
 
-watch(statsError, (e) => {
+watch(bindersError, (e) => {
   if (e) showError('Impossible de charger les binders', readApiError(e).message);
 });
 
@@ -35,7 +35,7 @@ watch(filtersError, (e) => {
 
 const selectedBinders = ref<string[]>([]);
 const selectionLoading = ref(true);
-const bindersLoading = computed(() => statsPending.value || selectionLoading.value);
+const bindersLoading = computed(() => bindersPending.value || selectionLoading.value);
 const binderBusy = ref<string | null>(null);
 const rarityBusy = ref<string | null>(null);
 
@@ -135,14 +135,14 @@ const stepperBtnClass =
               size="14"
               class="animate-spin"
             />
-            issus de ton dernier import
+            tes binders, vides compris
           </span>
         </div>
         <div
           v-if="!bindersLoading && binders.length === 0"
           class="text-xs text-slate-400 dark:text-slate-500"
         >
-          Aucun binder dans ton dernier import ManaBox.
+          Aucun binder pour l'instant.
         </div>
         <div v-else class="flex flex-wrap gap-2">
           <button
@@ -162,7 +162,7 @@ const stepperBtnClass =
               size="12"
             />
             {{ b.name }}
-            <span class="font-mono text-xs opacity-60">{{ fmtInt(b.card_count) }}</span>
+            <span class="font-mono text-xs opacity-60">{{ fmtInt(b.copies) }}</span>
           </button>
         </div>
         <span class="text-xs text-slate-400 dark:text-slate-500">

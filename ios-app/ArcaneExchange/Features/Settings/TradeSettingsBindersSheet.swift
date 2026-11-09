@@ -12,7 +12,7 @@ struct TradeSettingsBindersSheet: View {
             List {
                 Section {
                     if model.binders.isEmpty {
-                        Text("Aucun classeur dans ton dernier import ManaBox.")
+                        Text("Aucun binder pour l'instant.")
                             .font(.footnote)
                             .foregroundStyle(.secondary)
                     }
@@ -20,7 +20,7 @@ struct TradeSettingsBindersSheet: View {
                         Toggle(isOn: binding(for: binder.name)) {
                             VStack(alignment: .leading, spacing: 2) {
                                 Text(binder.name)
-                                Text(TradeSettingsCopy.cards(Int(binder.card_count)))
+                                Text(TradeSettingsCopy.cards(Int(binder.copies)))
                                     .font(.caption)
                                     .foregroundStyle(.secondary)
                             }

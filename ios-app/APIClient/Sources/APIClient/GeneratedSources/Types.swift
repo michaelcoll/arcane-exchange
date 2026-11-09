@@ -35,6 +35,18 @@ public protocol APIProtocol: Sendable {
     /// - Remark: HTTP `GET /collection`.
     /// - Remark: Generated from `#/paths//collection/get(get_collection)`.
     func get_collection(_ input: Operations.get_collection.Input) async throws -> Operations.get_collection.Output
+    /// - Remark: HTTP `GET /collection/binders`.
+    /// - Remark: Generated from `#/paths//collection/binders/get(list_binders)`.
+    func list_binders(_ input: Operations.list_binders.Input) async throws -> Operations.list_binders.Output
+    /// - Remark: HTTP `POST /collection/binders`.
+    /// - Remark: Generated from `#/paths//collection/binders/post(create_binder)`.
+    func create_binder(_ input: Operations.create_binder.Input) async throws -> Operations.create_binder.Output
+    /// - Remark: HTTP `PATCH /collection/binders/{id}`.
+    /// - Remark: Generated from `#/paths//collection/binders/{id}/patch(rename_binder)`.
+    func rename_binder(_ input: Operations.rename_binder.Input) async throws -> Operations.rename_binder.Output
+    /// - Remark: HTTP `DELETE /collection/binders/{id}`.
+    /// - Remark: Generated from `#/paths//collection/binders/{id}/delete(delete_binder)`.
+    func delete_binder(_ input: Operations.delete_binder.Input) async throws -> Operations.delete_binder.Output
     /// - Remark: HTTP `GET /collection/import`.
     /// - Remark: Generated from `#/paths//collection/import/get(list_card_imports)`.
     func list_card_imports(_ input: Operations.list_card_imports.Input) async throws -> Operations.list_card_imports.Output
@@ -188,6 +200,46 @@ extension APIProtocol {
     ) async throws -> Operations.get_collection.Output {
         try await get_collection(Operations.get_collection.Input(
             query: query,
+            headers: headers
+        ))
+    }
+    /// - Remark: HTTP `GET /collection/binders`.
+    /// - Remark: Generated from `#/paths//collection/binders/get(list_binders)`.
+    public func list_binders(headers: Operations.list_binders.Input.Headers = .init()) async throws -> Operations.list_binders.Output {
+        try await list_binders(Operations.list_binders.Input(headers: headers))
+    }
+    /// - Remark: HTTP `POST /collection/binders`.
+    /// - Remark: Generated from `#/paths//collection/binders/post(create_binder)`.
+    public func create_binder(
+        headers: Operations.create_binder.Input.Headers = .init(),
+        body: Operations.create_binder.Input.Body
+    ) async throws -> Operations.create_binder.Output {
+        try await create_binder(Operations.create_binder.Input(
+            headers: headers,
+            body: body
+        ))
+    }
+    /// - Remark: HTTP `PATCH /collection/binders/{id}`.
+    /// - Remark: Generated from `#/paths//collection/binders/{id}/patch(rename_binder)`.
+    public func rename_binder(
+        path: Operations.rename_binder.Input.Path,
+        headers: Operations.rename_binder.Input.Headers = .init(),
+        body: Operations.rename_binder.Input.Body
+    ) async throws -> Operations.rename_binder.Output {
+        try await rename_binder(Operations.rename_binder.Input(
+            path: path,
+            headers: headers,
+            body: body
+        ))
+    }
+    /// - Remark: HTTP `DELETE /collection/binders/{id}`.
+    /// - Remark: Generated from `#/paths//collection/binders/{id}/delete(delete_binder)`.
+    public func delete_binder(
+        path: Operations.delete_binder.Input.Path,
+        headers: Operations.delete_binder.Input.Headers = .init()
+    ) async throws -> Operations.delete_binder.Output {
+        try await delete_binder(Operations.delete_binder.Input(
+            path: path,
             headers: headers
         ))
     }

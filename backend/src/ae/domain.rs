@@ -1,3 +1,4 @@
+pub mod binder;
 pub mod card;
 pub mod card_image;
 pub mod card_import;

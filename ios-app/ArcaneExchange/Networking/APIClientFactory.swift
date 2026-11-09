@@ -96,7 +96,10 @@ private struct WidgetsReloadMiddleware: ClientMiddleware {
         Operations.remove_trade_card.id: .trades,
         Operations.accept_trade.id: .trades,
         Operations.confirm_trade.id: .trades,
-        Operations.abandon_trade.id: .trades
+        Operations.abandon_trade.id: .trades,
+        Operations.create_binder.id: .collection,
+        Operations.rename_binder.id: .collection,
+        Operations.delete_binder.id: .collection
     ]
 
     let onWidgetsChanged: @Sendable (HomeWidgetKind) -> Void

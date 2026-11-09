@@ -1,0 +1,55 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            SELECT b.id,\n                   b.name,\n                   COALESCE(SUM(ce.quantity), 0)::BIGINT AS \"copies!\",\n                   (tb.binder_id IS NOT NULL)            AS \"is_open!\"\n            FROM binder b\n                     LEFT JOIN collection_entry ce ON ce.binder_id = b.id\n                     LEFT JOIN trading_binders tb ON tb.binder_id = b.id\n            WHERE b.user_id = $1\n              AND ($2::UUID IS NULL OR b.id = $2)\n            GROUP BY b.id, b.name, tb.binder_id\n            ORDER BY b.name\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "binder",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "name",
+        "type_info": "Varchar",
+        "origin": {
+          "Table": {
+            "table": "binder",
+            "name": "name"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "copies!",
+        "type_info": "Int8",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 3,
+        "name": "is_open!",
+        "type_info": "Bool",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      null,
+      null
+    ]
+  },
+  "hash": "2f510bfcde575d2a561eae2bc4cbdba25633c7bcbd806797109687d1d1b03c41"
+}

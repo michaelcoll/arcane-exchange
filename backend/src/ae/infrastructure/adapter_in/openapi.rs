@@ -1,5 +1,6 @@
 use super::ErrorResponse;
 use super::autocomplete::dto::UserSuggestionResponse;
+use super::binder::dto::{BinderNameRequest, BinderResponse, BindersResponse};
 use super::card::dto::{
     CardOfferResponse, CardOffersSortByParam, PaginatedCardOffersResponse,
     PriceHistoryEntryResponse,
@@ -32,6 +33,10 @@ use utoipa::OpenApi;
         super::collection::controller::get_card_import,
         super::collection::controller::get_collection_stats,
         super::collection::controller::get_collection_price_history,
+        super::binder::controller::list_binders,
+        super::binder::controller::create_binder,
+        super::binder::controller::rename_binder,
+        super::binder::controller::delete_binder,
         super::trade_settings::controller::get_trade_visibility,
         super::trade_settings::controller::set_trade_visibility,
         super::trade_settings::controller::get_trade_binders,
@@ -80,6 +85,9 @@ use utoipa::OpenApi;
         CollectionStatsResponse,
         SetInfoResponse,
         BinderInfoResponse,
+        BinderResponse,
+        BindersResponse,
+        BinderNameRequest,
         RarityFilterResponse,
         RarityFiltersResponse,
         SetRarityFilterRequest,
@@ -118,6 +126,7 @@ use utoipa::OpenApi;
     tags(
         (name = "card", description = "Single card lookup, price history and sale offers (authentication required)"),
         (name = "collection", description = "Player's private collection (authentication required, no public catalog)"),
+        (name = "binders", description = "Binders a player stores their collection in: list, creation, renaming, deletion of an empty one (authentication required)"),
         (name = "trade-settings", description = "Settings deciding what of a player's collection is exposed for trade: visibility, binders open for trade, rarity filters (authentication required)"),
         (name = "search", description = "Public card search across all users' collections (authentication required)"),
         (name = "maintenance", description = "Maintenance operations (public)"),

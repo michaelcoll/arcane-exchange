@@ -1,3 +1,4 @@
+import type { Binders } from '~/bindings/Binders';
 import type { CardImport } from '~/bindings/CardImport';
 import type { CardImportStarted } from '~/bindings/CardImportStarted';
 import type { CollectionParams } from '~/bindings/CollectionParams';
@@ -26,6 +27,9 @@ export const useCollectionService = () => {
 
   const getCollectionStats = () => apiCall<CollectionStats>('/collection/stats');
 
+  /** The player's binders, empty ones included. */
+  const getBinders = () => apiCall<Binders>('/collection/binders');
+
   const getPriceHistory = (params: PriceHistoryParams) =>
     apiCall<PriceHistoryEntry[]>('/collection/price-history', { query: params });
 
@@ -35,6 +39,7 @@ export const useCollectionService = () => {
     getCardImport,
     listCardImports,
     getCollectionStats,
+    getBinders,
     getPriceHistory,
   };
 };

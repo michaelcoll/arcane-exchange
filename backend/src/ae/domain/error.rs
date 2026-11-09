@@ -54,6 +54,12 @@ pub enum FunctionalError {
     TradeCardNotFound,
     CardAlreadyReserved,
     BinderNotFound,
+    /// The player already has a binder of this name.
+    BinderNameTaken,
+    /// A binder name that is empty once trimmed, or too long.
+    InvalidBinderName,
+    /// A binder that still holds copies cannot be deleted.
+    BinderNotEmpty,
     InvalidCardImportStatus(String),
     ImportAlreadyRunning,
     ImportNotFound,
@@ -106,6 +112,9 @@ impl FunctionalError {
             FunctionalError::TradeCardNotFound => "trade_card_not_found",
             FunctionalError::CardAlreadyReserved => "card_already_reserved",
             FunctionalError::BinderNotFound => "binder_not_found",
+            FunctionalError::BinderNameTaken => "binder_name_taken",
+            FunctionalError::InvalidBinderName => "invalid_binder_name",
+            FunctionalError::BinderNotEmpty => "binder_not_empty",
             FunctionalError::InvalidCardImportStatus(_) => "invalid_card_import_status",
             FunctionalError::ImportAlreadyRunning => "import_already_running",
             FunctionalError::ImportNotFound => "import_not_found",
@@ -201,6 +210,15 @@ impl From<FunctionalError> for String {
                 "This card is already reserved by another trade".to_string()
             }
             FunctionalError::BinderNotFound => "Binder not found in your collection".to_string(),
+            FunctionalError::BinderNameTaken => {
+                "You already have a binder with this name".to_string()
+            }
+            FunctionalError::InvalidBinderName => {
+                "A binder name must not be blank and holds at most 255 characters".to_string()
+            }
+            FunctionalError::BinderNotEmpty => {
+                "This binder still holds copies: move or remove them first".to_string()
+            }
             FunctionalError::InvalidCardImportStatus(msg) => {
                 format!("Invalid card import status '{}'", msg)
             }

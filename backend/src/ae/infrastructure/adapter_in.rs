@@ -11,6 +11,7 @@ use utoipa::ToSchema;
 
 pub mod auth_extractor;
 pub mod autocomplete;
+pub mod binder;
 pub mod card;
 pub mod catalog;
 pub mod collection;
@@ -66,6 +67,7 @@ impl IntoResponse for AppError {
                 | FunctionalError::InvalidSetCode(_)
                 | FunctionalError::InvalidRarityCode(_)
                 | FunctionalError::InvalidCollectorNumber(_)
+                | FunctionalError::InvalidBinderName
                 | FunctionalError::WrongFormat(_)
                 | FunctionalError::EmptyFile
                 | FunctionalError::MalformedCsv(_)
@@ -100,6 +102,8 @@ impl IntoResponse for AppError {
                 | FunctionalError::TradeConcurrentlyModified
                 | FunctionalError::TradeEmpty
                 | FunctionalError::CardAlreadyReserved
+                | FunctionalError::BinderNameTaken
+                | FunctionalError::BinderNotEmpty
                 | FunctionalError::ImportAlreadyRunning => StatusCode::CONFLICT,
                 FunctionalError::ScanIndexUnavailable => StatusCode::SERVICE_UNAVAILABLE,
             },
@@ -453,6 +457,18 @@ mod tests {
         let error = AppError::Functional(FunctionalError::BinderNotFound);
         let response = error.into_response();
         assert_eq!(response.status(), StatusCode::NOT_FOUND);
+    }
+
+    #[test]
+    fn binder_errors_return_their_status() {
+        for (error, status) in [
+            (FunctionalError::InvalidBinderName, StatusCode::BAD_REQUEST),
+            (FunctionalError::BinderNameTaken, StatusCode::CONFLICT),
+            (FunctionalError::BinderNotEmpty, StatusCode::CONFLICT),
+        ] {
+            let response = AppError::Functional(error).into_response();
+            assert_eq!(response.status(), status);
+        }
     }
 
     #[test]

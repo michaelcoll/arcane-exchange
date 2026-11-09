@@ -97,6 +97,77 @@ extension Components {
                 case name
             }
         }
+        /// Body of the creation and of the renaming of a binder.
+        ///
+        /// - Remark: Generated from `#/components/schemas/BinderNameRequest`.
+        public struct BinderNameRequest: Codable, Hashable, Sendable {
+            /// - Remark: Generated from `#/components/schemas/BinderNameRequest/name`.
+            public var name: Swift.String
+            /// Creates a new `BinderNameRequest`.
+            ///
+            /// - Parameters:
+            ///   - name:
+            public init(name: Swift.String) {
+                self.name = name
+            }
+            public enum CodingKeys: String, CodingKey {
+                case name
+            }
+        }
+        /// - Remark: Generated from `#/components/schemas/BinderResponse`.
+        public struct BinderResponse: Codable, Hashable, Sendable {
+            /// Copies stored in the binder: the sum of its entries' quantities, 0 when it is empty.
+            ///
+            /// - Remark: Generated from `#/components/schemas/BinderResponse/copies`.
+            public var copies: Swift.Int64
+            /// - Remark: Generated from `#/components/schemas/BinderResponse/id`.
+            public var id: Swift.String
+            /// Whether the binder is open for trade.
+            ///
+            /// - Remark: Generated from `#/components/schemas/BinderResponse/is_open`.
+            public var is_open: Swift.Bool
+            /// - Remark: Generated from `#/components/schemas/BinderResponse/name`.
+            public var name: Swift.String
+            /// Creates a new `BinderResponse`.
+            ///
+            /// - Parameters:
+            ///   - copies: Copies stored in the binder: the sum of its entries' quantities, 0 when it is empty.
+            ///   - id:
+            ///   - is_open: Whether the binder is open for trade.
+            ///   - name:
+            public init(
+                copies: Swift.Int64,
+                id: Swift.String,
+                is_open: Swift.Bool,
+                name: Swift.String
+            ) {
+                self.copies = copies
+                self.id = id
+                self.is_open = is_open
+                self.name = name
+            }
+            public enum CodingKeys: String, CodingKey {
+                case copies
+                case id
+                case is_open
+                case name
+            }
+        }
+        /// - Remark: Generated from `#/components/schemas/BindersResponse`.
+        public struct BindersResponse: Codable, Hashable, Sendable {
+            /// - Remark: Generated from `#/components/schemas/BindersResponse/binders`.
+            public var binders: [Components.Schemas.BinderResponse]
+            /// Creates a new `BindersResponse`.
+            ///
+            /// - Parameters:
+            ///   - binders:
+            public init(binders: [Components.Schemas.BinderResponse]) {
+                self.binders = binders
+            }
+            public enum CodingKeys: String, CodingKey {
+                case binders
+            }
+        }
         /// - Remark: Generated from `#/components/schemas/CardImportLineErrorResponse`.
         public struct CardImportLineErrorResponse: Codable, Hashable, Sendable {
             /// - Remark: Generated from `#/components/schemas/CardImportLineErrorResponse/field`.

@@ -1,4 +1,5 @@
 pub mod autocomplete;
+pub mod binder;
 pub mod card;
 pub mod catalog;
 pub mod collection;

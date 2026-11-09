@@ -81,10 +81,12 @@ private final class WidgetRecorder: @unchecked Sendable {
 private enum MutationCall: String, CaseIterable, CustomTestStringConvertible {
     case createTrade, addTradeCard, removeTradeCard, acceptTrade, confirmTrade, abandonTrade
     case rateTrade, importCards, setTradeVisibility, setTradeRarityFilter, addTradeBinder, removeTradeBinder
+    case createBinder, renameBinder, deleteBinder
 
     static let reloadingTrades: [MutationCall] = [
         .createTrade, .addTradeCard, .removeTradeCard, .acceptTrade, .confirmTrade, .abandonTrade
     ]
+    static let reloadingCollection: [MutationCall] = [.createBinder, .renameBinder, .deleteBinder]
     static let reloadingNothing: [MutationCall] = [
         .rateTrade, .importCards, .setTradeVisibility, .setTradeRarityFilter, .addTradeBinder, .removeTradeBinder
     ]
@@ -96,8 +98,9 @@ private enum MutationCall: String, CaseIterable, CustomTestStringConvertible {
     /// The status of a successful answer.
     var successStatus: Int {
         switch self {
-        case .createTrade: 201
+        case .createTrade, .createBinder: 201
         case .importCards: 202
+        case .renameBinder: 200
         default: 204
         }
     }
@@ -106,6 +109,7 @@ private enum MutationCall: String, CaseIterable, CustomTestStringConvertible {
         switch self {
         case .createTrade: #"{"id":"t-1"}"#
         case .importCards: #"{"id":"imp-1"}"#
+        case .createBinder, .renameBinder: #"{"copies":0,"id":"b-1","is_open":false,"name":"Bulk"}"#
         default: nil
         }
     }
@@ -148,6 +152,12 @@ private enum MutationCall: String, CaseIterable, CustomTestStringConvertible {
             _ = try await api.add_trade_binder(body: .json(.init(binder_name: "b"))).noContent
         case .removeTradeBinder:
             _ = try await api.remove_trade_binder(path: .init(name: "b")).noContent
+        case .createBinder:
+            _ = try await api.create_binder(body: .json(.init(name: "Bulk"))).created
+        case .renameBinder:
+            _ = try await api.rename_binder(path: .init(id: "b-1"), body: .json(.init(name: "Bulk"))).ok
+        case .deleteBinder:
+            _ = try await api.delete_binder(path: .init(id: "b-1")).noContent
         }
     }
 }
@@ -290,6 +300,23 @@ struct LiveAPITests {
         let transport = StubTransport(StubTransport.json(operation.successStatus, operation.successBody))
         try await operation.call(authenticated(transport, widgets: widgets))
         #expect(widgets.kinds == [.trades])
+    }
+
+    @Test(arguments: MutationCall.reloadingCollection)
+    fileprivate func reloadsTheCollectionWidgetOnceOnASuccessOf(_ operation: MutationCall) async throws {
+        let widgets = WidgetRecorder()
+        let transport = StubTransport(StubTransport.json(operation.successStatus, operation.successBody))
+        try await operation.call(authenticated(transport, widgets: widgets))
+        #expect(widgets.kinds == [.collection])
+    }
+
+    @Test(arguments: MutationCall.reloadingCollection)
+    fileprivate func reloadsTheCollectionWidgetWhenTheServerRefuses(_ operation: MutationCall) async {
+        let widgets = WidgetRecorder()
+        let transport = StubTransport(StubTransport.json(409, #"{"code":"binder_not_empty","error":"not empty"}"#))
+        let error = await failure { try await operation.call(authenticated(transport, widgets: widgets)) }
+        #expect(widgets.kinds == [.collection])
+        #expect(error?.code == "binder_not_empty")
     }
 
     @Test(arguments: MutationCall.reloadingTrades)
