@@ -65,6 +65,8 @@ pub struct ScryfallBulkCard {
     pub faces: Vec<ScryfallBulkCardFace>,
     pub cardmarket_id: Option<u32>,
     pub digital: bool,
+    /// The `normal` image of the object, its front face on a double-faced card.
+    pub image_url: Option<String>,
 }
 
 /// A face of a multi-face object of the Scryfall bulk.

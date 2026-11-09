@@ -15,6 +15,7 @@ use crate::domain::price::{Price, PriceGuide, PriceHistoryEntry};
 use crate::domain::rarity_code::RarityCode;
 use crate::domain::set_name::{SetCode, SetName};
 use crate::domain::user::User;
+use crate::infrastructure::adapter_in::default_page_size;
 use crate::infrastructure::testing::{
     BEARER, assert_error, assert_routes_refuse_anonymous, authed, json_of, send,
 };
@@ -116,6 +117,7 @@ async fn every_route_refuses_an_anonymous_request() {
         (Method::GET, "/collection/stats"),
         (Method::GET, "/collection/price-history"),
         (Method::GET, "/collection/cards/FDN/1/EN/entries"),
+        (Method::POST, "/collection/entries"),
         (
             Method::PATCH,
             "/collection/entries/6f2f0e5e-6b52-4b3e-9f0c-0d2c3f1d9a11",
@@ -1122,8 +1124,9 @@ fn collection_params_default_values() {
 mod entries {
     use super::*;
     use crate::application::use_case::{
-        MockEditCollectionEntryUseCase, MockGetCollectionEntriesUseCase,
+        MockAddCollectionEntryUseCase, MockGetCollectionEntriesUseCase,
         MockMoveCollectionEntryUseCase, MockRemoveCollectionEntryUseCase,
+        MockUpdateCollectionEntryUseCase,
     };
     use crate::domain::binder::BinderId;
     use crate::domain::collection_entry::{
@@ -1204,17 +1207,174 @@ mod entries {
         assert_error(response, StatusCode::BAD_REQUEST, "invalid_language_code").await;
     }
 
+    fn add_app(mock: MockAddCollectionEntryUseCase) -> axum::Router {
+        create_router(AppState {
+            add_collection_entry_use_case: Arc::new(mock),
+            ..AppState::for_testing()
+        })
+    }
+
+    #[tokio::test]
+    async fn post_returns_created_and_the_entries_after_the_addition() {
+        let mut mock = MockAddCollectionEntryUseCase::new();
+        mock.expect_add_collection_entry()
+            .times(1)
+            .withf(|_, card_id, foil, quantity, binder_id| {
+                card_id.set_code.to_string() == "MKM"
+                    && card_id.collector_number == "H13"
+                    && card_id.language_code.to_string() == "JA"
+                    && *foil
+                    && *quantity == 4
+                    && binder_id.map(|id| id.0) == Some(Uuid::nil())
+            })
+            .returning(|_, _, _, _, _| Box::pin(async { Ok(card_entries()) }));
+
+        let response = authed_json(
+            add_app(mock),
+            Method::POST,
+            "/collection/entries",
+            json!({
+                "set_code": "mkm",
+                "collector_number": "H13",
+                "language_code": "JA",
+                "foil": true,
+                "quantity": 4,
+                "binder_id": Uuid::nil().to_string(),
+            }),
+        )
+        .await;
+
+        assert_eq!(response.status(), StatusCode::CREATED);
+        let body = json_of(response).await;
+        assert_eq!(body["entries"].as_array().unwrap().len(), 2);
+        assert_eq!(body["reserved_quantity"], json!({ "normal": 1, "foil": 0 }));
+    }
+
+    #[tokio::test]
+    async fn post_without_binder_adds_to_no_binder() {
+        let mut mock = MockAddCollectionEntryUseCase::new();
+        mock.expect_add_collection_entry()
+            .times(1)
+            .withf(|_, _, _, _, binder_id| binder_id.is_none())
+            .returning(|_, _, _, _, _| Box::pin(async { Ok(card_entries()) }));
+
+        let response = authed_json(
+            add_app(mock),
+            Method::POST,
+            "/collection/entries",
+            json!({
+                "set_code": "MKM",
+                "collector_number": "12",
+                "language_code": "FR",
+                "foil": false,
+                "quantity": 1,
+            }),
+        )
+        .await;
+
+        assert_eq!(response.status(), StatusCode::CREATED);
+    }
+
+    #[tokio::test]
+    async fn post_maps_each_refusal_to_its_status_and_code() {
+        let cases = [
+            (
+                FunctionalError::CardNotInCatalog,
+                StatusCode::NOT_FOUND,
+                "card_not_in_catalog",
+            ),
+            (
+                FunctionalError::BinderNotFound,
+                StatusCode::NOT_FOUND,
+                "binder_not_found",
+            ),
+            (
+                FunctionalError::InvalidQuantity,
+                StatusCode::BAD_REQUEST,
+                "invalid_quantity",
+            ),
+        ];
+        for (error, status, code) in cases {
+            let mut mock = MockAddCollectionEntryUseCase::new();
+            mock.expect_add_collection_entry()
+                .returning(move |_, _, _, _, _| {
+                    let error = error.clone();
+                    Box::pin(async move { Err(error.into()) })
+                });
+
+            let response = authed_json(
+                add_app(mock),
+                Method::POST,
+                "/collection/entries",
+                json!({
+                    "set_code": "MKM",
+                    "collector_number": "12",
+                    "language_code": "FR",
+                    "foil": false,
+                    "quantity": 1,
+                }),
+            )
+            .await;
+
+            assert_error(response, status, code).await;
+        }
+    }
+
+    #[tokio::test]
+    async fn post_treats_a_binder_identifier_that_is_not_a_uuid_as_unknown() {
+        let response = authed_json(
+            create_router(AppState::for_testing()),
+            Method::POST,
+            "/collection/entries",
+            json!({
+                "set_code": "MKM",
+                "collector_number": "12",
+                "language_code": "FR",
+                "foil": false,
+                "quantity": 1,
+                "binder_id": "not-a-uuid",
+            }),
+        )
+        .await;
+
+        assert_error(response, StatusCode::NOT_FOUND, "binder_not_found").await;
+    }
+
+    #[tokio::test]
+    async fn post_refuses_an_unknown_language_and_an_invalid_set_code() {
+        for (set_code, language_code, code) in [
+            ("MKM", "XX", "invalid_language_code"),
+            ("M", "FR", "invalid_set_code"),
+        ] {
+            let response = authed_json(
+                create_router(AppState::for_testing()),
+                Method::POST,
+                "/collection/entries",
+                json!({
+                    "set_code": set_code,
+                    "collector_number": "12",
+                    "language_code": language_code,
+                    "foil": false,
+                    "quantity": 1,
+                }),
+            )
+            .await;
+
+            assert_error(response, StatusCode::BAD_REQUEST, code).await;
+        }
+    }
+
     #[tokio::test]
     async fn patch_returns_the_entries_after_the_edit() {
-        let mut mock = MockEditCollectionEntryUseCase::new();
-        mock.expect_edit_collection_entry()
+        let mut mock = MockUpdateCollectionEntryUseCase::new();
+        mock.expect_update_collection_entry()
             .times(1)
             .withf(|_, id, quantity, foil| {
                 id.0.to_string() == ENTRY_ID && *quantity == Some(3) && *foil == Some(true)
             })
             .returning(|_, _, _, _| Box::pin(async { Ok(card_entries()) }));
         let app = create_router(AppState {
-            edit_collection_entry_use_case: Arc::new(mock),
+            update_collection_entry_use_case: Arc::new(mock),
             ..AppState::for_testing()
         });
 
@@ -1253,14 +1413,14 @@ mod entries {
             ),
         ];
         for (error, status, code) in cases {
-            let mut mock = MockEditCollectionEntryUseCase::new();
-            mock.expect_edit_collection_entry()
+            let mut mock = MockUpdateCollectionEntryUseCase::new();
+            mock.expect_update_collection_entry()
                 .returning(move |_, _, _, _| {
                     let error = error.clone();
                     Box::pin(async move { Err(error.into()) })
                 });
             let app = create_router(AppState {
-                edit_collection_entry_use_case: Arc::new(mock),
+                update_collection_entry_use_case: Arc::new(mock),
                 ..AppState::for_testing()
             });
 
@@ -1415,7 +1575,7 @@ mod entries {
     }
 
     #[tokio::test]
-    async fn delete_returns_no_content() {
+    async fn remove_returns_no_content() {
         let mut mock = MockRemoveCollectionEntryUseCase::new();
         mock.expect_remove_collection_entry()
             .times(1)
@@ -1437,7 +1597,7 @@ mod entries {
     }
 
     #[tokio::test]
-    async fn delete_maps_the_reservation_refusal_to_conflict() {
+    async fn remove_maps_the_reservation_refusal_to_conflict() {
         let mut mock = MockRemoveCollectionEntryUseCase::new();
         mock.expect_remove_collection_entry().returning(|_, _| {
             Box::pin(async { Err(FunctionalError::ReservedQuantityExceeded.into()) })

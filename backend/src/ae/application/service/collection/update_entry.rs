@@ -1,22 +1,22 @@
 use crate::application::error::AppError;
-use crate::application::repository::CollectionEntryRepository;
-use crate::application::use_case::{EditCollectionEntryUseCase, RequestCardPricesRefreshUseCase};
+use crate::application::repository::{CardPricesRefreshRequester, CollectionEntryRepository};
+use crate::application::use_case::UpdateCollectionEntryUseCase;
 use crate::domain::collection_entry::{
-    CardEntries, CollectionEntryId, EntryEdit, validate_quantity,
+    CardEntries, CollectionEntryId, EntryUpdate, validate_quantity,
 };
 use crate::domain::user::UserId;
 use async_trait::async_trait;
 use std::sync::Arc;
 
-pub struct EditCollectionEntryService {
+pub struct UpdateCollectionEntryService {
     repository: Arc<dyn CollectionEntryRepository>,
-    card_prices_refresh: Arc<dyn RequestCardPricesRefreshUseCase>,
+    card_prices_refresh: Arc<dyn CardPricesRefreshRequester>,
 }
 
-impl EditCollectionEntryService {
+impl UpdateCollectionEntryService {
     pub fn new(
         repository: Arc<dyn CollectionEntryRepository>,
-        card_prices_refresh: Arc<dyn RequestCardPricesRefreshUseCase>,
+        card_prices_refresh: Arc<dyn CardPricesRefreshRequester>,
     ) -> Self {
         Self {
             repository,
@@ -26,21 +26,21 @@ impl EditCollectionEntryService {
 }
 
 #[async_trait]
-impl EditCollectionEntryUseCase for EditCollectionEntryService {
+impl UpdateCollectionEntryUseCase for UpdateCollectionEntryService {
     #[tracing::instrument(skip(self))]
-    async fn edit_collection_entry(
+    async fn update_collection_entry(
         &self,
         user_id: &UserId,
         id: CollectionEntryId,
         quantity: Option<i32>,
         foil: Option<bool>,
     ) -> Result<CardEntries, AppError> {
-        let edit = EntryEdit {
+        let update = EntryUpdate {
             quantity: quantity.map(validate_quantity).transpose()?,
             foil,
         };
 
-        let entries = self.repository.update(user_id, id, edit).await?;
+        let entries = self.repository.update(user_id, id, update).await?;
         self.card_prices_refresh.request_card_prices_refresh();
 
         Ok(entries)
@@ -50,8 +50,10 @@ impl EditCollectionEntryUseCase for EditCollectionEntryService {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::application::repository::MockCollectionEntryRepository;
-    use crate::application::use_case::MockRequestCardPricesRefreshUseCase;
+    use crate::application::repository::{
+        MockCardPricesRefreshRequester, MockCollectionEntryRepository,
+    };
+    use crate::application::service::collection::test_fixtures::refresh;
     use crate::domain::error::FunctionalError;
     use uuid::Uuid;
 
@@ -59,32 +61,23 @@ mod tests {
         CollectionEntryId(Uuid::from_u128(1))
     }
 
-    fn refresh(times: usize) -> MockRequestCardPricesRefreshUseCase {
-        let mut refresh = MockRequestCardPricesRefreshUseCase::new();
-        refresh
-            .expect_request_card_prices_refresh()
-            .times(times)
-            .return_const(());
-        refresh
-    }
-
     fn service(
         repository: MockCollectionEntryRepository,
-        refresh: MockRequestCardPricesRefreshUseCase,
-    ) -> EditCollectionEntryService {
-        EditCollectionEntryService::new(Arc::new(repository), Arc::new(refresh))
+        refresh: MockCardPricesRefreshRequester,
+    ) -> UpdateCollectionEntryService {
+        UpdateCollectionEntryService::new(Arc::new(repository), Arc::new(refresh))
     }
 
     #[tokio::test]
-    async fn applies_the_edit_and_requests_a_refresh_once() {
+    async fn applies_the_update_and_requests_a_refresh_once() {
         let mut repository = MockCollectionEntryRepository::new();
         repository
             .expect_update()
-            .withf(|user_id, id, edit| {
+            .withf(|user_id, id, update| {
                 user_id.as_str() == "user_1"
                     && *id == entry_id()
-                    && *edit
-                        == EntryEdit {
+                    && *update
+                        == EntryUpdate {
                             quantity: Some(3),
                             foil: Some(true),
                         }
@@ -94,7 +87,7 @@ mod tests {
         let service = service(repository, refresh(1));
 
         let result = service
-            .edit_collection_entry(&UserId::new("user_1"), entry_id(), Some(3), Some(true))
+            .update_collection_entry(&UserId::new("user_1"), entry_id(), Some(3), Some(true))
             .await;
 
         assert!(result.is_ok());
@@ -106,7 +99,7 @@ mod tests {
             let service = service(MockCollectionEntryRepository::new(), refresh(0));
 
             let error = service
-                .edit_collection_entry(&UserId::new("user_1"), entry_id(), Some(quantity), None)
+                .update_collection_entry(&UserId::new("user_1"), entry_id(), Some(quantity), None)
                 .await
                 .unwrap_err();
 
@@ -115,7 +108,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn a_failed_edit_requests_no_refresh_and_keeps_its_error() {
+    async fn a_failed_update_requests_no_refresh_and_keeps_its_error() {
         let mut repository = MockCollectionEntryRepository::new();
         repository.expect_update().returning(|_, _, _| {
             Box::pin(async { Err(FunctionalError::ReservedQuantityExceeded.into()) })
@@ -123,7 +116,7 @@ mod tests {
         let service = service(repository, refresh(0));
 
         let error = service
-            .edit_collection_entry(&UserId::new("user_1"), entry_id(), Some(1), None)
+            .update_collection_entry(&UserId::new("user_1"), entry_id(), Some(1), None)
             .await
             .unwrap_err();
 

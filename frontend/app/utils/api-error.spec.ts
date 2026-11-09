@@ -123,6 +123,7 @@ describe('readApiError', () => {
       'reserved_quantity_exceeded',
       'Des cartes sont réservées par un échange accepté : tu ne peux pas descendre sous cette quantité.',
     ],
+    ['card_not_in_catalog', "Cette carte n'existe pas dans le catalogue."],
     ['user_not_found', 'Ce joueur est introuvable.'],
     ['card_not_found', "Cette carte est introuvable ou n'est plus disponible."],
     ['set_not_found', 'Ce set est introuvable.'],

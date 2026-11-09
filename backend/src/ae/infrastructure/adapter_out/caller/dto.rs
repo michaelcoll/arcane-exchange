@@ -110,16 +110,31 @@ pub struct ScryfallBulkCardLine {
     pub cardmarket_id: Option<u32>,
     #[serde(default)]
     pub digital: bool,
+    /// Only on a single-image card (split, adventure and flip cards included).
+    pub image_uris: Option<ScryfallImageUris>,
 }
 
 #[derive(Debug, serde::Deserialize)]
 pub struct ScryfallBulkCardFaceLine {
     pub name: String,
     pub printed_name: Option<String>,
+    /// Only on a card with two physical faces.
+    pub image_uris: Option<ScryfallImageUris>,
+}
+
+impl ScryfallBulkCardLine {
+    /// The `normal` image of the card, its front face for a double-faced one.
+    fn front_image_url(&self) -> Option<String> {
+        self.image_uris
+            .as_ref()
+            .or_else(|| self.card_faces.first()?.image_uris.as_ref())
+            .and_then(|uris| uris.normal.clone())
+    }
 }
 
 impl From<ScryfallBulkCardLine> for ScryfallBulkCard {
     fn from(line: ScryfallBulkCardLine) -> Self {
+        let image_url = line.front_image_url();
         ScryfallBulkCard {
             scryfall_id: line.id,
             set_code: line.set_code,
@@ -141,6 +156,7 @@ impl From<ScryfallBulkCardLine> for ScryfallBulkCard {
                 .collect(),
             cardmarket_id: line.cardmarket_id,
             digital: line.digital,
+            image_url,
         }
     }
 }

@@ -1,16 +1,17 @@
-use super::ErrorResponse;
 use super::autocomplete::dto::UserSuggestionResponse;
 use super::binder::dto::{BinderNameRequest, BinderResponse, BindersResponse};
 use super::card::dto::{
     CardOfferResponse, CardOffersSortByParam, PaginatedCardOffersResponse,
     PriceHistoryEntryResponse,
 };
+use super::catalog::dto::{CatalogCardResponse, PaginatedCatalogResponse};
 use super::collection::dto::{
-    BinderInfoResponse, CardEntriesResponse, CardImportLineErrorResponse, CardImportResponse,
-    CardImportStartedResponse, CollectionCardResponse, CollectionEntryDetailResponse,
-    CollectionStatsResponse, EntryBinderResponse, MessageResponse, MoveCollectionEntryRequest,
-    PaginatedCollectionResponse, PriceGuideResponse, RarityCodeParam, ReservedQuantityResponse,
-    SetInfoResponse, SortByParam, SortDirParam, UpdateCollectionEntryRequest,
+    AddCollectionEntryRequest, BinderInfoResponse, CardEntriesResponse,
+    CardImportLineErrorResponse, CardImportResponse, CardImportStartedResponse,
+    CollectionCardResponse, CollectionEntryDetailResponse, CollectionStatsResponse,
+    EntryBinderResponse, MessageResponse, MoveCollectionEntryRequest, PaginatedCollectionResponse,
+    PriceGuideResponse, RarityCodeParam, ReservedQuantityResponse, SortByParam, SortDirParam,
+    UpdateCollectionEntryRequest,
 };
 use super::maintenance::dto::EnqueueResponse;
 use super::stats::dto::StatsResponse;
@@ -24,6 +25,7 @@ use super::trade_settings::dto::{
     SetRarityFilterRequest, SetVisibilityRequest, TradeBindersResponse, VisibilityResponse,
 };
 use super::user::dto::UserProfileResponse;
+use super::{ErrorResponse, SetInfoResponse};
 use utoipa::OpenApi;
 
 #[derive(OpenApi)]
@@ -36,6 +38,7 @@ use utoipa::OpenApi;
         super::collection::controller::get_collection_stats,
         super::collection::controller::get_collection_price_history,
         super::collection::controller::get_collection_entries,
+        super::collection::controller::add_collection_entry,
         super::collection::controller::update_collection_entry,
         super::collection::controller::move_collection_entry,
         super::collection::controller::remove_collection_entry,
@@ -55,6 +58,7 @@ use utoipa::OpenApi;
         super::card::controller::get_card_info,
         super::card::controller::get_card_price_history,
         super::card::controller::get_card_offers,
+        super::catalog::controller::search_catalog,
         super::catalog::controller::get_scan_index,
         super::stats::controller::get_stats,
         super::showcase::controller::get_showcase,
@@ -95,7 +99,10 @@ use utoipa::OpenApi;
         CollectionEntryDetailResponse,
         EntryBinderResponse,
         ReservedQuantityResponse,
+        AddCollectionEntryRequest,
         UpdateCollectionEntryRequest,
+        CatalogCardResponse,
+        PaginatedCatalogResponse,
         MoveCollectionEntryRequest,
         BinderResponse,
         BindersResponse,

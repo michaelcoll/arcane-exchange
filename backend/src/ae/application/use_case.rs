@@ -6,7 +6,7 @@ use crate::domain::binder::{Binder, BinderId};
 use crate::domain::card::{Card, CardId, CollectionEntry, CopyId};
 use crate::domain::card_import::{CardImport, CardImportId};
 use crate::domain::card_offer::CardOfferSortField;
-use crate::domain::catalog::ScanIndex;
+use crate::domain::catalog::{CatalogSearchItem, ScanIndex};
 use crate::domain::collection::{CollectionQuery, SearchQuery, SearchScope};
 use crate::domain::collection_entry::{CardEntries, CollectionEntryId};
 use crate::domain::collection_stats::CollectionStats;
@@ -170,14 +170,6 @@ pub trait EnqueueCardImageUpdateUseCase: Send + Sync {
     async fn enqueue_fallback_and_pending_updates(&self) -> Result<usize, AppError>;
 }
 
-#[cfg_attr(test, automock)]
-pub trait RequestCardPricesRefreshUseCase: Send + Sync {
-    /// Asks for a refresh of the card prices views and returns at once, without waiting for it.
-    /// Requests received while a refresh runs are coalesced into a single further refresh. A
-    /// failed refresh is logged and never reaches the caller.
-    fn request_card_prices_refresh(&self);
-}
-
 #[async_trait]
 #[cfg_attr(test, automock)]
 pub trait CardCollectionPriceCalculationUseCase: Send + Sync {
@@ -208,6 +200,22 @@ pub trait CreateCardUseCase: Send + Sync {
     /// images). `FunctionalError::CardNotInCatalog` when the card does not exist and no catalog
     /// card has this set and number.
     async fn create_card(&self, card_id: CardId) -> Result<CardId, AppError>;
+}
+
+#[async_trait]
+#[cfg_attr(test, automock)]
+pub trait SearchCatalogUseCase: Send + Sync {
+    /// Searches the catalog by English or French name (`query`, trimmed; a blank one matches
+    /// every card) and, when given, by set. Paginated up to an offset of 1000. Tokens are not in
+    /// the catalog, so they are never listed.
+    ///
+    /// Refused with `InvalidPageSize` / `PaginationTooDeep` (`400`) for a page out of bounds.
+    async fn search_catalog(
+        &self,
+        query: Option<String>,
+        set_code: Option<SetCode>,
+        page: PageRequest,
+    ) -> Result<Paginated<CatalogSearchItem>, AppError>;
 }
 
 #[async_trait]
@@ -421,7 +429,29 @@ pub trait GetCollectionEntriesUseCase: Send + Sync {
 
 #[async_trait]
 #[cfg_attr(test, automock)]
-pub trait EditCollectionEntryUseCase: Send + Sync {
+pub trait AddCollectionEntryUseCase: Send + Sync {
+    /// Adds `quantity` copies of a card to the collection, in a finish and a binder (or none),
+    /// without purchase price, and returns the entries of the card, then asks for a refresh of
+    /// the card prices views without waiting for it. The Card is created when it does not exist
+    /// ([`CreateCardUseCase`]), in the language asked even when Scryfall has none. The copies are
+    /// merged into the entry of the same finish and binder when there is one.
+    ///
+    /// Refused with `InvalidQuantity` (`400`) outside 1 to 255 (also when a merge goes over 255),
+    /// `CardNotInCatalog` (`404`) for a set and number the catalog does not have, and
+    /// `BinderNotFound` (`404`) for an absent binder or another player's.
+    async fn add_collection_entry(
+        &self,
+        user_id: &UserId,
+        card_id: CardId,
+        foil: bool,
+        quantity: i32,
+        binder_id: Option<BinderId>,
+    ) -> Result<CardEntries, AppError>;
+}
+
+#[async_trait]
+#[cfg_attr(test, automock)]
+pub trait UpdateCollectionEntryUseCase: Send + Sync {
     /// Changes the quantity and/or the finish of an entry and returns the entries of its card,
     /// then asks for a refresh of the card prices views without waiting for it. A finish change
     /// onto an existing entry merges the two.
@@ -429,7 +459,7 @@ pub trait EditCollectionEntryUseCase: Send + Sync {
     /// Refused with `InvalidQuantity` (`400`) outside 1 to 255, `CollectionEntryNotFound`
     /// (`404`) for an absent entry or another player's, and `ReservedQuantityExceeded` (`409`)
     /// when it takes the owned copies under what the accepted Trades committed.
-    async fn edit_collection_entry(
+    async fn update_collection_entry(
         &self,
         user_id: &UserId,
         id: CollectionEntryId,
@@ -463,7 +493,7 @@ pub trait MoveCollectionEntryUseCase: Send + Sync {
 #[cfg_attr(test, automock)]
 pub trait RemoveCollectionEntryUseCase: Send + Sync {
     /// Removes an entry, then asks for a refresh of the card prices views without waiting for it.
-    /// Refused like [`EditCollectionEntryUseCase::edit_collection_entry`], minus the quantity.
+    /// Refused like [`UpdateCollectionEntryUseCase::update_collection_entry`], minus the quantity.
     async fn remove_collection_entry(
         &self,
         user_id: &UserId,

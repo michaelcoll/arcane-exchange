@@ -81,14 +81,15 @@ private final class WidgetRecorder: @unchecked Sendable {
 private enum MutationCall: String, CaseIterable, CustomTestStringConvertible {
     case createTrade, addTradeCard, removeTradeCard, acceptTrade, confirmTrade, abandonTrade
     case rateTrade, importCards, setTradeVisibility, setTradeRarityFilter, addTradeBinder, removeTradeBinder
-    case createBinder, renameBinder, deleteBinder, updateCollectionEntry, moveCollectionEntry, removeCollectionEntry
+    case createBinder, renameBinder, deleteBinder, addCollectionEntry, updateCollectionEntry, moveCollectionEntry
+    case removeCollectionEntry
 
     static let reloadingTrades: [MutationCall] = [
         .createTrade, .addTradeCard, .removeTradeCard, .acceptTrade, .confirmTrade, .abandonTrade
     ]
     static let reloadingCollection: [MutationCall] = [
-        .createBinder, .renameBinder, .deleteBinder, .updateCollectionEntry, .moveCollectionEntry,
-        .removeCollectionEntry
+        .createBinder, .renameBinder, .deleteBinder, .addCollectionEntry, .updateCollectionEntry,
+        .moveCollectionEntry, .removeCollectionEntry
     ]
     static let reloadingNothing: [MutationCall] = [
         .rateTrade, .importCards, .setTradeVisibility, .setTradeRarityFilter, .addTradeBinder, .removeTradeBinder
@@ -101,7 +102,7 @@ private enum MutationCall: String, CaseIterable, CustomTestStringConvertible {
     /// The status of a successful answer.
     var successStatus: Int {
         switch self {
-        case .createTrade, .createBinder: 201
+        case .createTrade, .createBinder, .addCollectionEntry: 201
         case .importCards: 202
         case .renameBinder, .updateCollectionEntry, .moveCollectionEntry: 200
         default: 204
@@ -113,7 +114,7 @@ private enum MutationCall: String, CaseIterable, CustomTestStringConvertible {
         case .createTrade: #"{"id":"t-1"}"#
         case .importCards: #"{"id":"imp-1"}"#
         case .createBinder, .renameBinder: #"{"copies":0,"id":"b-1","is_open":false,"name":"Bulk"}"#
-        case .updateCollectionEntry, .moveCollectionEntry: #"{"entries":[],"reserved_quantity":{"foil":0,"normal":0}}"#
+        case .addCollectionEntry, .updateCollectionEntry, .moveCollectionEntry: #"{"entries":[],"reserved_quantity":{"foil":0,"normal":0}}"#
         default: nil
         }
     }
@@ -162,6 +163,10 @@ private enum MutationCall: String, CaseIterable, CustomTestStringConvertible {
             _ = try await api.rename_binder(path: .init(id: "b-1"), body: .json(.init(name: "Bulk"))).ok
         case .deleteBinder:
             _ = try await api.delete_binder(path: .init(id: "b-1")).noContent
+        case .addCollectionEntry:
+            _ = try await api.add_collection_entry(body: .json(.init(
+                collector_number: "1", foil: false, language_code: "FR", quantity: 1, set_code: "lea"
+            ))).created
         case .updateCollectionEntry:
             _ = try await api.update_collection_entry(path: .init(id: "e-1"), body: .json(.init(quantity: 2))).ok
         case .moveCollectionEntry:

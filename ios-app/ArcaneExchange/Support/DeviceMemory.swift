@@ -8,6 +8,7 @@ enum PlayerKey: String, CaseIterable {
     case searchSortPlayerCollection = "search.sort.player"
     case searchRecentCardQueries = "search.recentCardQueries"
     case searchRecentPlayers = "search.recentPlayers"
+    case addCardLanguage = "collection.addCard.language"
     // Kept in the App Group, which the widgets extension reads with the same codec.
     case collectionWidgetSnapshot = "home_widget_snapshot.CollectionWidget"
     case tradesWidgetSnapshot = "home_widget_snapshot.TradesWidget"

@@ -3,8 +3,8 @@ use crate::application::repository::CollectionEntryRepository;
 use crate::domain::binder::BinderId;
 use crate::domain::card::CardId;
 use crate::domain::collection_entry::{
-    CardEntries, CollectionEntryDetail, CollectionEntryId, EntryBinder, EntryEdit, EntryStock,
-    ensure_covers_reserved,
+    CardEntries, CollectionEntryDetail, CollectionEntryId, EntryBinder, EntryCopies, EntryUpdate,
+    ReservedQuantities, ensure_covers_reserved,
 };
 use crate::domain::error::FunctionalError;
 use crate::domain::language_code::LanguageCode;
@@ -35,8 +35,8 @@ struct LockedEntry {
 }
 
 impl LockedEntry {
-    fn stock(&self) -> EntryStock {
-        EntryStock {
+    fn copies(&self) -> EntryCopies {
+        EntryCopies {
             quantity: self.quantity,
             purchase_price: self.purchase_price,
             added_at: self.added_at,
@@ -44,8 +44,71 @@ impl LockedEntry {
     }
 }
 
+/// Every entry of a card the player owns, locked, and the one an operation targets.
+struct LockedCard {
+    card_id: CardId,
+    entries: Vec<LockedEntry>,
+    target: usize,
+}
+
+impl LockedCard {
+    fn entry(&self) -> &LockedEntry {
+        &self.entries[self.target]
+    }
+
+    /// Copies owned in a finish, all binders together.
+    fn owned(&self, foil: bool) -> u32 {
+        self.entries
+            .iter()
+            .filter(|entry| entry.foil == foil)
+            .map(|entry| entry.quantity)
+            .sum()
+    }
+
+    /// The entry of the finish and binder, if there is one.
+    fn find(&self, foil: bool, binder_id: Option<Uuid>) -> Option<&LockedEntry> {
+        self.entries
+            .iter()
+            .find(|entry| entry.foil == foil && entry.binder_id == binder_id)
+    }
+}
+
 fn corrupt(what: &str) -> AppError {
     InfraError::RepositoryError(format!("collection_entry holds an out-of-range {what}")).into()
+}
+
+/// A purchase price as the domain holds it, from its column.
+fn purchase_price_from_column(price: Option<i32>) -> Result<Option<u32>, AppError> {
+    price
+        .map(|price| u32::try_from(price).map_err(|_| corrupt("purchase price")))
+        .transpose()
+}
+
+/// A purchase price as its column holds it.
+fn purchase_price_to_column(price: Option<u32>) -> Result<Option<i32>, AppError> {
+    price
+        .map(|price| i32::try_from(price).map_err(|_| corrupt("purchase price")))
+        .transpose()
+}
+
+/// `BinderNotFound` unless the binder is the player's.
+async fn ensure_binder_owned(
+    conn: &mut PgConnection,
+    user_id: &UserId,
+    binder_id: BinderId,
+) -> Result<(), AppError> {
+    let owned = sqlx::query_scalar!(
+        r#"SELECT EXISTS(SELECT 1 FROM binder WHERE id = $1 AND user_id = $2) AS "owned!""#,
+        binder_id.0,
+        user_id.as_str(),
+    )
+    .fetch_one(conn)
+    .await?;
+    if owned {
+        Ok(())
+    } else {
+        Err(FunctionalError::BinderNotFound.into())
+    }
 }
 
 /// The three parts of a card's identity, as the columns hold them.
@@ -58,7 +121,10 @@ fn card_columns(card_id: &CardId) -> (String, &str, String) {
 }
 
 /// Locks every entry of the card the player owns, both finishes, in a fixed order so two edits
-/// of the same card queue instead of deadlocking.
+/// of the same card queue instead of deadlocking. The first acceptance of a Trade takes the same
+/// locks, shared, before it commits the reservation (`apply_transition`): an edit and an
+/// acceptance of a Trade holding the card never interleave, so the reservation guard reads what
+/// the edit then writes against.
 async fn lock_card_entries(
     conn: &mut PgConnection,
     user_id: &UserId,
@@ -93,24 +159,41 @@ async fn lock_card_entries(
                 foil: row.foil,
                 binder_id: row.binder_id,
                 quantity: u32::try_from(row.quantity).map_err(|_| corrupt("quantity"))?,
-                purchase_price: row
-                    .purchase_price
-                    .map(|price| u32::try_from(price).map_err(|_| corrupt("purchase price")))
-                    .transpose()?,
+                purchase_price: purchase_price_from_column(row.purchase_price)?,
                 added_at: row.added_at,
             })
         })
         .collect()
 }
 
-/// The copies the accepted Trades commit of the player's card in the finish: the sum of their
+/// Locks every entry of the card the player owns, with the one `id` designates as the target:
+/// `CollectionEntryNotFound` for an absent entry or another player's.
+async fn lock_entry(
+    conn: &mut PgConnection,
+    user_id: &UserId,
+    id: CollectionEntryId,
+) -> Result<LockedCard, AppError> {
+    let card_id = card_of_entry(conn, user_id, id).await?;
+    let entries = lock_card_entries(conn, user_id, &card_id).await?;
+    let target = entries
+        .iter()
+        .position(|entry| entry.id == id.0)
+        .ok_or(FunctionalError::CollectionEntryNotFound)?;
+    Ok(LockedCard {
+        card_id,
+        entries,
+        target,
+    })
+}
+
+/// The copies the accepted Trades commit of the player's card in each finish: the sum of their
 /// `trade_card` quantities in `ONE_ACCEPTED` and `FULLY_ACCEPTED` Trades. Read, never stored
 /// (ADR-0008).
 async fn reserved_quantities(
     conn: &mut PgConnection,
     user_id: &UserId,
     card_id: &CardId,
-) -> Result<(u32, u32), AppError> {
+) -> Result<ReservedQuantities, AppError> {
     let (set_code, collector_number, language_code) = card_columns(card_id);
     let rows = sqlx::query!(
         r#"
@@ -130,16 +213,16 @@ async fn reserved_quantities(
     .fetch_all(conn)
     .await?;
 
-    let (mut normal, mut foil) = (0, 0);
+    let mut reserved = ReservedQuantities::default();
     for row in rows {
-        let reserved = u32::try_from(row.reserved).map_err(|_| corrupt("reserved quantity"))?;
+        let quantity = u32::try_from(row.reserved).map_err(|_| corrupt("reserved quantity"))?;
         if row.foil {
-            foil = reserved;
+            reserved.foil = quantity;
         } else {
-            normal = reserved;
+            reserved.normal = quantity;
         }
     }
-    Ok((normal, foil))
+    Ok(reserved)
 }
 
 async fn find_card_entries(
@@ -186,20 +269,17 @@ async fn find_card_entries(
                 foil: row.foil,
                 binder,
                 quantity: u8::try_from(row.quantity).map_err(|_| corrupt("quantity"))?,
-                purchase_price: row
-                    .purchase_price
-                    .map(|price| u32::try_from(price).map_err(|_| corrupt("purchase price")))
-                    .transpose()?,
+                purchase_price: purchase_price_from_column(row.purchase_price)?,
                 added_at: row.added_at,
             })
         })
         .collect::<Result<Vec<_>, AppError>>()?;
 
-    let (reserved_normal, reserved_foil) = reserved_quantities(conn, user_id, card_id).await?;
+    let reserved = reserved_quantities(conn, user_id, card_id).await?;
     Ok(CardEntries {
         entries,
-        reserved_normal,
-        reserved_foil,
+        reserved_normal: reserved.normal,
+        reserved_foil: reserved.foil,
     })
 }
 
@@ -230,33 +310,17 @@ async fn card_of_entry(
     )?)
 }
 
-/// Copies owned in a finish, all binders together.
-fn owned(locked: &[LockedEntry], foil: bool) -> u32 {
-    locked
-        .iter()
-        .filter(|entry| entry.foil == foil)
-        .map(|entry| entry.quantity)
-        .sum()
-}
-
-fn reserved_of(reserved: (u32, u32), foil: bool) -> u32 {
-    if foil { reserved.1 } else { reserved.0 }
-}
-
-async fn write_stock(
+async fn write_copies(
     conn: &mut PgConnection,
     id: Uuid,
-    stock: &EntryStock,
+    copies: &EntryCopies,
 ) -> Result<(), AppError> {
     sqlx::query!(
         "UPDATE collection_entry SET quantity = $2, purchase_price = $3, added_at = $4 WHERE id = $1",
         id,
-        i32::try_from(stock.quantity).map_err(|_| corrupt("quantity"))?,
-        stock
-            .purchase_price
-            .map(|price| i32::try_from(price).map_err(|_| corrupt("purchase price")))
-            .transpose()?,
-        stock.added_at,
+        i32::try_from(copies.quantity).map_err(|_| corrupt("quantity"))?,
+        purchase_price_to_column(copies.purchase_price)?,
+        copies.added_at,
     )
     .execute(conn)
     .await?;
@@ -269,7 +333,7 @@ async fn insert_entry(
     card_id: &CardId,
     foil: bool,
     binder_id: Option<Uuid>,
-    stock: &EntryStock,
+    copies: &EntryCopies,
 ) -> Result<(), AppError> {
     let (set_code, collector_number, language_code) = card_columns(card_id);
     sqlx::query!(
@@ -284,12 +348,9 @@ async fn insert_entry(
         language_code,
         foil,
         user_id.as_str(),
-        i32::try_from(stock.quantity).map_err(|_| corrupt("quantity"))?,
-        stock
-            .purchase_price
-            .map(|price| i32::try_from(price).map_err(|_| corrupt("purchase price")))
-            .transpose()?,
-        stock.added_at,
+        i32::try_from(copies.quantity).map_err(|_| corrupt("quantity"))?,
+        purchase_price_to_column(copies.purchase_price)?,
+        copies.added_at,
         binder_id,
     )
     .execute(conn)
@@ -309,57 +370,90 @@ impl CollectionEntryRepository for CollectionEntryRepositoryAdapter {
         find_card_entries(&mut conn, user_id, card_id).await
     }
 
+    #[tracing::instrument(name = "collection_entry_repo.add", skip_all, fields(sentry.op = "db"))]
+    async fn add(
+        &self,
+        user_id: &UserId,
+        card_id: &CardId,
+        foil: bool,
+        quantity: u8,
+        binder_id: Option<BinderId>,
+    ) -> Result<CardEntries, AppError> {
+        let mut tx = self.pool.begin().await?;
+
+        if let Some(binder_id) = binder_id {
+            ensure_binder_owned(&mut tx, user_id, binder_id).await?;
+        }
+
+        let locked = lock_card_entries(&mut tx, user_id, card_id).await?;
+        let added = EntryCopies {
+            quantity: u32::from(quantity),
+            purchase_price: None,
+            added_at: Utc::now(),
+        };
+        let target_binder = binder_id.map(|id| id.0);
+        let same_copy = locked
+            .iter()
+            .find(|entry| entry.foil == foil && entry.binder_id == target_binder);
+        match same_copy {
+            Some(existing) => {
+                let merged = existing.copies().merge(&added)?;
+                write_copies(&mut tx, existing.id, &merged).await?;
+            }
+            None => {
+                insert_entry(&mut tx, user_id, card_id, foil, target_binder, &added).await?;
+            }
+        }
+
+        let entries = find_card_entries(&mut tx, user_id, card_id).await?;
+        tx.commit().await?;
+        Ok(entries)
+    }
+
     #[tracing::instrument(name = "collection_entry_repo.update", skip_all, fields(sentry.op = "db"))]
     async fn update(
         &self,
         user_id: &UserId,
         id: CollectionEntryId,
-        edit: EntryEdit,
+        update: EntryUpdate,
     ) -> Result<CardEntries, AppError> {
         let mut tx = self.pool.begin().await?;
-        let card_id = card_of_entry(&mut tx, user_id, id).await?;
-        let locked = lock_card_entries(&mut tx, user_id, &card_id).await?;
-        let entry = locked
-            .iter()
-            .find(|entry| entry.id == id.0)
-            .ok_or(FunctionalError::CollectionEntryNotFound)?;
-        let reserved = reserved_quantities(&mut tx, user_id, &card_id).await?;
+        let locked = lock_entry(&mut tx, user_id, id).await?;
+        let entry = locked.entry();
+        let reserved = reserved_quantities(&mut tx, user_id, &locked.card_id).await?;
 
-        let quantity = edit.quantity.map_or(entry.quantity, u32::from);
-        let foil = edit.foil.unwrap_or(entry.foil);
-        let edited = EntryStock {
+        let quantity = update.quantity.map_or(entry.quantity, u32::from);
+        let foil = update.foil.unwrap_or(entry.foil);
+        let updated = EntryCopies {
             quantity,
-            ..entry.stock()
+            ..entry.copies()
         };
 
         if foil == entry.foil {
             if quantity < entry.quantity {
                 ensure_covers_reserved(
-                    owned(&locked, foil) - entry.quantity + quantity,
-                    reserved_of(reserved, foil),
+                    locked.owned(foil) - entry.quantity + quantity,
+                    reserved.of(foil),
                 )?;
             }
-            write_stock(&mut tx, entry.id, &edited).await?;
+            write_copies(&mut tx, entry.id, &updated).await?;
         } else {
             // The entry leaves its finish whatever its new quantity, so the old finish loses all
             // of it.
             ensure_covers_reserved(
-                owned(&locked, entry.foil) - entry.quantity,
-                reserved_of(reserved, entry.foil),
+                locked.owned(entry.foil) - entry.quantity,
+                reserved.of(entry.foil),
             )?;
-            let same_copy = locked
-                .iter()
-                .find(|other| other.foil == foil && other.binder_id == entry.binder_id);
-            match same_copy {
+            match locked.find(foil, entry.binder_id) {
                 Some(target) => {
-                    let merged = target.stock().merge(&edited)?;
-                    write_stock(&mut tx, target.id, &merged).await?;
+                    let merged = target.copies().merge(&updated)?;
+                    write_copies(&mut tx, target.id, &merged).await?;
                     sqlx::query!("DELETE FROM collection_entry WHERE id = $1", entry.id)
                         .execute(&mut *tx)
                         .await?;
                 }
                 None => {
-                    write_stock(&mut tx, entry.id, &edited).await?;
+                    write_copies(&mut tx, entry.id, &updated).await?;
                     sqlx::query!(
                         "UPDATE collection_entry SET foil = $2 WHERE id = $1",
                         entry.id,
@@ -371,7 +465,7 @@ impl CollectionEntryRepository for CollectionEntryRepositoryAdapter {
             }
         }
 
-        let entries = find_card_entries(&mut tx, user_id, &card_id).await?;
+        let entries = find_card_entries(&mut tx, user_id, &locked.card_id).await?;
         tx.commit().await?;
         Ok(entries)
     }
@@ -385,24 +479,11 @@ impl CollectionEntryRepository for CollectionEntryRepositoryAdapter {
         quantity: Option<u8>,
     ) -> Result<CardEntries, AppError> {
         let mut tx = self.pool.begin().await?;
-        let card_id = card_of_entry(&mut tx, user_id, id).await?;
-        let locked = lock_card_entries(&mut tx, user_id, &card_id).await?;
-        let entry = locked
-            .iter()
-            .find(|entry| entry.id == id.0)
-            .ok_or(FunctionalError::CollectionEntryNotFound)?;
+        let locked = lock_entry(&mut tx, user_id, id).await?;
+        let entry = locked.entry();
 
-        if let Some(BinderId(binder)) = binder_id {
-            let owned_binder = sqlx::query_scalar!(
-                r#"SELECT id FROM binder WHERE id = $1 AND user_id = $2"#,
-                binder,
-                user_id.as_str(),
-            )
-            .fetch_optional(&mut *tx)
-            .await?;
-            if owned_binder.is_none() {
-                return Err(FunctionalError::BinderNotFound.into());
-            }
+        if let Some(binder_id) = binder_id {
+            ensure_binder_owned(&mut tx, user_id, binder_id).await?;
         }
 
         let moved = quantity.map_or(entry.quantity, u32::from);
@@ -413,18 +494,16 @@ impl CollectionEntryRepository for CollectionEntryRepositoryAdapter {
 
         // Moving into the binder the entry already is in leaves everything as it is.
         if target_binder != entry.binder_id {
-            let target = locked
-                .iter()
-                .find(|other| other.foil == entry.foil && other.binder_id == target_binder);
-            let moved_stock = EntryStock {
+            let target = locked.find(entry.foil, target_binder);
+            let moved_copies = EntryCopies {
                 quantity: moved,
-                ..entry.stock()
+                ..entry.copies()
             };
 
             match target {
                 Some(target) => {
-                    let merged = target.stock().merge(&moved_stock)?;
-                    write_stock(&mut tx, target.id, &merged).await?;
+                    let merged = target.copies().merge(&moved_copies)?;
+                    write_copies(&mut tx, target.id, &merged).await?;
                 }
                 None if moved == entry.quantity => {
                     sqlx::query!(
@@ -439,21 +518,21 @@ impl CollectionEntryRepository for CollectionEntryRepositoryAdapter {
                     insert_entry(
                         &mut tx,
                         user_id,
-                        &card_id,
+                        &locked.card_id,
                         entry.foil,
                         target_binder,
-                        &moved_stock,
+                        &moved_copies,
                     )
                     .await?;
                 }
             }
 
             if moved < entry.quantity {
-                let left = EntryStock {
+                let left = EntryCopies {
                     quantity: entry.quantity - moved,
-                    ..entry.stock()
+                    ..entry.copies()
                 };
-                write_stock(&mut tx, entry.id, &left).await?;
+                write_copies(&mut tx, entry.id, &left).await?;
             } else if target.is_some() {
                 sqlx::query!("DELETE FROM collection_entry WHERE id = $1", entry.id)
                     .execute(&mut *tx)
@@ -461,25 +540,21 @@ impl CollectionEntryRepository for CollectionEntryRepositoryAdapter {
             }
         }
 
-        let entries = find_card_entries(&mut tx, user_id, &card_id).await?;
+        let entries = find_card_entries(&mut tx, user_id, &locked.card_id).await?;
         tx.commit().await?;
         Ok(entries)
     }
 
-    #[tracing::instrument(name = "collection_entry_repo.delete", skip_all, fields(sentry.op = "db"))]
-    async fn delete(&self, user_id: &UserId, id: CollectionEntryId) -> Result<(), AppError> {
+    #[tracing::instrument(name = "collection_entry_repo.remove", skip_all, fields(sentry.op = "db"))]
+    async fn remove(&self, user_id: &UserId, id: CollectionEntryId) -> Result<(), AppError> {
         let mut tx = self.pool.begin().await?;
-        let card_id = card_of_entry(&mut tx, user_id, id).await?;
-        let locked = lock_card_entries(&mut tx, user_id, &card_id).await?;
-        let entry = locked
-            .iter()
-            .find(|entry| entry.id == id.0)
-            .ok_or(FunctionalError::CollectionEntryNotFound)?;
-        let reserved = reserved_quantities(&mut tx, user_id, &card_id).await?;
+        let locked = lock_entry(&mut tx, user_id, id).await?;
+        let entry = locked.entry();
+        let reserved = reserved_quantities(&mut tx, user_id, &locked.card_id).await?;
 
         ensure_covers_reserved(
-            owned(&locked, entry.foil) - entry.quantity,
-            reserved_of(reserved, entry.foil),
+            locked.owned(entry.foil) - entry.quantity,
+            reserved.of(entry.foil),
         )?;
         sqlx::query!("DELETE FROM collection_entry WHERE id = $1", entry.id)
             .execute(&mut *tx)
@@ -567,15 +642,15 @@ mod tests {
         UserId::new(USER)
     }
 
-    fn quantity_edit(quantity: u8) -> EntryEdit {
-        EntryEdit {
+    fn quantity_update(quantity: u8) -> EntryUpdate {
+        EntryUpdate {
             quantity: Some(quantity),
             foil: None,
         }
     }
 
-    fn foil_edit(foil: bool) -> EntryEdit {
-        EntryEdit {
+    fn foil_update(foil: bool) -> EntryUpdate {
+        EntryUpdate {
             quantity: None,
             foil: Some(foil),
         }
@@ -639,6 +714,145 @@ mod tests {
         assert!(found.entries.is_empty());
     }
 
+    // ---- add ----
+
+    #[sqlx::test]
+    async fn add_writes_a_new_entry_without_purchase_price(pool: PgPool) {
+        seed(&pool).await;
+        let binder = BinderId(insert_binder(&pool, USER, "Trade").await);
+
+        let entries = adapter(pool)
+            .add(&user(), &card(), true, 3, Some(binder))
+            .await
+            .unwrap();
+
+        assert_eq!(entries.entries.len(), 1);
+        let entry = &entries.entries[0];
+        assert!(entry.foil);
+        assert_eq!(entry.quantity, 3);
+        assert_eq!(entry.purchase_price, None);
+        assert_eq!(entry.binder.as_ref().map(|b| b.id), Some(binder));
+    }
+
+    #[sqlx::test]
+    async fn add_without_binder_stores_the_entry_in_no_binder(pool: PgPool) {
+        seed(&pool).await;
+
+        let entries = adapter(pool)
+            .add(&user(), &card(), false, 1, None)
+            .await
+            .unwrap();
+
+        assert_eq!(entries.entries[0].binder, None);
+    }
+
+    #[sqlx::test]
+    async fn add_merges_into_the_entry_of_the_same_finish_and_binder(pool: PgPool) {
+        seed(&pool).await;
+        insert_entry(&pool, USER, false, 2, Some(500), day(2), Some("Trade")).await;
+        let binder = sqlx::query_scalar("SELECT id FROM binder WHERE name = 'Trade'")
+            .fetch_one(&pool)
+            .await
+            .map(BinderId)
+            .unwrap();
+
+        let entries = adapter(pool)
+            .add(&user(), &card(), false, 3, Some(binder))
+            .await
+            .unwrap();
+
+        assert_eq!(entries.entries.len(), 1);
+        let entry = &entries.entries[0];
+        assert_eq!(entry.quantity, 5);
+        // The added copies have no price: the average of the prices present is unchanged.
+        assert_eq!(entry.purchase_price, Some(500));
+        assert_eq!(entry.added_at, day(2));
+    }
+
+    #[sqlx::test]
+    async fn add_merges_into_the_entry_stored_in_no_binder(pool: PgPool) {
+        seed(&pool).await;
+        insert_entry(&pool, USER, true, 1, None, day(2), None).await;
+
+        let entries = adapter(pool)
+            .add(&user(), &card(), true, 1, None)
+            .await
+            .unwrap();
+
+        assert_eq!(entries.entries.len(), 1);
+        assert_eq!(entries.entries[0].quantity, 2);
+    }
+
+    #[sqlx::test]
+    async fn add_keeps_a_distinct_entry_per_finish_and_binder(pool: PgPool) {
+        seed(&pool).await;
+        insert_entry(&pool, USER, false, 2, None, day(2), Some("Trade")).await;
+
+        let entries = adapter(pool)
+            .add(&user(), &card(), true, 1, None)
+            .await
+            .unwrap();
+
+        assert_eq!(entries.entries.len(), 2);
+    }
+
+    #[sqlx::test]
+    async fn add_refuses_a_merge_over_255_copies(pool: PgPool) {
+        seed(&pool).await;
+        insert_entry(&pool, USER, false, 255, None, day(2), None).await;
+
+        let error = adapter(pool)
+            .add(&user(), &card(), false, 1, None)
+            .await
+            .unwrap_err();
+
+        assert_eq!(error.code(), "invalid_quantity");
+    }
+
+    #[sqlx::test]
+    async fn add_refuses_a_binder_of_another_player_and_writes_nothing(pool: PgPool) {
+        seed(&pool).await;
+        let others = BinderId(insert_binder(&pool, OTHER, "Bob's binder").await);
+
+        let error = adapter(pool.clone())
+            .add(&user(), &card(), false, 1, Some(others))
+            .await
+            .unwrap_err();
+
+        assert_eq!(error.code(), "binder_not_found");
+        let count: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM collection_entry")
+            .fetch_one(&pool)
+            .await
+            .unwrap();
+        assert_eq!(count, 0);
+    }
+
+    #[sqlx::test]
+    async fn add_refuses_an_unknown_binder(pool: PgPool) {
+        seed(&pool).await;
+
+        let error = adapter(pool)
+            .add(&user(), &card(), false, 1, Some(BinderId(Uuid::new_v4())))
+            .await
+            .unwrap_err();
+
+        assert_eq!(error.code(), "binder_not_found");
+    }
+
+    #[sqlx::test]
+    async fn add_leaves_another_players_entry_alone(pool: PgPool) {
+        seed(&pool).await;
+        insert_entry(&pool, OTHER, false, 4, None, day(1), None).await;
+
+        let entries = adapter(pool)
+            .add(&user(), &card(), false, 1, None)
+            .await
+            .unwrap();
+
+        assert_eq!(entries.entries.len(), 1);
+        assert_eq!(entries.entries[0].quantity, 1);
+    }
+
     // ---- update: quantity ----
 
     #[sqlx::test]
@@ -647,7 +861,7 @@ mod tests {
         let id = insert_entry(&pool, USER, false, 2, Some(500), day(1), None).await;
 
         let entries = adapter(pool)
-            .update(&user(), id, quantity_edit(7))
+            .update(&user(), id, quantity_update(7))
             .await
             .unwrap();
 
@@ -664,10 +878,13 @@ mod tests {
         let adapter = adapter(pool);
 
         let error = adapter
-            .update(&user(), id, quantity_edit(2))
+            .update(&user(), id, quantity_update(2))
             .await
             .unwrap_err();
-        let kept = adapter.update(&user(), id, quantity_edit(3)).await.unwrap();
+        let kept = adapter
+            .update(&user(), id, quantity_update(3))
+            .await
+            .unwrap();
 
         assert_eq!(error.code(), "reserved_quantity_exceeded");
         assert_eq!(kept.entries[0].quantity, 3);
@@ -682,8 +899,8 @@ mod tests {
         let adapter = adapter(pool);
 
         // 4 owned in total, 3 committed: one copy may go, not two.
-        let first = adapter.update(&user(), a, quantity_edit(1)).await;
-        let second = adapter.update(&user(), b, quantity_edit(1)).await;
+        let first = adapter.update(&user(), a, quantity_update(1)).await;
+        let second = adapter.update(&user(), b, quantity_update(1)).await;
 
         assert!(first.is_ok());
         assert_eq!(second.unwrap_err().code(), "reserved_quantity_exceeded");
@@ -698,7 +915,7 @@ mod tests {
         }
 
         let entries = adapter(pool)
-            .update(&user(), id, quantity_edit(1))
+            .update(&user(), id, quantity_update(1))
             .await
             .unwrap();
 
@@ -714,7 +931,7 @@ mod tests {
         commit(&pool, "ONE_ACCEPTED", false, 3).await;
 
         let entries = adapter(pool)
-            .update(&user(), id, quantity_edit(2))
+            .update(&user(), id, quantity_update(2))
             .await
             .unwrap();
 
@@ -729,7 +946,7 @@ mod tests {
         let id = insert_entry(&pool, USER, false, 2, Some(500), day(1), Some("A")).await;
 
         let entries = adapter(pool)
-            .update(&user(), id, foil_edit(true))
+            .update(&user(), id, foil_update(true))
             .await
             .unwrap();
 
@@ -748,7 +965,7 @@ mod tests {
         insert_entry(&pool, USER, true, 1, Some(400), day(3), Some("A")).await;
 
         let entries = adapter(pool)
-            .update(&user(), normal, foil_edit(true))
+            .update(&user(), normal, foil_update(true))
             .await
             .unwrap();
 
@@ -768,7 +985,7 @@ mod tests {
         insert_entry(&pool, USER, true, 1, Some(1000), day(1), None).await;
 
         let merged = adapter(pool)
-            .update(&user(), normal, foil_edit(true))
+            .update(&user(), normal, foil_update(true))
             .await
             .unwrap();
 
@@ -783,7 +1000,7 @@ mod tests {
         insert_entry(&pool, USER, true, 1, None, day(1), None).await;
 
         let merged = adapter(pool)
-            .update(&user(), normal, foil_edit(true))
+            .update(&user(), normal, foil_update(true))
             .await
             .unwrap();
 
@@ -800,7 +1017,7 @@ mod tests {
             .update(
                 &user(),
                 normal,
-                EntryEdit {
+                EntryUpdate {
                     quantity: Some(2),
                     foil: Some(true),
                 },
@@ -819,7 +1036,7 @@ mod tests {
         insert_entry(&pool, USER, true, 1, None, day(1), Some("B")).await;
 
         let entries = adapter(pool)
-            .update(&user(), normal, foil_edit(true))
+            .update(&user(), normal, foil_update(true))
             .await
             .unwrap();
 
@@ -834,7 +1051,7 @@ mod tests {
         let adapter = adapter(pool);
 
         let error = adapter
-            .update(&user(), normal, foil_edit(true))
+            .update(&user(), normal, foil_update(true))
             .await
             .unwrap_err();
         let untouched = adapter.find_by_card(&user(), &card()).await.unwrap();
@@ -851,7 +1068,7 @@ mod tests {
         let adapter = adapter(pool);
 
         let error = adapter
-            .update(&user(), normal, foil_edit(true))
+            .update(&user(), normal, foil_update(true))
             .await
             .unwrap_err();
         let untouched = adapter.find_by_card(&user(), &card()).await.unwrap();
@@ -868,7 +1085,7 @@ mod tests {
         commit(&pool, "ONE_ACCEPTED", false, 2).await;
 
         let entries = adapter(pool)
-            .update(&user(), a, foil_edit(true))
+            .update(&user(), a, foil_update(true))
             .await
             .unwrap();
 
@@ -878,19 +1095,19 @@ mod tests {
     // ---- isolation, absence ----
 
     #[sqlx::test]
-    async fn update_and_delete_treat_another_players_entry_as_absent(pool: PgPool) {
+    async fn update_and_remove_treat_another_players_entry_as_absent(pool: PgPool) {
         seed(&pool).await;
         let others = insert_entry(&pool, OTHER, false, 2, None, day(1), None).await;
         let adapter = adapter(pool.clone());
 
         let update = adapter
-            .update(&user(), others, quantity_edit(1))
+            .update(&user(), others, quantity_update(1))
             .await
             .unwrap_err();
-        let delete = adapter.delete(&user(), others).await.unwrap_err();
+        let removal = adapter.remove(&user(), others).await.unwrap_err();
 
         assert_eq!(update.code(), "collection_entry_not_found");
-        assert_eq!(delete.code(), "collection_entry_not_found");
+        assert_eq!(removal.code(), "collection_entry_not_found");
         let kept = adapter
             .find_by_card(&UserId::new(OTHER), &card())
             .await
@@ -899,31 +1116,31 @@ mod tests {
     }
 
     #[sqlx::test]
-    async fn update_and_delete_refuse_an_unknown_entry(pool: PgPool) {
+    async fn update_and_remove_refuse_an_unknown_entry(pool: PgPool) {
         seed(&pool).await;
         let unknown = CollectionEntryId(Uuid::new_v4());
         let adapter = adapter(pool);
 
         let update = adapter
-            .update(&user(), unknown, quantity_edit(1))
+            .update(&user(), unknown, quantity_update(1))
             .await
             .unwrap_err();
-        let delete = adapter.delete(&user(), unknown).await.unwrap_err();
+        let removal = adapter.remove(&user(), unknown).await.unwrap_err();
 
         assert_eq!(update.code(), "collection_entry_not_found");
-        assert_eq!(delete.code(), "collection_entry_not_found");
+        assert_eq!(removal.code(), "collection_entry_not_found");
     }
 
-    // ---- delete ----
+    // ---- remove ----
 
     #[sqlx::test]
-    async fn delete_removes_only_the_entry(pool: PgPool) {
+    async fn remove_removes_only_the_entry(pool: PgPool) {
         seed(&pool).await;
         let id = insert_entry(&pool, USER, false, 2, None, day(1), Some("A")).await;
         insert_entry(&pool, USER, false, 1, None, day(1), Some("B")).await;
         let adapter = adapter(pool);
 
-        adapter.delete(&user(), id).await.unwrap();
+        adapter.remove(&user(), id).await.unwrap();
 
         let left = adapter.find_by_card(&user(), &card()).await.unwrap();
         assert_eq!(left.entries.len(), 1);
@@ -931,13 +1148,13 @@ mod tests {
     }
 
     #[sqlx::test]
-    async fn delete_refuses_a_removal_under_the_committed_quantity(pool: PgPool) {
+    async fn remove_refuses_a_removal_under_the_committed_quantity(pool: PgPool) {
         seed(&pool).await;
         let id = insert_entry(&pool, USER, true, 2, None, day(1), None).await;
         commit(&pool, "FULLY_ACCEPTED", true, 1).await;
         let adapter = adapter(pool);
 
-        let error = adapter.delete(&user(), id).await.unwrap_err();
+        let error = adapter.remove(&user(), id).await.unwrap_err();
 
         assert_eq!(error.code(), "reserved_quantity_exceeded");
         assert_eq!(
@@ -952,13 +1169,13 @@ mod tests {
     }
 
     #[sqlx::test]
-    async fn delete_allows_a_removal_the_other_finish_commitment_does_not_touch(pool: PgPool) {
+    async fn remove_allows_a_removal_the_other_finish_commitment_does_not_touch(pool: PgPool) {
         seed(&pool).await;
         let normal = insert_entry(&pool, USER, false, 2, None, day(1), None).await;
         insert_entry(&pool, USER, true, 1, None, day(1), None).await;
         commit(&pool, "FULLY_ACCEPTED", true, 1).await;
 
-        let result = adapter(pool).delete(&user(), normal).await;
+        let result = adapter(pool).remove(&user(), normal).await;
 
         assert!(result.is_ok());
     }

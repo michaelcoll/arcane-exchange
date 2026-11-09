@@ -1,20 +1,20 @@
 use super::dto::{
-    CardEntriesResponse, CardImportResponse, CardImportStartedResponse, CollectionCardResponse,
-    CollectionParams, CollectionStatsResponse, MoveCollectionEntryRequest,
+    AddCollectionEntryRequest, CardEntriesResponse, CardImportResponse, CardImportStartedResponse,
+    CollectionCardResponse, CollectionParams, CollectionStatsResponse, MoveCollectionEntryRequest,
     PaginatedCollectionResponse, UpdateCollectionEntryRequest,
 };
 use crate::application::error::AppError;
-use crate::domain::binder::BinderId;
 use crate::domain::card::CardId;
 use crate::domain::card_import::CardImportId;
 use crate::domain::collection::CollectionQuery;
-use crate::domain::collection_entry::CollectionEntryId;
 use crate::domain::error::FunctionalError;
 use crate::domain::language_code::LanguageCode;
 use crate::domain::pagination::PageRequest;
+use crate::domain::set_name::SetCode;
 use crate::infrastructure::AppState;
 use crate::infrastructure::adapter_in::auth_extractor::AuthenticatedUser;
 use crate::infrastructure::adapter_in::card::dto::{PriceHistoryEntryResponse, PriceHistoryParams};
+use crate::infrastructure::adapter_in::{parse_binder_id, parse_entry_id};
 use axum::body::to_bytes;
 use axum::extract::{Path, State};
 use axum::http::StatusCode;
@@ -32,18 +32,12 @@ pub fn create_collection_router() -> axum::Router<AppState> {
             "/cards/{set_code}/{collector_number}/{language_code}/entries",
             get(get_collection_entries),
         )
+        .route("/entries", post(add_collection_entry))
         .route("/entries/{id}/move", post(move_collection_entry))
         .route(
             "/entries/{id}",
             patch(update_collection_entry).delete(remove_collection_entry),
         )
-}
-
-/// An identifier that is not a UUID designates no entry.
-fn parse_entry_id(id: &str) -> Result<CollectionEntryId, AppError> {
-    id.parse()
-        .map(CollectionEntryId)
-        .map_err(|_| FunctionalError::CollectionEntryNotFound.into())
 }
 
 #[utoipa::path(
@@ -300,6 +294,46 @@ pub(crate) async fn get_collection_entries(
 }
 
 #[utoipa::path(
+    post,
+    path = "/collection/entries",
+    request_body = AddCollectionEntryRequest,
+    responses(
+        (status = 201, description = "The entries of the card, after the addition. The copies join the entry of the same finish and binder when there is one (quantities add up, purchase price kept, earliest added date), otherwise a new entry without purchase price is written. The card is created when it does not exist yet", body = CardEntriesResponse),
+        (status = 400, description = "Quantity out of 1 to 255 (`invalid_quantity`), also when a merge goes over 255; invalid set code, collector number or language code"),
+        (status = 401, description = "Missing or invalid token"),
+        (status = 404, description = "No catalog card has this set and collector number (`card_not_in_catalog`), or the binder is not one of the caller's (`binder_not_found`)"),
+    ),
+    security(("bearer_auth" = [])),
+    tag = "collection",
+)]
+pub(crate) async fn add_collection_entry(
+    AuthenticatedUser(user): AuthenticatedUser,
+    State(state): State<AppState>,
+    axum::Json(payload): axum::Json<AddCollectionEntryRequest>,
+) -> Result<(StatusCode, axum::Json<CardEntriesResponse>), AppError> {
+    let card_id = CardId::try_new(
+        SetCode::try_new(payload.set_code)?,
+        payload.collector_number,
+        LanguageCode::try_new(&payload.language_code)?,
+    )?;
+    let binder_id = payload
+        .binder_id
+        .as_deref()
+        .map(parse_binder_id)
+        .transpose()?;
+
+    let entries = state
+        .add_collection_entry_use_case
+        .add_collection_entry(&user.id, card_id, payload.foil, payload.quantity, binder_id)
+        .await?;
+
+    Ok((
+        StatusCode::CREATED,
+        axum::Json(CardEntriesResponse::from(entries)),
+    ))
+}
+
+#[utoipa::path(
     patch,
     path = "/collection/entries/{id}",
     params(("id" = String, Path, description = "Collection entry id")),
@@ -321,8 +355,8 @@ pub(crate) async fn update_collection_entry(
     axum::Json(payload): axum::Json<UpdateCollectionEntryRequest>,
 ) -> Result<axum::Json<CardEntriesResponse>, AppError> {
     let entries = state
-        .edit_collection_entry_use_case
-        .edit_collection_entry(
+        .update_collection_entry_use_case
+        .update_collection_entry(
             &user.id,
             parse_entry_id(&id)?,
             payload.quantity,
@@ -353,15 +387,10 @@ pub(crate) async fn move_collection_entry(
     Path(id): Path<String>,
     axum::Json(payload): axum::Json<MoveCollectionEntryRequest>,
 ) -> Result<axum::Json<CardEntriesResponse>, AppError> {
-    // An identifier that is not a UUID designates no binder.
     let binder_id = payload
         .binder_id
-        .map(|binder_id| {
-            binder_id
-                .parse()
-                .map(BinderId)
-                .map_err(|_| AppError::from(FunctionalError::BinderNotFound))
-        })
+        .as_deref()
+        .map(parse_binder_id)
         .transpose()?;
 
     let entries = state

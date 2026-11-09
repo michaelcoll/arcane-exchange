@@ -1174,6 +1174,7 @@ mod tests {
             french_name: Some("Nom français".to_string()),
             scryfall_id: Uuid::from_u128(5),
             cardmarket_id,
+            image_url: None,
         }
     }
 

@@ -1,0 +1,28 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT ce.id\n                    FROM collection_entry ce\n                    WHERE EXISTS (\n                        SELECT 1 FROM trade_card tc\n                        WHERE tc.trade_id = $1\n                          AND tc.owner_user_id = ce.user_id\n                          AND tc.set_code = ce.set_code\n                          AND tc.collector_number = ce.collector_number\n                          AND tc.language_code = ce.language_code\n                    )\n                    ORDER BY ce.id\n                    FOR SHARE",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "collection_entry",
+            "name": "id"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "dd2350e9cefa22da1625d9d6a35909b2370ddf68d60166fc4e4657b19e2858e6"
+}

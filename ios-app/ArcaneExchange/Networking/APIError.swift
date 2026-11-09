@@ -105,6 +105,7 @@ enum APIErrorMessages {
         "invalid_quantity": "La quantité doit être comprise entre 1 et 255.",
         "reserved_quantity_exceeded":
             "Des cartes sont réservées par un échange accepté : tu ne peux pas descendre sous cette quantité.",
+        "card_not_in_catalog": "Cette carte n'existe pas dans le catalogue.",
         "user_not_found": "Ce joueur est introuvable.",
         // Also what adding a card to a trade answers when its owner no longer offers it.
         "card_not_found": "Cette carte est introuvable ou n'est plus disponible.",

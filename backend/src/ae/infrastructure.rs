@@ -4,7 +4,7 @@ use crate::application::card_import_worker::CardImportWorker;
 use crate::application::card_prices_refresher::CardPricesRefresher;
 use crate::application::enrichment_queue::EnrichmentQueue;
 use crate::application::error::{AppError, InfraError};
-use crate::application::repository::CardImportRepository;
+use crate::application::repository::{CardImportRepository, CardPricesRefreshRequester};
 use crate::application::service::autocomplete::users::AutocompleteUserService;
 use crate::application::service::binder::create::CreateBinderService;
 use crate::application::service::binder::delete::DeleteBinderService;
@@ -12,8 +12,10 @@ use crate::application::service::binder::list::ListBindersService;
 use crate::application::service::binder::rename::RenameBinderService;
 use crate::application::service::card::get_offers::CardOfferService;
 use crate::application::service::card::get_price_history::CardPriceHistoryService;
+use crate::application::service::catalog::create_card::CreateCardService;
 use crate::application::service::catalog::scan_index::ScanIndexService;
-use crate::application::service::collection::edit_entry::EditCollectionEntryService;
+use crate::application::service::catalog::search::SearchCatalogService;
+use crate::application::service::collection::add_entry::AddCollectionEntryService;
 use crate::application::service::collection::get::CollectionService;
 use crate::application::service::collection::get_card_import::CardImportQueryService;
 use crate::application::service::collection::get_entries::GetCollectionEntriesService;
@@ -23,6 +25,7 @@ use crate::application::service::collection::import_card::ImportCardService;
 use crate::application::service::collection::move_entry::MoveCollectionEntryService;
 use crate::application::service::collection::remove_entry::RemoveCollectionEntryService;
 use crate::application::service::collection::run_card_import::RunCardImportService;
+use crate::application::service::collection::update_entry::UpdateCollectionEntryService;
 use crate::application::service::maintenance::card_collection_price_calculation::CardCollectionService;
 use crate::application::service::maintenance::enqueue_card_image::CardImageEnricher;
 use crate::application::service::maintenance::enqueue_cardmarket_id::CardMarketIdEnricher;
@@ -54,9 +57,9 @@ use crate::application::service::user::get_profile::GetUserProfileService;
 use crate::application::service::user::register::RegisterUserService;
 use crate::application::token_validator::TokenValidator;
 use crate::application::use_case::{
-    AbandonTradeUseCase, AcceptTradeUseCase, AddTradeBinderUseCase, AddTradeCardUseCase,
-    AutocompleteUsersUseCase, ConfirmTradeUseCase, CreateBinderUseCase, CreateTradeUseCase,
-    DeleteBinderUseCase, EditCollectionEntryUseCase, EnqueueCardImageUpdateUseCase,
+    AbandonTradeUseCase, AcceptTradeUseCase, AddCollectionEntryUseCase, AddTradeBinderUseCase,
+    AddTradeCardUseCase, AutocompleteUsersUseCase, ConfirmTradeUseCase, CreateBinderUseCase,
+    CreateCardUseCase, CreateTradeUseCase, DeleteBinderUseCase, EnqueueCardImageUpdateUseCase,
     EnqueueCardMarketIdUpdateUseCase, GetCardImportUseCase, GetCardOffersUseCase,
     GetCardPriceHistoryUseCase, GetCollectionEntriesUseCase, GetCollectionPriceHistoryUseCase,
     GetCollectionStatsUseCase, GetCollectionUseCase, GetCollectionVisibilityUseCase,
@@ -64,10 +67,9 @@ use crate::application::use_case::{
     GetTradeUseCase, GetUserProfileUseCase, ImportCardUseCase, ImportPriceUseCase,
     ListBindersUseCase, ListSetsUseCase, ListTradesUseCase, MoveCollectionEntryUseCase,
     RateTradeUseCase, RegisterUserUseCase, RemoveCollectionEntryUseCase, RemoveTradeBinderUseCase,
-    RemoveTradeCardUseCase, RenameBinderUseCase, RequestCardPricesRefreshUseCase,
-    RunCardImportUseCase, ScanIndexUseCase, SearchCardsUseCase, SearchSetsUseCase,
-    SetCollectionVisibilityUseCase, SetRarityTradeFilterUseCase, StatsUseCase,
-    UpdateCatalogUseCase,
+    RemoveTradeCardUseCase, RenameBinderUseCase, RunCardImportUseCase, ScanIndexUseCase,
+    SearchCardsUseCase, SearchCatalogUseCase, SearchSetsUseCase, SetCollectionVisibilityUseCase,
+    SetRarityTradeFilterUseCase, StatsUseCase, UpdateCatalogUseCase, UpdateCollectionEntryUseCase,
 };
 use crate::config::Config;
 use crate::infrastructure::adapter_in::autocomplete::controller::create_autocomplete_router;
@@ -153,7 +155,8 @@ pub struct AppState {
     pub get_collection_visibility_use_case: Arc<dyn GetCollectionVisibilityUseCase>,
     pub set_collection_visibility_use_case: Arc<dyn SetCollectionVisibilityUseCase>,
     pub get_collection_entries_use_case: Arc<dyn GetCollectionEntriesUseCase>,
-    pub edit_collection_entry_use_case: Arc<dyn EditCollectionEntryUseCase>,
+    pub add_collection_entry_use_case: Arc<dyn AddCollectionEntryUseCase>,
+    pub update_collection_entry_use_case: Arc<dyn UpdateCollectionEntryUseCase>,
     pub move_collection_entry_use_case: Arc<dyn MoveCollectionEntryUseCase>,
     pub remove_collection_entry_use_case: Arc<dyn RemoveCollectionEntryUseCase>,
     pub list_binders_use_case: Arc<dyn ListBindersUseCase>,
@@ -170,6 +173,7 @@ pub struct AppState {
     pub card_import_query_use_case: Arc<dyn GetCardImportUseCase>,
     pub update_catalog_use_case: Arc<dyn UpdateCatalogUseCase>,
     pub scan_index_use_case: Arc<dyn ScanIndexUseCase>,
+    pub search_catalog_use_case: Arc<dyn SearchCatalogUseCase>,
 }
 
 // ---- Repositories ----
@@ -285,7 +289,7 @@ fn create_app_state(
     enqueue_cardmarket_id_use_case: Arc<dyn EnqueueCardMarketIdUpdateUseCase>,
     enqueue_card_image_use_case: Arc<dyn EnqueueCardImageUpdateUseCase>,
     card_import_sender: tokio::sync::mpsc::UnboundedSender<CardImportJob>,
-    card_prices_refresh: Arc<dyn RequestCardPricesRefreshUseCase>,
+    card_prices_refresh: Arc<dyn CardPricesRefreshRequester>,
 ) -> AppState {
     let import_card_service = Arc::new(ImportCardService::new(
         repos.card_import.clone(),
@@ -325,8 +329,21 @@ fn create_app_state(
     let get_collection_entries_service: Arc<dyn GetCollectionEntriesUseCase> = Arc::new(
         GetCollectionEntriesService::new(repos.collection_entry.clone()),
     );
-    let edit_collection_entry_service: Arc<dyn EditCollectionEntryUseCase> =
-        Arc::new(EditCollectionEntryService::new(
+    let create_card_service: Arc<dyn CreateCardUseCase> = Arc::new(CreateCardService::new(
+        repos.card_prices_view.clone(),
+        repos.catalog.clone(),
+        repos.card.clone(),
+        enqueue_cardmarket_id_use_case.clone(),
+        enqueue_card_image_use_case.clone(),
+    ));
+    let add_collection_entry_service: Arc<dyn AddCollectionEntryUseCase> =
+        Arc::new(AddCollectionEntryService::new(
+            create_card_service,
+            repos.collection_entry.clone(),
+            card_prices_refresh.clone(),
+        ));
+    let update_collection_entry_service: Arc<dyn UpdateCollectionEntryUseCase> =
+        Arc::new(UpdateCollectionEntryService::new(
             repos.collection_entry.clone(),
             card_prices_refresh.clone(),
         ));
@@ -388,6 +405,8 @@ fn create_app_state(
         Arc::new(RemoveTradeCardService::new(repos.trade, repos.user));
     let scan_index_service: Arc<dyn ScanIndexUseCase> =
         Arc::new(ScanIndexService::new(repos.catalog.clone()));
+    let search_catalog_service: Arc<dyn SearchCatalogUseCase> =
+        Arc::new(SearchCatalogService::new(repos.catalog.clone()));
     let update_catalog_service: Arc<dyn UpdateCatalogUseCase> = Arc::new(
         UpdateCatalogService::new(callers.scryfall, repos.catalog, scan_index_service.clone()),
     );
@@ -425,7 +444,8 @@ fn create_app_state(
         get_collection_visibility_use_case: get_collection_visibility_service,
         set_collection_visibility_use_case: set_collection_visibility_service,
         get_collection_entries_use_case: get_collection_entries_service,
-        edit_collection_entry_use_case: edit_collection_entry_service,
+        add_collection_entry_use_case: add_collection_entry_service,
+        update_collection_entry_use_case: update_collection_entry_service,
         move_collection_entry_use_case: move_collection_entry_service,
         remove_collection_entry_use_case: remove_collection_entry_service,
         list_binders_use_case: list_binders_service,
@@ -442,6 +462,7 @@ fn create_app_state(
         card_import_query_use_case: card_import_query_service,
         update_catalog_use_case: update_catalog_service,
         scan_index_use_case: scan_index_service,
+        search_catalog_use_case: search_catalog_service,
     }
 }
 
@@ -554,7 +575,7 @@ pub async fn create_infra(pool: Pool<Postgres>, config: &Config) -> Router {
         enqueue_card_image_use_case.clone(),
     );
 
-    let card_prices_refresh: Arc<dyn RequestCardPricesRefreshUseCase> =
+    let card_prices_refresh: Arc<dyn CardPricesRefreshRequester> =
         CardPricesRefresher::spawn(repos.card_prices_view.clone());
 
     let app_state = create_app_state(

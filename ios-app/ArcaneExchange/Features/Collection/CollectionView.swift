@@ -6,6 +6,7 @@ struct CollectionView: View {
     private let api: any APIProtocol
     @State private var isShowingFilters = false
     @State private var isShowingImport = false
+    @State private var isShowingAddCard = false
     @State private var path = NavigationPath()
     @Namespace private var cardTransition
 
@@ -21,6 +22,11 @@ struct CollectionView: View {
                 .navigationBarTitleDisplayMode(.inline)
                 .accountToolbar()
                 .toolbar {
+                    ToolbarItem(placement: .topBarTrailing) {
+                        Button(action: { isShowingAddCard = true }, label: {
+                            Label("Ajouter une carte", systemImage: "plus")
+                        })
+                    }
                     ToolbarItem(placement: .topBarTrailing) {
                         Button(action: { isShowingImport = true }, label: {
                             Label("Importer", systemImage: "square.and.arrow.down")
@@ -43,6 +49,13 @@ struct CollectionView: View {
                 .tradeDestinations()
                 .sheet(isPresented: $isShowingFilters) {
                     CollectionFiltersSheet(filters: $model.filters, sets: model.sets)
+                }
+                .sheet(isPresented: $isShowingAddCard) {
+                    // The grid reads the prices view, which the server refreshes a few seconds
+                    // later: the added copy shows at once only through the card's own screen.
+                    CatalogSearchView(api: api) {
+                        Task { await model.reloadAfterImport() }
+                    }
                 }
                 .sheet(isPresented: $isShowingImport, onDismiss: handleImportDismiss) {
                     ImportView(api: api)

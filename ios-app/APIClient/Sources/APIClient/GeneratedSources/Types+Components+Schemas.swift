@@ -18,6 +18,66 @@ public import struct Foundation.Date
 extension Components {
     /// Types generated from the `#/components/schemas` section of the OpenAPI document.
     public enum Schemas {
+        /// A copy to add to the collection, without purchase price.
+        ///
+        /// - Remark: Generated from `#/components/schemas/AddCollectionEntryRequest`.
+        public struct AddCollectionEntryRequest: Codable, Hashable, Sendable {
+            /// Binder to store the copies in; absent for none.
+            ///
+            /// - Remark: Generated from `#/components/schemas/AddCollectionEntryRequest/binder_id`.
+            public var binder_id: Swift.String?
+            /// Collector number of the catalog card.
+            ///
+            /// - Remark: Generated from `#/components/schemas/AddCollectionEntryRequest/collector_number`.
+            public var collector_number: Swift.String
+            /// - Remark: Generated from `#/components/schemas/AddCollectionEntryRequest/foil`.
+            public var foil: Swift.Bool
+            /// Language of the copy: not checked against Scryfall, which may not have the card in it.
+            ///
+            /// - Remark: Generated from `#/components/schemas/AddCollectionEntryRequest/language_code`.
+            public var language_code: Swift.String
+            /// Copies added, 1 to 255. Signed so an out-of-range value fails with `invalid_quantity`
+            /// (400) instead of a JSON extractor rejection.
+            ///
+            /// - Remark: Generated from `#/components/schemas/AddCollectionEntryRequest/quantity`.
+            public var quantity: Swift.Int32
+            /// Set code of the catalog card.
+            ///
+            /// - Remark: Generated from `#/components/schemas/AddCollectionEntryRequest/set_code`.
+            public var set_code: Swift.String
+            /// Creates a new `AddCollectionEntryRequest`.
+            ///
+            /// - Parameters:
+            ///   - binder_id: Binder to store the copies in; absent for none.
+            ///   - collector_number: Collector number of the catalog card.
+            ///   - foil:
+            ///   - language_code: Language of the copy: not checked against Scryfall, which may not have the card in it.
+            ///   - quantity: Copies added, 1 to 255. Signed so an out-of-range value fails with `invalid_quantity`
+            ///   - set_code: Set code of the catalog card.
+            public init(
+                binder_id: Swift.String? = nil,
+                collector_number: Swift.String,
+                foil: Swift.Bool,
+                language_code: Swift.String,
+                quantity: Swift.Int32,
+                set_code: Swift.String
+            ) {
+                self.binder_id = binder_id
+                self.collector_number = collector_number
+                self.foil = foil
+                self.language_code = language_code
+                self.quantity = quantity
+                self.set_code = set_code
+            }
+            public enum CodingKeys: String, CodingKey {
+                case binder_id
+                case collector_number
+                case foil
+                case language_code
+                case quantity
+                case set_code
+            }
+        }
         /// - Remark: Generated from `#/components/schemas/AddTradeBinderRequest`.
         public struct AddTradeBinderRequest: Codable, Hashable, Sendable {
             /// - Remark: Generated from `#/components/schemas/AddTradeBinderRequest/binder_name`.
@@ -379,6 +439,64 @@ extension Components {
         /// - Remark: Generated from `#/components/schemas/CardOffersSortByParam`.
         @frozen public enum CardOffersSortByParam: String, Codable, Hashable, Sendable, CaseIterable {
             case selling_price = "selling_price"
+        }
+        /// One impression of the catalog: a set and a collector number, without language or finish.
+        ///
+        /// - Remark: Generated from `#/components/schemas/CatalogCardResponse`.
+        public struct CatalogCardResponse: Codable, Hashable, Sendable {
+            /// - Remark: Generated from `#/components/schemas/CatalogCardResponse/collector_number`.
+            public var collector_number: Swift.String
+            /// French name; absent when Scryfall has none.
+            ///
+            /// - Remark: Generated from `#/components/schemas/CatalogCardResponse/french_name`.
+            public var french_name: Swift.String?
+            /// Scryfall image of the impression (its front face for a double-faced card), to load from
+            /// Scryfall's CDN as is; `null` when Scryfall has none. It is not the image of a Card.
+            ///
+            /// - Remark: Generated from `#/components/schemas/CatalogCardResponse/image_url`.
+            public var image_url: Swift.String?
+            /// English name.
+            ///
+            /// - Remark: Generated from `#/components/schemas/CatalogCardResponse/name`.
+            public var name: Swift.String
+            /// Rarity code: `C`, `U`, `R`, `M` or `S`.
+            ///
+            /// - Remark: Generated from `#/components/schemas/CatalogCardResponse/rarity_code`.
+            public var rarity_code: Swift.String
+            /// - Remark: Generated from `#/components/schemas/CatalogCardResponse/set`.
+            public var set: Components.Schemas.SetInfoResponse
+            /// Creates a new `CatalogCardResponse`.
+            ///
+            /// - Parameters:
+            ///   - collector_number:
+            ///   - french_name: French name; absent when Scryfall has none.
+            ///   - image_url: Scryfall image of the impression (its front face for a double-faced card), to load from
+            ///   - name: English name.
+            ///   - rarity_code: Rarity code: `C`, `U`, `R`, `M` or `S`.
+            ///   - set:
+            public init(
+                collector_number: Swift.String,
+                french_name: Swift.String? = nil,
+                image_url: Swift.String? = nil,
+                name: Swift.String,
+                rarity_code: Swift.String,
+                set: Components.Schemas.SetInfoResponse
+            ) {
+                self.collector_number = collector_number
+                self.french_name = french_name
+                self.image_url = image_url
+                self.name = name
+                self.rarity_code = rarity_code
+                self.set = set
+            }
+            public enum CodingKeys: String, CodingKey {
+                case collector_number
+                case french_name
+                case image_url
+                case name
+                case rarity_code
+                case set
+            }
         }
         /// - Remark: Generated from `#/components/schemas/CollectionCardResponse`.
         public struct CollectionCardResponse: Codable, Hashable, Sendable {
@@ -789,6 +907,41 @@ extension Components {
             ///   - total:
             public init(
                 items: [Components.Schemas.CardOfferResponse],
+                page: Swift.Int32,
+                page_size: Swift.Int32,
+                total: Swift.Int64
+            ) {
+                self.items = items
+                self.page = page
+                self.page_size = page_size
+                self.total = total
+            }
+            public enum CodingKeys: String, CodingKey {
+                case items
+                case page
+                case page_size
+                case total
+            }
+        }
+        /// - Remark: Generated from `#/components/schemas/PaginatedCatalogResponse`.
+        public struct PaginatedCatalogResponse: Codable, Hashable, Sendable {
+            /// - Remark: Generated from `#/components/schemas/PaginatedCatalogResponse/items`.
+            public var items: [Components.Schemas.CatalogCardResponse]
+            /// - Remark: Generated from `#/components/schemas/PaginatedCatalogResponse/page`.
+            public var page: Swift.Int32
+            /// - Remark: Generated from `#/components/schemas/PaginatedCatalogResponse/page_size`.
+            public var page_size: Swift.Int32
+            /// - Remark: Generated from `#/components/schemas/PaginatedCatalogResponse/total`.
+            public var total: Swift.Int64
+            /// Creates a new `PaginatedCatalogResponse`.
+            ///
+            /// - Parameters:
+            ///   - items:
+            ///   - page:
+            ///   - page_size:
+            ///   - total:
+            public init(
+                items: [Components.Schemas.CatalogCardResponse],
                 page: Swift.Int32,
                 page_size: Swift.Int32,
                 total: Swift.Int64

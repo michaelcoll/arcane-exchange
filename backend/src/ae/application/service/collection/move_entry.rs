@@ -1,6 +1,6 @@
 use crate::application::error::AppError;
-use crate::application::repository::CollectionEntryRepository;
-use crate::application::use_case::{MoveCollectionEntryUseCase, RequestCardPricesRefreshUseCase};
+use crate::application::repository::{CardPricesRefreshRequester, CollectionEntryRepository};
+use crate::application::use_case::MoveCollectionEntryUseCase;
 use crate::domain::binder::BinderId;
 use crate::domain::collection_entry::{CardEntries, CollectionEntryId, validate_quantity};
 use crate::domain::user::UserId;
@@ -9,13 +9,13 @@ use std::sync::Arc;
 
 pub struct MoveCollectionEntryService {
     repository: Arc<dyn CollectionEntryRepository>,
-    card_prices_refresh: Arc<dyn RequestCardPricesRefreshUseCase>,
+    card_prices_refresh: Arc<dyn CardPricesRefreshRequester>,
 }
 
 impl MoveCollectionEntryService {
     pub fn new(
         repository: Arc<dyn CollectionEntryRepository>,
-        card_prices_refresh: Arc<dyn RequestCardPricesRefreshUseCase>,
+        card_prices_refresh: Arc<dyn CardPricesRefreshRequester>,
     ) -> Self {
         Self {
             repository,
@@ -49,8 +49,10 @@ impl MoveCollectionEntryUseCase for MoveCollectionEntryService {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::application::repository::MockCollectionEntryRepository;
-    use crate::application::use_case::MockRequestCardPricesRefreshUseCase;
+    use crate::application::repository::{
+        MockCardPricesRefreshRequester, MockCollectionEntryRepository,
+    };
+    use crate::application::service::collection::test_fixtures::refresh;
     use crate::domain::error::FunctionalError;
     use uuid::Uuid;
 
@@ -62,18 +64,9 @@ mod tests {
         BinderId(Uuid::from_u128(2))
     }
 
-    fn refresh(times: usize) -> MockRequestCardPricesRefreshUseCase {
-        let mut refresh = MockRequestCardPricesRefreshUseCase::new();
-        refresh
-            .expect_request_card_prices_refresh()
-            .times(times)
-            .return_const(());
-        refresh
-    }
-
     fn service(
         repository: MockCollectionEntryRepository,
-        refresh: MockRequestCardPricesRefreshUseCase,
+        refresh: MockCardPricesRefreshRequester,
     ) -> MoveCollectionEntryService {
         MoveCollectionEntryService::new(Arc::new(repository), Arc::new(refresh))
     }

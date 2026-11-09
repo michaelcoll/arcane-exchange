@@ -1,13 +1,16 @@
 use super::dto::ScanIndexEntryResponse;
 use crate::application::repository::MockCatalogRepository;
 use crate::application::service::catalog::scan_index::ScanIndexService;
-use crate::application::use_case::{MockScanIndexUseCase, ScanIndexUseCase};
-use crate::domain::catalog::{ScanIndex, ScanIndexEntry};
+use crate::application::use_case::{
+    MockScanIndexUseCase, MockSearchCatalogUseCase, ScanIndexUseCase,
+};
+use crate::domain::catalog::{CatalogSearchItem, ScanIndex, ScanIndexEntry};
 use crate::domain::error::FunctionalError;
+use crate::domain::pagination::{PageRequest, Paginated};
 use crate::domain::rarity_code::RarityCode;
-use crate::domain::set_name::SetCode;
+use crate::domain::set_name::{SetCode, SetName};
 use crate::infrastructure::testing::{
-    BEARER, assert_error, assert_routes_refuse_anonymous, authed, send,
+    BEARER, assert_error, assert_routes_refuse_anonymous, authed, json_of, send,
 };
 use crate::infrastructure::{AppState, create_router};
 use axum::body::Body;
@@ -16,6 +19,7 @@ use axum::response::Response;
 use flate2::Compression;
 use flate2::read::GzDecoder;
 use flate2::write::GzEncoder;
+use serde_json::json;
 use std::io::{Read, Write};
 use std::sync::Arc;
 
@@ -181,10 +185,147 @@ async fn without_a_loaded_catalog_the_answer_is_a_503_with_its_code() {
 }
 
 #[tokio::test]
-async fn the_scan_index_requires_a_token() {
+async fn the_catalog_routes_require_a_token() {
     assert_routes_refuse_anonymous(
         || app_serving(Some(scan_index())),
-        &[(Method::GET, "/catalog/scan-index")],
+        &[
+            (Method::GET, "/catalog/scan-index"),
+            (Method::GET, "/catalog/cards?q=bolt"),
+        ],
     )
     .await;
+}
+
+// ---- GET /catalog/cards ----
+
+fn item(set_code: &str, number: &str, french_name: Option<&str>) -> CatalogSearchItem {
+    CatalogSearchItem {
+        set: SetName::new(set_code, format!("Set {set_code}")),
+        collector_number: number.to_string(),
+        rarity: RarityCode::U,
+        name: "Lightning Bolt".to_string(),
+        french_name: french_name.map(str::to_string),
+        image_url: Some("https://img.example/bolt.jpg".to_string()),
+    }
+}
+
+fn search_app(mock: MockSearchCatalogUseCase) -> axum::Router {
+    create_router(AppState {
+        search_catalog_use_case: Arc::new(mock),
+        ..AppState::for_testing()
+    })
+}
+
+#[tokio::test]
+async fn the_search_lists_the_impressions_with_their_set_and_image() {
+    let mut mock = MockSearchCatalogUseCase::new();
+    mock.expect_search_catalog()
+        .times(1)
+        .withf(|query, set_code, page| {
+            query.as_deref() == Some("foudre")
+                && set_code
+                    .as_ref()
+                    .is_some_and(|code| code.to_string() == "LEA")
+                && *page
+                    == PageRequest {
+                        page: 1,
+                        page_size: 5,
+                    }
+        })
+        .returning(|_, _, page| {
+            Box::pin(async move {
+                Ok(Paginated {
+                    items: vec![item("LEA", "161", Some("Foudre")), item("LEA", "H3", None)],
+                    total: 7,
+                    pagination: page.paginate(1_000).unwrap(),
+                })
+            })
+        });
+
+    let response = authed(
+        search_app(mock),
+        Method::GET,
+        "/catalog/cards?q=foudre&set_code=lea&page=1&page_size=5",
+    )
+    .await;
+
+    assert_eq!(response.status(), StatusCode::OK);
+    let body = json_of(response).await;
+    assert_eq!(body["total"], 7);
+    assert_eq!(body["page"], 1);
+    assert_eq!(body["page_size"], 5);
+    assert_eq!(
+        body["items"][0],
+        json!({
+            "set": { "code": "LEA", "name": "Set LEA" },
+            "collector_number": "161",
+            "rarity_code": "U",
+            "name": "Lightning Bolt",
+            "french_name": "Foudre",
+            "image_url": "https://img.example/bolt.jpg",
+        })
+    );
+    assert!(body["items"][1]["french_name"].is_null());
+}
+
+#[tokio::test]
+async fn the_search_defaults_to_the_first_page_of_twenty() {
+    let mut mock = MockSearchCatalogUseCase::new();
+    mock.expect_search_catalog()
+        .times(1)
+        .withf(|query, set_code, page| {
+            query.is_none() && set_code.is_none() && *page == PageRequest::default()
+        })
+        .returning(|_, _, page| {
+            Box::pin(async move {
+                Ok(Paginated {
+                    items: vec![],
+                    total: 0,
+                    pagination: page.paginate(1_000).unwrap(),
+                })
+            })
+        });
+
+    let response = authed(search_app(mock), Method::GET, "/catalog/cards").await;
+
+    assert_eq!(response.status(), StatusCode::OK);
+    assert_eq!(
+        json_of(response).await,
+        json!({ "items": [], "total": 0, "page": 0, "page_size": 20 })
+    );
+}
+
+#[tokio::test]
+async fn the_search_maps_a_page_out_of_bounds_to_a_bad_request() {
+    let mut mock = MockSearchCatalogUseCase::new();
+    mock.expect_search_catalog().returning(|_, _, _| {
+        Box::pin(async {
+            Err(FunctionalError::PaginationTooDeep {
+                requested_offset: 2_000,
+                max: 1_000,
+            }
+            .into())
+        })
+    });
+
+    let response = authed(
+        search_app(mock),
+        Method::GET,
+        "/catalog/cards?q=bolt&page=100&page_size=20",
+    )
+    .await;
+
+    assert_error(response, StatusCode::BAD_REQUEST, "pagination_too_deep").await;
+}
+
+#[tokio::test]
+async fn the_search_refuses_an_invalid_set_code() {
+    let response = authed(
+        create_router(AppState::for_testing()),
+        Method::GET,
+        "/catalog/cards?set_code=A",
+    )
+    .await;
+
+    assert_error(response, StatusCode::BAD_REQUEST, "invalid_set_code").await;
 }
