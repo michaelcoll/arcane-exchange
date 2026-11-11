@@ -101,11 +101,18 @@ jobs:
 
       # -disableAutomaticPackageResolution builds the pinned versions or fails: a Package.resolved
       # out of date with project.yml breaks the build instead of being silently re-resolved.
+      # The runner's simulator is offered in arm64 and x86_64: without `arch=arm64`, xcodebuild
+      # warns "Using the first of multiple matching destinations" and spends ~45 s before the build.
+      # NSUnbufferedIO streams xcodebuild's output as it goes: piped, it is block-buffered and
+      # reaches the log in bursts minutes apart, which hide where the time goes.
       - name: Test
         working-directory: ios-app
+        env:
+          NSUnbufferedIO: "YES"
         run: |
           set -o pipefail
-          xcodebuild -scheme ArcaneExchange -destination 'platform=iOS Simulator,name=iPhone 17' \
+          xcodebuild -scheme ArcaneExchange \
+            -destination 'platform=iOS Simulator,name=iPhone 17,arch=arm64' \
             -derivedDataPath DerivedData \
             -clonedSourcePackagesDirPath .spm-cache -disableAutomaticPackageResolution \
             -skipPackagePluginValidation \
