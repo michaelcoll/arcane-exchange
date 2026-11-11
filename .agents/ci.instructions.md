@@ -38,3 +38,6 @@ Points qui ne se lisent pas dans les YAML :
   `test` ne construit pas dans un job séparé : `xcodebuild test` build déjà l'app et son bundle de tests.
 - **Pas de `restore-keys` sur le cache DerivedData iOS** : une correspondance partielle restaurerait des paquets
   compilés par un autre Xcode, que le build incrémental réutiliserait.
+- **Outils iOS via mise, pas Homebrew** : XcodeGen, SwiftFormat, SwiftLint et xcbeautify viennent de `mise.toml`
+  (`jdx/mise-action`, `install_args` limité aux outils du job). Un `brew install` pouvait passer jusqu'à 3 min
+  dans un `brew update` automatique. `lint-test-ios.yml` se déclenche donc aussi sur un push touchant `mise.toml`.
