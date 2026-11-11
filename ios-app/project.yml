@@ -12,6 +12,8 @@ configFiles:
   Debug: Config/Dev.xcconfig
   Release: Config/Release.xcconfig
 
+# Ranges only: the versions built are pinned in APIClient/Package.resolved, the app's lockfile
+# (see `upgrade-ios` in mise.toml).
 packages:
   APIClient:
     path: APIClient
