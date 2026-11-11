@@ -54,18 +54,26 @@ jobs:
         working-directory: ios-app
         run: xcodegen generate
 
+      # APIClient's Package.resolved is the app's lockfile: XcodeGen's project has no workspace
+      # Package.resolved, so Xcode pins the whole graph (Clerk, Nuke…) in the local package's.
+      # Keyed on it, a version bump is a cache miss and gets fresh checkouts. The old key ignored
+      # bumps: it restored stale checkouts that were updated over the network on every run, and
+      # never saved again.
       - name: Cache Swift packages
         uses: actions/cache@v6
         with:
           path: ios-app/.spm-cache
-          key: spm-${{ hashFiles('ios-app/project.yml', 'ios-app/APIClient/Package.swift') }}
+          key: spm-${{ hashFiles('ios-app/APIClient/Package.resolved') }}
 
+      # -disableAutomaticPackageResolution builds the pinned versions or fails: a Package.resolved
+      # out of date with project.yml breaks the build instead of being silently re-resolved.
       - name: Test
         working-directory: ios-app
         run: |
           set -o pipefail
           xcodebuild -scheme ArcaneExchange -destination 'platform=iOS Simulator,name=iPhone 17' \
-            -clonedSourcePackagesDirPath .spm-cache -skipPackagePluginValidation \
+            -clonedSourcePackagesDirPath .spm-cache -disableAutomaticPackageResolution \
+            -skipPackagePluginValidation \
             -resultBundlePath "$RUNNER_TEMP/TestResults.xcresult" test \
             | xcbeautify --renderer github-actions
 
