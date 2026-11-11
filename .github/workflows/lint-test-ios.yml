@@ -5,7 +5,13 @@ on:
     paths:
       - "ios-app/**"
       - ".github/workflows/lint-test-ios.yml"
+      # The iOS tools are installed from it.
+      - "mise.toml"
 
+# The iOS tools come from mise.toml, as locally, not from Homebrew: `brew install` could spend up to
+# 3 min in an automatic `brew update`. `install_args` limits each job to the tools it runs, the rest
+# of mise.toml (cargo, npm, swift…) is left alone. The `lefthook install` postinstall hook fails on
+# the runner, without lefthook: mise only logs it as a warning.
 jobs:
   lint:
     name: Format & Lint
@@ -15,7 +21,10 @@ jobs:
       - uses: actions/checkout@v7
 
       - name: Install XcodeGen, SwiftFormat & SwiftLint
-        run: brew install xcodegen swiftformat swiftlint
+        uses: jdx/mise-action@v5
+        with:
+          install_args: aqua:yonaskolb/XcodeGen github:nicklockwood/SwiftFormat aqua:realm/SwiftLint
+          env: false
 
       - name: Generate project
         working-directory: ios-app
@@ -40,7 +49,10 @@ jobs:
         run: nohup xcrun simctl boot "iPhone 17" >/dev/null 2>&1 &
 
       - name: Install XcodeGen & xcbeautify
-        run: brew install xcodegen xcbeautify
+        uses: jdx/mise-action@v5
+        with:
+          install_args: aqua:yonaskolb/XcodeGen aqua:cpisciotta/xcbeautify
+          env: false
 
       - name: Install the Metal toolchain
         # Xcode 26 ships the `metal` compiler as a downloadable component, and

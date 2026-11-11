@@ -19,6 +19,7 @@ EDHREC_BASE_URL = "https://edhrec.com"
 SCRYFALL_BASE_URL = "https://api.scryfall.com"
 
 [tools]
+"aqua:cpisciotta/xcbeautify" = "latest"
 "aqua:realm/SwiftLint" = "latest"
 "aqua:yonaskolb/XcodeGen" = "latest"
 "cargo:cargo-llvm-cov" = "latest"
