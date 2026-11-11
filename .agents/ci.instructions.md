@@ -36,3 +36,5 @@ Points qui ne se lisent pas dans les YAML :
 - **iOS** : seul pipeline sur macOS, `macos-26` épinglé car `clerk-ios` >= 1.2.0 exige Xcode 26
   (`swift-tools-version: 6.2`). Simulateur uniquement — pas de signature, de provisioning ni de TestFlight. Le job
   `test` ne construit pas dans un job séparé : `xcodebuild test` build déjà l'app et son bundle de tests.
+- **Pas de `restore-keys` sur le cache DerivedData iOS** : une correspondance partielle restaurerait des paquets
+  compilés par un autre Xcode, que le build incrémental réutiliserait.
