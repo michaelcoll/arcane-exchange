@@ -3,22 +3,22 @@ import SwiftUI
 
 /// Pure maths for the foil effect. Kept off any `View` type: `View` is `@MainActor`, and the
 /// tests call this from off-main contexts.
-enum FoilMath {
+package enum FoilMath {
     /// Maps a raw gravity component (roughly −1…1, ~0 with the device held upright) to a
     /// tilt scalar. The gain is high so a small, comfortable tilt already swings the foil.
-    static func normalizedTilt(_ raw: Double, gain: Double = 2.6) -> Double {
+    package static func normalizedTilt(_ raw: Double, gain: Double = 2.6) -> Double {
         min(1, max(-1, raw * gain))
     }
 
     /// Where a cell sits in its scroll view, 0 (top) → 1 (bottom), with a little overscan so
     /// the shimmer keeps moving as a card enters and leaves. 0.5 when there is no scroll view.
-    static func scrollProgress(midY: Double, scrollHeight: Double) -> Double {
+    package static func scrollProgress(midY: Double, scrollHeight: Double) -> Double {
         guard scrollHeight > 0 else { return 0.5 }
         return min(1.3, max(-0.3, midY / scrollHeight))
     }
 
     /// Same thing recentred to −1…1, the form the gradient offsets want.
-    static func sweep(midY: Double, scrollHeight: Double) -> Double {
+    package static func sweep(midY: Double, scrollHeight: Double) -> Double {
         (scrollProgress(midY: midY, scrollHeight: scrollHeight) - 0.5) * 2
     }
 }
@@ -29,23 +29,25 @@ enum FoilMath {
 /// Power Mode or Reduce Motion.
 @MainActor
 @Observable
-final class TiltProvider {
+package final class TiltProvider {
     /// Left/right tilt, −1…1, ~0 at rest.
-    private(set) var roll: Double = 0
+    package private(set) var roll: Double = 0
     /// Front/back tilt, −1…1, ~0 at rest, +1 laid flat.
-    private(set) var pitch: Double = 0
+    package private(set) var pitch: Double = 0
 
     @ObservationIgnored private let motion = CMMotionManager()
     @ObservationIgnored private var subscribers = 0
 
-    func retain() {
+    package init() {}
+
+    package func retain() {
         subscribers += 1
         if subscribers == 1 {
             start()
         }
     }
 
-    func release() {
+    package func release() {
         subscribers = max(0, subscribers - 1)
         if subscribers == 0 {
             stop()

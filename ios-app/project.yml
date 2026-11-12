@@ -219,6 +219,8 @@ targets:
         product: OpenAPIRuntime
       - package: HTTPTypes
         product: HTTPTypes
+      - package: Nuke
+        product: Nuke
 
   # Tests of the screens' code, hosted by the app (`@testable import ArcaneExchange`).
   ArcaneExchangeTests:

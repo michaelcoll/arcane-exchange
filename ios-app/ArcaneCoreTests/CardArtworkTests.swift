@@ -1,7 +1,8 @@
+import APIClient
 import Foundation
 import Testing
 
-@testable import ArcaneExchange
+@testable import ArcaneCore
 
 struct CardArtworkTests {
     private let apiBaseURL = URL(string: "https://ae.piconsoft.fr/api/v1")!
@@ -38,8 +39,8 @@ struct CardArtworkTests {
         #expect(CardArtwork.urls(for: [], apiBaseURL: apiBaseURL).isEmpty)
     }
 
-    private func card(imageURL: String?) -> CollectionCard {
-        CollectionCard(
+    private func card(imageURL: String?) -> Components.Schemas.CollectionCardResponse {
+        Components.Schemas.CollectionCardResponse(
             collector_number: "1",
             foil: false,
             image_url: imageURL,

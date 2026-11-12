@@ -1,10 +1,14 @@
-import ArcaneCore
 import Foundation
 
 /// One page of a paginated list, as the `fetch` of a `Paginator` returns it.
-struct PaginatorPage<Item> {
-    let items: [Item]
-    let total: Int
+package struct PaginatorPage<Item> {
+    package let items: [Item]
+    package let total: Int
+
+    package init(items: [Item], total: Int) {
+        self.items = items
+        self.total = total
+    }
 }
 
 /// The page-by-page loading shared by the lists that fill as the player scrolls.
@@ -21,8 +25,8 @@ struct PaginatorPage<Item> {
 /// the model adds behaviour around them (`TradesViewModel.reload`), otherwise on the paginator.
 @MainActor
 @Observable
-final class Paginator<Item: Equatable> {
-    enum State: Equatable {
+package final class Paginator<Item: Equatable> {
+    package enum State: Equatable {
         case idle
         case loading
         case loadingMore
@@ -32,7 +36,7 @@ final class Paginator<Item: Equatable> {
 
     /// What a list screen shows, in the order it checks: the spinner of the first load, the
     /// error of a load that left nothing to show, the empty screen, or the items.
-    enum Phase: Equatable {
+    package enum Phase: Equatable {
         case firstLoad
         /// French message of the failed load, ready to show.
         case failed(String)
@@ -41,7 +45,7 @@ final class Paginator<Item: Equatable> {
     }
 
     /// Number of items asked for per page.
-    static var pageSize: Int32 {
+    package static var pageSize: Int32 {
         20
     }
 
@@ -50,15 +54,15 @@ final class Paginator<Item: Equatable> {
         4
     }
 
-    private(set) var items: [Item] = []
-    private(set) var total = 0
-    private(set) var state = State.idle
+    package private(set) var items: [Item] = []
+    package private(set) var total = 0
+    package private(set) var state = State.idle
 
-    var hasMore: Bool {
+    package var hasMore: Bool {
         items.count < total
     }
 
-    var phase: Phase {
+    package var phase: Phase {
         guard items.isEmpty else { return .content }
 
         switch state {
@@ -83,7 +87,7 @@ final class Paginator<Item: Equatable> {
     ///   - onPageApplied: Called with the items of each page that gets applied, never with those
     ///     of a late response.
     ///   - onReload: Called at the start of every `reload()`.
-    init(
+    package init(
         fetch: @escaping @MainActor (_ page: Int32, _ pageSize: Int32) async throws -> PaginatorPage<Item>,
         onPageApplied: (@MainActor ([Item]) -> Void)? = nil,
         onReload: (@MainActor () -> Void)? = nil
@@ -94,7 +98,7 @@ final class Paginator<Item: Equatable> {
     }
 
     /// Restarts from page 0. On failure the list is emptied and the state becomes `.failed`.
-    func reload() async {
+    package func reload() async {
         generation += 1
         let current = generation
         let previousNextPage = nextPage
@@ -123,14 +127,14 @@ final class Paginator<Item: Equatable> {
 
     /// Asks for the next page when `item` just appeared among the last four of `displayed`
     /// (`items` by default; a list showing only part of them passes that part).
-    func loadMore(after item: Item, among displayed: [Item]? = nil) async {
+    package func loadMore(after item: Item, among displayed: [Item]? = nil) async {
         guard (displayed ?? items).suffix(Self.triggerDistance).contains(item) else { return }
 
         await loadMore()
     }
 
     /// Asks for the next page if there is one and nothing is loading or failed.
-    func loadMore() async {
+    package func loadMore() async {
         guard state == .idle, hasMore else { return }
 
         let current = generation

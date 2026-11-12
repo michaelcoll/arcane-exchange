@@ -1,4 +1,3 @@
-import ArcaneCore
 import SwiftUI
 
 /// Holographic foil for a card scan, rendered by the `cardFoil` shader in `Foil.metal`.
@@ -14,11 +13,13 @@ import SwiftUI
 ///   costs nothing at layout time.
 ///
 /// Falls back to a static gradient sheen under Reduce Motion.
-struct FoilEffect: ViewModifier {
+package struct FoilEffect: ViewModifier {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(TiltProvider.self) private var tilt: TiltProvider?
 
-    func body(content: Content) -> some View {
+    package init() {}
+
+    package func body(content: Content) -> some View {
         if reduceMotion {
             content.overlay { staticSheen }
         } else {
@@ -39,7 +40,8 @@ struct FoilEffect: ViewModifier {
                     scrollHeight: Double(proxy.bounds(of: .scrollView)?.height ?? 0)
                 )
                 return view.layerEffect(
-                    ShaderLibrary.cardFoil(
+                    // The shader lives in this framework, not in the process's main bundle.
+                    ShaderLibrary.bundle(Palette.bundle).cardFoil(
                         .float2(proxy.size),
                         .float2(roll, pitch),
                         .float(Float(slide))
@@ -63,7 +65,7 @@ struct FoilEffect: ViewModifier {
     }
 }
 
-extension View {
+package extension View {
     /// Laminates a card scan with the holographic foil. A no-op for a non-foil card.
     @ViewBuilder
     func foil(_ isFoil: Bool) -> some View {

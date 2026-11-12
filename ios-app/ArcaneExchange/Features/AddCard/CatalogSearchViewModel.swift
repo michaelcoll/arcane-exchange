@@ -1,4 +1,5 @@
 import APIClient
+import ArcaneCore
 import Foundation
 
 typealias CatalogCard = Components.Schemas.CatalogCardResponse

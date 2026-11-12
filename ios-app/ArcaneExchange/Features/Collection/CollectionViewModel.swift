@@ -1,4 +1,5 @@
 import APIClient
+import ArcaneCore
 import Foundation
 
 /// Backs the Collection tab: one page-by-page `GET /collection` feed, plus the set list from
