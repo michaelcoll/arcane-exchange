@@ -14,7 +14,7 @@ package enum ClerkSetup {
     /// `Clerk.shared`.
     @MainActor
     package static func configure() -> Bool {
-        let publishableKey = AppConfig.clerkPublishableKey
+        let publishableKey = AppConfig.clerkPublishableKey()
         guard !publishableKey.trimmingCharacters(in: .whitespaces).isEmpty else { return false }
         Clerk.configure(
             publishableKey: publishableKey,

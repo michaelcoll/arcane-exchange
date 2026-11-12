@@ -218,6 +218,8 @@ targets:
       - package: HTTPTypes
         product: HTTPTypes
       - package: APIClient
+        product: ClerkKitShared
+      - package: APIClient
         product: NukeShared
 
 schemes:

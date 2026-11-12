@@ -70,7 +70,9 @@ search_dirs=$(
     for binary in "${binaries[@]}"; do
         dir=$(dirname "$binary")
         executable_dir=$app
-        case "$binary" in "$app"/PlugIns/*.appex/*) executable_dir=${binary%%.appex/*}.appex ;; esac
+        # `(pattern)`, not `pattern)`: inside `$(…)`, bash 3.2 (macOS, the CI runner) reads a bare
+        # `)` as the end of the substitution.
+        case "$binary" in ("$app"/PlugIns/*.appex/*) executable_dir=${binary%%.appex/*}.appex ;; esac
         otool -l "$binary" | awk '/cmd LC_RPATH/ { getline; getline; print $2 }' | grep '^@' \
             | sed -e "s|^@executable_path|$executable_dir|" -e "s|^@loader_path|$dir|" || true
     done | sort -u
