@@ -6,7 +6,7 @@ import UIKit
 @testable import ArcaneCore
 
 /// Asserts on `ArtworkPipeline.configuration`, the one `install()` hands to
-/// `ImagePipeline.shared`: the test host never launches the app (`AppEntryPoint`).
+/// `ImagePipeline.shared`: the tests never launch the app.
 struct ArtworkPipelineTests {
     private var configuration: ImagePipeline.Configuration {
         ArtworkPipeline.configuration

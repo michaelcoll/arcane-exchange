@@ -1,7 +1,6 @@
 import Testing
 
 @testable import ArcaneCore
-@testable import ArcaneExchange
 
 @MainActor
 struct AppRouterTests {

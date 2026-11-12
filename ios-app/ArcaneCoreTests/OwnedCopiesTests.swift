@@ -1,7 +1,6 @@
 import Testing
 
 @testable import ArcaneCore
-@testable import ArcaneExchange
 
 struct OwnedCopiesFiguresTests {
     private func entry(purchasePrice: Int32?) -> CollectionEntry {

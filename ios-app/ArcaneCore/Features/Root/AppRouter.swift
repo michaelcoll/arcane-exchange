@@ -1,17 +1,25 @@
-import ArcaneCore
 import Observation
 
 /// App-wide navigation state a widget tap can drive: the selected tab, and a trade to push
 /// once the Échanges tab is on screen.
 @MainActor
 @Observable
-final class AppRouter {
-    var tab: RootTabView.Destination = .collection
+package final class AppRouter {
+    /// The tabs of the root navigation, named so it does not shadow SwiftUI's `Tab` view type.
+    package enum Destination: Hashable {
+        case collection
+        case trades
+        case search
+    }
+
+    package var tab: Destination = .collection
 
     /// Consumed by `TradesView`, which owns the stack the trade is pushed onto.
-    var pendingTrade: TradeDetailRoute?
+    package var pendingTrade: TradeDetailRoute?
 
-    func open(_ link: HomeWidgetLink) {
+    package init() {}
+
+    package func open(_ link: HomeWidgetLink) {
         switch link {
         case .collection:
             tab = .collection

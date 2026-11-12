@@ -3,7 +3,7 @@ import ArcaneCore
 import ClerkKit
 import SwiftUI
 
-/// Launched by `AppEntryPoint`, except when the process only hosts the unit tests.
+@main
 struct ArcaneExchangeApp: App {
     /// One CoreMotion source for the whole app, read by every `FoilOverlay`.
     @State private var tilt = TiltProvider()

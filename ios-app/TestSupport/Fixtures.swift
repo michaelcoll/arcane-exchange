@@ -4,7 +4,7 @@ import Foundation
 
 /// A domain of its own per call: no test reads `.standard` or another test's writes.
 func isolatedDefaults() -> UserDefaults {
-    UserDefaults(suiteName: "ArcaneExchangeTests.\(UUID().uuidString)")!
+    UserDefaults(suiteName: "ArcaneCoreTests.\(UUID().uuidString)")!
 }
 
 func card(_ id: String) -> CollectionCard {
