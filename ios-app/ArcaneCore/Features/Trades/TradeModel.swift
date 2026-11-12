@@ -191,10 +191,11 @@ package enum TradesCopy {
         count > 1 ? "\(count) cartes" : "\(count) carte"
     }
 
-    /// "il y a 30 min" — the list row's timestamp, from the summary's RFC 3339 string.
+    /// "il y a 30 min" — the list row's timestamp, from the summary's RFC 3339 string. The locale
+    /// is pinned, like `Price`: the whole UI is French whatever the process's language.
     package static func relativeDate(from iso: String) -> String {
         guard let date = TradeTimestamp.date(from: iso) else { return "" }
-        return date.formatted(.relative(presentation: .named))
+        return date.formatted(.relative(presentation: .named).locale(Locale(identifier: "fr_FR")))
     }
 
     /// What the user commits to in cash, spelled out before they lock the trade. `settlement`

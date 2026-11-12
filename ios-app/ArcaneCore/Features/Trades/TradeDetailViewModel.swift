@@ -1,5 +1,4 @@
 import APIClient
-import ArcaneCore
 import Foundation
 
 /// Backs `TradeDetailView`: `GET /trades/{id}` plus the five lifecycle actions.
@@ -10,61 +9,61 @@ import Foundation
 /// only be a second, less reliable implementation of `trade-workflow.instructions.md`.
 @MainActor
 @Observable
-final class TradeDetailViewModel {
-    let tradeID: String
+package final class TradeDetailViewModel {
+    package let tradeID: String
 
-    private(set) var trade: TradeDetail?
-    private(set) var isLoading = false
+    package private(set) var trade: TradeDetail?
+    package private(set) var isLoading = false
     /// French message of the last failed load, ready to show.
-    private(set) var loadError: String?
+    package private(set) var loadError: String?
     /// An action is in flight — the action bar disables itself rather than queueing taps.
-    private(set) var isBusy = false
+    package private(set) var isBusy = false
     /// Set when an action is refused; the view shows it in an alert and clears it.
-    var actionError: String?
+    package var actionError: String?
 
     private let api: any APIProtocol
 
-    init(tradeID: String, api: any APIProtocol) {
+    package init(tradeID: String, api: any APIProtocol) {
         self.tradeID = tradeID
         self.api = api
     }
 
-    var status: TradeStatus {
+    package var status: TradeStatus {
         TradeStatus(apiValue: trade?.status ?? "PENDING")
     }
 
     /// What the player can do now; a trade not loaded yet offers nothing.
-    var actions: TradeActions {
+    package var actions: TradeActions {
         trade.map(TradeActions.init(trade:)) ?? .none
     }
 
-    var partnerUsername: String {
+    package var partnerUsername: String {
         trade?.partner_username ?? ""
     }
 
     /// Cards leaving the user's collection — asked for by the partner, so not removable here.
-    var myCards: [TradeCard] {
+    package var myCards: [TradeCard] {
         trade?.my_cards ?? []
     }
 
     /// Cards the user asked the partner for.
-    var partnerCards: [TradeCard] {
+    package var partnerCards: [TradeCard] {
         trade?.partner_cards ?? []
     }
 
-    var balance: TradeBalance {
+    package var balance: TradeBalance {
         TradeBalance(give: myCards, get: partnerCards)
     }
 
-    var myRating: Int? {
+    package var myRating: Int? {
         trade?.me.rating.map(Int.init)
     }
 
-    var partnerRating: Int? {
+    package var partnerRating: Int? {
         trade?.partner.rating.map(Int.init)
     }
 
-    func load() async {
+    package func load() async {
         isLoading = true
         loadError = nil
         do {
@@ -75,19 +74,19 @@ final class TradeDetailViewModel {
         isLoading = false
     }
 
-    func accept() async {
+    package func accept() async {
         await run {
             _ = try await self.api.accept_trade(path: .init(trade_id: self.tradeID)).noContent
         }
     }
 
-    func abandon() async {
+    package func abandon() async {
         await run {
             _ = try await self.api.abandon_trade(path: .init(trade_id: self.tradeID)).noContent
         }
     }
 
-    func confirmExchange() async {
+    package func confirmExchange() async {
         await run {
             _ = try await self.api.confirm_trade(path: .init(trade_id: self.tradeID)).noContent
         }
@@ -95,7 +94,7 @@ final class TradeDetailViewModel {
 
     /// 0 to 5 stars. Zero is the mockup's "passer la notation": the trade still closes, the
     /// partner's average is simply left untouched by a skipped rating.
-    func rate(_ rating: Int) async {
+    package func rate(_ rating: Int) async {
         await run {
             _ = try await self.api.rate_trade(
                 path: .init(trade_id: self.tradeID),
@@ -106,7 +105,7 @@ final class TradeDetailViewModel {
 
     /// Drops one of the partner's cards from the trade. Only the "je reçois" side is editable
     /// from this screen — the cards the partner asked for are theirs to change.
-    func removePartnerCard(_ card: TradeCard) async {
+    package func removePartnerCard(_ card: TradeCard) async {
         let owner = partnerUsername
         await run {
             _ = try await self.api.remove_trade_card(

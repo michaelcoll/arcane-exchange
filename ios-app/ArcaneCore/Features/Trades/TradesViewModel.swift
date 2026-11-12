@@ -1,5 +1,4 @@
 import APIClient
-import ArcaneCore
 import Foundation
 
 /// Backs the Échanges tab: one page-by-page `GET /trades` feed, split into the "En cours" and
@@ -10,16 +9,16 @@ import Foundation
 /// nothing.
 @MainActor
 @Observable
-final class TradesViewModel {
-    enum Segment: String, CaseIterable, Identifiable {
+package final class TradesViewModel {
+    package enum Segment: String, CaseIterable, Identifiable {
         case ongoing
         case past
 
-        var id: Self {
+        package var id: Self {
             self
         }
 
-        var label: String {
+        package var label: String {
             switch self {
             case .ongoing: "En cours"
             case .past: "Historique"
@@ -29,7 +28,7 @@ final class TradesViewModel {
 
     /// Switching to a segment with no row loaded fills it from the following pages, without
     /// reloading page 0.
-    var segment: Segment = .ongoing {
+    package var segment: Segment = .ongoing {
         didSet {
             guard segment != oldValue else { return }
             Task { await fillVisibleSegment() }
@@ -37,9 +36,9 @@ final class TradesViewModel {
     }
 
     /// The loaded trades (both segments) and their loading state.
-    let paginator: Paginator<TradeSummary>
+    package let paginator: Paginator<TradeSummary>
 
-    init(api: any APIProtocol) {
+    package init(api: any APIProtocol) {
         paginator = Paginator(fetch: { page, pageSize in
             let query = Operations.list_trades.Input.Query(page: page, page_size: pageSize)
             let response = try await api.list_trades(query: query).ok.body.json
@@ -47,28 +46,28 @@ final class TradesViewModel {
         })
     }
 
-    var ongoing: [TradeSummary] {
+    package var ongoing: [TradeSummary] {
         paginator.items.filter { TradeStatus(apiValue: $0.status).isShownInOngoing }
     }
 
-    var past: [TradeSummary] {
+    package var past: [TradeSummary] {
         paginator.items.filter { !TradeStatus(apiValue: $0.status).isShownInOngoing }
     }
 
-    var visibleTrades: [TradeSummary] {
+    package var visibleTrades: [TradeSummary] {
         segment == .ongoing ? ongoing : past
     }
 
     /// Reloads from page 0 — the first load, pull-to-refresh, and the return from a trade
     /// whose status may just have changed.
-    func reload() async {
+    package func reload() async {
         await paginator.reload()
         await fillVisibleSegment()
     }
 
     /// Asks for the next page when `trade` just appeared among the last rows of the displayed
     /// segment, which may not be the last rows loaded.
-    func loadMore(after trade: TradeSummary) async {
+    package func loadMore(after trade: TradeSummary) async {
         await paginator.loadMore(after: trade, among: visibleTrades)
         await fillVisibleSegment()
     }

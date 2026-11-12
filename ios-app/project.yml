@@ -62,7 +62,7 @@ targets:
         # ships no .lproj, every string is French in the source. XcodeGen's default (`en`)
         # makes iOS resolve the app's language to English, so everything the system formats
         # comes out English on a French device: "30 minutes ago" under the trades, "Cancel" in
-        # system sheets. Covered by `TradeCopyTests.formatsTheRelativeDateInFrench`.
+        # system sheets. Covered by `TradeCopyTests.theAppsLanguageIsFrench`.
         DEVELOPMENT_LANGUAGE: fr
     dependencies:
       - package: APIClient
