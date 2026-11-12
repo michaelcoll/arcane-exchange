@@ -1,5 +1,4 @@
 import APIClient
-import ArcaneCore
 import Foundation
 
 /// Opens the trade with a card's owner and makes sure the card is on their side.
@@ -12,23 +11,23 @@ import Foundation
 /// both offer the same "Échanger" button on an offer row.
 @MainActor
 @Observable
-final class CardOfferTrade {
+package final class CardOfferTrade {
     /// The owner whose trade is being opened, so only that row shows a spinner.
-    private(set) var startingWith: String?
+    package private(set) var startingWith: String?
     /// Set when opening a trade is refused; the view shows it in an alert and clears it.
-    var startError: String?
+    package var startError: String?
 
-    private let card: CollectionCard
+    private let card: Components.Schemas.CollectionCardResponse
     private let api: any APIProtocol
 
-    init(card: CollectionCard, api: any APIProtocol) {
+    package init(card: Components.Schemas.CollectionCardResponse, api: any APIProtocol) {
         self.card = card
         self.api = api
     }
 
     /// Opens (or reuses) the trade with this offer's owner, this card on their side.
     /// Returns `nil` when another opening is in flight or the API refused (`startError` is set).
-    func start(with offer: CardOffer) async -> TradeDetailRoute? {
+    package func start(with offer: CardOffer) async -> TradeDetailRoute? {
         guard startingWith == nil else { return nil }
         startingWith = offer.owner_username
         defer { startingWith = nil }
@@ -59,9 +58,9 @@ final class CardOfferTrade {
 ///
 /// Both card screens show the set line under the card name and both fall back to the raw
 /// code when the lookup fails (same as `frontend/`'s `DetailModal.vue`).
-enum SetName {
+package enum SetName {
     /// The set's name, or `nil` when it cannot be resolved — keep showing the code then.
-    static func resolve(_ setCode: String, api: any APIProtocol) async -> String? {
+    package static func resolve(_ setCode: String, api: any APIProtocol) async -> String? {
         try? await api.get_set(path: .init(set_code: setCode)).ok.body.json.name
     }
 }

@@ -65,6 +65,27 @@ struct OwnedEntryLabelTests {
         )
     }
 
+    @Test func labelsAnEntryByItsBinderAndFinish() {
+        let inBinder = CollectionEntryDetail(
+            added_at: "2026-01-05T10:00:00Z",
+            binder: .init(id: "b-Trade", name: "Trade"),
+            foil: false,
+            id: "e",
+            purchase_price: nil,
+            quantity: 2
+        )
+        let foilOutOfBinder = CollectionEntryDetail(
+            added_at: "2026-01-05T10:00:00Z",
+            foil: true,
+            id: "e",
+            purchase_price: nil,
+            quantity: 2
+        )
+
+        #expect(OwnedEntryLabel.text(for: inBinder) == "Trade")
+        #expect(OwnedEntryLabel.text(for: foilOutOfBinder) == "Sans binder · Foil")
+    }
+
     @Test func showsThePurchasePriceOfTheEntry() {
         #expect(OwnedEntryLabel.price(for: detail(price: 980)) == Price.euros(cents: 980))
     }

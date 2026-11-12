@@ -1,5 +1,4 @@
 import APIClient
-import ArcaneCore
 import Foundation
 
 /// Backs the form that adds copies of a catalog impression to the collection: language, finish,
@@ -7,37 +6,37 @@ import Foundation
 /// at first.
 @MainActor
 @Observable
-final class AddCollectionEntryViewModel {
-    let card: CatalogCard
+package final class AddCollectionEntryViewModel {
+    package let card: CatalogCard
     private let api: any APIProtocol
     private let memory: DeviceMemory
 
-    var language: CardLanguage
-    var foil = false
-    var quantity = 1
+    package var language: CardLanguage
+    package var foil = false
+    package var quantity = 1
     /// The binder to store the copies in; `nil` for none.
-    var binderID: String?
+    package var binderID: String?
 
     /// The player's binders. Empty until `loadBinders()` answered.
-    private(set) var binders: [Binder] = []
-    private(set) var isWriting = false
+    package private(set) var binders: [Components.Schemas.BinderResponse] = []
+    package private(set) var isWriting = false
     /// Set when the addition was refused. French message, ready to show.
-    var writeError: String?
+    package var writeError: String?
 
-    init(card: CatalogCard, api: any APIProtocol, defaults: UserDefaults = .standard) {
+    package init(card: CatalogCard, api: any APIProtocol, defaults: UserDefaults = .standard) {
         self.card = card
         self.api = api
         memory = DeviceMemory(defaults: defaults)
         language = memory.read(CardLanguage.self, for: PlayerKey.addCardLanguage) ?? .default
     }
 
-    func loadBinders() async {
+    package func loadBinders() async {
         // A failed read leaves "Sans binder" as the only choice.
-        binders = await api.bindersOrEmpty()
+        binders = await (try? api.list_binders().ok.body.json.binders) ?? []
     }
 
     /// Returns whether the copies were added, so the form can close.
-    func add() async -> Bool {
+    package func add() async -> Bool {
         isWriting = true
         defer { isWriting = false }
         do {

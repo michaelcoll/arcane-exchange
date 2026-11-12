@@ -2,7 +2,6 @@ import Foundation
 import Testing
 
 @testable import ArcaneCore
-@testable import ArcaneExchange
 
 struct PriceHistorySeriesTests {
     private func entry(_ date: String, low: Int64, avg: Int64, trend: Int64) -> PriceHistoryEntry {

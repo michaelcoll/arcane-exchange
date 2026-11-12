@@ -2,9 +2,8 @@ import APIClient
 import Testing
 
 @testable import ArcaneCore
-@testable import ArcaneExchange
 
-private let card = CollectionCard(
+private let card = Components.Schemas.CollectionCardResponse(
     collector_number: "1",
     foil: false,
     language_code: "FR",
@@ -142,7 +141,7 @@ struct CollectionEntriesViewModelTests {
     @Test func loadsTheBindersAsMoveTargets() async {
         let api = FakeAPI()
         api.onListBinders = { _ in
-            .ok(.init(body: .json(.init(binders: [Binder(copies: 0, id: "b-1", is_open: false, name: "Bulk")]))))
+            .ok(.init(body: .json(.init(binders: [Components.Schemas.BinderResponse(copies: 0, id: "b-1", is_open: false, name: "Bulk")]))))
         }
         let model = CollectionEntriesViewModel(card: card, api: api)
 
@@ -208,10 +207,5 @@ struct CollectionEntriesViewModelTests {
 
         #expect(!removed)
         #expect(model.writeError == "Cet exemplaire n'existe plus dans ta collection.")
-    }
-
-    @Test func labelsAnEntryByItsBinderAndFinish() {
-        #expect(OwnedEntryLabel.text(for: entry("e", binder: "Trade")) == "Trade")
-        #expect(OwnedEntryLabel.text(for: entry("e", foil: true)) == "Sans binder · Foil")
     }
 }
