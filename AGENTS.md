@@ -17,8 +17,8 @@
 
 ## TOOLING
 
-- Change files with `Edit` and `Write` (`replace_all` for a mechanical rename), never with a shell rewrite
-  (`perl -pi`, `sed -i`, heredoc)
+- Change files with `Edit` and `Write` (`replace_all` for a mechanical rename), never with a shell rewrite (`perl -pi`,
+  `sed -i`, heredoc)
 - Search text with `git grep`, read with `Read`
 - `LSP` is a deferred tool: load it with `ToolSearch` (`select:LSP`) before the first call. Use it for definition,
   references and hover on Rust and `.ts` files, in particular before changing a public signature. It has no rename
@@ -38,6 +38,13 @@
 - Scopes: `web`, `ios`, `backend`, `api`, or a domain scope. Never `frontend`. `prototype` for experiments. No scope
   when the PR touches several clients
 - Details: [CONTRIBUTING.md](CONTRIBUTING.md)
+
+## BRANCHES
+
+- Develop in a worktree unless the user says otherwise
+- History: linear, rebased on `main`, one commit per issue
+- Before pushing, check `docker info`: the pre-push hook needs PostgreSQL. If Docker is down, ask the user to start it
+- Once the PR is open, offer to remove the worktrees and local branches whose PR is merged
 
 ## Architecture
 
