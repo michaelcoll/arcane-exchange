@@ -12,8 +12,9 @@ configFiles:
   Debug: Config/Dev.xcconfig
   Release: Config/Release.xcconfig
 
-# Ranges only: the versions built are pinned in APIClient/Package.resolved, the app's lockfile
-# (see `upgrade-ios` in mise.toml).
+# Ranges only: the versions built are pinned in APIClient/Package.resolved, the app's lockfile,
+# kept up to date by Dependabot and `mise run upgrade`. Any remote package added here must also be
+# declared in APIClient/Package.swift: SwiftPM drops from the lockfile what it does not declare.
 packages:
   # Also ships Clerk and Nuke, as dynamic products (see its Package.swift).
   APIClient:
