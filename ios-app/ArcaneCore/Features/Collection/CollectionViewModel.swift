@@ -1,27 +1,26 @@
 import APIClient
-import ArcaneCore
 import Foundation
 
 /// Backs the Collection tab: one page-by-page `GET /collection` feed, plus the set list from
 /// `GET /collection/stats` that the filter sheet needs.
 @MainActor
 @Observable
-final class CollectionViewModel {
+package final class CollectionViewModel {
     /// Restored from the previous launch, and saved again on every change.
-    var filters: CollectionFilters {
+    package var filters: CollectionFilters {
         didSet { store.save(filters) }
     }
 
     /// The loaded cards and their loading state. Reload it whenever `filters` changes. Implicitly
     /// unwrapped on purpose: its `fetch` reads `filters`, so it is built in `init` once `self` is
     /// usable, and `@Observable` rules out `lazy` and a `let` assigned last.
-    private(set) var paginator: Paginator<CollectionCard>!
+    package private(set) var paginator: Paginator<CollectionCard>!
 
-    private(set) var sets: [SetInfo] = []
+    package private(set) var sets: [SetInfo] = []
 
     /// True while the first load waits for the set list, so the grid shows its spinner rather
     /// than the "no match" screen.
-    private(set) var isWaitingForSets = false
+    package private(set) var isWaitingForSets = false
 
     /// The set-list request in flight. The first load and the view's own `.task` both ask for
     /// the sets: the second caller joins the first request instead of racing it.
@@ -30,7 +29,7 @@ final class CollectionViewModel {
     private let api: any APIProtocol
     private let store: CollectionFiltersStore
 
-    init(api: any APIProtocol, defaults: UserDefaults = .standard) {
+    package init(api: any APIProtocol, defaults: UserDefaults = .standard) {
         self.api = api
         store = CollectionFiltersStore(defaults: defaults)
         filters = store.load()
@@ -45,7 +44,7 @@ final class CollectionViewModel {
     ///
     /// A restored set filter waits for the set list first, so a set no longer owned is dropped
     /// before the grid is asked for — not after an empty first page.
-    func loadInitiallyIfNeeded() async {
+    package func loadInitiallyIfNeeded() async {
         guard paginator.items.isEmpty, paginator.state == .idle, !isWaitingForSets else { return }
         if !filters.sets.isEmpty {
             isWaitingForSets = true
@@ -56,7 +55,7 @@ final class CollectionViewModel {
     }
 
     /// The import may have replaced the whole collection: its sets included.
-    func reloadAfterImport() async {
+    package func reloadAfterImport() async {
         // A list requested before the import finished is stale: wait it out, then ask again.
         await setsLoad?.value
         await loadSets()
@@ -65,7 +64,7 @@ final class CollectionViewModel {
 
     /// Sets owned by the user, for the filter sheet. Loaded once, and silently: the sheet can
     /// live without the list (rarities still work), so a failure here must not blank the grid.
-    func loadSetsIfNeeded() async {
+    package func loadSetsIfNeeded() async {
         guard sets.isEmpty else { return }
         await loadSets()
     }

@@ -1,5 +1,4 @@
 import APIClient
-import ArcaneCore
 import Foundation
 import OpenAPIRuntime
 
@@ -9,8 +8,8 @@ import OpenAPIRuntime
 /// failing outright — mirrors `frontend/app/composables/useCardImportFlow.ts`.
 @MainActor
 @Observable
-final class ImportViewModel {
-    enum Step: Equatable {
+package final class ImportViewModel {
+    package enum Step: Equatable {
         case pick
         case progress
         case done
@@ -18,27 +17,27 @@ final class ImportViewModel {
 
     private let api: any APIProtocol
 
-    init(api: any APIProtocol) {
+    package init(api: any APIProtocol) {
         self.api = api
     }
 
-    private(set) var step: Step = .pick
-    private(set) var status: Components.Schemas.CardImportResponse?
+    package private(set) var step: Step = .pick
+    package private(set) var status: Components.Schemas.CardImportResponse?
     /// French message of the last failure, ready to show.
-    private(set) var loadError: String?
-    private(set) var wasAlreadyRunning = false
+    package private(set) var loadError: String?
+    package private(set) var wasAlreadyRunning = false
 
     /// The import replaces the whole collection: asked first when the player owns a card.
-    var isConfirmingReplace = false
+    package var isConfirmingReplace = false
     /// Set once the import is allowed to go on (empty collection, or replacement confirmed).
-    var isPickingFile = false
+    package var isPickingFile = false
 
     private var pollTask: Task<Void, Never>?
 
     /// Entry point of the "Choisir un fichier" button: a collection with at least one card asks
     /// for a confirmation before the file picker opens, an empty one goes straight to it. When the
     /// collection cannot be read, nothing opens: better no import than a silent overwrite.
-    func requestImport() async {
+    package func requestImport() async {
         loadError = nil
         do {
             let stats = try await api.get_collection_stats().ok.body.json
@@ -52,16 +51,16 @@ final class ImportViewModel {
         }
     }
 
-    func confirmReplace() {
+    package func confirmReplace() {
         isConfirmingReplace = false
         isPickingFile = true
     }
 
-    func cancelReplace() {
+    package func cancelReplace() {
         isConfirmingReplace = false
     }
 
-    var progressFraction: Double {
+    package var progressFraction: Double {
         guard let status, status.total_lines > 0 else {
             return status?.status == "completed" ? 1 : 0
         }
@@ -69,14 +68,14 @@ final class ImportViewModel {
     }
 
     /// Why the followed import failed, translated from its `error_code`; `nil` unless it failed.
-    var failureMessage: String? {
+    package var failureMessage: String? {
         guard let status, status.status == "failed" else { return nil }
         return APIErrorMessages.message(for: status.error_code, fallback: "L'import a échoué.")
     }
 
     /// Cancels any in-flight polling and returns to the picker — called when the sheet is
     /// reopened after a previous run, and when the view disappears.
-    func reset() {
+    package func reset() {
         pollTask?.cancel()
         pollTask = nil
         step = .pick
@@ -87,7 +86,7 @@ final class ImportViewModel {
         isPickingFile = false
     }
 
-    func start(csv: String) async {
+    package func start(csv: String) async {
         loadError = nil
         wasAlreadyRunning = false
 

@@ -1,6 +1,7 @@
 import APIClient
 import Testing
 
+@testable import ArcaneCore
 @testable import ArcaneExchange
 
 /// The set filter on the search results screens: which facet `GET /search/card/sets` is asked

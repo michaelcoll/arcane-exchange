@@ -1,4 +1,5 @@
 import APIClient
+import ArcaneCore
 import SwiftUI
 
 /// No `#Preview` here on purpose: the screen builds a Clerk-backed `accountToolbar()` and hits

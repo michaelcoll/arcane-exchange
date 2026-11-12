@@ -1,73 +1,84 @@
 import APIClient
-import ArcaneCore
 import Foundation
 
 /// Short names for the generated schema types this screen works with — the fully qualified
 /// `Components.Schemas.…` spelling is unreadable inside SwiftUI bodies.
-typealias CollectionCard = Components.Schemas.CollectionCardResponse
-typealias RarityCode = Components.Schemas.RarityCodeParam
-typealias SetInfo = Components.Schemas.SetInfoResponse
-typealias SortField = Components.Schemas.SortByParam
-typealias SortDirection = Components.Schemas.SortDirParam
+package typealias CollectionCard = Components.Schemas.CollectionCardResponse
+package typealias RarityCode = Components.Schemas.RarityCodeParam
+package typealias SetInfo = Components.Schemas.SetInfoResponse
+package typealias SortField = Components.Schemas.SortByParam
+package typealias SortDirection = Components.Schemas.SortDirParam
 
 /// What `GET /collection` is asked for, minus the pagination the view model owns.
 ///
 /// `Hashable` on purpose: the view drives reloads with `.task(id:)`, so any change here — a
 /// rarity toggled, a different sort — re-runs the request without an explicit refresh call.
 /// `Codable` so `CollectionFiltersStore` can keep it across launches.
-struct CollectionFilters: Hashable, Codable {
-    var rarities: Set<RarityCode> = []
-    var sets: Set<String> = []
-    var sortBy: SortField = .trend
-    var sortDir: SortDirection = .desc
+package struct CollectionFilters: Hashable, Codable {
+    package var rarities: Set<RarityCode> = []
+    package var sets: Set<String> = []
+    package var sortBy: SortField = .trend
+    package var sortDir: SortDirection = .desc
 
-    var activeCount: Int {
+    package init(
+        rarities: Set<RarityCode> = [],
+        sets: Set<String> = [],
+        sortBy: SortField = .trend,
+        sortDir: SortDirection = .desc
+    ) {
+        self.rarities = rarities
+        self.sets = sets
+        self.sortBy = sortBy
+        self.sortDir = sortDir
+    }
+
+    package var activeCount: Int {
         rarities.count + sets.count
     }
 
     /// The `rarity` query parameter, in the schema's own order so the same selection always gives
     /// the same URL. `nil` when nothing narrows. Shared by `get_collection` and `search_cards`.
-    var rarityQuery: [RarityCode]? {
+    package var rarityQuery: [RarityCode]? {
         rarities.isEmpty ? nil : RarityCode.allCases.filter(rarities.contains)
     }
 
     /// The `sets` query parameter: the codes sorted, comma-joined. `nil` when nothing narrows.
-    var setsQuery: String? {
+    package var setsQuery: String? {
         sets.isEmpty ? nil : sets.sorted().joined(separator: ",")
     }
 
-    mutating func clearAll() {
+    package mutating func clearAll() {
         rarities = []
         sets = []
     }
 
     /// Forgets the sets the collection no longer holds — a remembered set can outlive a
     /// re-import, and would then blank the grid for no visible reason.
-    mutating func dropSets(notIn owned: [SetInfo]) {
+    package mutating func dropSets(notIn owned: [SetInfo]) {
         sets.formIntersection(owned.map(\.code))
     }
 }
 
 /// Local, device-only memory of the Collection tab's sort and filters, restored at launch and
 /// wiped by `SignOutCleanup`: the sets filtered belong to the previous player's collection.
-struct CollectionFiltersStore {
+package struct CollectionFiltersStore {
     private let memory: DeviceMemory
 
-    init(defaults: UserDefaults = .standard) {
+    package init(defaults: UserDefaults = .standard) {
         memory = DeviceMemory(defaults: defaults)
     }
 
     /// The saved filters, or the defaults when nothing — or nothing readable — was saved.
-    func load() -> CollectionFilters {
+    package func load() -> CollectionFilters {
         memory.read(CollectionFilters.self, for: PlayerKey.collectionFilters) ?? CollectionFilters()
     }
 
-    func save(_ filters: CollectionFilters) {
+    package func save(_ filters: CollectionFilters) {
         memory.write(filters, for: PlayerKey.collectionFilters)
     }
 }
 
-extension RarityCode {
+package extension RarityCode {
     /// Plural labels, as the mockup's filter sheet lists them.
     var label: String {
         switch self {
@@ -80,7 +91,7 @@ extension RarityCode {
     }
 }
 
-extension SortDirection {
+package extension SortDirection {
     /// The chip's arrow, which is the only thing telling the two directions apart at a glance.
     var icon: String {
         switch self {
@@ -97,7 +108,7 @@ extension SortDirection {
     }
 }
 
-extension SortField {
+package extension SortField {
     /// The two sorts that mean something on a collection grid: what a card is worth, and when
     /// it was added. `avg` duplicates `trend`, `set_code`/`language_code` are filter facets.
     static let collectionOptions: [SortField] = [.trend, .added_at]
@@ -113,24 +124,24 @@ extension SortField {
     }
 }
 
-enum CollectionCopy {
-    static func cardCount(_ count: Int) -> String {
+package enum CollectionCopy {
+    package static func cardCount(_ count: Int) -> String {
         count > 1 ? "\(count) cartes" : "\(count) carte"
     }
 
     /// "42 cartes · triées par valeur" — the line above a sorted card grid.
-    static func sortedSummary(total: Int, sortBy: SortField) -> String {
+    package static func sortedSummary(total: Int, sortBy: SortField) -> String {
         "\(cardCount(total)) · triées par \(sortBy.label.lowercased())"
     }
 
     /// "3 joueurs la proposent" / "1 joueur la propose" — the owners-list section header.
-    static func offerCount(_ count: Int) -> String {
+    package static func offerCount(_ count: Int) -> String {
         count > 1 ? "\(count) joueurs la proposent" : "\(count) joueur la propose"
     }
 
     /// "2 disponibles · 1 réservée" — the "Possesseurs" section header, which splits the
     /// copies that can be asked for from those already locked into an accepted trade.
-    static func offerAvailability(available: Int, reserved: Int) -> String {
+    package static func offerAvailability(available: Int, reserved: Int) -> String {
         let head = available > 1 ? "\(available) disponibles" : "\(available) disponible"
         guard reserved > 0 else { return head }
         return reserved > 1 ? "\(head) · \(reserved) réservées" : "\(head) · \(reserved) réservée"
@@ -141,23 +152,23 @@ enum CollectionCopy {
     ///
     /// A zero `total` means the list behind the facet has not loaded yet — the count alone is
     /// still true, "2 sur 0" would not be.
-    static func facetSelection(selected: Int, total: Int, noneSelected: String) -> String {
+    package static func facetSelection(selected: Int, total: Int, noneSelected: String) -> String {
         guard selected > 0 else { return noneSelected }
         return total > 0 ? "\(selected) sur \(total)" : "\(selected)"
     }
 
     /// "Filtres · 3" on the grid's chip, plain "Filtres" while nothing narrows the list.
-    static func filterChip(activeCount: Int) -> String {
+    package static func filterChip(activeCount: Int) -> String {
         activeCount == 0 ? "Filtres" : "Filtres · \(activeCount)"
     }
 }
 
 /// The sets drawer's search field. Purely on-device: `GET /collection/stats` already returned
 /// every set the collection holds, so narrowing that list needs no request.
-enum SetSearch {
+package enum SetSearch {
     /// Keeps the sets whose name or code matches, ignoring case and accents. A blank query
     /// keeps them all.
-    static func filter(_ sets: [SetInfo], matching query: String) -> [SetInfo] {
+    package static func filter(_ sets: [SetInfo], matching query: String) -> [SetInfo] {
         let needle = query.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !needle.isEmpty else { return sets }
         return sets.filter { matches($0.name, needle) || matches($0.code, needle) }

@@ -12,7 +12,7 @@ package final class CardOffersViewModel {
         case failed
     }
 
-    package let card: Components.Schemas.CollectionCardResponse
+    package let card: CollectionCard
     package private(set) var state: State = .loading
     /// Opens a trade from an offer row; the view reads its spinner and error from here.
     package let tradeOpener: CardOfferTrade
@@ -23,7 +23,7 @@ package final class CardOffersViewModel {
 
     private let api: any APIProtocol
 
-    package init(card: Components.Schemas.CollectionCardResponse, api: any APIProtocol) {
+    package init(card: CollectionCard, api: any APIProtocol) {
         self.card = card
         self.api = api
         tradeOpener = CardOfferTrade(card: card, api: api)

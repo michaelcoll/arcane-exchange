@@ -1,3 +1,4 @@
+import ArcaneCore
 import SwiftUI
 
 /// The collection's main scrollable content once cards are loaded: filter rail, summary line,
