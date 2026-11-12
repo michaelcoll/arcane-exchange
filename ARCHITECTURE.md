@@ -190,6 +190,9 @@ ses idiomes plutôt que de la transposer littéralement.
   Deux **widgets d'écran d'accueil** (extension `ArcaneExchangeWidgets/`) reprennent les tuiles de
   l'accueil web : ils appellent l'API eux-mêmes, avec la session Clerk de l'app lue dans un groupe
   Keychain partagé, et gardent leur dernier instantané dans un App Group.
+  Tout ce qui n'est pas un écran (modèles, view models, réseau, config, vues des widgets) vit dans un
+  framework partagé `ArcaneCore`, lié par l'app, l'extension et les tests, qui tournent sans app hôte
+  (ADR 0025, migration en cours).
 
 ## Outillage et déploiement
 
