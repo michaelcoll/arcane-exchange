@@ -36,6 +36,8 @@ rustfmt, clippy, ESLint, Prettier, SwiftLint or SwiftFormat already reports is l
   type name, which already follows `#[serde(rename = "X")]` (`CardOfferResponse` → `CardOffer.ts`).
 - **`Option<Struct>` DTO field**: annotate it `#[schema(value_type = TheStruct, required = false)]`: otherwise utoipa
   emits a schema the Swift generator drops, and the field silently disappears from the iOS client.
+- **Bruno request**: give every new route its request in `collection/<resource>/<action>.bru`, and update it when the
+  route's path, parameters or body change: the collection is how the API is tried by hand.
 
 ## Web
 

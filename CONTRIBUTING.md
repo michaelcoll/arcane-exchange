@@ -58,13 +58,15 @@ gates, notably:
 
 - **`docs/openapi.yml` must be up to date** — after touching a controller or a DTO, run `mise run rebuild-docs` and
   commit the result.
-- **SQL queries are checked at compile time** — after changing one, run `mise run sqlx-prepare` and commit `backend/.sqlx/`.
+- **SQL queries are checked at compile time** — after changing one, run `mise run sqlx-prepare` and commit
+  `backend/.sqlx/`.
 - **ESLint fails on warnings**, and SwiftLint runs in `--strict` mode.
 
 ## Commits and pull requests
 
 - Use [Conventional Commits](https://www.conventionalcommits.org/) (`feat:`, `fix:`, `refactor:`, `docs:`, `build:`,
   `chore:`, …), with an optional scope such as `feat(ios):` or `fix(web):`.
+- Keep a branch's history linear and rebased on `main`, with one commit per issue it closes.
 - Use the same convention for pull request titles: `type(scope): description`, in English, in the imperative mood.
   - `feat` and `fix` are reserved for changes players can see. Everything else (`refactor`, `test`, `docs`, `build`,
     `chore`, `ci`, …) is maintenance.
