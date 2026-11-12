@@ -4,7 +4,6 @@ import Testing
 import UIKit
 
 @testable import ArcaneCore
-@testable import ArcaneExchange
 
 @MainActor
 struct ShowcaseModelTests {
@@ -43,7 +42,12 @@ struct ShowcaseModelTests {
     }
 
     private func model() -> ShowcaseModel {
-        ShowcaseModel(api: platform.api, defaults: defaults, source: platform.source)
+        ShowcaseModel(
+            api: platform.api,
+            defaults: defaults,
+            source: platform.source,
+            apiBaseURL: URL(string: "https://example.com/api/v1")!
+        )
     }
 
     /// A launch after `paths` were shown: the list is remembered, the images are on disk.

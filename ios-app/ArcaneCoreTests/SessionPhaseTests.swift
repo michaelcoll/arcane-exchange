@@ -1,6 +1,6 @@
 import Testing
 
-@testable import ArcaneExchange
+@testable import ArcaneCore
 
 struct SessionPhaseTests {
     /// At launch Clerk has no user until it restores the session: showing the sign-in card

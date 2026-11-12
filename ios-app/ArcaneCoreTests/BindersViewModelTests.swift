@@ -2,7 +2,6 @@ import APIClient
 import Testing
 
 @testable import ArcaneCore
-@testable import ArcaneExchange
 
 private func binder(_ id: String, _ name: String, copies: Int64 = 0, isOpen: Bool = false) -> Binder {
     Binder(copies: copies, id: id, is_open: isOpen, name: name)

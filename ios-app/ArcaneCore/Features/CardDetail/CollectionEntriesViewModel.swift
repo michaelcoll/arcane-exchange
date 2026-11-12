@@ -25,7 +25,7 @@ package final class CollectionEntriesViewModel {
     package private(set) var reservedNormal = 0
     package private(set) var reservedFoil = 0
     /// The player's binders, the targets of a move. Empty until `loadBinders()` answered.
-    package private(set) var binders: [Components.Schemas.BinderResponse] = []
+    package private(set) var binders: [Binder] = []
     package private(set) var isWriting = false
     /// Set when a write was refused: the list is intact. French message, ready to show.
     package var writeError: String?
@@ -63,7 +63,7 @@ package final class CollectionEntriesViewModel {
 
     package func loadBinders() async {
         // A failed read leaves the move with "Sans binder" as its only target.
-        binders = await (try? api.list_binders().ok.body.json.binders) ?? []
+        binders = await api.bindersOrEmpty()
     }
 
     /// Moves `quantity` copies of the entry into the binder, or out of any binder when

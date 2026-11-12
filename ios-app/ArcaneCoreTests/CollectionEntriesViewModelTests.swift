@@ -141,7 +141,7 @@ struct CollectionEntriesViewModelTests {
     @Test func loadsTheBindersAsMoveTargets() async {
         let api = FakeAPI()
         api.onListBinders = { _ in
-            .ok(.init(body: .json(.init(binders: [Components.Schemas.BinderResponse(copies: 0, id: "b-1", is_open: false, name: "Bulk")]))))
+            .ok(.init(body: .json(.init(binders: [Binder(copies: 0, id: "b-1", is_open: false, name: "Bulk")]))))
         }
         let model = CollectionEntriesViewModel(card: card, api: api)
 

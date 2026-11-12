@@ -1,6 +1,6 @@
 import Testing
 
-@testable import ArcaneExchange
+@testable import ArcaneCore
 
 struct ShowcaseWallLayoutTests {
     /// The showcase comes most expensive first: dealing it out keeps the best cards at the top

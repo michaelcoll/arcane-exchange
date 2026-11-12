@@ -2,7 +2,6 @@ import APIClient
 import Testing
 
 @testable import ArcaneCore
-@testable import ArcaneExchange
 
 struct LoginStatsTests {
     @Test func proposedCopiesAreTheCountTheStatsAnswer() async {

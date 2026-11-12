@@ -1,6 +1,6 @@
 import Testing
 
-@testable import ArcaneExchange
+@testable import ArcaneCore
 
 struct LoginCopyTests {
     /// French grouping is a narrow no-break space (U+202F), whatever the device locale.
