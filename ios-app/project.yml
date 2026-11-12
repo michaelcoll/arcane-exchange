@@ -80,7 +80,7 @@ targets:
         product: Nuke
       - package: Nuke
         product: NukeUI
-      - target: ArcaneCore
+      - target: ArcaneExchangeCore
       - target: ArcaneExchangeWidgets
     # Shared with the widget extension (`SharedContainer`): the App Group carries the API base
     # URL and the widgets' last snapshots, the Keychain group the Clerk session. Automatic
@@ -128,13 +128,13 @@ targets:
 
   # Everything that is not a screen (ADR 0025): models, view models, networking, config, the
   # widget views and the color sets. The app embeds it, the widget extension links it, and
-  # `ArcaneCoreTests` runs against it alone, with no host app. Types the other targets see are
+  # `ArcaneExchangeCoreTests` runs against it alone, with no host app. Types the other targets see are
   # `package` (see `SWIFT_PACKAGE_NAME` in Config/Shared.xcconfig).
-  ArcaneCore:
+  ArcaneExchangeCore:
     type: framework
     platform: iOS
     sources:
-      - path: ArcaneCore
+      - path: ArcaneExchangeCore
     settings:
       base:
         GENERATE_INFOPLIST_FILE: YES
@@ -172,7 +172,7 @@ targets:
         DEVELOPMENT_LANGUAGE: fr
     dependencies:
       # Linked, not embedded a second time: the app already carries the framework.
-      - target: ArcaneCore
+      - target: ArcaneExchangeCore
         embed: false
       - package: APIClient
       - package: ClerkKit
@@ -198,13 +198,13 @@ targets:
             localhost:
               NSExceptionAllowsInsecureHTTPLoads: true
 
-  # Tests of the code living in `ArcaneCore/`: no host app (no TEST_HOST / BUNDLE_LOADER), so
+  # Tests of the code living in `ArcaneExchangeCore/`: no host app (no TEST_HOST / BUNDLE_LOADER), so
   # xcodebuild skips installing and launching the app. Same file layout as the framework.
-  ArcaneCoreTests:
+  ArcaneExchangeCoreTests:
     type: bundle.unit-test
     platform: iOS
     sources:
-      - path: ArcaneCoreTests
+      - path: ArcaneExchangeCoreTests
       - path: TestSupport
     settings:
       base:
@@ -212,7 +212,7 @@ targets:
         PRODUCT_BUNDLE_IDENTIFIER: fr.piconsoft.arcane-exchange.core-tests
         TARGETED_DEVICE_FAMILY: "1"
     dependencies:
-      - target: ArcaneCore
+      - target: ArcaneExchangeCore
       - package: APIClient
       - package: OpenAPIRuntime
         product: OpenAPIRuntime
@@ -226,12 +226,12 @@ schemes:
     build:
       targets:
         ArcaneExchange: all
-        ArcaneCoreTests: [test]
+        ArcaneExchangeCoreTests: [test]
     run:
       config: Debug
     test:
       config: Debug
       targets:
-        - ArcaneCoreTests
+        - ArcaneExchangeCoreTests
     archive:
       config: Release

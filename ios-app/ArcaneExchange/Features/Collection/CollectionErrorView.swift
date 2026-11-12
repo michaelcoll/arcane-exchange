@@ -1,4 +1,4 @@
-import ArcaneCore
+import ArcaneExchangeCore
 import SwiftUI
 
 /// Full-screen placeholder shown instead of the grid when the collection failed to load.

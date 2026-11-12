@@ -20,7 +20,7 @@ let package = Package(
                 .product(name: "OpenAPIRuntime", package: "swift-openapi-runtime"),
                 .product(name: "OpenAPIURLSession", package: "swift-openapi-urlsession"),
                 // The generated code names HTTPTypes directly: declared so the dynamic product
-                // Xcode builds once several targets (ArcaneCore, the widgets) link APIClient
+                // Xcode builds once several targets (ArcaneExchangeCore, the widgets) link APIClient
                 // links it too, instead of failing on undefined symbols.
                 .product(name: "HTTPTypes", package: "swift-http-types"),
             ],

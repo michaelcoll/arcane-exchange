@@ -1,4 +1,4 @@
-import ArcaneCore
+import ArcaneExchangeCore
 import SwiftUI
 
 /// One side of the trade, as the mockup's "table de jeu" rail (`tr-sh` + `tr-rail`): a header

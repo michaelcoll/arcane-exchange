@@ -1,4 +1,4 @@
-import ArcaneCore
+import ArcaneExchangeCore
 import SwiftUI
 
 /// Zero to five stars, tapped once. Only shown while the user has not rated yet, so it has no

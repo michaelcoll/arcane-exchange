@@ -1,4 +1,4 @@
-import ArcaneCore
+import ArcaneExchangeCore
 import SwiftUI
 
 /// Trend headlined on the left, low and average as a small aside on the right — the mockup's

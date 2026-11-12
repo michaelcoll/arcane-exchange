@@ -1,5 +1,5 @@
 import APIClient
-import ArcaneCore
+import ArcaneExchangeCore
 import SwiftUI
 
 /// The last step of adding a card: the language, finish, quantity and binder of the copies. A

@@ -1,4 +1,4 @@
-import ArcaneCore
+import ArcaneExchangeCore
 import Charts
 import SwiftUI
 

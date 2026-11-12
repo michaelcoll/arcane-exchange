@@ -1,4 +1,4 @@
-import ArcaneCore
+import ArcaneExchangeCore
 import SwiftUI
 
 /// Sub-drawer "Raretés" of the collection's filter drawer: none picked means no restriction.

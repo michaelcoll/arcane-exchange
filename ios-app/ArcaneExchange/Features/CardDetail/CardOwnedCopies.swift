@@ -1,4 +1,4 @@
-import ArcaneCore
+import ArcaneExchangeCore
 import SwiftUI
 
 /// What the user owns of this card: how many, what they paid, and how the trend has moved

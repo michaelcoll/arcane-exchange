@@ -1,5 +1,5 @@
 import APIClient
-import ArcaneCore
+import ArcaneExchangeCore
 import SwiftUI
 
 /// Where a submitted search lands (`ScrResults` in the mockup): a paginated card grid for a

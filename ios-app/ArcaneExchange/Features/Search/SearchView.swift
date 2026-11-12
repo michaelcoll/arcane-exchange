@@ -1,5 +1,5 @@
 import APIClient
-import ArcaneCore
+import ArcaneExchangeCore
 import SwiftUI
 
 /// Rechercher tab (`ScrSearch` in the iOS mockup): a mode switch — carte / decklist / joueur —

@@ -1,10 +1,10 @@
 import APIClient
-import ArcaneCore
+import ArcaneExchangeCore
 import Foundation
 
 /// A domain of its own per call: no test reads `.standard` or another test's writes.
 func isolatedDefaults() -> UserDefaults {
-    UserDefaults(suiteName: "ArcaneCoreTests.\(UUID().uuidString)")!
+    UserDefaults(suiteName: "ArcaneExchangeCoreTests.\(UUID().uuidString)")!
 }
 
 func card(_ id: String) -> CollectionCard {
