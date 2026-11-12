@@ -25,7 +25,11 @@ enum SharedContainer {
     /// the same name): the entitlement names the group `$(AppIdentifierPrefix)…`, and the code
     /// must pass it in full.
     static var keychainAccessGroup: String? {
-        guard let prefix = Bundle.main.object(forInfoDictionaryKey: "AppIdentifierPrefix") as? String,
+        keychainAccessGroup(info: AppConfig.processInfo)
+    }
+
+    static func keychainAccessGroup(info: [String: Any]) -> String? {
+        guard let prefix = info["AppIdentifierPrefix"] as? String,
               !prefix.isEmpty
         else {
             return nil

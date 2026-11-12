@@ -4,6 +4,7 @@ import Testing
 
 struct ArcaneExchangeTests {
     @Test func appConfigExposesBackendBaseURL() {
-        #expect(AppConfig.apiBaseURL.absoluteString.hasSuffix("/api/v1"))
+        let info = ["API_BASE_URL": "https://ae.piconsoft.fr/api/v1"]
+        #expect(AppConfig.apiBaseURL(info: info).absoluteString.hasSuffix("/api/v1"))
     }
 }

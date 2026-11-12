@@ -20,19 +20,41 @@ struct AppConfigTests {
         #expect(AppConfig.parseBaseURL("http://localhost:8080/api/v1") != nil)
     }
 
+    /// What the build configuration writes into the Info.plist of the app.
+    private static var info: [String: Any] {
+        [
+            "API_BASE_URL": "https://bundled.example.com/api/v1",
+            "CLERK_PUBLISHABLE_KEY": "pk_test_abc",
+            "AppIdentifierPrefix": "TEAM123.",
+        ]
+    }
+
     @Test func settingsOverrideWinsOverTheBundledURL() {
         withAPIBaseURLSetting("https://staging.example.com/api/v1") {
-            #expect(AppConfig.apiBaseURL.absoluteString == "https://staging.example.com/api/v1")
+            #expect(AppConfig.apiBaseURL(info: Self.info).absoluteString == "https://staging.example.com/api/v1")
         }
     }
 
     @Test func aBlankOrBrokenOverrideFallsBackToTheBundledURL() {
         withAPIBaseURLSetting("") {
-            #expect(AppConfig.apiBaseURL == AppConfig.bundledAPIBaseURL)
+            #expect(AppConfig.apiBaseURL(info: Self.info) == AppConfig.bundledAPIBaseURL(info: Self.info))
         }
         withAPIBaseURLSetting("nope") {
-            #expect(AppConfig.apiBaseURL == AppConfig.bundledAPIBaseURL)
+            #expect(AppConfig.apiBaseURL(info: Self.info) == AppConfig.bundledAPIBaseURL(info: Self.info))
         }
+    }
+
+    @Test func theClerkKeyComesFromTheInfoPlist() {
+        #expect(AppConfig.clerkPublishableKey(info: Self.info) == "pk_test_abc")
+    }
+
+    @Test func theKeychainGroupIsTheTeamPrefixPlusTheSharedGroup() {
+        #expect(SharedContainer.keychainAccessGroup(info: Self.info) == "TEAM123.fr.piconsoft.arcane-exchange.shared")
+    }
+
+    @Test func withoutATeamThereIsNoKeychainGroup() {
+        #expect(SharedContainer.keychainAccessGroup(info: ["AppIdentifierPrefix": ""]) == nil)
+        #expect(SharedContainer.keychainAccessGroup(info: [:]) == nil)
     }
 
     /// The widget extension's own defaults are empty: it reads what the app shared.
@@ -44,7 +66,7 @@ struct AppConfigTests {
         defer { shared.set(previousShared, forKey: key) }
 
         withAPIBaseURLSetting(nil) {
-            #expect(AppConfig.apiBaseURL.absoluteString == "https://shared.example.com/api/v1")
+            #expect(AppConfig.apiBaseURL(info: Self.info).absoluteString == "https://shared.example.com/api/v1")
         }
     }
 
@@ -55,13 +77,13 @@ struct AppConfigTests {
         defer { shared.set(previousShared, forKey: key) }
 
         withAPIBaseURLSetting("https://staging.example.com/api/v1") {
-            AppConfig.shareAPIBaseURL()
+            AppConfig.shareAPIBaseURL(info: Self.info)
             #expect(shared.string(forKey: key) == "https://staging.example.com/api/v1")
         }
     }
 
     @Test func bundledURLTargetsTheVersionedAPI() {
-        #expect(AppConfig.bundledAPIBaseURL.absoluteString.hasSuffix("/api/v1"))
+        #expect(AppConfig.bundledAPIBaseURL(info: Self.info).absoluteString.hasSuffix("/api/v1"))
     }
 
     /// `nil` removes the setting for the duration of `body`.

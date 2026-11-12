@@ -21,21 +21,35 @@ enum AppConfig {
     /// The widget extension has no Settings pane: its own defaults are empty, and it reads the
     /// copy the app leaves in the App Group (`shareAPIBaseURL()`).
     static var apiBaseURL: URL {
+        apiBaseURL(info: processInfo)
+    }
+
+    /// The Info.plist of the running process (the app or the widget extension): where the
+    /// build configuration's values land. Tests pass their own dictionary instead.
+    static var processInfo: [String: Any] {
+        Bundle.main.infoDictionary ?? [:]
+    }
+
+    static func apiBaseURL(info: [String: Any]) -> URL {
         let override = UserDefaults.standard.string(forKey: apiBaseURLDefaultsKey)
             ?? SharedContainer.defaults.string(forKey: apiBaseURLDefaultsKey)
-        return override.flatMap(parseBaseURL) ?? bundledAPIBaseURL
+        return override.flatMap(parseBaseURL) ?? bundledAPIBaseURL(info: info)
     }
 
     /// Copies the URL in use into the App Group for the widgets. Called whenever the app comes
     /// to the foreground: the Settings app may have changed it while the app was away.
-    static func shareAPIBaseURL() {
-        SharedContainer.defaults.set(apiBaseURL.absoluteString, forKey: apiBaseURLDefaultsKey)
+    static func shareAPIBaseURL(info: [String: Any] = processInfo) {
+        SharedContainer.defaults.set(apiBaseURL(info: info).absoluteString, forKey: apiBaseURLDefaultsKey)
     }
 
     /// The `API_BASE_URL` of the build configuration, before any Settings override.
     /// Also what the Settings pane shows as its placeholder default.
     static var bundledAPIBaseURL: URL {
-        guard let value = Bundle.main.object(forInfoDictionaryKey: "API_BASE_URL") as? String,
+        bundledAPIBaseURL(info: processInfo)
+    }
+
+    static func bundledAPIBaseURL(info: [String: Any]) -> URL {
+        guard let value = info["API_BASE_URL"] as? String,
               let url = parseBaseURL(value)
         else {
             fatalError("Missing or invalid API_BASE_URL in Info.plist")
@@ -49,7 +63,11 @@ enum AppConfig {
     /// default so the app still builds, and shows `MissingClerkKeyView` instead of signing in;
     /// copy `Config/Local.xcconfig.example` and fill the key in.
     static var clerkPublishableKey: String {
-        guard let value = Bundle.main.object(forInfoDictionaryKey: "CLERK_PUBLISHABLE_KEY") as? String else {
+        clerkPublishableKey(info: processInfo)
+    }
+
+    static func clerkPublishableKey(info: [String: Any]) -> String {
+        guard let value = info["CLERK_PUBLISHABLE_KEY"] as? String else {
             fatalError("Missing CLERK_PUBLISHABLE_KEY in Info.plist")
         }
         return value
@@ -61,10 +79,10 @@ enum AppConfig {
     /// so the Settings app would show an empty field while the app talks to the built-in URL.
     /// Writing the value makes the Settings pane display what is actually in use, and keeps the
     /// xcconfig the single place the default is declared (no `DefaultValue` in `Root.plist`).
-    static func seedSettingsDefaults() {
+    static func seedSettingsDefaults(info: [String: Any] = processInfo) {
         let defaults = UserDefaults.standard
         guard defaults.string(forKey: apiBaseURLDefaultsKey) == nil else { return }
-        defaults.set(bundledAPIBaseURL.absoluteString, forKey: apiBaseURLDefaultsKey)
+        defaults.set(bundledAPIBaseURL(info: info).absoluteString, forKey: apiBaseURLDefaultsKey)
     }
 
     /// Accepts an absolute `http(s)` URL only: `URL(string:)` alone happily parses "localhost"
