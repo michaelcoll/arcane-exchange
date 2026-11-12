@@ -1,6 +1,6 @@
 import Testing
 
-@testable import ArcaneExchange
+@testable import ArcaneCore
 
 struct FoilMathTests {
     @Test func normalizedTiltAppliesGainThenClamps() {

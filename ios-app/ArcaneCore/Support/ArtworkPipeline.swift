@@ -2,7 +2,7 @@ import Nuke
 import UIKit
 
 /// Nuke's shared pipeline, tuned for card artwork.
-enum ArtworkPipeline {
+package enum ArtworkPipeline {
     private static let diskSizeLimit = 512 * 1024 * 1024
 
     /// Card images never change behind their URL — the platform serves them `immutable` for a
@@ -13,13 +13,13 @@ enum ArtworkPipeline {
     ///
     /// On top of that, `ImageCache.shared` keeps *decoded* images, so a tile reappearing on
     /// scroll does not flash its placeholder.
-    static func install() {
+    package static func install() {
         ImagePipeline.shared = ImagePipeline(configuration: configuration)
     }
 
     /// What `install()` sets up. The tests read it here: their host never launches the app,
     /// so `ImagePipeline.shared` keeps Nuke's default there.
-    static var configuration: ImagePipeline.Configuration {
+    package static var configuration: ImagePipeline.Configuration {
         .withDataCache(name: "fr.piconsoft.arcane-exchange.artwork", sizeLimit: diskSizeLimit)
     }
 
@@ -28,33 +28,33 @@ enum ArtworkPipeline {
     /// The prefetcher runs its requests at `.low` priority, two at a time, so warming never
     /// delays the tile on screen; and the pipeline coalesces a prefetch still in flight with
     /// the `LazyImage` request that catches up with it, rather than fetching twice.
-    static func prefetch(_ urls: [URL]) {
+    package static func prefetch(_ urls: [URL]) {
         prefetcher.startPrefetching(with: urls)
     }
 
     /// Drops everything still queued. Worth calling when the pending URLs stop being the ones
     /// the user is about to reach — a filter change replaces the whole result set.
-    static func cancelPrefetching() {
+    package static func cancelPrefetching() {
         prefetcher.stopPrefetching()
     }
 
     /// Downloads to the disk cache, without decoding, artwork a later launch will show: the
     /// same low priority as `prefetch`, on a queue of its own that `cancelPrefetching` leaves
     /// alone.
-    static func warmDiskCache(_ urls: [URL]) {
+    package static func warmDiskCache(_ urls: [URL]) {
         diskWarmer.startPrefetching(with: urls)
     }
 
     /// Loads every image of `urls` and returns, in the same order, the ones that did load, for
     /// a view that must show them all at once rather than one placeholder at a time. Images
     /// already in the disk cache need no network.
-    static func images(for urls: [URL], in pipeline: ImagePipeline = .shared) async -> [UIImage] {
+    package static func images(for urls: [URL], in pipeline: ImagePipeline = .shared) async -> [UIImage] {
         await images(for: urls.map { ImageRequest(url: $0) }, in: pipeline)
     }
 
     /// The images of `urls` the caches already hold, in the same order. Never touches the
     /// network: an image missing from the caches is simply left out.
-    static func cachedImages(for urls: [URL], in pipeline: ImagePipeline = .shared) async -> [UIImage] {
+    package static func cachedImages(for urls: [URL], in pipeline: ImagePipeline = .shared) async -> [UIImage] {
         await images(for: urls.map { ImageRequest(url: $0, options: [.returnCacheDataDontLoad]) }, in: pipeline)
     }
 

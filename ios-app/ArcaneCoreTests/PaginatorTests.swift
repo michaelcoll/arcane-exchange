@@ -2,7 +2,6 @@ import Foundation
 import Testing
 
 @testable import ArcaneCore
-@testable import ArcaneExchange
 
 /// A `fetch` whose responses the test releases by hand, to fix the order they arrive in.
 @MainActor

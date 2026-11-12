@@ -1,6 +1,7 @@
+import APIClient
 import Foundation
 
-extension Paginator where Item == CollectionCard {
+package extension Paginator where Item == Components.Schemas.CollectionCardResponse {
     /// A paginator for a grid of cards: each applied page warms the artwork just below the fold,
     /// and a reload drops whatever was still queued for the previous result set.
     ///
@@ -9,7 +10,7 @@ extension Paginator where Item == CollectionCard {
     static func cardGrid<Owner: AnyObject>(
         owner: Owner,
         fetch: @escaping @MainActor (_ owner: Owner, _ page: Int32, _ pageSize: Int32) async throws
-            -> PaginatorPage<CollectionCard>
+            -> PaginatorPage<Components.Schemas.CollectionCardResponse>
     ) -> Paginator {
         Paginator(
             fetch: { [weak owner] page, pageSize in

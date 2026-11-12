@@ -1,4 +1,5 @@
 import APIClient
+import ArcaneCore
 import Foundation
 
 /// One page-by-page `GET /search/card` feed, scoped either to a free-text query or to a

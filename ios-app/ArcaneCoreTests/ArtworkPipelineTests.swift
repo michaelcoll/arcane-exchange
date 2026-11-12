@@ -3,7 +3,7 @@ import Nuke
 import Testing
 import UIKit
 
-@testable import ArcaneExchange
+@testable import ArcaneCore
 
 /// Asserts on `ArtworkPipeline.configuration`, the one `install()` hands to
 /// `ImagePipeline.shared`: the test host never launches the app (`AppEntryPoint`).
