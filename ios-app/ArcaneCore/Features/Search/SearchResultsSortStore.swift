@@ -7,7 +7,7 @@ import Foundation
 ///
 /// Two independent settings: one for text searches, one for a player's collection — the same
 /// for every player. Only the sort is kept: the filters start empty on each new search.
-struct SearchResultsSortStore {
+package struct SearchResultsSortStore {
     private struct Sort: Codable {
         var sortBy: SortField
         var sortDir: SortDirection
@@ -15,13 +15,13 @@ struct SearchResultsSortStore {
 
     private let memory: DeviceMemory
 
-    init(defaults: UserDefaults = .standard) {
+    package init(defaults: UserDefaults = .standard) {
         memory = DeviceMemory(defaults: defaults)
     }
 
     /// `target`'s defaults with the remembered sort, if any. A remembered criterion the screen
     /// does not offer falls back to the screen's default.
-    func load(for target: SearchResultsRoute.Target) -> CollectionFilters {
+    package func load(for target: SearchResultsRoute.Target) -> CollectionFilters {
         var filters = target.defaultFilters
         guard let key = Self.key(for: target),
               let sort = memory.read(Sort.self, for: key)
@@ -33,7 +33,7 @@ struct SearchResultsSortStore {
         return filters
     }
 
-    func save(_ filters: CollectionFilters, for target: SearchResultsRoute.Target) {
+    package func save(_ filters: CollectionFilters, for target: SearchResultsRoute.Target) {
         guard let key = Self.key(for: target) else { return }
         memory.write(Sort(sortBy: filters.sortBy, sortDir: filters.sortDir), for: key)
     }

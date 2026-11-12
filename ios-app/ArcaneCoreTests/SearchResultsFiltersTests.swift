@@ -2,7 +2,6 @@ import APIClient
 import Testing
 
 @testable import ArcaneCore
-@testable import ArcaneExchange
 
 /// The rarity filter on the search results screens: what `GET /search/card` is asked for, and
 /// which empty state shows when nothing comes back.

@@ -2,7 +2,6 @@ import Foundation
 import Testing
 
 @testable import ArcaneCore
-@testable import ArcaneExchange
 
 /// The sort picked on the search results screens, remembered on the device across launches.
 @MainActor

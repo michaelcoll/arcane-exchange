@@ -6,7 +6,7 @@ import ArcaneCore
 ///
 /// Kept off the views on purpose: a `View` is `@MainActor`, and pure logic hung on one crashes
 /// the non-isolated tests calling it.
-extension SearchResultsRoute.Target {
+package extension SearchResultsRoute.Target {
     /// The criteria the sort menu offers. A text search sorts by value only, because the API
     /// rejects `sort_by=added_at` without `player_username`; a player's collection is a
     /// collection, so it gets the Collection tab's two.
