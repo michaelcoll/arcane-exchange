@@ -50,6 +50,18 @@ updates:
       interval: "daily"
     open-pull-requests-limit: 5
 
+  # APIClient's Package.resolved is the iOS app's lockfile. Its Package.swift declares every remote
+  # package of the app (Clerk and Nuke included), so SwiftPM's update keeps the whole graph.
+  - package-ecosystem: "swift"
+    directory: "/ios-app/APIClient"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 10
+    groups:
+      swift-dependencies:
+        patterns:
+          - "*"
+
   - package-ecosystem: "npm"
     directory: "/frontend"
     schedule:

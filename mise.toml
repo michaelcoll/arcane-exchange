@@ -212,18 +212,10 @@ run = "pnpm update"
 hide = true
 
 [tasks.upgrade-ios]
-# APIClient's Package.resolved is also the app's lockfile. `swift package update` drops the app-only
-# packages from it (those only in project.yml) and xcodebuild brings them back. It needs fresh
-# package state, otherwise it restores their previous versions.
+# APIClient's Package.resolved is also the app's lockfile. Its Package.swift declares every remote
+# package of project.yml, so SwiftPM pins the whole graph, as Dependabot does.
 dir = "ios-app"
-depends = ["generate-ios"]
-run = """
-tmp=$(mktemp -d)
-swift package --package-path APIClient update
-xcodebuild -resolvePackageDependencies -project ArcaneExchange.xcodeproj -scheme ArcaneExchange \
-  -derivedDataPath "$tmp/dd" -clonedSourcePackagesDirPath "$tmp/spm"
-rm -rf "$tmp"
-"""
+run = "swift package --package-path APIClient update"
 hide = true
 
 [tasks.upgrade]
