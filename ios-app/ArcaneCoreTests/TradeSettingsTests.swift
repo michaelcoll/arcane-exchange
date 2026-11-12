@@ -1,6 +1,6 @@
 import Testing
 
-@testable import ArcaneExchange
+@testable import ArcaneCore
 
 struct TradeSettingsTests {
     private func filter(_ rarity: String, isOpen: Bool, copies: Int64, proposed: Int64, kept: Int32 = 0) -> RarityFilter {

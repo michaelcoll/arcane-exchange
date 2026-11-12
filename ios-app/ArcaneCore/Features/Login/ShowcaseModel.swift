@@ -1,5 +1,4 @@
 import APIClient
-import ArcaneCore
 import Foundation
 import Observation
 import UIKit
@@ -11,42 +10,50 @@ import UIKit
 /// leaves `images` empty and the login screen keeps its plain background.
 @MainActor
 @Observable
-final class ShowcaseModel {
+package final class ShowcaseModel {
     /// The cards of the wall, most expensive first. Empty until a showcase can be shown.
-    private(set) var images: [UIImage] = []
+    package private(set) var images: [UIImage] = []
 
     /// Whether the wall fades in: one whose images came over the network does, one restored
     /// from the disk cache is there at once.
-    private(set) var fadesIn = false
+    package private(set) var fadesIn = false
 
     private let api: any APIProtocol
     /// The image paths of the last showcase fetched are public data, kept across sign-outs
     /// (`DeviceKey.showcaseImagePaths`).
     private let memory: DeviceMemory
     private let source: ShowcaseSource
+    /// Read at each use: the base URL is editable at runtime.
+    private let apiBaseURL: () -> URL
 
-    init(api: any APIProtocol, defaults: UserDefaults = .standard, source: ShowcaseSource = .live) {
+    package init(
+        api: any APIProtocol,
+        defaults: UserDefaults = .standard,
+        source: ShowcaseSource = .live,
+        apiBaseURL: @escaping @autoclosure () -> URL = AppConfig.apiBaseURL
+    ) {
         self.api = api
         memory = DeviceMemory(defaults: defaults)
         self.source = source
+        self.apiBaseURL = apiBaseURL
     }
 
     /// Shows the showcase of the previous launch, as far as its images are in the artwork
     /// caches: the wall is there at once, and nothing is downloaded — this runs while the
     /// session is still loading, for a player who may turn out to be signed in.
-    func restore() async {
+    package func restore() async {
         guard images.isEmpty else { return }
-        let urls = Self.urls(memory.read([String].self, for: DeviceKey.showcaseImagePaths) ?? [])
+        let urls = urls(memory.read([String].self, for: DeviceKey.showcaseImagePaths) ?? [])
         await show(source.cachedImages(urls), fadesIn: false)
     }
 
     /// Fetches the current showcase and keeps it for the next launch. It goes on screen only
     /// when no wall is shown yet: a wall already drifting is not swapped under the player's
     /// eyes, and the new images are only downloaded to disk, for the next launch to restore.
-    func refresh() async {
+    package func refresh() async {
         guard let paths = await currentPaths() else { return }
         memory.write(paths, for: DeviceKey.showcaseImagePaths)
-        let urls = Self.urls(paths)
+        let urls = urls(paths)
         guard images.isEmpty else {
             source.warm(urls)
             return
@@ -66,21 +73,21 @@ final class ShowcaseModel {
         images = loaded
     }
 
-    private static func urls(_ paths: [String]) -> [URL] {
-        paths.compactMap { CardArtwork.url(imagePath: $0) }
+    private func urls(_ paths: [String]) -> [URL] {
+        paths.compactMap { CardArtwork.url(imagePath: $0, apiBaseURL: apiBaseURL()) }
     }
 }
 
 /// Where the images of the showcase come from: the artwork pipeline.
-struct ShowcaseSource {
+package struct ShowcaseSource {
     /// The images the artwork caches already hold, without any network.
-    var cachedImages: @MainActor ([URL]) async -> [UIImage]
+    package var cachedImages: @MainActor ([URL]) async -> [UIImage]
     /// The images, downloaded when the caches do not hold them.
-    var images: @MainActor ([URL]) async -> [UIImage]
+    package var images: @MainActor ([URL]) async -> [UIImage]
     /// Downloads to the disk cache, in the background, the images a later launch will show.
-    var warm: @MainActor ([URL]) -> Void
+    package var warm: @MainActor ([URL]) -> Void
 
-    static let live = ShowcaseSource(
+    package static let live = ShowcaseSource(
         cachedImages: { await ArtworkPipeline.cachedImages(for: $0) },
         images: { await ArtworkPipeline.images(for: $0) },
         warm: { ArtworkPipeline.warmDiskCache($0) }

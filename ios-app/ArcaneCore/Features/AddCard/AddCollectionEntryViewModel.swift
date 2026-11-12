@@ -18,7 +18,7 @@ package final class AddCollectionEntryViewModel {
     package var binderID: String?
 
     /// The player's binders. Empty until `loadBinders()` answered.
-    package private(set) var binders: [Components.Schemas.BinderResponse] = []
+    package private(set) var binders: [Binder] = []
     package private(set) var isWriting = false
     /// Set when the addition was refused. French message, ready to show.
     package var writeError: String?
@@ -32,7 +32,7 @@ package final class AddCollectionEntryViewModel {
 
     package func loadBinders() async {
         // A failed read leaves "Sans binder" as the only choice.
-        binders = await (try? api.list_binders().ok.body.json.binders) ?? []
+        binders = await api.bindersOrEmpty()
     }
 
     /// Returns whether the copies were added, so the form can close.
