@@ -3,7 +3,6 @@ import Foundation
 import Testing
 
 @testable import ArcaneCore
-@testable import ArcaneExchange
 
 private func importStatus(
     _ id: String = "imp-1",

@@ -1,3 +1,4 @@
+import ArcaneCore
 import SwiftUI
 
 /// Sub-drawer "Sets" of the collection's filter drawer: the sets actually present in the

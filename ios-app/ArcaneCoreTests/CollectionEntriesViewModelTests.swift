@@ -3,7 +3,7 @@ import Testing
 
 @testable import ArcaneCore
 
-private let card = Components.Schemas.CollectionCardResponse(
+private let card = CollectionCard(
     collector_number: "1",
     foil: false,
     language_code: "FR",

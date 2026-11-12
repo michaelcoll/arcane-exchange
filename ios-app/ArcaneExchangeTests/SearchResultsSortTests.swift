@@ -1,6 +1,7 @@
 import APIClient
 import Testing
 
+@testable import ArcaneCore
 @testable import ArcaneExchange
 
 /// What `GET /search/card` is asked for, depending on the results screen and the sort picked.

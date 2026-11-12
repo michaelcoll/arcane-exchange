@@ -2,7 +2,6 @@ import Foundation
 import Testing
 
 @testable import ArcaneCore
-@testable import ArcaneExchange
 
 struct CollectionFiltersTests {
     @Test func countsEveryActiveFacet() {

@@ -1,4 +1,5 @@
 import APIClient
+import ArcaneCore
 import Foundation
 
 /// A domain of its own per call: no test reads `.standard` or another test's writes.
@@ -6,8 +7,8 @@ func isolatedDefaults() -> UserDefaults {
     UserDefaults(suiteName: "ArcaneExchangeTests.\(UUID().uuidString)")!
 }
 
-func card(_ id: String) -> Components.Schemas.CollectionCardResponse {
-    Components.Schemas.CollectionCardResponse(
+func card(_ id: String) -> CollectionCard {
+    CollectionCard(
         collector_number: "001",
         foil: false,
         image_url: nil,
@@ -20,8 +21,8 @@ func card(_ id: String) -> Components.Schemas.CollectionCardResponse {
     )
 }
 
-func testCard() -> Components.Schemas.CollectionCardResponse {
-    Components.Schemas.CollectionCardResponse(
+func testCard() -> CollectionCard {
+    CollectionCard(
         collector_number: "243",
         foil: false,
         language_code: "fr",

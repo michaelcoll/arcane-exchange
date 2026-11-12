@@ -17,10 +17,10 @@ package final class CardOfferTrade {
     /// Set when opening a trade is refused; the view shows it in an alert and clears it.
     package var startError: String?
 
-    private let card: Components.Schemas.CollectionCardResponse
+    private let card: CollectionCard
     private let api: any APIProtocol
 
-    package init(card: Components.Schemas.CollectionCardResponse, api: any APIProtocol) {
+    package init(card: CollectionCard, api: any APIProtocol) {
         self.card = card
         self.api = api
     }

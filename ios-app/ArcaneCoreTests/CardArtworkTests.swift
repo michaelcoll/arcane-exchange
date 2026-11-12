@@ -39,8 +39,8 @@ struct CardArtworkTests {
         #expect(CardArtwork.urls(for: [], apiBaseURL: apiBaseURL).isEmpty)
     }
 
-    private func card(imageURL: String?) -> Components.Schemas.CollectionCardResponse {
-        Components.Schemas.CollectionCardResponse(
+    private func card(imageURL: String?) -> CollectionCard {
+        CollectionCard(
             collector_number: "1",
             foil: false,
             image_url: imageURL,

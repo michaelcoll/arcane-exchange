@@ -9,10 +9,10 @@ package typealias CollectionEntryDetail = Components.Schemas.CollectionEntryDeta
 @MainActor
 @Observable
 package final class CollectionEntriesViewModel {
-    private let card: Components.Schemas.CollectionCardResponse
+    private let card: CollectionCard
     private let api: any APIProtocol
 
-    package init(card: Components.Schemas.CollectionCardResponse, api: any APIProtocol) {
+    package init(card: CollectionCard, api: any APIProtocol) {
         self.card = card
         self.api = api
     }

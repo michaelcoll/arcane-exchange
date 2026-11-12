@@ -27,7 +27,7 @@ package final class CardDetailViewModel {
     /// How many offers the card screen shows before "Voir tous les possesseurs".
     package static let previewCount = 3
 
-    package let card: Components.Schemas.CollectionCardResponse
+    package let card: CollectionCard
     package private(set) var history: HistoryState = .loading
     package private(set) var offers: OffersState = .loading
     /// Opens a trade from an offer row; the view reads its spinner and error from here.
@@ -40,7 +40,7 @@ package final class CardDetailViewModel {
 
     private let api: any APIProtocol
 
-    package init(card: Components.Schemas.CollectionCardResponse, api: any APIProtocol) {
+    package init(card: CollectionCard, api: any APIProtocol) {
         self.card = card
         self.api = api
         tradeOpener = CardOfferTrade(card: card, api: api)

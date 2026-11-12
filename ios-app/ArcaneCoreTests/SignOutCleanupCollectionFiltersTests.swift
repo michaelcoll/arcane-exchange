@@ -2,7 +2,6 @@ import Foundation
 import Testing
 
 @testable import ArcaneCore
-@testable import ArcaneExchange
 
 struct SignOutCleanupCollectionFiltersTests {
     private static func defaultsWithSavedFilters() -> UserDefaults {

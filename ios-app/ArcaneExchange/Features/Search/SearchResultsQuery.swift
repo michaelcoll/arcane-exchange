@@ -1,4 +1,5 @@
 import APIClient
+import ArcaneCore
 
 /// How each search results screen sorts, and what it asks `GET /search/card` and
 /// `GET /search/card/sets` for.

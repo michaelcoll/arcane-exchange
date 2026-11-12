@@ -1,3 +1,5 @@
+import ArcaneCore
+
 /// What a search results screen says when nothing comes back.
 ///
 /// Kept off the views on purpose: a `View` is `@MainActor`, and pure logic hung on one crashes
