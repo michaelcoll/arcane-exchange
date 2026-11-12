@@ -35,8 +35,9 @@ struct PaletteTests {
     @Test func theSystemAccentIsThePrimaryRole() throws {
         // `ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME` in `project.yml`: default tints,
         // prominent buttons and toggles must follow `Palette.primary`.
-        let accent = try #require(Bundle.main.object(forInfoDictionaryKey: "NSAccentColorName") as? String)
-        #expect(accent == "Primary")
+        // Read from the manifest: the test process has no app Info.plist to ask.
+        let manifest = try String(contentsOfFile: Self.projectManifestPath, encoding: .utf8)
+        #expect(manifest.contains("ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: Primary"))
     }
 
     @Test func rarityTintsResolveToTheirAssets() {
@@ -45,8 +46,17 @@ struct PaletteTests {
         #expect(RarityColor.tint(forRarityCode: "?") == .secondary)
     }
 
+    /// The bundle holding the color sets: the one that ships the app's own code, whatever
+    /// process runs the tests.
+    private static let assetBundle = Bundle(for: TiltProvider.self)
+
+    /// `ios-app/project.yml`, found from this file (the simulator reads the Mac's filesystem).
+    private nonisolated static let projectManifestPath = URL(fileURLWithPath: #filePath)
+        .deletingLastPathComponent().deletingLastPathComponent()
+        .appendingPathComponent("project.yml").path
+
     private static func hex(of name: String, in style: UIUserInterfaceStyle) throws -> UInt32 {
-        let color = try #require(UIColor(named: name, in: .main, compatibleWith: nil))
+        let color = try #require(UIColor(named: name, in: Self.assetBundle, compatibleWith: nil))
         let resolved = color.resolvedColor(with: UITraitCollection(userInterfaceStyle: style))
         var red: CGFloat = 0, green: CGFloat = 0, blue: CGFloat = 0, alpha: CGFloat = 0
         #expect(resolved.getRed(&red, green: &green, blue: &blue, alpha: &alpha))
