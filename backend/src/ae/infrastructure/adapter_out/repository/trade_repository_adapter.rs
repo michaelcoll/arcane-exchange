@@ -11,6 +11,7 @@ use crate::domain::user::UserId;
 use crate::infrastructure::adapter_out::repository::entities::{
     TradeCardDetailEntity, TradeCardEntity, TradeEntity, TradeSummaryEntity,
 };
+use crate::infrastructure::adapter_out::repository::trade_transfer::transfer_trade_cards;
 use async_trait::async_trait;
 use sqlx::{PgExecutor, Pool, Postgres};
 
@@ -544,6 +545,12 @@ impl TradeRepository for TradeRepositoryAdapter {
             )
             .execute(&mut *tx)
             .await?;
+        }
+
+        // The cards change collection with the status: a failed Transfer rolls the transition
+        // back with it.
+        if transition.completes_trade() {
+            transfer_trade_cards(&mut tx, transition).await?;
         }
 
         tx.commit().await?;

@@ -65,7 +65,8 @@ code : [CODING_STANDARDS.md](../CODING_STANDARDS.md) › iOS.
 - The app reloads the widgets itself (`HomeWidgetReload`) after anything that changes what they show;
   `HomeWidgetSchedule` only covers the app being closed. The authenticated API client does it for every
   mutation that changes what a widget shows, from the operation table of `WidgetsReloadMiddleware` (any
-  HTTP response, an error included). Rating a trade and the trade settings are deliberately absent: no
+  HTTP response, an error included; an operation can map to several widgets: confirming a trade reloads `trades` and
+  `collection`). Rating a trade and the trade settings are deliberately absent: no
   widget shows them. A new mutation that changes what a widget shows adds a line to that table. View
   models do not call `HomeWidgetReload`, with one named exception: `ImportViewModel` at the end of an
   import (not a mutation: the server answers 202 first). `reloadAll` stays for sign-in, sign-out and the

@@ -17,7 +17,7 @@ package enum APIClientFactory {
     ///
     /// Any response to a mutation listed in the operation table of the widgets reload middleware
     /// (an error included: a 409 means the trade moved on) calls `onWidgetsChanged` with the widget
-    /// to reload. Only the app passes `HomeWidgetReload.reload`; the default does nothing.
+    /// to reload (once per widget it touches). Only the app passes `HomeWidgetReload.reload`; the default does nothing.
     package static func authenticated(
         onUnauthorized: @escaping @Sendable () async -> Void,
         onWidgetsChanged: @escaping @Sendable (HomeWidgetKind) -> Void = { _ in },
@@ -88,22 +88,24 @@ private struct CurrentBaseURLMiddleware: ClientMiddleware {
 /// whatever the status. A transport failure or a cancellation reloads nothing. An operation
 /// absent from the table (the other mutations, every read) reloads nothing.
 private struct WidgetsReloadMiddleware: ClientMiddleware {
-    /// The widget each operation touches. Rating a trade, the import (it answers 202 before
-    /// the collection changes) and the trade settings touch none.
-    static let table: [String: HomeWidgetKind] = [
-        Operations.create_trade.id: .trades,
-        Operations.add_trade_card.id: .trades,
-        Operations.remove_trade_card.id: .trades,
-        Operations.accept_trade.id: .trades,
-        Operations.confirm_trade.id: .trades,
-        Operations.abandon_trade.id: .trades,
-        Operations.create_binder.id: .collection,
-        Operations.rename_binder.id: .collection,
-        Operations.delete_binder.id: .collection,
-        Operations.add_collection_entry.id: .collection,
-        Operations.update_collection_entry.id: .collection,
-        Operations.move_collection_entry.id: .collection,
-        Operations.remove_collection_entry.id: .collection
+    /// The widgets each operation touches. Confirming a trade touches both: the last confirmation
+    /// completes the trade and moves its cards between collections, and the response does not
+    /// say whether it did (a reload that changes nothing is harmless). Rating a trade, the import
+    /// (it answers 202 before the collection changes) and the trade settings touch none.
+    static let table: [String: [HomeWidgetKind]] = [
+        Operations.create_trade.id: [.trades],
+        Operations.add_trade_card.id: [.trades],
+        Operations.remove_trade_card.id: [.trades],
+        Operations.accept_trade.id: [.trades],
+        Operations.confirm_trade.id: [.trades, .collection],
+        Operations.abandon_trade.id: [.trades],
+        Operations.create_binder.id: [.collection],
+        Operations.rename_binder.id: [.collection],
+        Operations.delete_binder.id: [.collection],
+        Operations.add_collection_entry.id: [.collection],
+        Operations.update_collection_entry.id: [.collection],
+        Operations.move_collection_entry.id: [.collection],
+        Operations.remove_collection_entry.id: [.collection]
     ]
 
     let onWidgetsChanged: @Sendable (HomeWidgetKind) -> Void
@@ -116,7 +118,7 @@ private struct WidgetsReloadMiddleware: ClientMiddleware {
         next: @Sendable (HTTPRequest, HTTPBody?, URL) async throws -> (HTTPResponse, HTTPBody?)
     ) async throws -> (HTTPResponse, HTTPBody?) {
         let result = try await next(request, body, baseURL)
-        if let kind = Self.table[operationID] {
+        for kind in Self.table[operationID] ?? [] {
             onWidgetsChanged(kind)
         }
         return result

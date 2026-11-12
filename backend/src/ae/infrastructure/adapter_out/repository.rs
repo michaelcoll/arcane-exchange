@@ -19,6 +19,7 @@ pub mod set_names_repository_adapter;
 pub mod showcase_repository_adapter;
 pub mod stats_repository_adapter;
 pub mod trade_repository_adapter;
+mod trade_transfer;
 pub mod trading_binders_repository_adapter;
 pub mod user_repository_adapter;
 

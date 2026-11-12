@@ -1,0 +1,29 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO binder (user_id, name) VALUES ($1, $2)\n            ON CONFLICT (user_id, name) DO UPDATE SET name = EXCLUDED.name\n            RETURNING id",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "binder",
+            "name": "id"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Varchar",
+        "Varchar"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "e9022d48eb97c80bf5ee99531a83b2a0fb99450b1f35df5f4e6cd73b1141676c"
+}

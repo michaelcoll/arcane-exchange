@@ -25,17 +25,17 @@ impl CollectionEntryRepositoryAdapter {
 }
 
 /// An entry of the card being edited, read under lock.
-struct LockedEntry {
-    id: Uuid,
-    foil: bool,
-    binder_id: Option<Uuid>,
+pub(super) struct LockedEntry {
+    pub(super) id: Uuid,
+    pub(super) foil: bool,
+    pub(super) binder_id: Option<Uuid>,
     quantity: u32,
     purchase_price: Option<u32>,
     added_at: DateTime<Utc>,
 }
 
 impl LockedEntry {
-    fn copies(&self) -> EntryCopies {
+    pub(super) fn copies(&self) -> EntryCopies {
         EntryCopies {
             quantity: self.quantity,
             purchase_price: self.purchase_price,
@@ -67,10 +67,19 @@ impl LockedCard {
 
     /// The entry of the finish and binder, if there is one.
     fn find(&self, foil: bool, binder_id: Option<Uuid>) -> Option<&LockedEntry> {
-        self.entries
-            .iter()
-            .find(|entry| entry.foil == foil && entry.binder_id == binder_id)
+        find_entry(&self.entries, foil, binder_id)
     }
+}
+
+/// The entry of the finish and binder among `entries`, if there is one.
+pub(super) fn find_entry(
+    entries: &[LockedEntry],
+    foil: bool,
+    binder_id: Option<Uuid>,
+) -> Option<&LockedEntry> {
+    entries
+        .iter()
+        .find(|entry| entry.foil == foil && entry.binder_id == binder_id)
 }
 
 fn corrupt(what: &str) -> AppError {
@@ -125,7 +134,7 @@ fn card_columns(card_id: &CardId) -> (String, &str, String) {
 /// locks, shared, before it commits the reservation (`apply_transition`): an edit and an
 /// acceptance of a Trade holding the card never interleave, so the reservation guard reads what
 /// the edit then writes against.
-async fn lock_card_entries(
+pub(super) async fn lock_card_entries(
     conn: &mut PgConnection,
     user_id: &UserId,
     card_id: &CardId,
@@ -310,7 +319,7 @@ async fn card_of_entry(
     )?)
 }
 
-async fn write_copies(
+pub(super) async fn write_copies(
     conn: &mut PgConnection,
     id: Uuid,
     copies: &EntryCopies,
@@ -327,7 +336,7 @@ async fn write_copies(
     Ok(())
 }
 
-async fn insert_entry(
+pub(super) async fn insert_entry(
     conn: &mut PgConnection,
     user_id: &UserId,
     card_id: &CardId,

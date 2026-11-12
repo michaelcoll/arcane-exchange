@@ -119,6 +119,12 @@ impl TradeTransition {
     pub fn reserves_cards(&self) -> bool {
         self.from.status == TradeStatus::Pending && self.next.status == TradeStatus::OneAccepted
     }
+
+    /// The second confirmation of the physical exchange: the trade's cards change collection
+    /// (the Transfer).
+    pub fn completes_trade(&self) -> bool {
+        self.from.status == TradeStatus::FullyAccepted && self.next.status == TradeStatus::Completed
+    }
 }
 
 /// One party's paired columns, borrowed for writing.
@@ -730,11 +736,21 @@ mod tests {
         for party in BOTH_PARTIES {
             let trade = with_confirmed(make_trade(TradeStatus::FullyAccepted), party.other());
 
-            let next = trade.confirm(party).unwrap().next;
+            let transition = trade.confirm(party).unwrap();
 
-            assert_eq!(next.status, TradeStatus::Completed);
-            assert!(next.party_state(party).confirmed);
+            assert_eq!(transition.next.status, TradeStatus::Completed);
+            assert!(transition.next.party_state(party).confirmed);
+            assert!(transition.completes_trade());
         }
+    }
+
+    #[test]
+    fn only_the_second_confirmation_completes_the_trade() {
+        let first = make_trade(TradeStatus::FullyAccepted)
+            .confirm(Party::Initiator)
+            .unwrap();
+
+        assert!(!first.completes_trade());
     }
 
     #[test]

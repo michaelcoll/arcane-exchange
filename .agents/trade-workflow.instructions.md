@@ -82,6 +82,23 @@ optional and mutual.
 - Each party confirms "Trade completed" in the app.
 - Status → `COMPLETED` once **both** have confirmed.
 - Both parties receive a notification: **"Trade confirmed by both parties."**
+- The **Transfer** happens in the same transaction as the transition to `COMPLETED`: a stale transition writes and
+  transfers nothing, and a failed Transfer rolls the transition back. The first confirmation (the status stays
+  `FULLY_ACCEPTED`) transfers nothing. Every card of the trade, on both sides, leaves its owner's collection and
+  enters the other party's:
+  - **Withdrawal** (giver), for the card, finish and language committed: first the entries of the binders open to
+    trade, by binder name; then the entries of the other binders, by binder name; then the entry without binder. An
+    emptied entry is deleted. The player's visibility plays no part: a public player follows the same order. The
+    entries are locked in the same order as a collection entry edit.
+  - **Shortfall**: a giver who holds less than the committed quantity (after an import, for instance) loses all they
+    still hold of that copy, without error, and the trade is `COMPLETED` all the same.
+  - **Reception** (receiver): always the full committed quantity, whatever was withdrawn. The cards go into the
+    receiver's binder named `trades`, reused if it exists, otherwise created closed to trade. They keep their finish
+    and language, have no purchase price and take the Transfer date as added date. They merge with an existing entry
+    of the same card and finish in that binder by the collection merge rule (quantities add up, present purchase
+    prices are averaged, earliest added date), the quantity capped at 255.
+- A refresh of `mv_card_prices` is then requested, without waiting for it: collection, search and offer reads may lag
+  by a few seconds. The proposed quantity (`v_tradable_entry`) is a plain view and reflects the withdrawal at once.
 
 ### 9. Rating (optional, status: `CLOSED`)
 
