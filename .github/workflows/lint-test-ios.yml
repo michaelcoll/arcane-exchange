@@ -86,7 +86,8 @@ jobs:
 
       # Saves the ~4 min spent compiling the packages (Clerk, Nuke, PhoneNumberKit, OpenAPI…).
       # The key holds everything that can make a compiled package stale: the pinned versions, the
-      # Xcode build and the runner image. No restore-keys: a partial match would restore products
+      # Xcode build, the runner image, and the manifests that decide how each package is linked
+      # (static or dynamic): a build over products linked another way fails on undefined symbols. No restore-keys: a partial match would restore products
       # built by another compiler or from other sources, and an incremental build trusts them.
       # Sources in the repo are checked out with fresh mtimes and always rebuild: the app, and the
       # local APIClient package with its OpenAPI generation.
@@ -97,7 +98,7 @@ jobs:
             ios-app/DerivedData
             !ios-app/DerivedData/Logs
             !ios-app/DerivedData/Index.noindex
-          key: deriveddata-${{ steps.toolchain.outputs.key }}-${{ hashFiles('ios-app/APIClient/Package.resolved') }}
+          key: deriveddata-${{ steps.toolchain.outputs.key }}-${{ hashFiles('ios-app/APIClient/Package.resolved', 'ios-app/APIClient/Package.swift', 'ios-app/project.yml') }}
 
       # -disableAutomaticPackageResolution builds the pinned versions or fails: a Package.resolved
       # out of date with project.yml breaks the build instead of being silently re-resolved.
@@ -118,6 +119,13 @@ jobs:
             -skipPackagePluginValidation \
             -resultBundlePath "$RUNNER_TEMP/TestResults.xcresult" test \
             | xcbeautify --renderer github-actions
+
+      # The tests run with no host app: a library linked twice (its singletons configured in one
+      # copy, read in the other) or not embedded (found in DerivedData by the simulator only)
+      # only shows at launch. The Test step built the app anyway.
+      - name: Check how the app links its libraries
+        working-directory: ios-app
+        run: scripts/check-app-linking.sh DerivedData/Build/Products/Debug-iphonesimulator/ArcaneExchange.app
 
       # A crash of the test process leaves nothing readable in the log ("Test crashed with
       # signal trap before establishing connection"): its stack trace is only in the result

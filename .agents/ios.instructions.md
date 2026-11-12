@@ -46,8 +46,14 @@ code : [CODING_STANDARDS.md](../CODING_STANDARDS.md) › iOS.
 
 - The `ArcaneExchangeWidgets` extension holds only its entry point and `WidgetSession`: everything else it runs lives
   in the `ArcaneExchangeCore` framework (ADR 0025), which it links and the app embeds. A type the widgets need goes into
-  `ArcaneExchangeCore/`, with no `sources` line to keep. Keep `ArcaneExchangeCore` free of `NukeUI`, `ClerkKitUI` and screens, so
-  the extension never embeds them.
+  `ArcaneExchangeCore/`, with no `sources` line to keep. Keep `ArcaneExchangeCore` free of screens and of `NukeUI` /
+  `ClerkKitUI` imports.
+- Clerk and Nuke are linked through `APIClient`'s dynamic products `ClerkKitShared` and `NukeShared` (plus `NukeUI`
+  in the app), never as plain `ClerkKit` / `Nuke` products: Xcode would link the UI libraries statically into the
+  app with a second copy of each core library, whose singletons the framework never configures (`Clerk.shared`
+  traps at launch). The app embeds them (`embed: true`): unlike automatic products, an explicitly dynamic product
+  is not copied otherwise, and only the simulator finds it in DerivedData. `mise run check-ios-linking` (also in
+  CI) fails when a module is linked twice or an `@rpath` library is missing from the bundle.
 - The widget views live in `ArcaneExchangeCore/HomeWidgets/`, not in the extension, so tests and previews can render them.
 - Everything shared with the app is in `SharedContainer`: the App Group (API base URL, last snapshots)
   and the Keychain group holding the Clerk session. Both are declared in the two targets'

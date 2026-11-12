@@ -213,8 +213,8 @@ hide = true
 
 [tasks.upgrade-ios]
 # APIClient's Package.resolved is also the app's lockfile. `swift package update` drops the app-only
-# packages from it (Clerk, Nuke) and xcodebuild brings them back. It needs fresh package state,
-# otherwise it restores their previous versions.
+# packages from it (those only in project.yml) and xcodebuild brings them back. It needs fresh
+# package state, otherwise it restores their previous versions.
 dir = "ios-app"
 depends = ["generate-ios"]
 run = """
@@ -290,6 +290,16 @@ dir = "ios-app"
 depends = ["generate-ios"]
 run = "xcodebuild -scheme ArcaneExchange -configuration Debug -destination 'generic/platform=iOS Simulator' build"
 alias = ["bi"]
+
+[tasks.check-ios-linking]
+description = "Checks that the built iOS app links each Swift module once and embeds every library it loads"
+dir = "ios-app"
+depends = ["build-ios"]
+run = """
+products=$(xcodebuild -scheme ArcaneExchange -configuration Debug -destination 'generic/platform=iOS Simulator' \
+  -showBuildSettings 2>/dev/null | awk '$1 == "BUILT_PRODUCTS_DIR" { print $3; exit }')
+scripts/check-app-linking.sh "$products/ArcaneExchange.app"
+"""
 
 [tasks.boot-ios-simulator]
 # Left to itself, xcodebuild boots the simulator and shuts it down after every run: each run then

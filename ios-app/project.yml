@@ -15,11 +15,9 @@ configFiles:
 # Ranges only: the versions built are pinned in APIClient/Package.resolved, the app's lockfile
 # (see `upgrade-ios` in mise.toml).
 packages:
+  # Also ships Clerk and Nuke, as dynamic products (see its Package.swift).
   APIClient:
     path: APIClient
-  ClerkKit:
-    url: https://github.com/clerk/clerk-ios
-    from: 1.2.0
   OpenAPIRuntime:
     url: https://github.com/apple/swift-openapi-runtime
     from: 1.0.0
@@ -29,8 +27,6 @@ packages:
   HTTPTypes:
     url: https://github.com/apple/swift-http-types
     from: 1.0.0
-  # Card artwork loading. WebP (Gatherer) needs no plugin: Image I/O decodes it natively
-  # since iOS 14, well under this project's iOS 18 floor.
   Nuke:
     url: https://github.com/kean/Nuke
     from: 13.2.0
@@ -66,18 +62,21 @@ targets:
         DEVELOPMENT_LANGUAGE: fr
     dependencies:
       - package: APIClient
-      - package: ClerkKit
-        product: ClerkKit
-      - package: ClerkKit
-        product: ClerkKitUI
+      # The `*Shared` products are dynamic on purpose (APIClient/Package.swift): unlike Xcode's
+      # automatic products, they are only copied into the app when asked. Without `embed`, the
+      # simulator still finds them through DerivedData, a device does not and dyld kills the app.
+      - package: APIClient
+        product: ClerkKitShared
+        embed: true
       - package: OpenAPIRuntime
         product: OpenAPIRuntime
       - package: OpenAPIURLSession
         product: OpenAPIURLSession
       - package: HTTPTypes
         product: HTTPTypes
-      - package: Nuke
-        product: Nuke
+      - package: APIClient
+        product: NukeShared
+        embed: true
       - package: Nuke
         product: NukeUI
       - target: ArcaneExchangeCore
@@ -147,16 +146,16 @@ targets:
         APPLICATION_EXTENSION_API_ONLY: YES
     dependencies:
       - package: APIClient
-      - package: ClerkKit
-        product: ClerkKit
+      - package: APIClient
+        product: ClerkKitShared
       - package: OpenAPIRuntime
         product: OpenAPIRuntime
       - package: OpenAPIURLSession
         product: OpenAPIURLSession
       - package: HTTPTypes
         product: HTTPTypes
-      - package: Nuke
-        product: Nuke
+      - package: APIClient
+        product: NukeShared
 
   # The home-screen widgets (#473). They call the API themselves, with the session the app
   # opened: everything they share with it is listed under `SharedContainer`.
@@ -175,8 +174,8 @@ targets:
       - target: ArcaneExchangeCore
         embed: false
       - package: APIClient
-      - package: ClerkKit
-        product: ClerkKit
+      - package: APIClient
+        product: ClerkKitShared
     entitlements:
       path: ArcaneExchangeWidgets/ArcaneExchangeWidgets.entitlements
       properties:
@@ -218,8 +217,8 @@ targets:
         product: OpenAPIRuntime
       - package: HTTPTypes
         product: HTTPTypes
-      - package: Nuke
-        product: Nuke
+      - package: APIClient
+        product: NukeShared
 
 schemes:
   ArcaneExchange:
