@@ -1,4 +1,5 @@
 #if DEBUG
+    import ArcaneCore
     import Foundation
 
     /// Fixtures shared by the Échanges previews — one trade per status, so a preview shows the

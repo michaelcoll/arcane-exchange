@@ -1,3 +1,4 @@
+import ArcaneCore
 import Foundation
 
 enum CardArtwork {

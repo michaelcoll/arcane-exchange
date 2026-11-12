@@ -1,3 +1,4 @@
+import ArcaneCore
 import SwiftUI
 
 /// The money figures of the copies the user owns: what they paid, and how the trend has moved

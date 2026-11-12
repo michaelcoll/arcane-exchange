@@ -1,4 +1,5 @@
 import APIClient
+import ArcaneCore
 import Foundation
 
 /// Backs the Échanges tab: one page-by-page `GET /trades` feed, split into the "En cours" and

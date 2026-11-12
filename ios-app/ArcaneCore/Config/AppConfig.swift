@@ -1,0 +1,101 @@
+import Foundation
+
+package enum AppConfig {
+    /// `UserDefaults` key backing the "URL de l'API" row of the app's pane in the iOS
+    /// Settings app (`Settings.bundle/Root.plist`). The Settings app writes it, we read it.
+    ///
+    /// Named by `RawDeviceKey`, out of reach of `DeviceMemory`'s JSON codec: it is a raw string,
+    /// the contract with the Settings app. Read in both containers (the app's and the App
+    /// Group's), and also written to the App Group by `shareAPIBaseURL()`.
+    /// Keep the name in sync with the `Key` entry of that plist — there is no shared symbol
+    /// between a Settings bundle and the app binary.
+    package static let apiBaseURLDefaultsKey = RawDeviceKey.apiBaseURL.rawValue
+
+    /// Base URL the API client talks to, i.e. the server root **including** the `/api/v1`
+    /// prefix (same contract as `API_BASE_URL` in the xcconfigs).
+    ///
+    /// Reads the Settings override first, then the value baked in at build time. A blank or
+    /// malformed override falls back to the built-in value rather than crashing the app, so a
+    /// typo in Settings stays recoverable from the app itself.
+    ///
+    /// The widget extension has no Settings pane: its own defaults are empty, and it reads the
+    /// copy the app leaves in the App Group (`shareAPIBaseURL()`).
+    package static var apiBaseURL: URL {
+        apiBaseURL(info: processInfo)
+    }
+
+    /// The Info.plist of the running process (the app or the widget extension): where the
+    /// build configuration's values land. Tests pass their own dictionary instead.
+    package static var processInfo: [String: Any] {
+        Bundle.main.infoDictionary ?? [:]
+    }
+
+    package static func apiBaseURL(info: [String: Any]) -> URL {
+        let override = UserDefaults.standard.string(forKey: apiBaseURLDefaultsKey)
+            ?? SharedContainer.defaults.string(forKey: apiBaseURLDefaultsKey)
+        return override.flatMap(parseBaseURL) ?? bundledAPIBaseURL(info: info)
+    }
+
+    /// Copies the URL in use into the App Group for the widgets. Called whenever the app comes
+    /// to the foreground: the Settings app may have changed it while the app was away.
+    package static func shareAPIBaseURL(info: [String: Any] = processInfo) {
+        SharedContainer.defaults.set(apiBaseURL(info: info).absoluteString, forKey: apiBaseURLDefaultsKey)
+    }
+
+    /// The `API_BASE_URL` of the build configuration, before any Settings override.
+    /// Also what the Settings pane shows as its placeholder default.
+    package static var bundledAPIBaseURL: URL {
+        bundledAPIBaseURL(info: processInfo)
+    }
+
+    package static func bundledAPIBaseURL(info: [String: Any]) -> URL {
+        guard let value = info["API_BASE_URL"] as? String,
+              let url = parseBaseURL(value)
+        else {
+            fatalError("Missing or invalid API_BASE_URL in Info.plist")
+        }
+        return url
+    }
+
+    /// Clerk instance the app authenticates against, baked in from `CLERK_PUBLISHABLE_KEY`.
+    ///
+    /// Blank on a clone without `Config/Local.xcconfig` — `Shared.xcconfig` declares an empty
+    /// default so the app still builds, and shows `MissingClerkKeyView` instead of signing in;
+    /// copy `Config/Local.xcconfig.example` and fill the key in.
+    package static var clerkPublishableKey: String {
+        clerkPublishableKey(info: processInfo)
+    }
+
+    package static func clerkPublishableKey(info: [String: Any]) -> String {
+        guard let value = info["CLERK_PUBLISHABLE_KEY"] as? String else {
+            fatalError("Missing CLERK_PUBLISHABLE_KEY in Info.plist")
+        }
+        return value
+    }
+
+    /// Copies the build-time base URL into `UserDefaults` on first launch.
+    ///
+    /// `UserDefaults.register(defaults:)` would not do: it only feeds reads inside the process,
+    /// so the Settings app would show an empty field while the app talks to the built-in URL.
+    /// Writing the value makes the Settings pane display what is actually in use, and keeps the
+    /// xcconfig the single place the default is declared (no `DefaultValue` in `Root.plist`).
+    package static func seedSettingsDefaults(info: [String: Any] = processInfo) {
+        let defaults = UserDefaults.standard
+        guard defaults.string(forKey: apiBaseURLDefaultsKey) == nil else { return }
+        defaults.set(bundledAPIBaseURL(info: info).absoluteString, forKey: apiBaseURLDefaultsKey)
+    }
+
+    /// Accepts an absolute `http(s)` URL only: `URL(string:)` alone happily parses "localhost"
+    /// or "" into something the transport would then fail on at request time.
+    package static func parseBaseURL(_ raw: String) -> URL? {
+        let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard let url = URL(string: trimmed),
+              let scheme = url.scheme?.lowercased(),
+              scheme == "http" || scheme == "https",
+              url.host?.isEmpty == false
+        else {
+            return nil
+        }
+        return url
+    }
+}

@@ -1,3 +1,4 @@
+import ArcaneCore
 import SwiftUI
 
 /// Why a card cannot be traded right now — shown only on a card locked into an accepted trade.

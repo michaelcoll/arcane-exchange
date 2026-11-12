@@ -1,0 +1,78 @@
+import APIClient
+import Foundation
+
+/// Short names for the generated schema types the card-detail screens work with.
+package typealias PriceHistoryEntry = Components.Schemas.PriceHistoryEntryResponse
+package typealias CardOffer = Components.Schemas.CardOfferResponse
+package typealias CollectionEntry = Components.Schemas.CollectionEntryResponse
+package typealias PriceGuide = Components.Schemas.PriceGuideResponse
+
+/// One day of the Cardmarket price guide, in euros — the shape `PriceHistoryChart` plots.
+/// `Codable` for the collection widget, which keeps its last series on disk.
+package struct PricePoint: Identifiable, Equatable, Codable {
+    package let date: Date
+    package let low: Double
+    package let avg: Double
+    package let trend: Double
+
+    package init(date: Date, low: Double, avg: Double, trend: Double) {
+        self.date = date
+        self.low = low
+        self.avg = avg
+        self.trend = trend
+    }
+
+    package var id: Date {
+        date
+    }
+}
+
+/// Turns `GET /card/{id}/price-history` (cents, `YYYY-MM-DD` strings) into chart-ready
+/// points and the values the chart derives from them. Free of SwiftUI so it stays testable.
+package enum PriceHistorySeries {
+    private static let dateParser: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.timeZone = TimeZone(identifier: "UTC")
+        formatter.dateFormat = "yyyy-MM-dd"
+        return formatter
+    }()
+
+    /// Chart points, oldest first. Entries whose date does not parse are dropped rather
+    /// than aborting the whole series.
+    package static func points(from entries: [PriceHistoryEntry]) -> [PricePoint] {
+        entries
+            .compactMap { entry -> PricePoint? in
+                guard let date = dateParser.date(from: entry.date) else { return nil }
+                return PricePoint(
+                    date: date,
+                    low: Double(entry.low) / 100,
+                    avg: Double(entry.avg) / 100,
+                    trend: Double(entry.trend) / 100
+                )
+            }
+            .sorted { $0.date < $1.date }
+    }
+
+    /// Y range covering every plotted value — `low`, `avg` *and* `trend`, since the trend line
+    /// is not bounded by the low/avg band and would otherwise run off the chart — padded 12 %
+    /// top and bottom (a little slack also absorbs Catmull-Rom overshoot).
+    package static func yDomain(for points: [PricePoint]) -> ClosedRange<Double> {
+        let values = points.flatMap { [$0.low, $0.avg, $0.trend] }
+        guard let low = values.min(), let high = values.max(), high >= low else {
+            return 0 ... 1
+        }
+        let span = high - low
+        let pad = span > 0 ? span * 0.12 : max(1, high * 0.1)
+        let bottom = max(0, low - pad)
+        let top = high + pad
+        return bottom ... top
+    }
+
+    /// The point nearest a scrub position, for the selection tooltip.
+    package static func nearest(to date: Date, in points: [PricePoint]) -> PricePoint? {
+        points.min {
+            abs($0.date.timeIntervalSince(date)) < abs($1.date.timeIntervalSince(date))
+        }
+    }
+}

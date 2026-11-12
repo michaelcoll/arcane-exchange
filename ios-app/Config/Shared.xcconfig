@@ -1,6 +1,8 @@
 PRODUCT_BUNDLE_IDENTIFIER = fr.piconsoft.arcane-exchange
 IPHONEOS_DEPLOYMENT_TARGET = 18.0
 SWIFT_VERSION = 6.0
+// Lets ArcaneCore's `package` declarations be seen by the app, the widgets and the tests (ADR 0025).
+SWIFT_PACKAGE_NAME = arcane-exchange
 CODE_SIGN_STYLE = Automatic
 
 // Per-developer values, never committed: the signing identity and the Clerk instance the

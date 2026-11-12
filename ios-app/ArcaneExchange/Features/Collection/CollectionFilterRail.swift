@@ -1,3 +1,4 @@
+import ArcaneCore
 import SwiftUI
 
 /// Sort menu + filter chip, scrolling with the grid like the mockup's chip rail — the filters

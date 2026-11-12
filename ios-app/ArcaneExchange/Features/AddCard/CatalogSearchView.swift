@@ -1,4 +1,5 @@
 import APIClient
+import ArcaneCore
 import SwiftUI
 
 /// The addition of a card by hand: search the catalog by English or French name, pick the

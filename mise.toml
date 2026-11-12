@@ -316,16 +316,17 @@ description = "Lints the iOS app"
 dir = "ios-app"
 # Exactly the paths passed to swiftlint, plus its config. Globs are relative to `dir`.
 sources = [
+    "ArcaneCore/**/*.swift",
     "ArcaneExchange/**/*.swift",
     "ArcaneExchangeWidgets/**/*.swift",
     "APIClient/Sources/**/*.swift",
     ".swiftlint.yml",
 ]
-run = "swiftlint lint --strict ArcaneExchange ArcaneExchangeWidgets APIClient/Sources"
+run = "swiftlint lint --strict ArcaneCore ArcaneExchange ArcaneExchangeWidgets APIClient/Sources"
 
 [tasks.format-ios]
 dir = "ios-app"
-run = "swiftformat ArcaneExchange ArcaneExchangeWidgets APIClient/Sources"
+run = "swiftformat ArcaneCore ArcaneExchange ArcaneExchangeWidgets APIClient/Sources"
 hide = true
 
 [tasks.clean-ios]

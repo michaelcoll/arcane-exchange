@@ -2,6 +2,7 @@ import Foundation
 import SwiftUI
 import Testing
 
+@testable import ArcaneCore
 @testable import ArcaneExchange
 
 private func card(trend: Int32?, quantity: Int32 = 1) -> TradeCard {

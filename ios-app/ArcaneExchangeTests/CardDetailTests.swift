@@ -1,6 +1,7 @@
 import Foundation
 import Testing
 
+@testable import ArcaneCore
 @testable import ArcaneExchange
 
 struct PriceHistorySeriesTests {

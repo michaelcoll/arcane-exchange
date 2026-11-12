@@ -1,3 +1,4 @@
+import ArcaneCore
 import Foundation
 
 /// Makes the device forget the previous player once nobody is signed in. What belongs to the

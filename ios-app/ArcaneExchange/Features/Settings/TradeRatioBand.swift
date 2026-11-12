@@ -1,3 +1,4 @@
+import ArcaneCore
 import SwiftUI
 
 /// The mockup's `TradeRatio` band, shown under the trade settings on the Réglages screen: how the

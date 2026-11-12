@@ -1,4 +1,5 @@
 import APIClient
+import ArcaneCore
 import Foundation
 
 /// Local, device-only memory of the sort picked on the search results screens, restored at

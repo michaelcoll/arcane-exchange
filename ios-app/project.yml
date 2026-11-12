@@ -80,6 +80,7 @@ targets:
         product: Nuke
       - package: Nuke
         product: NukeUI
+      - target: ArcaneCore
       - target: ArcaneExchangeWidgets
     # Shared with the widget extension (`SharedContainer`): the App Group carries the API base
     # URL and the widgets' last snapshots, the Keychain group the Clerk session. Automatic
@@ -125,35 +126,25 @@ targets:
             localhost:
               NSExceptionAllowsInsecureHTTPLoads: true
 
-  # The home-screen widgets (#473). They call the API themselves, with the session the app
-  # opened: everything they share with it is listed under `SharedContainer`.
-  ArcaneExchangeWidgets:
-    type: app-extension
+  # Everything that is not a screen (ADR 0025): models, view models, networking, config, the
+  # widget views and the color sets. The app embeds it, the widget extension links it, and
+  # `ArcaneCoreTests` runs against it alone, with no host app. Types the other targets see are
+  # `package` (see `SWIFT_PACKAGE_NAME` in Config/Shared.xcconfig).
+  ArcaneCore:
+    type: framework
     platform: iOS
     sources:
-      - path: ArcaneExchangeWidgets
-      # The app's sources the widgets need, compiled a second time into the extension.
-      - path: ArcaneExchange/HomeWidgets
-        # Only the app asks WidgetKit for reloads.
-        excludes:
-          - HomeWidgetReload.swift
-      - path: ArcaneExchange/Networking
-      - path: ArcaneExchange/Config/AppConfig.swift
-      - path: ArcaneExchange/Support/DeviceMemory.swift
-      - path: ArcaneExchange/Support/Palette.swift
-      - path: ArcaneExchange/Support/Price.swift
-      - path: ArcaneExchange/Support/PlayerMonogram.swift
-      - path: ArcaneExchange/Support/UsernameLabel.swift
-      - path: ArcaneExchange/Features/CardDetail/CardDetailModel.swift
-      - path: ArcaneExchange/Features/Trades/TradeModel.swift
-      - path: ArcaneExchange/Features/Trades/TradeStatusPill.swift
-      # The color sets behind `Palette`.
-      - path: ArcaneExchange/Assets.xcassets
+      - path: ArcaneCore
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: fr.piconsoft.arcane-exchange.widgets
+        GENERATE_INFOPLIST_FILE: YES
+        # Shared.xcconfig sets one identifier for every target: a framework needs its own, or
+        # embedding fails ("did not contain an Info.plist / CFBundleIdentifier").
+        PRODUCT_BUNDLE_IDENTIFIER: fr.piconsoft.arcane-exchange.core
         TARGETED_DEVICE_FAMILY: "1"
         DEVELOPMENT_LANGUAGE: fr
+        # The widget extension links this framework.
+        APPLICATION_EXTENSION_API_ONLY: YES
     dependencies:
       - package: APIClient
       - package: ClerkKit
@@ -164,6 +155,28 @@ targets:
         product: OpenAPIURLSession
       - package: HTTPTypes
         product: HTTPTypes
+      - package: Nuke
+        product: Nuke
+
+  # The home-screen widgets (#473). They call the API themselves, with the session the app
+  # opened: everything they share with it is listed under `SharedContainer`.
+  ArcaneExchangeWidgets:
+    type: app-extension
+    platform: iOS
+    sources:
+      - path: ArcaneExchangeWidgets
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: fr.piconsoft.arcane-exchange.widgets
+        TARGETED_DEVICE_FAMILY: "1"
+        DEVELOPMENT_LANGUAGE: fr
+    dependencies:
+      # Linked, not embedded a second time: the app already carries the framework.
+      - target: ArcaneCore
+        embed: false
+      - package: APIClient
+      - package: ClerkKit
+        product: ClerkKit
     entitlements:
       path: ArcaneExchangeWidgets/ArcaneExchangeWidgets.entitlements
       properties:
@@ -185,11 +198,35 @@ targets:
             localhost:
               NSExceptionAllowsInsecureHTTPLoads: true
 
+  # Tests of the code living in `ArcaneCore/`: no host app (no TEST_HOST / BUNDLE_LOADER), so
+  # xcodebuild skips installing and launching the app. Same file layout as the framework.
+  ArcaneCoreTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources:
+      - path: ArcaneCoreTests
+      # Shared with `ArcaneExchangeTests`: compiled into each bundle, no `@testable import`.
+      - path: TestSupport
+    settings:
+      base:
+        GENERATE_INFOPLIST_FILE: YES
+        PRODUCT_BUNDLE_IDENTIFIER: fr.piconsoft.arcane-exchange.core-tests
+        TARGETED_DEVICE_FAMILY: "1"
+    dependencies:
+      - target: ArcaneCore
+      - package: APIClient
+      - package: OpenAPIRuntime
+        product: OpenAPIRuntime
+      - package: HTTPTypes
+        product: HTTPTypes
+
+  # Tests of the screens' code, hosted by the app (`@testable import ArcaneExchange`).
   ArcaneExchangeTests:
     type: bundle.unit-test
     platform: iOS
     sources:
       - path: ArcaneExchangeTests
+      - path: TestSupport
     settings:
       base:
         GENERATE_INFOPLIST_FILE: YES
@@ -199,18 +236,28 @@ targets:
         TARGETED_DEVICE_FAMILY: "1"
     dependencies:
       - target: ArcaneExchange
+      - target: ArcaneCore
+      # Linked by the bundle itself: APIClient is a dynamic framework, which the host app's
+      # executable does not re-export.
+      - package: APIClient
+      - package: OpenAPIRuntime
+        product: OpenAPIRuntime
+      - package: HTTPTypes
+        product: HTTPTypes
 
 schemes:
   ArcaneExchange:
     build:
       targets:
         ArcaneExchange: all
+        ArcaneCoreTests: [test]
         ArcaneExchangeTests: [test]
     run:
       config: Debug
     test:
       config: Debug
       targets:
+        - ArcaneCoreTests
         - ArcaneExchangeTests
     archive:
       config: Release

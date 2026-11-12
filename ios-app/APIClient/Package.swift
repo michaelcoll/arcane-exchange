@@ -11,6 +11,7 @@ let package = Package(
         .package(url: "https://github.com/apple/swift-openapi-generator", from: "1.0.0"),
         .package(url: "https://github.com/apple/swift-openapi-runtime", from: "1.0.0"),
         .package(url: "https://github.com/apple/swift-openapi-urlsession", from: "1.0.0"),
+        .package(url: "https://github.com/apple/swift-http-types", from: "1.0.0"),
     ],
     targets: [
         .target(
@@ -18,6 +19,10 @@ let package = Package(
             dependencies: [
                 .product(name: "OpenAPIRuntime", package: "swift-openapi-runtime"),
                 .product(name: "OpenAPIURLSession", package: "swift-openapi-urlsession"),
+                // The generated code names HTTPTypes directly: declared so the dynamic product
+                // Xcode builds once several targets (ArcaneCore, the widgets) link APIClient
+                // links it too, instead of failing on undefined symbols.
+                .product(name: "HTTPTypes", package: "swift-http-types"),
             ],
             // Only generated code lives here, and the generator writes `public import` for every
             // module whether a file exposes it or not: one UnusedImportAccess warning per file.

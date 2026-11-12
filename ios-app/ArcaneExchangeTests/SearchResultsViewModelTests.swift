@@ -2,6 +2,7 @@ import APIClient
 import Foundation
 import Testing
 
+@testable import ArcaneCore
 @testable import ArcaneExchange
 
 private func page(_ items: [CollectionCard], total: Int64) -> Operations.search_cards.Output {
