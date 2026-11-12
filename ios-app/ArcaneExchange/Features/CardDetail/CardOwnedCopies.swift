@@ -1,40 +1,6 @@
 import ArcaneCore
 import SwiftUI
 
-/// The money figures of the copies the user owns: what they paid, and how the trend has moved
-/// since. A copy without a purchase price has neither (ADR-0023): no `0 €`, no fictitious gain.
-struct OwnedCopiesFigures: Equatable {
-    let quantity: Int
-    let purchaseCents: Int?
-    let spread: PurchaseSpread?
-
-    /// From the aggregated entry the card list came with: what the screen shows until the
-    /// entries are read.
-    init(entry: CollectionEntry, trendCents: Int?) {
-        quantity = Int(entry.quantity)
-        purchaseCents = entry.purchase_price.map(Int.init)
-        spread = PurchaseSpread(purchaseCents: purchaseCents, trendCents: trendCents)
-    }
-
-    /// From the entries read, so an edit, a move or a removal shows at once: the copies of the
-    /// finish all binders together, at the average of the prices present weighted by quantity
-    /// (the server's merge rule). `nil` when the player has none of the finish.
-    init?(entries: [CollectionEntryDetail], foil: Bool, trendCents: Int?) {
-        let ofFinish = entries.filter { $0.foil == foil }
-        guard !ofFinish.isEmpty else { return nil }
-
-        quantity = ofFinish.reduce(0) { $0 + Int($1.quantity) }
-        let priced = ofFinish.compactMap { entry in
-            entry.purchase_price.map { (price: Int($0), quantity: Int(entry.quantity)) }
-        }
-        let pricedQuantity = priced.reduce(0) { $0 + $1.quantity }
-        purchaseCents = pricedQuantity > 0
-            ? priced.reduce(0) { $0 + $1.price * $1.quantity } / pricedQuantity
-            : nil
-        spread = PurchaseSpread(purchaseCents: purchaseCents, trendCents: trendCents)
-    }
-}
-
 /// What the user owns of this card: how many, what they paid, and how the trend has moved
 /// since. Shown only when the card is in their collection.
 struct CardOwnedCopies: View {
@@ -96,19 +62,6 @@ struct CardOwnedCopies: View {
         let delta = trend - purchase
         let sign = delta >= 0 ? "+" : "−"
         return "\(sign)\(Price.euros(cents: abs(delta))) · \(abs(spread.percent)) %"
-    }
-}
-
-/// The words of an entry row: its binder and finish, and what was paid for its copies.
-enum OwnedEntryLabel {
-    static func text(for entry: CollectionEntryDetail) -> String {
-        let binder = entry.binder?.name ?? BinderCopy.noBinder
-        return entry.foil ? "\(binder) · Foil" : binder
-    }
-
-    /// The purchase price of the copies of the entry, `nil` when they have none (ADR-0023).
-    static func price(for entry: CollectionEntryDetail) -> String? {
-        entry.purchase_price.map { Price.euros(cents: Int($0)) }
     }
 }
 

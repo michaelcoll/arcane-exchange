@@ -192,7 +192,7 @@ ses idiomes plutôt que de la transposer littéralement.
   Keychain partagé, et gardent leur dernier instantané dans un App Group.
   Tout ce qui n'est pas un écran (modèles, view models, réseau, config, vues des widgets) vit dans un
   framework partagé `ArcaneCore`, lié par l'app, l'extension et les tests, qui tournent sans app hôte
-  (ADR 0025, migration en cours).
+  (ADR 0025). Il n'existe qu'une cible de tests, `ArcaneCoreTests`.
 
 ## Outillage et déploiement
 

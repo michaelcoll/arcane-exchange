@@ -35,9 +35,10 @@ code : [CODING_STANDARDS.md](../CODING_STANDARDS.md) › iOS.
 
 - `ArcaneCore/` (framework, `import ArcaneCore`) holds everything that is not a screen; `ArcaneExchange/` holds the
   screens. Declarations the app, the extension or the tests use are `package`, never `public` (ADR 0025).
-- `ArcaneCoreTests/` tests `ArcaneCore/` and runs with no host app (no `TEST_HOST`); `ArcaneExchangeTests/` tests the
-  screens' code in the app. Both run in the `ArcaneExchange` scheme. `TestSupport/` (`FakeAPI`, fixtures) is
-  compiled into both bundles: write its fixtures against `APIClient` types, not app or framework aliases.
+- `ArcaneCoreTests/` is the only test target: it tests `ArcaneCore/` and runs with no host app (no `TEST_HOST`), so
+  nothing in it can `@testable import ArcaneExchange`. Logic worth testing never stays in a screen file: it goes
+  into `ArcaneCore/` (`AppRouter`, `OwnedEntryLabel`, `TradeSteps`…). `TestSupport/` (`FakeAPI`, fixtures) is
+  compiled into the bundle: write its fixtures against `APIClient` types.
 - A test never reads `Bundle.main` in `ArcaneCoreTests`: it is the test runner, not the app. Resources resolve in
   `Palette.bundle`; `AppConfig` and `SharedContainer` take an injected `info:` dictionary.
 

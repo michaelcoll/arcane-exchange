@@ -119,9 +119,9 @@ jobs:
             -resultBundlePath "$RUNNER_TEMP/TestResults.xcresult" test \
             | xcbeautify --renderer github-actions
 
-      # A crash of the host app at launch leaves nothing readable in the log ("Test crashed
-      # with signal trap before establishing connection"): its stack trace is only in the
-      # result bundle and in the simulator's crash reports.
+      # A crash of the test process leaves nothing readable in the log ("Test crashed with
+      # signal trap before establishing connection"): its stack trace is only in the result
+      # bundle and in the simulator's crash reports.
       - name: Upload the test results and crash reports
         if: failure()
         uses: actions/upload-artifact@v7

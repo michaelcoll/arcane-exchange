@@ -205,7 +205,6 @@ targets:
     platform: iOS
     sources:
       - path: ArcaneCoreTests
-      # Shared with `ArcaneExchangeTests`: compiled into each bundle, no `@testable import`.
       - path: TestSupport
     settings:
       base:
@@ -222,44 +221,17 @@ targets:
       - package: Nuke
         product: Nuke
 
-  # Tests of the screens' code, hosted by the app (`@testable import ArcaneExchange`).
-  ArcaneExchangeTests:
-    type: bundle.unit-test
-    platform: iOS
-    sources:
-      - path: ArcaneExchangeTests
-      - path: TestSupport
-    settings:
-      base:
-        GENERATE_INFOPLIST_FILE: YES
-        # Shared.xcconfig sets PRODUCT_BUNDLE_IDENTIFIER for every target; a test bundle that
-        # shares its host app's identifier fails to load ("Unable to initialize test bundle").
-        PRODUCT_BUNDLE_IDENTIFIER: fr.piconsoft.arcane-exchange.tests
-        TARGETED_DEVICE_FAMILY: "1"
-    dependencies:
-      - target: ArcaneExchange
-      - target: ArcaneCore
-      # Linked by the bundle itself: APIClient is a dynamic framework, which the host app's
-      # executable does not re-export.
-      - package: APIClient
-      - package: OpenAPIRuntime
-        product: OpenAPIRuntime
-      - package: HTTPTypes
-        product: HTTPTypes
-
 schemes:
   ArcaneExchange:
     build:
       targets:
         ArcaneExchange: all
         ArcaneCoreTests: [test]
-        ArcaneExchangeTests: [test]
     run:
       config: Debug
     test:
       config: Debug
       targets:
         - ArcaneCoreTests
-        - ArcaneExchangeTests
     archive:
       config: Release
