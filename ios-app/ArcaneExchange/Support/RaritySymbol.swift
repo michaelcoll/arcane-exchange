@@ -1,3 +1,4 @@
+import ArcaneCore
 import SwiftUI
 
 /// A rarity drawn the way Magic itself shows one: a set symbol tinted by rarity — here the

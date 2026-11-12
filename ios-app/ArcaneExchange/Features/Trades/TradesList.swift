@@ -1,3 +1,4 @@
+import ArcaneCore
 import SwiftUI
 
 /// The Échanges feed itself: the segment picker as the section header, one row per trade, and

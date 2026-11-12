@@ -1,4 +1,5 @@
 import APIClient
+import ArcaneCore
 import Foundation
 import OpenAPIRuntime
 

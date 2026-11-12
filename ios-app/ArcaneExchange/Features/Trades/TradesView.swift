@@ -1,4 +1,5 @@
 import APIClient
+import ArcaneCore
 import SwiftUI
 
 /// Échanges tab (`ScrTrades` in the iOS mockup): the trades the user is a party to, split

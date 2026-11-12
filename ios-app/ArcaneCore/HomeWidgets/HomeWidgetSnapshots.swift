@@ -1,0 +1,108 @@
+import Foundation
+
+/// What the « Ma collection » widget shows: the collection value over the last 30 days, and
+/// the card counts of `GET /collection/stats`. Mirrors the web home page's collection tile.
+package struct CollectionSnapshot: Codable, Equatable {
+    /// The collection value history, oldest first, in euros.
+    package let points: [PricePoint]
+    package let totalCards: Int
+    package let uniqueCards: Int
+
+    package init(history: [PriceHistoryEntry], totalCards: Int, uniqueCards: Int) {
+        points = PriceHistorySeries.points(from: history)
+        self.totalCards = totalCards
+        self.uniqueCards = uniqueCards
+    }
+
+    /// The `start_date` / `end_date` to ask for: today and the 29 days before, in the device's
+    /// calendar — the web tile's `lastNDaysRange(30)`. The endpoint's own default starts a day
+    /// earlier, which would move the variation's starting point away from the web's.
+    package static func historyRange(
+        endingAt now: Date,
+        calendar: Calendar = .current
+    ) -> (start: String, end: String) {
+        let start = calendar.date(byAdding: .day, value: -29, to: now)!
+        return (isoDay(start, calendar), isoDay(now, calendar))
+    }
+
+    private static func isoDay(_ date: Date, _ calendar: Calendar) -> String {
+        let day = calendar.dateComponents([.year, .month, .day], from: date)
+        return String(format: "%04d-%02d-%02d", day.year!, day.month!, day.day!)
+    }
+
+    /// Today's collection value: the trend of the most recent day, like the web tile.
+    package var valueCents: Int {
+        points.last.map { Self.cents($0.trend) } ?? 0
+    }
+
+    /// The web tile draws no graph below two points.
+    package var hasEnoughHistory: Bool {
+        points.count >= 2
+    }
+
+    /// Last trend against the first one — the web's `computeVariation`.
+    package var variation: ValueVariation {
+        guard let first = points.first, let last = points.last, points.count >= 2 else {
+            return ValueVariation(deltaCents: 0, percent: 0)
+        }
+        let firstCents = Self.cents(first.trend)
+        let lastCents = Self.cents(last.trend)
+        let percent = firstCents == 0 ? 0 : Double(lastCents - firstCents) / Double(firstCents) * 100
+        return ValueVariation(deltaCents: lastCents - firstCents, percent: percent)
+    }
+
+    private static func cents(_ euros: Double) -> Int {
+        Int((euros * 100).rounded())
+    }
+}
+
+/// How much the collection value moved over the period.
+package struct ValueVariation: Equatable {
+    package let deltaCents: Int
+    package let percent: Double
+
+    /// Flat counts as rising, as on the web: the tile never shows a red « 0 € ».
+    package var isRising: Bool {
+        percent >= 0
+    }
+
+    /// « ▴ 42,1 € · +3,5 % (30 j) », the web tile's wording.
+    package var label: String {
+        let arrow = isRising ? "▴" : "▾"
+        let sign = isRising ? "+" : "−"
+        let amount = Price.euros(cents: abs(deltaCents))
+        // Half away from zero, like the web's `toLocaleString`: 1,25 reads 1,3, not 1,2.
+        let pct = abs(percent).formatted(
+            .number
+                .precision(.fractionLength(1))
+                .rounded(rule: .toNearestOrAwayFromZero)
+                .locale(Locale(identifier: "fr_FR"))
+        )
+        return "\(arrow) \(amount) · \(sign)\(pct) % (30 j)"
+    }
+}
+
+/// What the « Échanges en cours » widget shows: how many trades are active, and the first few.
+package struct TradesSnapshot: Codable, Equatable {
+    /// Rows that fit a medium widget under the header, subtitle included.
+    package static let rowCount = 2
+
+    package let total: Int
+    package let trades: [ActiveTrade]
+}
+
+/// One row of the trades widget — the fields of `TradeSummaryResponse` it displays.
+package struct ActiveTrade: Codable, Equatable, Identifiable {
+    package let id: String
+    package let partnerUsername: String
+    package let myCardCount: Int
+    package let partnerCardCount: Int
+    package let status: TradeStatus
+
+    /// « 2 données · 1 reçue », the web row's subtitle.
+    package var cardCountsLabel: String {
+        let given = myCardCount > 1 ? "\(myCardCount) données" : "\(myCardCount) donnée"
+        let received = partnerCardCount > 1 ? "\(partnerCardCount) reçues" : "\(partnerCardCount) reçue"
+        return "\(given) · \(received)"
+    }
+}

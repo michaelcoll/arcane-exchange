@@ -1,4 +1,5 @@
 import APIClient
+import ArcaneCore
 import Foundation
 
 /// Opens the trade with a card's owner and makes sure the card is on their side.

@@ -1,4 +1,5 @@
 import APIClient
+import ArcaneCore
 import Foundation
 
 /// Short names for the generated schema types this screen works with — the fully qualified

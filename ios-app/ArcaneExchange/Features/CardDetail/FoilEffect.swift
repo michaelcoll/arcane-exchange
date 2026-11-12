@@ -1,3 +1,4 @@
+import ArcaneCore
 import SwiftUI
 
 /// Holographic foil for a card scan, rendered by the `cardFoil` shader in `Foil.metal`.

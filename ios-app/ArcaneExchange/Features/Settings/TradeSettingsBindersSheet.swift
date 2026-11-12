@@ -1,3 +1,4 @@
+import ArcaneCore
 import SwiftUI
 
 /// Sub-drawer "Classeurs échangeables" (the mockup's `sheet === 'binders'`): which ManaBox

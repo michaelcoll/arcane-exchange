@@ -1,3 +1,4 @@
+import ArcaneCore
 import Observation
 
 /// App-wide navigation state a widget tap can drive: the selected tab, and a trade to push

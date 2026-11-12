@@ -1,4 +1,5 @@
 import APIClient
+import ArcaneCore
 import Foundation
 
 /// Backs the form that adds copies of a catalog impression to the collection: language, finish,

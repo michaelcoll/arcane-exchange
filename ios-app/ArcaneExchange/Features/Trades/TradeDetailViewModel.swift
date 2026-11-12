@@ -1,4 +1,5 @@
 import APIClient
+import ArcaneCore
 import Foundation
 
 /// Backs `TradeDetailView`: `GET /trades/{id}` plus the five lifecycle actions.

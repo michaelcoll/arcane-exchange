@@ -1,4 +1,5 @@
 import APIClient
+import ArcaneCore
 import Foundation
 
 /// Backs `CardDetailView`: the chart's price history, plus the first few players offering

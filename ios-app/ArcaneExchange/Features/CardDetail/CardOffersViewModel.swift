@@ -1,4 +1,5 @@
 import APIClient
+import ArcaneCore
 import Foundation
 
 /// Backs `CardOffersView`: one page of `GET /card/offers` for the card at hand, plus the

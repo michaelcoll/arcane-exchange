@@ -1,5 +1,6 @@
 import Testing
 
+@testable import ArcaneCore
 @testable import ArcaneExchange
 
 /// One row of the truth table: a status and my side of the trade.

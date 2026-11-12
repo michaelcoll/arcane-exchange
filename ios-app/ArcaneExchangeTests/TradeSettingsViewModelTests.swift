@@ -1,6 +1,7 @@
 import APIClient
 import Testing
 
+@testable import ArcaneCore
 @testable import ArcaneExchange
 
 private func rarity(_ code: String, isOpen: Bool = true, copies: Int64 = 10, proposed: Int64 = 10) -> RarityFilter {

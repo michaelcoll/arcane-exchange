@@ -3,6 +3,7 @@ import Foundation
 import Testing
 import UIKit
 
+@testable import ArcaneCore
 @testable import ArcaneExchange
 
 @MainActor

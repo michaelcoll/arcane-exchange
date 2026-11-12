@@ -1,4 +1,5 @@
 import APIClient
+import ArcaneCore
 import Foundation
 
 /// Backs the trade settings of the Réglages sheet: the collection's visibility, the ManaBox

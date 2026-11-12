@@ -1,4 +1,5 @@
 import APIClient
+import ArcaneCore
 import Foundation
 
 typealias Binder = Components.Schemas.BinderResponse

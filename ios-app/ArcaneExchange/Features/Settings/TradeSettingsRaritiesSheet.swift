@@ -1,3 +1,4 @@
+import ArcaneCore
 import SwiftUI
 
 /// Sub-drawer "Filtres de rareté" (the mockup's `sheet === 'rar'`): per rarity, whether it is

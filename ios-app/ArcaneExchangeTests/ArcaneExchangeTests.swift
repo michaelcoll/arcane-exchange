@@ -1,5 +1,6 @@
 import Testing
 
+@testable import ArcaneCore
 @testable import ArcaneExchange
 
 struct ArcaneExchangeTests {
