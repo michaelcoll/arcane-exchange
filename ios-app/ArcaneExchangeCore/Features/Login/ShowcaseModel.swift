@@ -30,7 +30,7 @@ package final class ShowcaseModel {
         api: any APIProtocol,
         defaults: UserDefaults = .standard,
         source: ShowcaseSource = .live,
-        apiBaseURL: @escaping @autoclosure () -> URL = AppConfig.apiBaseURL
+        apiBaseURL: @escaping @autoclosure () -> URL = AppConfig.apiBaseURL()
     ) {
         self.api = api
         memory = DeviceMemory(defaults: defaults)

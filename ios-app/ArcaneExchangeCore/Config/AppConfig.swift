@@ -11,6 +11,12 @@ package enum AppConfig {
     /// between a Settings bundle and the app binary.
     package static let apiBaseURLDefaultsKey = RawDeviceKey.apiBaseURL.rawValue
 
+    /// The Info.plist of the running process (the app or the widget extension): where the
+    /// build configuration's values land. Tests pass their own dictionary instead.
+    package static var infoPlist: [String: Any] {
+        Bundle.main.infoDictionary ?? [:]
+    }
+
     /// Base URL the API client talks to, i.e. the server root **including** the `/api/v1`
     /// prefix (same contract as `API_BASE_URL` in the xcconfigs).
     ///
@@ -20,17 +26,7 @@ package enum AppConfig {
     ///
     /// The widget extension has no Settings pane: its own defaults are empty, and it reads the
     /// copy the app leaves in the App Group (`shareAPIBaseURL()`).
-    package static var apiBaseURL: URL {
-        apiBaseURL(info: processInfo)
-    }
-
-    /// The Info.plist of the running process (the app or the widget extension): where the
-    /// build configuration's values land. Tests pass their own dictionary instead.
-    package static var processInfo: [String: Any] {
-        Bundle.main.infoDictionary ?? [:]
-    }
-
-    package static func apiBaseURL(info: [String: Any]) -> URL {
+    package static func apiBaseURL(info: [String: Any] = infoPlist) -> URL {
         let override = UserDefaults.standard.string(forKey: apiBaseURLDefaultsKey)
             ?? SharedContainer.defaults.string(forKey: apiBaseURLDefaultsKey)
         return override.flatMap(parseBaseURL) ?? bundledAPIBaseURL(info: info)
@@ -38,17 +34,13 @@ package enum AppConfig {
 
     /// Copies the URL in use into the App Group for the widgets. Called whenever the app comes
     /// to the foreground: the Settings app may have changed it while the app was away.
-    package static func shareAPIBaseURL(info: [String: Any] = processInfo) {
+    package static func shareAPIBaseURL(info: [String: Any] = infoPlist) {
         SharedContainer.defaults.set(apiBaseURL(info: info).absoluteString, forKey: apiBaseURLDefaultsKey)
     }
 
     /// The `API_BASE_URL` of the build configuration, before any Settings override.
     /// Also what the Settings pane shows as its placeholder default.
-    package static var bundledAPIBaseURL: URL {
-        bundledAPIBaseURL(info: processInfo)
-    }
-
-    package static func bundledAPIBaseURL(info: [String: Any]) -> URL {
+    package static func bundledAPIBaseURL(info: [String: Any] = infoPlist) -> URL {
         guard let value = info["API_BASE_URL"] as? String,
               let url = parseBaseURL(value)
         else {
@@ -62,11 +54,7 @@ package enum AppConfig {
     /// Blank on a clone without `Config/Local.xcconfig` — `Shared.xcconfig` declares an empty
     /// default so the app still builds, and shows `MissingClerkKeyView` instead of signing in;
     /// copy `Config/Local.xcconfig.example` and fill the key in.
-    package static var clerkPublishableKey: String {
-        clerkPublishableKey(info: processInfo)
-    }
-
-    package static func clerkPublishableKey(info: [String: Any]) -> String {
+    package static func clerkPublishableKey(info: [String: Any] = infoPlist) -> String {
         guard let value = info["CLERK_PUBLISHABLE_KEY"] as? String else {
             fatalError("Missing CLERK_PUBLISHABLE_KEY in Info.plist")
         }
@@ -79,7 +67,7 @@ package enum AppConfig {
     /// so the Settings app would show an empty field while the app talks to the built-in URL.
     /// Writing the value makes the Settings pane display what is actually in use, and keeps the
     /// xcconfig the single place the default is declared (no `DefaultValue` in `Root.plist`).
-    package static func seedSettingsDefaults(info: [String: Any] = processInfo) {
+    package static func seedSettingsDefaults(info: [String: Any] = infoPlist) {
         let defaults = UserDefaults.standard
         guard defaults.string(forKey: apiBaseURLDefaultsKey) == nil else { return }
         defaults.set(bundledAPIBaseURL(info: info).absoluteString, forKey: apiBaseURLDefaultsKey)

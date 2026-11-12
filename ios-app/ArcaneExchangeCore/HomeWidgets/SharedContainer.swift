@@ -25,7 +25,7 @@ package enum SharedContainer {
     /// the same name): the entitlement names the group `$(AppIdentifierPrefix)…`, and the code
     /// must pass it in full.
     package static var keychainAccessGroup: String? {
-        keychainAccessGroup(info: AppConfig.processInfo)
+        keychainAccessGroup(info: AppConfig.infoPlist)
     }
 
     package static func keychainAccessGroup(info: [String: Any]) -> String? {

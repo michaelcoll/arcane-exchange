@@ -24,7 +24,7 @@ package enum APIClientFactory {
         latch: UnauthorizedLatch = UnauthorizedLatch(),
         transport: any ClientTransport = URLSessionTransport(),
         token: @escaping @Sendable () async -> String? = { try? await Clerk.shared.auth.getToken() },
-        baseURL: @escaping @Sendable () -> URL = { AppConfig.apiBaseURL }
+        baseURL: @escaping @Sendable () -> URL = { AppConfig.apiBaseURL() }
     ) -> any APIProtocol {
         client(
             transport: transport,
@@ -42,7 +42,7 @@ package enum APIClientFactory {
     /// signs nobody out.
     package static func anonymous(
         transport: any ClientTransport = URLSessionTransport(),
-        baseURL: @escaping @Sendable () -> URL = { AppConfig.apiBaseURL }
+        baseURL: @escaping @Sendable () -> URL = { AppConfig.apiBaseURL() }
     ) -> any APIProtocol {
         client(
             transport: transport,

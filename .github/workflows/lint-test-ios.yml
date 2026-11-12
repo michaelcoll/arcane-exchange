@@ -87,8 +87,9 @@ jobs:
       # Saves the ~4 min spent compiling the packages (Clerk, Nuke, PhoneNumberKit, OpenAPI…).
       # The key holds everything that can make a compiled package stale: the pinned versions, the
       # Xcode build, the runner image, and the manifests that decide how each package is linked
-      # (static or dynamic): a build over products linked another way fails on undefined symbols. No restore-keys: a partial match would restore products
-      # built by another compiler or from other sources, and an incremental build trusts them.
+      # (static or dynamic): a build over products linked another way fails on undefined symbols.
+      # No restore-keys: a partial match would restore products built by another compiler or from
+      # other sources, and an incremental build trusts them.
       # Sources in the repo are checked out with fresh mtimes and always rebuild: the app, and the
       # local APIClient package with its OpenAPI generation.
       - name: Cache DerivedData
