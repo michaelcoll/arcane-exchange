@@ -2,7 +2,6 @@ import APIClient
 import Testing
 
 @testable import ArcaneCore
-@testable import ArcaneExchange
 
 private func catalogCard(_ number: String, name: String = "Lightning Bolt") -> CatalogCard {
     CatalogCard(

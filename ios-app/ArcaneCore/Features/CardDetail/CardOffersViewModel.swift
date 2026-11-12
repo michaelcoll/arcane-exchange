@@ -1,30 +1,29 @@
 import APIClient
-import ArcaneCore
 import Foundation
 
 /// Backs `CardOffersView`: one page of `GET /card/offers` for the card at hand, plus the
 /// "propose an exchange" action each row offers.
 @MainActor
 @Observable
-final class CardOffersViewModel {
-    enum State: Equatable {
+package final class CardOffersViewModel {
+    package enum State: Equatable {
         case loading
         case loaded([CardOffer])
         case failed
     }
 
-    let card: CollectionCard
-    private(set) var state: State = .loading
+    package let card: Components.Schemas.CollectionCardResponse
+    package private(set) var state: State = .loading
     /// Opens a trade from an offer row; the view reads its spinner and error from here.
-    let tradeOpener: CardOfferTrade
+    package let tradeOpener: CardOfferTrade
 
     /// The set name once `/sets/{set_code}` resolves; falls back to the raw code.
-    private(set) var setName: String
-    private(set) var isSetKnown = false
+    package private(set) var setName: String
+    package private(set) var isSetKnown = false
 
     private let api: any APIProtocol
 
-    init(card: CollectionCard, api: any APIProtocol) {
+    package init(card: Components.Schemas.CollectionCardResponse, api: any APIProtocol) {
         self.card = card
         self.api = api
         tradeOpener = CardOfferTrade(card: card, api: api)
@@ -32,14 +31,14 @@ final class CardOffersViewModel {
     }
 
     /// Resolves the human-readable set name for the card row. A failure keeps the code.
-    func loadSetName() async {
+    package func loadSetName() async {
         if let name = await SetName.resolve(card.set_code, api: api) {
             setName = name
             isSetKnown = true
         }
     }
 
-    func load() async {
+    package func load() async {
         state = .loading
         do {
             let page = try await api.get_card_offers(

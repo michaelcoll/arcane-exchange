@@ -1,5 +1,4 @@
 import APIClient
-import ArcaneCore
 import Foundation
 
 /// Backs `CardDetailView`: the chart's price history, plus the first few players offering
@@ -7,10 +6,10 @@ import Foundation
 /// The price guide and collection figures come from the `CollectionCard` the list passed in.
 @MainActor
 @Observable
-final class CardDetailViewModel {
+package final class CardDetailViewModel {
     /// What the chart area shows. The distinction the mockup makes is "loading" vs "not enough
     /// history yet" vs a real chart; a failed request folds into a plain unavailable message.
-    enum HistoryState: Equatable {
+    package enum HistoryState: Equatable {
         case loading
         case ready([PricePoint])
         case notEnoughData
@@ -19,29 +18,29 @@ final class CardDetailViewModel {
 
     /// The inline owners list. `total` is the whole count behind the section header, not the
     /// handful of rows shown.
-    enum OffersState: Equatable {
+    package enum OffersState: Equatable {
         case loading
         case loaded(preview: [CardOffer], total: Int)
         case failed
     }
 
     /// How many offers the card screen shows before "Voir tous les possesseurs".
-    static let previewCount = 3
+    package static let previewCount = 3
 
-    let card: CollectionCard
-    private(set) var history: HistoryState = .loading
-    private(set) var offers: OffersState = .loading
+    package let card: Components.Schemas.CollectionCardResponse
+    package private(set) var history: HistoryState = .loading
+    package private(set) var offers: OffersState = .loading
     /// Opens a trade from an offer row; the view reads its spinner and error from here.
-    let tradeOpener: CardOfferTrade
+    package let tradeOpener: CardOfferTrade
 
     /// The set name once `/sets/{set_code}` resolves; falls back to the raw code
     /// (mirrors `frontend/`'s `DetailModal.vue` `setName`/`isSetKnown`).
-    private(set) var setName: String
-    private(set) var isSetKnown = false
+    package private(set) var setName: String
+    package private(set) var isSetKnown = false
 
     private let api: any APIProtocol
 
-    init(card: CollectionCard, api: any APIProtocol) {
+    package init(card: Components.Schemas.CollectionCardResponse, api: any APIProtocol) {
         self.card = card
         self.api = api
         tradeOpener = CardOfferTrade(card: card, api: api)
@@ -49,7 +48,7 @@ final class CardDetailViewModel {
     }
 
     /// Resolves the human-readable set name. A failure just keeps showing the code.
-    func loadSetName() async {
+    package func loadSetName() async {
         if let name = await SetName.resolve(card.set_code, api: api) {
             setName = name
             isSetKnown = true
@@ -57,7 +56,7 @@ final class CardDetailViewModel {
     }
 
     /// Loads just the cheapest few offers; the header count comes from the page's `total`.
-    func loadOffers() async {
+    package func loadOffers() async {
         do {
             let page = try await api.get_card_offers(
                 query: .init(
@@ -78,7 +77,7 @@ final class CardDetailViewModel {
     }
 
     /// Loads the default window (the API falls back to the last 30 days on its own).
-    func loadHistory() async {
+    package func loadHistory() async {
         history = .loading
         do {
             let entries = try await api.get_card_price_history(

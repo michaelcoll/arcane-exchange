@@ -2,7 +2,7 @@ import Foundation
 
 /// The languages a copy can be added in: every one the backend's domain knows, whatever Scryfall
 /// has of the card (the catalog has no language). Raw values are the API's language codes.
-enum CardLanguage: String, CaseIterable, Codable, Identifiable {
+package enum CardLanguage: String, CaseIterable, Codable, Identifiable {
     case french = "FR"
     case english = "EN"
     case german = "DE"
@@ -11,13 +11,13 @@ enum CardLanguage: String, CaseIterable, Codable, Identifiable {
     case spanish = "SP"
 
     /// The language picked when the player has not chosen one yet.
-    static let `default` = CardLanguage.french
+    package static let `default` = CardLanguage.french
 
-    var id: String {
+    package var id: String {
         rawValue
     }
 
-    var label: String {
+    package var label: String {
         switch self {
         case .french: "Français"
         case .english: "Anglais"

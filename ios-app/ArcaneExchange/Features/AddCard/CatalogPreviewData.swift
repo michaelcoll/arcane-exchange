@@ -1,5 +1,6 @@
 #if DEBUG
     import APIClient
+    import ArcaneCore
 
     /// Fixtures shared by the AddCard previews: a common with a French name, a mythic with no
     /// French name and a mythic with a long double-faced name, so a preview shows the row's variants.
