@@ -150,6 +150,24 @@ final class FakeAPI: APIProtocol, @unchecked Sendable {
         return try await onGetTradeBinders(input)
     }
 
+    var onGetReceivingBinder: (Operations.get_receiving_binder.Input) async throws -> Operations.get_receiving_binder.Output = { _ in
+        throw NotStubbed(operation: "get_receiving_binder")
+    }
+
+    func get_receiving_binder(_ input: Operations.get_receiving_binder.Input) async throws -> Operations.get_receiving_binder.Output {
+        record("get_receiving_binder")
+        return try await onGetReceivingBinder(input)
+    }
+
+    var onSetReceivingBinder: (Operations.set_receiving_binder.Input) async throws -> Operations.set_receiving_binder.Output = { _ in
+        throw NotStubbed(operation: "set_receiving_binder")
+    }
+
+    func set_receiving_binder(_ input: Operations.set_receiving_binder.Input) async throws -> Operations.set_receiving_binder.Output {
+        record("set_receiving_binder")
+        return try await onSetReceivingBinder(input)
+    }
+
     var onAddTradeBinder: (Operations.add_trade_binder.Input) async throws -> Operations.add_trade_binder.Output = { _ in
         throw NotStubbed(operation: "add_trade_binder")
     }

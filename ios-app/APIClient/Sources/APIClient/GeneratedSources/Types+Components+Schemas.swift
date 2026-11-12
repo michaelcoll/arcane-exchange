@@ -1175,6 +1175,48 @@ extension Components {
                 case rating
             }
         }
+        /// - Remark: Generated from `#/components/schemas/ReceivingBinderResponse`.
+        public struct ReceivingBinderResponse: Codable, Hashable, Sendable {
+            /// - Remark: Generated from `#/components/schemas/ReceivingBinderResponse/id`.
+            public var id: Swift.String
+            /// - Remark: Generated from `#/components/schemas/ReceivingBinderResponse/name`.
+            public var name: Swift.String
+            /// Creates a new `ReceivingBinderResponse`.
+            ///
+            /// - Parameters:
+            ///   - id:
+            ///   - name:
+            public init(
+                id: Swift.String,
+                name: Swift.String
+            ) {
+                self.id = id
+                self.name = name
+            }
+            public enum CodingKeys: String, CodingKey {
+                case id
+                case name
+            }
+        }
+        /// The receiving binder setting as stored.
+        ///
+        /// - Remark: Generated from `#/components/schemas/ReceivingBinderSettingResponse`.
+        public struct ReceivingBinderSettingResponse: Codable, Hashable, Sendable {
+            /// Absent while the player chose none: their received cards go into a binder named `trades`.
+            ///
+            /// - Remark: Generated from `#/components/schemas/ReceivingBinderSettingResponse/binder`.
+            public var binder: Components.Schemas.ReceivingBinderResponse?
+            /// Creates a new `ReceivingBinderSettingResponse`.
+            ///
+            /// - Parameters:
+            ///   - binder: Absent while the player chose none: their received cards go into a binder named `trades`.
+            public init(binder: Components.Schemas.ReceivingBinderResponse? = nil) {
+                self.binder = binder
+            }
+            public enum CodingKeys: String, CodingKey {
+                case binder
+            }
+        }
         /// - Remark: Generated from `#/components/schemas/RemoveTradeCardRequest`.
         public struct RemoveTradeCardRequest: Codable, Hashable, Sendable {
             /// - Remark: Generated from `#/components/schemas/RemoveTradeCardRequest/collector_number`.
@@ -1298,6 +1340,8 @@ extension Components {
                 case set_code
             }
         }
+        /// A set, as several resources show it.
+        ///
         /// - Remark: Generated from `#/components/schemas/SetInfoResponse`.
         public struct SetInfoResponse: Codable, Hashable, Sendable {
             /// - Remark: Generated from `#/components/schemas/SetInfoResponse/code`.
@@ -1351,6 +1395,23 @@ extension Components {
                 case is_open
                 case kept_copies
                 case rarity
+            }
+        }
+        /// - Remark: Generated from `#/components/schemas/SetReceivingBinderRequest`.
+        public struct SetReceivingBinderRequest: Codable, Hashable, Sendable {
+            /// Binder to receive into; absent to go back to the default.
+            ///
+            /// - Remark: Generated from `#/components/schemas/SetReceivingBinderRequest/binder_id`.
+            public var binder_id: Swift.String?
+            /// Creates a new `SetReceivingBinderRequest`.
+            ///
+            /// - Parameters:
+            ///   - binder_id: Binder to receive into; absent to go back to the default.
+            public init(binder_id: Swift.String? = nil) {
+                self.binder_id = binder_id
+            }
+            public enum CodingKeys: String, CodingKey {
+                case binder_id
             }
         }
         /// - Remark: Generated from `#/components/schemas/SetVisibilityRequest`.

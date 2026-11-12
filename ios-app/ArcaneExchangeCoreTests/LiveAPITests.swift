@@ -82,7 +82,7 @@ private enum MutationCall: String, CaseIterable, CustomTestStringConvertible {
     case createTrade, addTradeCard, removeTradeCard, acceptTrade, confirmTrade, abandonTrade
     case rateTrade, importCards, setTradeVisibility, setTradeRarityFilter, addTradeBinder, removeTradeBinder
     case createBinder, renameBinder, deleteBinder, addCollectionEntry, updateCollectionEntry, moveCollectionEntry
-    case removeCollectionEntry
+    case removeCollectionEntry, setReceivingBinder
 
     static let reloadingTrades: [MutationCall] = [
         .createTrade, .addTradeCard, .removeTradeCard, .acceptTrade, .abandonTrade
@@ -94,7 +94,8 @@ private enum MutationCall: String, CaseIterable, CustomTestStringConvertible {
         .moveCollectionEntry, .removeCollectionEntry
     ]
     static let reloadingNothing: [MutationCall] = [
-        .rateTrade, .importCards, .setTradeVisibility, .setTradeRarityFilter, .addTradeBinder, .removeTradeBinder
+        .rateTrade, .importCards, .setTradeVisibility, .setTradeRarityFilter, .addTradeBinder, .removeTradeBinder,
+        .setReceivingBinder
     ]
 
     var testDescription: String {
@@ -106,7 +107,7 @@ private enum MutationCall: String, CaseIterable, CustomTestStringConvertible {
         switch self {
         case .createTrade, .createBinder, .addCollectionEntry: 201
         case .importCards: 202
-        case .renameBinder, .updateCollectionEntry, .moveCollectionEntry: 200
+        case .renameBinder, .updateCollectionEntry, .moveCollectionEntry, .setReceivingBinder: 200
         default: 204
         }
     }
@@ -117,6 +118,7 @@ private enum MutationCall: String, CaseIterable, CustomTestStringConvertible {
         case .importCards: #"{"id":"imp-1"}"#
         case .createBinder, .renameBinder: #"{"copies":0,"id":"b-1","is_open":false,"name":"Bulk"}"#
         case .addCollectionEntry, .updateCollectionEntry, .moveCollectionEntry: #"{"entries":[],"reserved_quantity":{"foil":0,"normal":0}}"#
+        case .setReceivingBinder: #"{"binder":null}"#
         default: nil
         }
     }
@@ -175,6 +177,8 @@ private enum MutationCall: String, CaseIterable, CustomTestStringConvertible {
             _ = try await api.move_collection_entry(path: .init(id: "e-1"), body: .json(.init(quantity: 1))).ok
         case .removeCollectionEntry:
             _ = try await api.remove_collection_entry(path: .init(id: "e-1")).noContent
+        case .setReceivingBinder:
+            _ = try await api.set_receiving_binder(body: .json(.init())).ok
         }
     }
 }

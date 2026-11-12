@@ -38,6 +38,13 @@ impl BinderName {
     }
 }
 
+/// The binder a player chose to receive the cards of their Trades into.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct ReceivingBinder {
+    pub id: BinderId,
+    pub name: String,
+}
+
 /// A binder of a player, with what the list of their binders shows.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Binder {

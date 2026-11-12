@@ -93,7 +93,10 @@ optional and mutual.
   - **Shortfall**: a giver who holds less than the committed quantity (after an import, for instance) loses all they
     still hold of that copy, without error, and the trade is `COMPLETED` all the same.
   - **Reception** (receiver): always the full committed quantity, whatever was withdrawn. The cards go into the
-    receiver's binder named `trades`, reused if it exists, otherwise created closed to trade. They keep their finish
+    receiver's **receiving binder** (chosen in the trade settings, `GET`/`PUT /collection/trade-settings/receiving-binder`).
+    With none chosen, or once the chosen binder is deleted (which resets the choice, an import dropping it included),
+    they go into the binder named `trades`, reused if it exists, otherwise created closed to trade. A renaming keeps
+    the choice. They keep their finish
     and language, have no purchase price and take the Transfer date as added date. They merge with an existing entry
     of the same card and finish in that binder by the collection merge rule (quantities add up, present purchase
     prices are averaged, earliest added date), the quantity capped at 255.

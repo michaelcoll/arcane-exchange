@@ -49,9 +49,11 @@ use crate::application::service::trade::remove_card::RemoveTradeCardService;
 use crate::application::service::trade_settings::add_binder::AddTradeBinderService;
 use crate::application::service::trade_settings::get_binders::GetTradeBindersService;
 use crate::application::service::trade_settings::get_rarity_filters::GetRarityTradeFiltersService;
+use crate::application::service::trade_settings::get_receiving_binder::GetReceivingBinderService;
 use crate::application::service::trade_settings::get_visibility::GetCollectionVisibilityService;
 use crate::application::service::trade_settings::remove_binder::RemoveTradeBinderService;
 use crate::application::service::trade_settings::set_rarity_filter::SetRarityTradeFilterService;
+use crate::application::service::trade_settings::set_receiving_binder::SetReceivingBinderService;
 use crate::application::service::trade_settings::set_visibility::SetCollectionVisibilityService;
 use crate::application::service::user::get_profile::GetUserProfileService;
 use crate::application::service::user::register::RegisterUserService;
@@ -63,13 +65,15 @@ use crate::application::use_case::{
     EnqueueCardMarketIdUpdateUseCase, GetCardImportUseCase, GetCardOffersUseCase,
     GetCardPriceHistoryUseCase, GetCollectionEntriesUseCase, GetCollectionPriceHistoryUseCase,
     GetCollectionStatsUseCase, GetCollectionUseCase, GetCollectionVisibilityUseCase,
-    GetRarityTradeFiltersUseCase, GetSetUseCase, GetShowcaseUseCase, GetTradeBindersUseCase,
-    GetTradeUseCase, GetUserProfileUseCase, ImportCardUseCase, ImportPriceUseCase,
-    ListBindersUseCase, ListSetsUseCase, ListTradesUseCase, MoveCollectionEntryUseCase,
-    RateTradeUseCase, RegisterUserUseCase, RemoveCollectionEntryUseCase, RemoveTradeBinderUseCase,
-    RemoveTradeCardUseCase, RenameBinderUseCase, RunCardImportUseCase, ScanIndexUseCase,
-    SearchCardsUseCase, SearchCatalogUseCase, SearchSetsUseCase, SetCollectionVisibilityUseCase,
-    SetRarityTradeFilterUseCase, StatsUseCase, UpdateCatalogUseCase, UpdateCollectionEntryUseCase,
+    GetRarityTradeFiltersUseCase, GetReceivingBinderUseCase, GetSetUseCase, GetShowcaseUseCase,
+    GetTradeBindersUseCase, GetTradeUseCase, GetUserProfileUseCase, ImportCardUseCase,
+    ImportPriceUseCase, ListBindersUseCase, ListSetsUseCase, ListTradesUseCase,
+    MoveCollectionEntryUseCase, RateTradeUseCase, RegisterUserUseCase,
+    RemoveCollectionEntryUseCase, RemoveTradeBinderUseCase, RemoveTradeCardUseCase,
+    RenameBinderUseCase, RunCardImportUseCase, ScanIndexUseCase, SearchCardsUseCase,
+    SearchCatalogUseCase, SearchSetsUseCase, SetCollectionVisibilityUseCase,
+    SetRarityTradeFilterUseCase, SetReceivingBinderUseCase, StatsUseCase, UpdateCatalogUseCase,
+    UpdateCollectionEntryUseCase,
 };
 use crate::config::Config;
 use crate::infrastructure::adapter_in::autocomplete::controller::create_autocomplete_router;
@@ -93,6 +97,7 @@ use crate::infrastructure::adapter_out::repository::collection_entry_repository_
 use crate::infrastructure::adapter_out::repository::collection_price_history_repository_adapter::CollectionPriceHistoryRepositoryAdapter;
 use crate::infrastructure::adapter_out::repository::collection_rarity_filters_repository_adapter::CollectionRarityFiltersRepositoryAdapter;
 use crate::infrastructure::adapter_out::repository::collection_stats_repository_adapter::CollectionStatsRepositoryAdapter;
+use crate::infrastructure::adapter_out::repository::receiving_binder_repository_adapter::ReceivingBinderRepositoryAdapter;
 use crate::infrastructure::adapter_out::repository::showcase_repository_adapter::ShowcaseRepositoryAdapter;
 use crate::infrastructure::adapter_out::repository::stats_repository_adapter::StatsRepositoryAdapter;
 use crate::infrastructure::adapter_out::repository::trade_repository_adapter::TradeRepositoryAdapter;
@@ -163,6 +168,8 @@ pub struct AppState {
     pub create_binder_use_case: Arc<dyn CreateBinderUseCase>,
     pub rename_binder_use_case: Arc<dyn RenameBinderUseCase>,
     pub delete_binder_use_case: Arc<dyn DeleteBinderUseCase>,
+    pub get_receiving_binder_use_case: Arc<dyn GetReceivingBinderUseCase>,
+    pub set_receiving_binder_use_case: Arc<dyn SetReceivingBinderUseCase>,
     pub get_trade_binders_use_case: Arc<dyn GetTradeBindersUseCase>,
     pub add_trade_binder_use_case: Arc<dyn AddTradeBinderUseCase>,
     pub remove_trade_binder_use_case: Arc<dyn RemoveTradeBinderUseCase>,
@@ -189,6 +196,7 @@ struct Repositories {
     collection_price_history: Arc<CollectionPriceHistoryRepositoryAdapter>,
     collection_stats: Arc<CollectionStatsRepositoryAdapter>,
     trading_binders: Arc<TradingBindersRepositoryAdapter>,
+    receiving_binder: Arc<ReceivingBinderRepositoryAdapter>,
     binder: Arc<BinderRepositoryAdapter>,
     collection_entry: Arc<CollectionEntryRepositoryAdapter>,
     collection_rarity_filters: Arc<CollectionRarityFiltersRepositoryAdapter>,
@@ -211,6 +219,7 @@ fn create_repositories(pool: &Pool<Postgres>) -> Repositories {
         )),
         collection_stats: Arc::new(CollectionStatsRepositoryAdapter::new(pool.clone())),
         trading_binders: Arc::new(TradingBindersRepositoryAdapter::new(pool.clone())),
+        receiving_binder: Arc::new(ReceivingBinderRepositoryAdapter::new(pool.clone())),
         binder: Arc::new(BinderRepositoryAdapter::new(pool.clone())),
         collection_entry: Arc::new(CollectionEntryRepositoryAdapter::new(pool.clone())),
         collection_rarity_filters: Arc::new(CollectionRarityFiltersRepositoryAdapter::new(
@@ -364,7 +373,13 @@ fn create_app_state(
     let rename_binder_service: Arc<dyn RenameBinderUseCase> =
         Arc::new(RenameBinderService::new(repos.binder.clone()));
     let delete_binder_service: Arc<dyn DeleteBinderUseCase> =
-        Arc::new(DeleteBinderService::new(repos.binder));
+        Arc::new(DeleteBinderService::new(repos.binder.clone()));
+    let get_receiving_binder_service: Arc<dyn GetReceivingBinderUseCase> = Arc::new(
+        GetReceivingBinderService::new(repos.receiving_binder.clone()),
+    );
+    let set_receiving_binder_service: Arc<dyn SetReceivingBinderUseCase> = Arc::new(
+        SetReceivingBinderService::new(repos.receiving_binder, repos.binder),
+    );
     let get_trade_binders_service: Arc<dyn GetTradeBindersUseCase> =
         Arc::new(GetTradeBindersService::new(repos.trading_binders.clone()));
     let add_trade_binder_service: Arc<dyn AddTradeBinderUseCase> =
@@ -456,6 +471,8 @@ fn create_app_state(
         create_binder_use_case: create_binder_service,
         rename_binder_use_case: rename_binder_service,
         delete_binder_use_case: delete_binder_service,
+        get_receiving_binder_use_case: get_receiving_binder_service,
+        set_receiving_binder_use_case: set_receiving_binder_service,
         get_trade_binders_use_case: get_trade_binders_service,
         add_trade_binder_use_case: add_trade_binder_service,
         remove_trade_binder_use_case: remove_trade_binder_service,

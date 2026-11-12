@@ -1,3 +1,4 @@
+use crate::domain::binder::ReceivingBinder;
 use crate::domain::rarity_trade_filter::RarityTradeFilter;
 use crate::domain::user::CollectionVisibility;
 use serde::{Deserialize, Serialize};
@@ -45,6 +46,52 @@ pub struct VisibilityResponse {
 #[ts(export)]
 pub(crate) struct SetVisibilityRequest {
     pub(crate) visibility: CollectionVisibilityParam,
+}
+
+// --- Receiving binder ---
+#[derive(Debug, Serialize, TS, ToSchema)]
+#[serde(rename = "ReceivingBinder")]
+#[ts(export)]
+pub struct ReceivingBinderResponse {
+    pub id: String,
+    pub name: String,
+}
+
+impl From<ReceivingBinder> for ReceivingBinderResponse {
+    fn from(binder: ReceivingBinder) -> Self {
+        Self {
+            id: binder.id.to_string(),
+            name: binder.name,
+        }
+    }
+}
+
+/// The receiving binder setting as stored.
+#[derive(Debug, Serialize, TS, ToSchema)]
+#[serde(rename = "ReceivingBinderSetting")]
+#[ts(export)]
+pub struct ReceivingBinderSettingResponse {
+    /// Absent while the player chose none: their received cards go into a binder named `trades`.
+    #[schema(value_type = ReceivingBinderResponse, required = false)]
+    pub binder: Option<ReceivingBinderResponse>,
+}
+
+impl From<Option<ReceivingBinder>> for ReceivingBinderSettingResponse {
+    fn from(binder: Option<ReceivingBinder>) -> Self {
+        Self {
+            binder: binder.map(ReceivingBinderResponse::from),
+        }
+    }
+}
+
+#[derive(Debug, Deserialize, TS, ToSchema)]
+#[serde(rename = "SetReceivingBinderRequest")]
+#[ts(export)]
+pub(crate) struct SetReceivingBinderRequest {
+    /// Binder to receive into; absent to go back to the default.
+    #[serde(default)]
+    #[ts(optional)]
+    pub(crate) binder_id: Option<String>,
 }
 
 // --- Binders open for trade ---

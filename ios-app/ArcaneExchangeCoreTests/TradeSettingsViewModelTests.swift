@@ -7,8 +7,11 @@ private func rarity(_ code: String, isOpen: Bool = true, copies: Int64 = 10, pro
     RarityFilter(copies: copies, is_open: isOpen, kept_copies: 0, proposed: proposed, rarity: code)
 }
 
-/// A fake already answering the four requests of `load()`.
-private func loadableAPI(rarities: [RarityFilter] = [rarity("C")]) -> FakeAPI {
+/// A fake already answering the five requests of `load()`.
+private func loadableAPI(
+    rarities: [RarityFilter] = [rarity("C")],
+    receivingBinder: ReceivingBinder? = ReceivingBinder(id: "2", name: "Binder 2")
+) -> FakeAPI {
     let api = FakeAPI()
     api.onGetTradeVisibility = { _ in .ok(.init(body: .json(.init(visibility: .trade)))) }
     // An empty binder is listed too: it can be opened to trade.
@@ -21,6 +24,7 @@ private func loadableAPI(rarities: [RarityFilter] = [rarity("C")]) -> FakeAPI {
     }
     api.onGetTradeBinders = { _ in .ok(.init(body: .json(.init(binders: ["Binder 2"])))) }
     api.onGetTradeRarityFilters = { _ in .ok(.init(body: .json(.init(rarities: rarities)))) }
+    api.onGetReceivingBinder = { _ in .ok(.init(body: .json(.init(binder: receivingBinder)))) }
     return api
 }
 
@@ -36,11 +40,68 @@ struct TradeSettingsViewModelTests {
         #expect(model.binders.map(\.name) == ["Binder 2", "Binder 10", "Empty"])
         #expect(model.selectedBinders == ["Binder 2"])
         #expect(model.rarities.map(\.rarity) == ["C"])
+        #expect(model.receivingBinder?.name == "Binder 2")
         #expect(model.loadError == nil)
         #expect(!model.isLoading)
         #expect(Set(api.calls) == [
             "get_trade_visibility", "list_binders", "get_trade_binders", "get_trade_rarity_filters",
+            "get_receiving_binder",
         ])
+    }
+
+    @Test func hasNoReceivingBinderByDefault() async {
+        let model = TradeSettingsViewModel(api: loadableAPI(receivingBinder: nil))
+
+        await model.load()
+
+        #expect(model.receivingBinder == nil)
+    }
+
+    @Test func choosesAReceivingBinder() async {
+        let api = loadableAPI(receivingBinder: nil)
+        nonisolated(unsafe) var sent: String?
+        api.onSetReceivingBinder = { input in
+            if case let .json(body) = input.body { sent = body.binder_id }
+            return .ok(.init(body: .json(.init(binder: ReceivingBinder(id: "1", name: "Binder 10")))))
+        }
+        let model = TradeSettingsViewModel(api: api)
+        await model.load()
+
+        await model.setReceivingBinder("1")
+
+        #expect(sent == "1")
+        #expect(model.receivingBinder?.name == "Binder 10")
+        #expect(model.writeError == nil)
+        #expect(!model.isSavingReceivingBinder)
+    }
+
+    @Test func goesBackToTheDefaultReceivingBinder() async {
+        let api = loadableAPI()
+        nonisolated(unsafe) var sentBinderID: String? = "unset"
+        api.onSetReceivingBinder = { input in
+            if case let .json(body) = input.body { sentBinderID = body.binder_id }
+            return .ok(.init(body: .json(.init(binder: nil))))
+        }
+        let model = TradeSettingsViewModel(api: api)
+        await model.load()
+
+        await model.setReceivingBinder(nil)
+
+        #expect(sentBinderID == nil)
+        #expect(model.receivingBinder == nil)
+    }
+
+    @Test func keepsTheReceivingBinderAndShowsTheTranslatedMessageOfARefusedChoice() async {
+        let api = loadableAPI()
+        api.onSetReceivingBinder = { _ in throw APIError(code: "binder_not_found", status: 404) }
+        let model = TradeSettingsViewModel(api: api)
+        await model.load()
+
+        await model.setReceivingBinder("9")
+
+        #expect(model.receivingBinder?.name == "Binder 2")
+        #expect(model.writeError == "Ce binder n'existe plus dans ta collection.")
+        #expect(!model.isSavingReceivingBinder)
     }
 
     @Test func showsTheTranslatedMessageOfAFailedLoad() async {

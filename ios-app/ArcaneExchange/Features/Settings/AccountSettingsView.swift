@@ -12,6 +12,7 @@ struct AccountSettingsView: View {
         case binders
         case rarities
         case manageBinders
+        case receivingBinder
 
         var id: String {
             rawValue
@@ -49,6 +50,7 @@ struct AccountSettingsView: View {
                     case .binders: TradeSettingsBindersSheet(model: model)
                     case .rarities: TradeSettingsRaritiesSheet(model: model)
                     case .manageBinders: BindersView(api: api)
+                    case .receivingBinder: TradeSettingsReceivingBinderSheet(model: model)
                     }
                 }
                 .writeErrorAlert(model)
@@ -115,6 +117,12 @@ struct AccountSettingsView: View {
                 systemImage: "shield",
                 value: model.visibility.label,
                 drawer: .visibility
+            )
+            drawerRow(
+                title: "Binder de réception",
+                systemImage: "tray.and.arrow.down",
+                value: model.receivingBinder?.name ?? TradeSettingsCopy.defaultReceivingBinder,
+                drawer: .receivingBinder
             )
             if model.visibility == .trade {
                 drawerRow(
