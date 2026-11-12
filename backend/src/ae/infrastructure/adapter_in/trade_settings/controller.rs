@@ -1,5 +1,6 @@
 use super::dto::{
-    AddTradeBinderRequest, RarityFilterResponse, RarityFiltersResponse, SetRarityFilterRequest,
+    AddTradeBinderRequest, RarityFilterResponse, RarityFiltersResponse,
+    ReceivingBinderSettingResponse, SetRarityFilterRequest, SetReceivingBinderRequest,
     SetVisibilityRequest, TradeBindersResponse, VisibilityResponse,
 };
 use crate::application::error::AppError;
@@ -8,6 +9,7 @@ use crate::domain::rarity_code::RarityCode;
 use crate::domain::rarity_trade_filter::RarityTradeFilterRule;
 use crate::infrastructure::AppState;
 use crate::infrastructure::adapter_in::auth_extractor::AuthenticatedUser;
+use crate::infrastructure::adapter_in::parse_binder_id;
 use axum::extract::{Path, State};
 use axum::http::StatusCode;
 use axum::routing::{delete, get};
@@ -19,6 +21,10 @@ pub fn create_trade_settings_router() -> axum::Router<AppState> {
         .route(
             "/visibility",
             get(get_trade_visibility).put(set_trade_visibility),
+        )
+        .route(
+            "/receiving-binder",
+            get(get_receiving_binder).put(set_receiving_binder),
         )
         .route("/binders", get(get_trade_binders).post(add_trade_binder))
         .route("/binders/{name}", delete(remove_trade_binder))
@@ -77,6 +83,59 @@ pub(crate) async fn set_trade_visibility(
         .await?;
 
     Ok(StatusCode::NO_CONTENT)
+}
+
+#[utoipa::path(
+    get,
+    path = "/collection/trade-settings/receiving-binder",
+    responses(
+        (status = 200, description = "Binder the received cards of a Trade go into; absent until one is chosen", body = ReceivingBinderSettingResponse),
+        (status = 401, description = "Missing or invalid authentication token"),
+    ),
+    security(("bearer_auth" = [])),
+    tag = "trade-settings",
+)]
+pub(crate) async fn get_receiving_binder(
+    State(state): State<AppState>,
+    AuthenticatedUser(user): AuthenticatedUser,
+) -> Result<axum::Json<ReceivingBinderSettingResponse>, AppError> {
+    let binder = state
+        .get_receiving_binder_use_case
+        .get_receiving_binder(user.id)
+        .await?;
+
+    Ok(axum::Json(binder.into()))
+}
+
+#[utoipa::path(
+    put,
+    path = "/collection/trade-settings/receiving-binder",
+    request_body = SetReceivingBinderRequest,
+    responses(
+        (status = 200, description = "Receiving binder as stored", body = ReceivingBinderSettingResponse),
+        (status = 401, description = "Missing or invalid authentication token"),
+        (status = 404, description = "Binder not found, or another player's (binder_not_found)"),
+    ),
+    security(("bearer_auth" = [])),
+    tag = "trade-settings",
+)]
+pub(crate) async fn set_receiving_binder(
+    State(state): State<AppState>,
+    AuthenticatedUser(user): AuthenticatedUser,
+    axum::Json(payload): axum::Json<SetReceivingBinderRequest>,
+) -> Result<axum::Json<ReceivingBinderSettingResponse>, AppError> {
+    let binder_id = payload
+        .binder_id
+        .as_deref()
+        .map(parse_binder_id)
+        .transpose()?;
+
+    let binder = state
+        .set_receiving_binder_use_case
+        .set_receiving_binder(user.id, binder_id)
+        .await?;
+
+    Ok(axum::Json(binder.into()))
 }
 
 #[utoipa::path(

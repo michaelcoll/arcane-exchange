@@ -140,6 +140,7 @@ erDiagram
         character_varying(100) username UK "not null"
         character_varying(10) visibility "not null, default: 'private'::character varying"
         text image_url
+        uuid receiving_binder_id FK
     }
     v_tradable_entry {
         character_varying(50) user_id
@@ -163,6 +164,7 @@ erDiagram
     users ||--o{ trade_card : "owner_user_id"
     trade ||--o{ trade_card : "trade_id"
     binder ||--o{ trading_binders : "binder_id"
+    binder |o--o{ users : "receiving_binder_id"
 ```
 
 ## Views

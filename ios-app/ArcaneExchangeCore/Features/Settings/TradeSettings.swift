@@ -3,6 +3,7 @@ import APIClient
 /// Short names for the schema types the trade settings work with.
 package typealias CollectionVisibility = Components.Schemas.CollectionVisibilityParam
 package typealias RarityFilter = Components.Schemas.RarityFilterResponse
+package typealias ReceivingBinder = Components.Schemas.ReceivingBinderResponse
 
 package extension CollectionVisibility {
     /// The mockup's `VIS_LBL`, same wording as the web client's `visHelp`.
@@ -65,6 +66,10 @@ package struct TradeRatio: Equatable {
 }
 
 package enum TradeSettingsCopy {
+    /// The receiving binder row's value while the player chose none: their received cards go
+    /// into a binder named `trades`.
+    package static let defaultReceivingBinder = "Par défaut (trades)"
+
     /// "2 sur 5" — how many binders are opened to trade, out of those the last import found.
     package static func binderSelection(selected: Int, total: Int) -> String {
         "\(selected) sur \(total)"

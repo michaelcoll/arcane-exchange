@@ -2,7 +2,7 @@ import APIClient
 import Foundation
 
 /// Backs the trade settings of the Réglages sheet: the collection's visibility, the ManaBox
-/// binders opened to trade, and the rarity filters — the `/collection/trade-settings`
+/// binders opened to trade, the rarity filters, and the receiving binder — the `/collection/trade-settings`
 /// endpoints the web client's `useTradeSettingsService` also drives.
 @MainActor
 @Observable
@@ -17,6 +17,8 @@ package final class TradeSettingsViewModel {
     package private(set) var binders: [Binder] = []
     package private(set) var selectedBinders: Set<String> = []
     package private(set) var rarities: [RarityFilter] = []
+    /// Where the cards received by Transfer go; `nil` for the default `trades` binder.
+    package private(set) var receivingBinder: ReceivingBinder?
 
     package private(set) var isLoading = false
     /// Set when the initial load failed: the screen has nothing to show, so it replaces it.
@@ -27,6 +29,7 @@ package final class TradeSettingsViewModel {
     package var writeError: String?
 
     package private(set) var isSavingVisibility = false
+    package private(set) var isSavingReceivingBinder = false
     /// Name of the binder / code of the rarity whose row is waiting on the server, or `nil`.
     package private(set) var busyBinder: String?
     package private(set) var busyRarity: String?
@@ -45,11 +48,13 @@ package final class TradeSettingsViewModel {
             async let binders = fetchBinders()
             async let selected = fetchSelectedBinders()
             async let rarities = fetchRarityFilters()
-            let loaded = try await (visibility, binders, selected, rarities)
+            async let receiving = fetchReceivingBinder()
+            let loaded = try await (visibility, binders, selected, rarities, receiving)
             self.visibility = loaded.0
             self.binders = loaded.1
             selectedBinders = loaded.2
             self.rarities = loaded.3
+            receivingBinder = loaded.4
         } catch {
             loadError = APIError.read(error).message
         }
@@ -68,6 +73,19 @@ package final class TradeSettingsViewModel {
             _ = try await api.set_trade_visibility(body: .json(.init(visibility: newValue))).noContent
         } catch {
             visibility = previous
+            writeError = APIError.read(error).message
+        }
+    }
+
+    /// Not optimistic: the server answers with the setting as stored, which is what the row
+    /// shows. `nil` goes back to the default binder.
+    package func setReceivingBinder(_ binderID: String?) async {
+        isSavingReceivingBinder = true
+        defer { isSavingReceivingBinder = false }
+        do {
+            let body = Components.Schemas.SetReceivingBinderRequest(binder_id: binderID)
+            receivingBinder = try await api.set_receiving_binder(body: .json(body)).ok.body.json.binder
+        } catch {
             writeError = APIError.read(error).message
         }
     }
@@ -145,6 +163,10 @@ package final class TradeSettingsViewModel {
 
     private func fetchSelectedBinders() async throws -> Set<String> {
         try await Set(api.get_trade_binders().ok.body.json.binders)
+    }
+
+    private func fetchReceivingBinder() async throws -> ReceivingBinder? {
+        try await api.get_receiving_binder().ok.body.json.binder
     }
 
     private func fetchRarityFilters() async throws -> [RarityFilter] {

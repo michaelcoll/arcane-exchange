@@ -95,6 +95,12 @@ public protocol APIProtocol: Sendable {
     /// - Remark: HTTP `POST /collection/trade-settings/rarities`.
     /// - Remark: Generated from `#/paths//collection/trade-settings/rarities/post(set_trade_rarity_filter)`.
     func set_trade_rarity_filter(_ input: Operations.set_trade_rarity_filter.Input) async throws -> Operations.set_trade_rarity_filter.Output
+    /// - Remark: HTTP `GET /collection/trade-settings/receiving-binder`.
+    /// - Remark: Generated from `#/paths//collection/trade-settings/receiving-binder/get(get_receiving_binder)`.
+    func get_receiving_binder(_ input: Operations.get_receiving_binder.Input) async throws -> Operations.get_receiving_binder.Output
+    /// - Remark: HTTP `PUT /collection/trade-settings/receiving-binder`.
+    /// - Remark: Generated from `#/paths//collection/trade-settings/receiving-binder/put(set_receiving_binder)`.
+    func set_receiving_binder(_ input: Operations.set_receiving_binder.Input) async throws -> Operations.set_receiving_binder.Output
     /// - Remark: HTTP `GET /collection/trade-settings/visibility`.
     /// - Remark: Generated from `#/paths//collection/trade-settings/visibility/get(get_trade_visibility)`.
     func get_trade_visibility(_ input: Operations.get_trade_visibility.Input) async throws -> Operations.get_trade_visibility.Output
@@ -413,6 +419,22 @@ extension APIProtocol {
         body: Operations.set_trade_rarity_filter.Input.Body
     ) async throws -> Operations.set_trade_rarity_filter.Output {
         try await set_trade_rarity_filter(Operations.set_trade_rarity_filter.Input(
+            headers: headers,
+            body: body
+        ))
+    }
+    /// - Remark: HTTP `GET /collection/trade-settings/receiving-binder`.
+    /// - Remark: Generated from `#/paths//collection/trade-settings/receiving-binder/get(get_receiving_binder)`.
+    public func get_receiving_binder(headers: Operations.get_receiving_binder.Input.Headers = .init()) async throws -> Operations.get_receiving_binder.Output {
+        try await get_receiving_binder(Operations.get_receiving_binder.Input(headers: headers))
+    }
+    /// - Remark: HTTP `PUT /collection/trade-settings/receiving-binder`.
+    /// - Remark: Generated from `#/paths//collection/trade-settings/receiving-binder/put(set_receiving_binder)`.
+    public func set_receiving_binder(
+        headers: Operations.set_receiving_binder.Input.Headers = .init(),
+        body: Operations.set_receiving_binder.Input.Body
+    ) async throws -> Operations.set_receiving_binder.Output {
+        try await set_receiving_binder(Operations.set_receiving_binder.Input(
             headers: headers,
             body: body
         ))

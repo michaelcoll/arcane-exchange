@@ -15,6 +15,7 @@ pub mod collection_stats_repository_adapter;
 #[cfg(test)]
 pub mod common_repository_tests;
 pub mod entities;
+pub mod receiving_binder_repository_adapter;
 pub mod set_names_repository_adapter;
 pub mod showcase_repository_adapter;
 pub mod stats_repository_adapter;

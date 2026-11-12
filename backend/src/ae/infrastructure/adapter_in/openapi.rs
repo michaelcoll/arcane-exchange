@@ -22,7 +22,8 @@ use super::trade::dto::{
 };
 use super::trade_settings::dto::{
     AddTradeBinderRequest, CollectionVisibilityParam, RarityFilterResponse, RarityFiltersResponse,
-    SetRarityFilterRequest, SetVisibilityRequest, TradeBindersResponse, VisibilityResponse,
+    ReceivingBinderResponse, ReceivingBinderSettingResponse, SetRarityFilterRequest,
+    SetReceivingBinderRequest, SetVisibilityRequest, TradeBindersResponse, VisibilityResponse,
 };
 use super::user::dto::UserProfileResponse;
 use super::{ErrorResponse, SetInfoResponse};
@@ -48,6 +49,8 @@ use utoipa::OpenApi;
         super::binder::controller::delete_binder,
         super::trade_settings::controller::get_trade_visibility,
         super::trade_settings::controller::set_trade_visibility,
+        super::trade_settings::controller::get_receiving_binder,
+        super::trade_settings::controller::set_receiving_binder,
         super::trade_settings::controller::get_trade_binders,
         super::trade_settings::controller::add_trade_binder,
         super::trade_settings::controller::remove_trade_binder,
@@ -132,6 +135,9 @@ use utoipa::OpenApi;
         CollectionVisibilityParam,
         TradeBindersResponse,
         AddTradeBinderRequest,
+        ReceivingBinderResponse,
+        ReceivingBinderSettingResponse,
+        SetReceivingBinderRequest,
         UserProfileResponse,
         ErrorResponse,
     )),
@@ -251,6 +257,7 @@ mod tests {
 
         for path in [
             "/collection/trade-settings/visibility",
+            "/collection/trade-settings/receiving-binder",
             "/collection/trade-settings/binders",
             "/collection/trade-settings/binders/{name}",
             "/collection/trade-settings/rarities",

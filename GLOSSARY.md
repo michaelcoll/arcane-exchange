@@ -171,6 +171,12 @@ _Avoid_ : confidentialité, mode privé
 Un binder que le joueur a coché comme éligible à l'échange. Aucun binder n'est coché par défaut.
 _Avoid_ : binder actif, binder public
 
+**Binder de réception** :
+Le binder où arrivent les cartes reçues par Transfert, choisi par le joueur dans ses réglages. À défaut
+de choix, ou si le binder choisi a été supprimé, c'est un binder nommé `trades`, créé à la première
+réception et fermé à l'échange.
+_Avoid_ : binder d'arrivée, inbox
+
 **Filtre de rareté** :
 Le réglage, par rareté, indiquant si elle est ouverte à l'échange et combien d'exemplaires le joueur
 garde systématiquement pour lui. Toute rareté est fermée par défaut.

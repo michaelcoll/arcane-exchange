@@ -1007,6 +1007,57 @@ paths:
                 $ref: '#/components/schemas/ErrorResponse'
       security:
       - bearer_auth: []
+  /collection/trade-settings/receiving-binder:
+    get:
+      tags:
+      - trade-settings
+      operationId: get_receiving_binder
+      responses:
+        '200':
+          description: Binder the received cards of a Trade go into; absent until one is chosen
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReceivingBinderSettingResponse'
+        '401':
+          description: Missing or invalid authentication token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      security:
+      - bearer_auth: []
+    put:
+      tags:
+      - trade-settings
+      operationId: set_receiving_binder
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SetReceivingBinderRequest'
+        required: true
+      responses:
+        '200':
+          description: Receiving binder as stored
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReceivingBinderSettingResponse'
+        '401':
+          description: Missing or invalid authentication token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Binder not found, or another player's (binder_not_found)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      security:
+      - bearer_auth: []
   /collection/trade-settings/visibility:
     get:
       tags:
@@ -2460,6 +2511,23 @@ components:
           format: int32
           description: Rating given to the other party, from 0 to 5 inclusive.
           minimum: 0
+    ReceivingBinderResponse:
+      type: object
+      required:
+      - id
+      - name
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+    ReceivingBinderSettingResponse:
+      type: object
+      description: The receiving binder setting as stored.
+      properties:
+        binder:
+          $ref: '#/components/schemas/ReceivingBinderResponse'
+          description: 'Absent while the player chose none: their received cards go into a binder named `trades`.'
     RemoveTradeCardRequest:
       type: object
       required:
@@ -2553,6 +2621,14 @@ components:
             instead of being rejected by the JSON extractor as a 422 before reaching the handler.
         rarity:
           type: string
+    SetReceivingBinderRequest:
+      type: object
+      properties:
+        binder_id:
+          type:
+          - string
+          - 'null'
+          description: Binder to receive into; absent to go back to the default.
     SetVisibilityRequest:
       type: object
       required:

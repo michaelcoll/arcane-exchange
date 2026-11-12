@@ -1,6 +1,6 @@
 use crate::application::error::AppError;
 use crate::application::imported_card::ImportedCard;
-use crate::domain::binder::{Binder, BinderId, BinderName};
+use crate::domain::binder::{Binder, BinderId, BinderName, ReceivingBinder};
 use crate::domain::card::{Card, CardId, CollectionEntry, CopyId};
 use crate::domain::card_image::{CardImageSource, CardImages, EnglishImage};
 use crate::domain::card_import::{CardImport, CardImportId, CardImportStatus};
@@ -287,6 +287,23 @@ pub trait TradingBinderRepository: Send + Sync {
     /// Deletes `user_id`'s binders that no `collection_entry` row refers to, with their trade
     /// opening. Run at the end of an import, which replaces the player's binders.
     async fn purge_missing(&self, user_id: &UserId) -> Result<(), AppError>;
+}
+
+#[async_trait]
+#[cfg_attr(test, automock)]
+pub trait ReceivingBinderRepository: Send + Sync {
+    /// The binder `user_id` chose to receive their Trades' cards into, `None` while they chose
+    /// none (or the chosen one was deleted).
+    async fn find(&self, user_id: &UserId) -> Result<Option<ReceivingBinder>, AppError>;
+
+    /// Chooses `binder_id` as `user_id`'s receiving binder, back to the default for `None`, and
+    /// returns the setting as stored. `BinderNotFound` if the binder is absent. The binder being
+    /// the player's own is for the caller to check.
+    async fn set(
+        &self,
+        user_id: &UserId,
+        binder_id: Option<BinderId>,
+    ) -> Result<Option<ReceivingBinder>, AppError>;
 }
 
 #[async_trait]

@@ -162,8 +162,20 @@ async fn receive(
     Ok(())
 }
 
-/// The binder where `user_id`'s received cards arrive.
+/// The binder where `user_id`'s received cards arrive: the one they chose, else `trades`. A
+/// deleted chosen binder has reset the choice, so it falls back to `trades` too.
 async fn receiving_binder(conn: &mut PgConnection, user_id: &UserId) -> Result<Uuid, AppError> {
+    let chosen = sqlx::query_scalar!(
+        "SELECT receiving_binder_id FROM users WHERE id = $1",
+        user_id.as_str(),
+    )
+    .fetch_optional(&mut *conn)
+    .await?
+    .flatten();
+    if let Some(binder_id) = chosen {
+        return Ok(binder_id);
+    }
+
     // The no-op update makes `RETURNING` yield the id of an existing binder too, and the unique
     // name keeps two concurrent first receptions from creating two.
     Ok(sqlx::query_scalar!(
@@ -485,6 +497,55 @@ mod tests {
         assert_eq!(
             collection_of(&pool, RECEIVER).await,
             vec![held(Some("trades"), false, 1)]
+        );
+    }
+
+    async fn choose_receiving_binder(pool: &PgPool, user: &str, binder_id: Uuid) {
+        sqlx::query("UPDATE users SET receiving_binder_id = $2 WHERE id = $1")
+            .bind(user)
+            .bind(binder_id)
+            .execute(pool)
+            .await
+            .unwrap();
+    }
+
+    #[sqlx::test]
+    async fn received_cards_go_into_the_chosen_receiving_binder(pool: PgPool) {
+        seed(&pool).await;
+        let chosen = insert_binder(&pool, RECEIVER, "Reçus").await;
+        choose_receiving_binder(&pool, RECEIVER, chosen).await;
+        add_entry(&pool, GIVER, false, 2, 100, None).await;
+        let trade_id = awaiting_last_confirmation(&pool, GIVER, RECEIVER).await;
+        insert_trade_card(&pool, trade_id, "FDN", "87", "FR", false, GIVER, 2).await;
+
+        assert!(complete(&pool, trade_id).await);
+
+        assert_eq!(
+            collection_of(&pool, RECEIVER).await,
+            vec![held(Some("Reçus"), false, 2)]
+        );
+        assert!(trades_binders_of(&pool, RECEIVER).await.is_empty());
+    }
+
+    #[sqlx::test]
+    async fn a_deleted_receiving_binder_falls_back_to_the_trades_binder(pool: PgPool) {
+        seed(&pool).await;
+        let chosen = insert_binder(&pool, RECEIVER, "Reçus").await;
+        choose_receiving_binder(&pool, RECEIVER, chosen).await;
+        sqlx::query("DELETE FROM binder WHERE id = $1")
+            .bind(chosen)
+            .execute(&pool)
+            .await
+            .unwrap();
+        add_entry(&pool, GIVER, false, 2, 100, None).await;
+        let trade_id = awaiting_last_confirmation(&pool, GIVER, RECEIVER).await;
+        insert_trade_card(&pool, trade_id, "FDN", "87", "FR", false, GIVER, 2).await;
+
+        assert!(complete(&pool, trade_id).await);
+
+        assert_eq!(
+            collection_of(&pool, RECEIVER).await,
+            vec![held(Some("trades"), false, 2)]
         );
     }
 

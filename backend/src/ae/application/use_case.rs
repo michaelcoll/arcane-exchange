@@ -2,7 +2,7 @@ use crate::application::error::AppError;
 use async_trait::async_trait;
 
 use crate::application::card_import_job::CardImportJob;
-use crate::domain::binder::{Binder, BinderId};
+use crate::domain::binder::{Binder, BinderId, ReceivingBinder};
 use crate::domain::card::{Card, CardId, CollectionEntry, CopyId};
 use crate::domain::card_import::{CardImport, CardImportId};
 use crate::domain::card_offer::CardOfferSortField;
@@ -77,6 +77,28 @@ pub trait SetCollectionVisibilityUseCase: Send + Sync {
         user_id: UserId,
         visibility: CollectionVisibility,
     ) -> Result<(), AppError>;
+}
+
+#[async_trait]
+#[cfg_attr(test, automock)]
+pub trait GetReceivingBinderUseCase: Send + Sync {
+    /// The binder the player receives their Trades' cards into, `None` for the default (`trades`).
+    async fn get_receiving_binder(
+        &self,
+        user_id: UserId,
+    ) -> Result<Option<ReceivingBinder>, AppError>;
+}
+
+#[async_trait]
+#[cfg_attr(test, automock)]
+pub trait SetReceivingBinderUseCase: Send + Sync {
+    /// Chooses the receiving binder, back to the default for `None`, and returns the setting as
+    /// stored. `BinderNotFound` (`404`), also for a binder of another player.
+    async fn set_receiving_binder(
+        &self,
+        user_id: UserId,
+        binder_id: Option<BinderId>,
+    ) -> Result<Option<ReceivingBinder>, AppError>;
 }
 
 #[async_trait]

@@ -4,6 +4,8 @@ use crate::application::use_case::{
     MockGetRarityTradeFiltersUseCase, MockGetTradeBindersUseCase, MockRemoveTradeBinderUseCase,
     MockSetCollectionVisibilityUseCase, MockSetRarityTradeFilterUseCase,
 };
+use crate::application::use_case::{MockGetReceivingBinderUseCase, MockSetReceivingBinderUseCase};
+use crate::domain::binder::{BinderId, ReceivingBinder};
 use crate::domain::error::FunctionalError;
 use crate::domain::rarity_code::RarityCode;
 use crate::domain::rarity_trade_filter::RarityTradeFilter;
@@ -15,6 +17,7 @@ use crate::infrastructure::{AppState, create_router};
 use axum::http::{Method, StatusCode};
 use serde_json::json;
 use std::sync::Arc;
+use uuid::Uuid;
 
 fn db_error() -> AppError {
     AppError::Infra(InfraError::RepositoryError("DB error".to_string()))
@@ -429,6 +432,151 @@ async fn set_trade_rarity_filter_propagates_error_from_use_case() {
 }
 
 // ============================================================
+// receiving binder
+// ============================================================
+
+const BINDER_ID: &str = "11111111-1111-1111-1111-111111111111";
+
+#[tokio::test]
+async fn get_receiving_binder_returns_the_chosen_binder() {
+    let mut mock_uc = MockGetReceivingBinderUseCase::new();
+    mock_uc
+        .expect_get_receiving_binder()
+        .times(1)
+        .returning(|_| {
+            Box::pin(async {
+                Ok(Some(ReceivingBinder {
+                    id: BinderId(Uuid::parse_str(BINDER_ID).unwrap()),
+                    name: "Reçus".to_string(),
+                }))
+            })
+        });
+    let app = create_router(AppState {
+        get_receiving_binder_use_case: Arc::new(mock_uc),
+        ..AppState::for_testing()
+    });
+
+    let response = authed(
+        app,
+        Method::GET,
+        "/collection/trade-settings/receiving-binder",
+    )
+    .await;
+
+    assert_eq!(response.status(), StatusCode::OK);
+    assert_eq!(
+        json_of(response).await,
+        json!({ "binder": { "id": BINDER_ID, "name": "Reçus" } })
+    );
+}
+
+#[tokio::test]
+async fn get_receiving_binder_returns_an_empty_setting_by_default() {
+    let mut mock_uc = MockGetReceivingBinderUseCase::new();
+    mock_uc
+        .expect_get_receiving_binder()
+        .times(1)
+        .returning(|_| Box::pin(async { Ok(None) }));
+    let app = create_router(AppState {
+        get_receiving_binder_use_case: Arc::new(mock_uc),
+        ..AppState::for_testing()
+    });
+
+    let response = authed(
+        app,
+        Method::GET,
+        "/collection/trade-settings/receiving-binder",
+    )
+    .await;
+
+    assert_eq!(response.status(), StatusCode::OK);
+    assert_eq!(json_of(response).await, json!({ "binder": null }));
+}
+
+#[tokio::test]
+async fn set_receiving_binder_returns_the_stored_setting() {
+    let mut mock_uc = MockSetReceivingBinderUseCase::new();
+    mock_uc
+        .expect_set_receiving_binder()
+        .withf(|_, id| *id == Some(BinderId(Uuid::parse_str(BINDER_ID).unwrap())))
+        .times(1)
+        .returning(|_, _| {
+            Box::pin(async {
+                Ok(Some(ReceivingBinder {
+                    id: BinderId(Uuid::parse_str(BINDER_ID).unwrap()),
+                    name: "Reçus".to_string(),
+                }))
+            })
+        });
+    let app = create_router(AppState {
+        set_receiving_binder_use_case: Arc::new(mock_uc),
+        ..AppState::for_testing()
+    });
+
+    let response = authed_json(
+        app,
+        Method::PUT,
+        "/collection/trade-settings/receiving-binder",
+        json!({ "binder_id": BINDER_ID }),
+    )
+    .await;
+
+    assert_eq!(response.status(), StatusCode::OK);
+    assert_eq!(
+        json_of(response).await,
+        json!({ "binder": { "id": BINDER_ID, "name": "Reçus" } })
+    );
+}
+
+#[tokio::test]
+async fn set_receiving_binder_without_binder_goes_back_to_the_default() {
+    let mut mock_uc = MockSetReceivingBinderUseCase::new();
+    mock_uc
+        .expect_set_receiving_binder()
+        .withf(|_, id| id.is_none())
+        .times(1)
+        .returning(|_, _| Box::pin(async { Ok(None) }));
+    let app = create_router(AppState {
+        set_receiving_binder_use_case: Arc::new(mock_uc),
+        ..AppState::for_testing()
+    });
+
+    let response = authed_json(
+        app,
+        Method::PUT,
+        "/collection/trade-settings/receiving-binder",
+        json!({}),
+    )
+    .await;
+
+    assert_eq!(response.status(), StatusCode::OK);
+    assert_eq!(json_of(response).await, json!({ "binder": null }));
+}
+
+#[tokio::test]
+async fn set_receiving_binder_propagates_binder_not_found() {
+    let mut mock_uc = MockSetReceivingBinderUseCase::new();
+    mock_uc
+        .expect_set_receiving_binder()
+        .times(1)
+        .returning(|_, _| Box::pin(async { Err(FunctionalError::BinderNotFound.into()) }));
+    let app = create_router(AppState {
+        set_receiving_binder_use_case: Arc::new(mock_uc),
+        ..AppState::for_testing()
+    });
+
+    let response = authed_json(
+        app,
+        Method::PUT,
+        "/collection/trade-settings/receiving-binder",
+        json!({ "binder_id": BINDER_ID }),
+    )
+    .await;
+
+    assert_error(response, StatusCode::NOT_FOUND, "binder_not_found").await;
+}
+
+// ============================================================
 // authentication
 // ============================================================
 
@@ -437,6 +585,8 @@ async fn every_route_refuses_an_anonymous_request() {
     let routes = [
         (Method::GET, "/collection/trade-settings/visibility"),
         (Method::PUT, "/collection/trade-settings/visibility"),
+        (Method::GET, "/collection/trade-settings/receiving-binder"),
+        (Method::PUT, "/collection/trade-settings/receiving-binder"),
         (Method::GET, "/collection/trade-settings/binders"),
         (Method::POST, "/collection/trade-settings/binders"),
         (Method::DELETE, "/collection/trade-settings/binders/Bulk"),
