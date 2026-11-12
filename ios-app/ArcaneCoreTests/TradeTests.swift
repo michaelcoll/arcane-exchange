@@ -3,7 +3,6 @@ import SwiftUI
 import Testing
 
 @testable import ArcaneCore
-@testable import ArcaneExchange
 
 private func card(trend: Int32?, quantity: Int32 = 1) -> TradeCard {
     TradeCard(
@@ -46,7 +45,6 @@ struct TradeStatusTests {
         #expect(TradeStatus.abandoned.lifecycleIndex == nil)
         #expect(TradeStatus.pending.lifecycleIndex == 0)
         #expect(TradeStatus.closed.lifecycleIndex == 4)
-        #expect(TradeStatus.lifecycle.count == TradeSteps.all.count)
     }
 
     @Test func aTradeInProgressIsPrimaryAndALockedOneSecondary() {
@@ -116,11 +114,19 @@ struct TradeCopyTests {
         #expect(TradesCopy.relativeDate(from: "pas une date") == "")
     }
 
-    /// Guards the bundle's `CFBundleLocalizations`: with no localization declared, iOS resolves
-    /// the app's language to English and this reads "30 minutes ago" on a French device.
     @Test func formatsTheRelativeDateInFrench() {
         let thirtyMinutesAgo = ISO8601DateFormatter().string(from: Date(timeIntervalSinceNow: -1800))
         #expect(TradesCopy.relativeDate(from: thirtyMinutesAgo).hasPrefix("il y a"))
+    }
+
+    /// Guards the app's `DEVELOPMENT_LANGUAGE`: left at XcodeGen's `en`, iOS resolves the app's
+    /// language to English and system sheets read "Cancel" on a French device. Read from the
+    /// manifest: the test process has no app Info.plist to ask.
+    @Test func theAppsLanguageIsFrench() throws {
+        let manifest = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent().deletingLastPathComponent()
+            .appendingPathComponent("project.yml")
+        #expect(try String(contentsOf: manifest, encoding: .utf8).contains("DEVELOPMENT_LANGUAGE: fr"))
     }
 
     @Test func pluralisesTheCardCount() {

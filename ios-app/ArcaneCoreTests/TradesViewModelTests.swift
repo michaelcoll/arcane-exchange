@@ -2,7 +2,6 @@ import APIClient
 import Testing
 
 @testable import ArcaneCore
-@testable import ArcaneExchange
 
 private func summary(_ id: String, status: TradeStatus = .pending) -> TradeSummary {
     TradeSummary(
