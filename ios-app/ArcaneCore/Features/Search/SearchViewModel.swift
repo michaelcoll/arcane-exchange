@@ -7,7 +7,7 @@ import Foundation
 /// one per pushed results screen.
 @MainActor
 @Observable
-final class SearchViewModel {
+package final class SearchViewModel {
     /// How many cards the as-you-type preview asks for. The full list lives behind a submit.
     private static let previewPageSize: Int32 = 8
 
@@ -21,21 +21,21 @@ final class SearchViewModel {
         return !Task.isCancelled
     }
 
-    private(set) var cardPreview: [CollectionCard] = []
-    private(set) var isLoadingCardPreview = false
-    private(set) var cardPreviewFailed = false
+    package private(set) var cardPreview: [CollectionCard] = []
+    package private(set) var isLoadingCardPreview = false
+    package private(set) var cardPreviewFailed = false
 
-    private(set) var playerSuggestions: [UserSuggestion] = []
-    private(set) var isLoadingPlayers = false
-    private(set) var playerLookupFailed = false
+    package private(set) var playerSuggestions: [UserSuggestion] = []
+    package private(set) var isLoadingPlayers = false
+    package private(set) var playerLookupFailed = false
 
-    private(set) var recentQueries: [String]
-    private(set) var recentPlayers: [UserSuggestion]
+    package private(set) var recentQueries: [String]
+    package private(set) var recentPlayers: [UserSuggestion]
 
     private let api: any APIProtocol
     private let memory: DeviceMemory
 
-    init(api: any APIProtocol, defaults: UserDefaults = .standard) {
+    package init(api: any APIProtocol, defaults: UserDefaults = .standard) {
         self.api = api
         memory = DeviceMemory(defaults: defaults)
         recentQueries = memory.read([String].self, for: PlayerKey.searchRecentCardQueries) ?? []
@@ -45,7 +45,7 @@ final class SearchViewModel {
     // MARK: Live card preview
 
     /// Debounced: called from `.task(id:)`, so a new keystroke cancels the pending sleep.
-    func previewCards(matching raw: String) async {
+    package func previewCards(matching raw: String) async {
         let query = raw.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !query.isEmpty else {
             cardPreview = []
@@ -76,7 +76,7 @@ final class SearchViewModel {
     // MARK: Player autocomplete
 
     /// Debounced: called from `.task(id:)`, so a new keystroke cancels the pending sleep.
-    func lookUpPlayers(matching raw: String) async {
+    package func lookUpPlayers(matching raw: String) async {
         let query = raw.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !query.isEmpty else {
             playerSuggestions = []
@@ -99,15 +99,15 @@ final class SearchViewModel {
 
     // MARK: Recents
 
-    func rememberQuery(_ query: String) {
+    package func rememberQuery(_ query: String) {
         updateRecentQueries { $0 = SearchRecents.adding(query, to: $0) }
     }
 
-    func removeQueries(_ toRemove: Set<String>) {
+    package func removeQueries(_ toRemove: Set<String>) {
         updateRecentQueries { queries in queries.removeAll { toRemove.contains($0) } }
     }
 
-    func clearQueries() {
+    package func clearQueries() {
         updateRecentQueries { $0 = [] }
     }
 
@@ -117,7 +117,7 @@ final class SearchViewModel {
         memory.write(recentQueries, for: PlayerKey.searchRecentCardQueries)
     }
 
-    func rememberPlayer(_ player: UserSuggestion) {
+    package func rememberPlayer(_ player: UserSuggestion) {
         recentPlayers = RecentPlayers.adding(player, to: recentPlayers)
         memory.write(recentPlayers, for: PlayerKey.searchRecentPlayers)
     }

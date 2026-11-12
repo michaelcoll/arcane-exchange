@@ -1,9 +1,9 @@
 import APIClient
 import SwiftUI
 
-typealias UserSuggestion = Components.Schemas.UserSuggestionResponse
+package typealias UserSuggestion = Components.Schemas.UserSuggestionResponse
 
-extension UserSuggestion {
+package extension UserSuggestion {
     /// "312 cartes échangeables" / "1 carte échangeable" — the player row's subtitle.
     var tradableCountLabel: String {
         card_count > 1
@@ -13,16 +13,16 @@ extension UserSuggestion {
 }
 
 /// The three search modes the mockup's segmented control offers.
-enum SearchMode: String, CaseIterable, Identifiable {
+package enum SearchMode: String, CaseIterable, Identifiable {
     case card
     case decklist
     case player
 
-    var id: Self {
+    package var id: Self {
         self
     }
 
-    var label: String {
+    package var label: String {
         switch self {
         case .card: "Carte"
         case .decklist: "Decklist"
@@ -30,7 +30,7 @@ enum SearchMode: String, CaseIterable, Identifiable {
         }
     }
 
-    var prompt: Text {
+    package var prompt: Text {
         switch self {
         case .card: Text("Vampiric Tutor…")
         case .decklist: Text("Nom d'une carte…")
@@ -40,8 +40,8 @@ enum SearchMode: String, CaseIterable, Identifiable {
 }
 
 /// A submitted search, pushed onto the Rechercher tab's stack.
-struct SearchResultsRoute: Hashable {
-    enum Target: Hashable {
+package struct SearchResultsRoute: Hashable {
+    package enum Target: Hashable {
         /// Free-text search on card name or set (`GET /search/card?q=`).
         case card(query: String)
         /// One player's tradable collection (`GET /search/card?player_username=`).
@@ -53,9 +53,13 @@ struct SearchResultsRoute: Hashable {
         case decklist
     }
 
-    let target: Target
+    package let target: Target
 
-    var title: String {
+    package init(target: Target) {
+        self.target = target
+    }
+
+    package var title: String {
         switch target {
         case let .card(query): query
         case let .player(username): "@\(username)"
@@ -65,11 +69,11 @@ struct SearchResultsRoute: Hashable {
 }
 
 /// Local, device-only recent card queries.
-enum SearchRecents {
-    static let limit = 8
+package enum SearchRecents {
+    package static let limit = 8
 
     /// Prepends `query` (de-duplicated, case-insensitively), capped at `limit`.
-    static func adding(_ query: String, to list: [String]) -> [String] {
+    package static func adding(_ query: String, to list: [String]) -> [String] {
         let trimmed = query.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return list }
         var next = list.filter { $0.caseInsensitiveCompare(trimmed) != .orderedSame }
@@ -79,10 +83,10 @@ enum SearchRecents {
 }
 
 /// Local, device-only recently opened players — mirrors the web `useRecentPlayers`.
-enum RecentPlayers {
-    static let limit = 4
+package enum RecentPlayers {
+    package static let limit = 4
 
-    static func adding(_ player: UserSuggestion, to list: [UserSuggestion]) -> [UserSuggestion] {
+    package static func adding(_ player: UserSuggestion, to list: [UserSuggestion]) -> [UserSuggestion] {
         guard !player.username.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return list }
         var next = list.filter { $0.username.caseInsensitiveCompare(player.username) != .orderedSame }
         next.insert(player, at: 0)
