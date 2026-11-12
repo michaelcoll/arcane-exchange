@@ -1,5 +1,5 @@
 import APIClient
-import ArcaneCore
+import ArcaneExchangeCore
 import SwiftUI
 
 /// "Possesseurs" (`ScrOffers` in the mockup): the other players offering this card to trade,

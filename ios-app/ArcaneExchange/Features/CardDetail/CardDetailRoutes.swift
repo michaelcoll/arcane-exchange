@@ -1,5 +1,5 @@
 import APIClient
-import ArcaneCore
+import ArcaneExchangeCore
 import SwiftUI
 
 /// Routes pushed onto whichever `NavigationStack` shows a card list. Both carry the whole

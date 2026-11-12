@@ -1,5 +1,5 @@
 import APIClient
-import ArcaneCore
+import ArcaneExchangeCore
 import SwiftUI
 
 /// Pushed card screen (`ScrCard` in the iOS mockup): artwork, the price guide with its

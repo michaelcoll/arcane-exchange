@@ -1,4 +1,4 @@
-import ArcaneCore
+import ArcaneExchangeCore
 import SwiftUI
 
 /// One row of the Échanges list: who, how many cards each way, when, and where the trade stands.

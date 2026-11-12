@@ -1,4 +1,4 @@
-import ArcaneCore
+import ArcaneExchangeCore
 import SwiftUI
 
 /// The mockup's "Filtrer" drawer, as a summary: one row per facet, each opening its own

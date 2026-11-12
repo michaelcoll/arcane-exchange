@@ -1,4 +1,4 @@
-import ArcaneCore
+import ArcaneExchangeCore
 import SwiftUI
 
 /// Sub-drawer "Visibilité de la collection" (the mockup's `sheet === 'vis'`): the three modes,

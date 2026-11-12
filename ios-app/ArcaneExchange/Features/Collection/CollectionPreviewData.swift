@@ -1,5 +1,5 @@
 #if DEBUG
-    import ArcaneCore
+    import ArcaneExchangeCore
     import Foundation
 
     /// Fixtures shared by the Collection previews — a small spread of rarities, prices and foil

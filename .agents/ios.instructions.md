@@ -25,7 +25,7 @@ code : [CODING_STANDARDS.md](../CODING_STANDARDS.md) › iOS.
 - The `APIClient` target builds with `-suppress-warnings` (`Package.swift`): the generator writes a `public import`
   per module in every file, one `UnusedImportAccess` warning each. It mutes **every** warning of the module, so keep
   hand-written code out of it — and check `swift build` without the flag after bumping `swift-openapi-*`.
-- New code goes through `APIClientFactory` (`ArcaneCore/Networking/`, ADR-0020): view models take `any APIProtocol` in their
+- New code goes through `APIClientFactory` (`ArcaneExchangeCore/Networking/`, ADR-0020): view models take `any APIProtocol` in their
   initializer (views read it from `\.api`), read only the success of an `Output` (`.ok`, `.noContent`) and catch with
   `APIError.read`. Tests use `FakeAPI` (`TestSupport/`). The app builds its client once, in `ArcaneExchangeApp`.
 - `APIClientFactory` takes the base URL as a closure (`AppConfig.apiBaseURL` by default), read on each request: the
@@ -33,22 +33,22 @@ code : [CODING_STANDARDS.md](../CODING_STANDARDS.md) › iOS.
 
 ## Targets and test bundles
 
-- `ArcaneCore/` (framework, `import ArcaneCore`) holds everything that is not a screen; `ArcaneExchange/` holds the
+- `ArcaneExchangeCore/` (framework, `import ArcaneExchangeCore`) holds everything that is not a screen; `ArcaneExchange/` holds the
   screens. Declarations the app, the extension or the tests use are `package`, never `public` (ADR 0025).
-- `ArcaneCoreTests/` is the only test target: it tests `ArcaneCore/` and runs with no host app (no `TEST_HOST`), so
+- `ArcaneExchangeCoreTests/` is the only test target: it tests `ArcaneExchangeCore/` and runs with no host app (no `TEST_HOST`), so
   nothing in it can `@testable import ArcaneExchange`. Logic worth testing never stays in a screen file: it goes
-  into `ArcaneCore/` (`AppRouter`, `OwnedEntryLabel`, `TradeSteps`…). `TestSupport/` (`FakeAPI`, fixtures) is
+  into `ArcaneExchangeCore/` (`AppRouter`, `OwnedEntryLabel`, `TradeSteps`…). `TestSupport/` (`FakeAPI`, fixtures) is
   compiled into the bundle: write its fixtures against `APIClient` types.
-- A test never reads `Bundle.main` in `ArcaneCoreTests`: it is the test runner, not the app. Resources resolve in
+- A test never reads `Bundle.main` in `ArcaneExchangeCoreTests`: it is the test runner, not the app. Resources resolve in
   `Palette.bundle`; `AppConfig` and `SharedContainer` take an injected `info:` dictionary.
 
 ## Home-screen widgets
 
 - The `ArcaneExchangeWidgets` extension holds only its entry point and `WidgetSession`: everything else it runs lives
-  in the `ArcaneCore` framework (ADR 0025), which it links and the app embeds. A type the widgets need goes into
-  `ArcaneCore/`, with no `sources` line to keep. Keep `ArcaneCore` free of `NukeUI`, `ClerkKitUI` and screens, so
+  in the `ArcaneExchangeCore` framework (ADR 0025), which it links and the app embeds. A type the widgets need goes into
+  `ArcaneExchangeCore/`, with no `sources` line to keep. Keep `ArcaneExchangeCore` free of `NukeUI`, `ClerkKitUI` and screens, so
   the extension never embeds them.
-- The widget views live in `ArcaneCore/HomeWidgets/`, not in the extension, so tests and previews can render them.
+- The widget views live in `ArcaneExchangeCore/HomeWidgets/`, not in the extension, so tests and previews can render them.
 - Everything shared with the app is in `SharedContainer`: the App Group (API base URL, last snapshots)
   and the Keychain group holding the Clerk session. Both are declared in the two targets'
   `entitlements` in `project.yml` — rename one side, rename the other. Clerk is configured through

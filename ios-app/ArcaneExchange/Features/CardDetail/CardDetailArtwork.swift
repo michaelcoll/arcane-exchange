@@ -1,4 +1,4 @@
-import ArcaneCore
+import ArcaneExchangeCore
 import SwiftUI
 
 /// The card screen's hero: the artwork at full width, lifted off the page by its halo. A

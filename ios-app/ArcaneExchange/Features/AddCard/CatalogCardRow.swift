@@ -1,4 +1,4 @@
-import ArcaneCore
+import ArcaneExchangeCore
 import SwiftUI
 
 /// One impression of the catalog in the search results: its Scryfall image first, so the player
