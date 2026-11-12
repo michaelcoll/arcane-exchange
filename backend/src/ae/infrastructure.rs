@@ -352,9 +352,11 @@ fn create_app_state(
             repos.collection_entry.clone(),
             card_prices_refresh.clone(),
         ));
-    let remove_collection_entry_service: Arc<dyn RemoveCollectionEntryUseCase> = Arc::new(
-        RemoveCollectionEntryService::new(repos.collection_entry.clone(), card_prices_refresh),
-    );
+    let remove_collection_entry_service: Arc<dyn RemoveCollectionEntryUseCase> =
+        Arc::new(RemoveCollectionEntryService::new(
+            repos.collection_entry.clone(),
+            card_prices_refresh.clone(),
+        ));
     let list_binders_service: Arc<dyn ListBindersUseCase> =
         Arc::new(ListBindersService::new(repos.binder.clone()));
     let create_binder_service: Arc<dyn CreateBinderUseCase> =
@@ -383,8 +385,10 @@ fn create_app_state(
         Arc::new(AcceptTradeService::new(repos.trade.clone()));
     let abandon_trade_service: Arc<dyn AbandonTradeUseCase> =
         Arc::new(AbandonTradeService::new(repos.trade.clone()));
-    let confirm_trade_service: Arc<dyn ConfirmTradeUseCase> =
-        Arc::new(ConfirmTradeService::new(repos.trade.clone()));
+    let confirm_trade_service: Arc<dyn ConfirmTradeUseCase> = Arc::new(ConfirmTradeService::new(
+        repos.trade.clone(),
+        card_prices_refresh.clone(),
+    ));
     let rate_trade_service: Arc<dyn RateTradeUseCase> =
         Arc::new(RateTradeService::new(repos.trade.clone()));
     let card_offer_service: Arc<dyn GetCardOffersUseCase> =

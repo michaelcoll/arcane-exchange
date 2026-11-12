@@ -45,11 +45,26 @@ async fn decide_and_apply<Decision>(
 where
     Decision: Future<Output = Result<TradeTransition, AppError>>,
 {
+    decide_and_apply_transition(trade_repository, trade_id, caller_id, decide)
+        .await
+        .map(|_| ())
+}
+
+/// [`decide_and_apply`], handing back the transition that was written.
+async fn decide_and_apply_transition<Decision>(
+    trade_repository: &Arc<dyn TradeRepository>,
+    trade_id: TradeId,
+    caller_id: &UserId,
+    decide: impl Fn(Trade, Party) -> Decision,
+) -> Result<TradeTransition, AppError>
+where
+    Decision: Future<Output = Result<TradeTransition, AppError>>,
+{
     for _ in 0..TRANSITION_ATTEMPTS {
         let (trade, party) = find_as_party(trade_repository, trade_id, caller_id).await?;
         let transition = decide(trade, party).await?;
         if trade_repository.apply_transition(&transition).await? {
-            return Ok(());
+            return Ok(transition);
         }
     }
 

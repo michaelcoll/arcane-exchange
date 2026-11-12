@@ -85,8 +85,10 @@ private enum MutationCall: String, CaseIterable, CustomTestStringConvertible {
     case removeCollectionEntry
 
     static let reloadingTrades: [MutationCall] = [
-        .createTrade, .addTradeCard, .removeTradeCard, .acceptTrade, .confirmTrade, .abandonTrade
+        .createTrade, .addTradeCard, .removeTradeCard, .acceptTrade, .abandonTrade
     ]
+    /// The confirmation can complete the trade, which moves its cards between collections.
+    static let reloadingTradesAndCollection: [MutationCall] = [.confirmTrade]
     static let reloadingCollection: [MutationCall] = [
         .createBinder, .renameBinder, .deleteBinder, .addCollectionEntry, .updateCollectionEntry,
         .moveCollectionEntry, .removeCollectionEntry
@@ -315,6 +317,34 @@ struct LiveAPITests {
         let transport = StubTransport(StubTransport.json(operation.successStatus, operation.successBody))
         try await operation.call(authenticated(transport, widgets: widgets))
         #expect(widgets.kinds == [.trades])
+    }
+
+    @Test(arguments: MutationCall.reloadingTradesAndCollection)
+    fileprivate func reloadsTheTradesAndCollectionWidgetsOnASuccessOf(_ operation: MutationCall) async throws {
+        let widgets = WidgetRecorder()
+        let transport = StubTransport(StubTransport.json(operation.successStatus, operation.successBody))
+        try await operation.call(authenticated(transport, widgets: widgets))
+        #expect(widgets.kinds == [.trades, .collection])
+    }
+
+    @Test(arguments: MutationCall.reloadingTradesAndCollection)
+    fileprivate func reloadsTheTradesAndCollectionWidgetsWhenTheServerRefuses(_ operation: MutationCall) async {
+        let widgets = WidgetRecorder()
+        let transport = StubTransport(StubTransport.json(409, #"{"code":"card_already_reserved","error":"reserved"}"#))
+        let error = await failure { try await operation.call(authenticated(transport, widgets: widgets)) }
+        #expect(widgets.kinds == [.trades, .collection])
+        #expect(error?.code == "card_already_reserved")
+    }
+
+    @Test(arguments: MutationCall.reloadingTradesAndCollection)
+    fileprivate func reloadsNothingWhenTheServerIsUnreachableOnTheTradesAndCollectionMutation(
+        _ operation: MutationCall
+    ) async {
+        let widgets = WidgetRecorder()
+        let transport = StubTransport { _, _ in throw URLError(.cannotConnectToHost) }
+        let error = await failure { try await operation.call(authenticated(transport, widgets: widgets)) }
+        #expect(widgets.kinds.isEmpty)
+        #expect(error?.isNetworkFailure == true)
     }
 
     @Test(arguments: MutationCall.reloadingCollection)

@@ -1,0 +1,44 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT ce.id, ce.quantity\n            FROM collection_entry ce\n                     LEFT JOIN binder b ON b.id = ce.binder_id\n            WHERE ce.user_id = $1 AND ce.set_code = $2 AND ce.collector_number = $3\n              AND ce.language_code = $4 AND ce.foil = $5\n            ORDER BY CASE\n                         WHEN b.id IS NULL THEN 2\n                         WHEN EXISTS (SELECT 1 FROM trading_binders tb WHERE tb.binder_id = b.id) THEN 0\n                         ELSE 1\n                     END,\n                     b.name,\n                     ce.id",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "collection_entry",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "quantity",
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "collection_entry",
+            "name": "quantity"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Bool"
+      ]
+    },
+    "nullable": [
+      false,
+      false
+    ]
+  },
+  "hash": "521ad1df0e30bae39ca3f66a87a096bd40add512ad0311d289a12f22d3e0e039"
+}
