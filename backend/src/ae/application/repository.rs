@@ -5,7 +5,7 @@ use crate::domain::card::{Card, CardId, CollectionEntry, CopyId};
 use crate::domain::card_image::{CardImageSource, CardImages, EnglishImage};
 use crate::domain::card_import::{CardImport, CardImportId, CardImportStatus};
 use crate::domain::card_offer::CardOfferSortField;
-use crate::domain::catalog::{CatalogCard, CatalogSearchItem, ScanIndexEntry};
+use crate::domain::catalog::{CatalogCard, CatalogSearchItem, ScanIndexEntry, TrendPrices};
 use crate::domain::collection::{CollectionQuery, SearchQuery, SearchScope};
 use crate::domain::collection_entry::{CardEntries, CollectionEntryId, EntryUpdate};
 use crate::domain::collection_stats::CollectionStats;
@@ -124,6 +124,13 @@ pub trait CatalogRepository: Send + Sync {
     /// The catalog cards of the scan index: those whose collector number is purely numeric, ordered by
     /// set then number. Empty when no catalog is loaded.
     async fn scan_index_entries(&self) -> Result<Vec<ScanIndexEntry>, AppError>;
+
+    /// The latest Cardmarket trend prices of each `(set, collector number)` (the numbers as the
+    /// catalog stores them), in the order given: one entry per key, both prices `None` for a card
+    /// absent from the catalog or without a Cardmarket id. Read from the catalog's Cardmarket id,
+    /// so a card nobody owns has its price.
+    async fn trend_prices(&self, cards: &[(SetCode, String)])
+    -> Result<Vec<TrendPrices>, AppError>;
 
     /// The catalog cards matching `name` (English or French name: substring or trigram
     /// similarity) and, when given, `set_code`, ordered by decreasing similarity of the name, then

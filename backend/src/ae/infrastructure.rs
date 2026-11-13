@@ -15,6 +15,7 @@ use crate::application::service::card::get_price_history::CardPriceHistoryServic
 use crate::application::service::catalog::create_card::CreateCardService;
 use crate::application::service::catalog::scan_index::ScanIndexService;
 use crate::application::service::catalog::search::SearchCatalogService;
+use crate::application::service::catalog::trend_prices::TrendPricesService;
 use crate::application::service::collection::add_entry::AddCollectionEntryService;
 use crate::application::service::collection::attach_card_to_sealed_product::AttachCardToSealedProductService;
 use crate::application::service::collection::get::CollectionService;
@@ -78,8 +79,8 @@ use crate::application::use_case::{
     RemoveCollectionEntryUseCase, RemoveTradeBinderUseCase, RemoveTradeCardUseCase,
     RenameBinderUseCase, RunCardImportUseCase, ScanIndexUseCase, SearchCardsUseCase,
     SearchCatalogUseCase, SearchSetsUseCase, SetCollectionVisibilityUseCase,
-    SetRarityTradeFilterUseCase, SetReceivingBinderUseCase, StatsUseCase, UpdateCatalogUseCase,
-    UpdateCollectionEntryUseCase,
+    SetRarityTradeFilterUseCase, SetReceivingBinderUseCase, StatsUseCase, TrendPricesUseCase,
+    UpdateCatalogUseCase, UpdateCollectionEntryUseCase,
 };
 use crate::application::use_case::{
     AttachCardToSealedProductUseCase, CreateSealedProductUseCase, DeletePurchaseUseCase,
@@ -198,6 +199,7 @@ pub struct AppState {
     pub update_catalog_use_case: Arc<dyn UpdateCatalogUseCase>,
     pub scan_index_use_case: Arc<dyn ScanIndexUseCase>,
     pub search_catalog_use_case: Arc<dyn SearchCatalogUseCase>,
+    pub trend_prices_use_case: Arc<dyn TrendPricesUseCase>,
 }
 
 // ---- Repositories ----
@@ -462,6 +464,8 @@ fn create_app_state(
         Arc::new(ScanIndexService::new(repos.catalog.clone()));
     let search_catalog_service: Arc<dyn SearchCatalogUseCase> =
         Arc::new(SearchCatalogService::new(repos.catalog.clone()));
+    let trend_prices_service: Arc<dyn TrendPricesUseCase> =
+        Arc::new(TrendPricesService::new(repos.catalog.clone()));
     let update_catalog_service: Arc<dyn UpdateCatalogUseCase> = Arc::new(
         UpdateCatalogService::new(callers.scryfall, repos.catalog, scan_index_service.clone()),
     );
@@ -525,6 +529,7 @@ fn create_app_state(
         update_catalog_use_case: update_catalog_service,
         scan_index_use_case: scan_index_service,
         search_catalog_use_case: search_catalog_service,
+        trend_prices_use_case: trend_prices_service,
     }
 }
 

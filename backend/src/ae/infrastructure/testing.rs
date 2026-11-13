@@ -36,8 +36,8 @@ use crate::application::use_case::{
     MockRemoveTradeCardUseCase, MockRenameBinderUseCase, MockScanIndexUseCase,
     MockSearchCardsUseCase, MockSearchCatalogUseCase, MockSearchSetsUseCase,
     MockSetCollectionVisibilityUseCase, MockSetRarityTradeFilterUseCase,
-    MockSetReceivingBinderUseCase, MockStatsUseCase, MockUpdateCatalogUseCase,
-    MockUpdateCollectionEntryUseCase,
+    MockSetReceivingBinderUseCase, MockStatsUseCase, MockTrendPricesUseCase,
+    MockUpdateCatalogUseCase, MockUpdateCollectionEntryUseCase,
 };
 use crate::application::use_case::{
     MockCreateSealedProductUseCase, MockDeletePurchaseUseCase, MockGetPurchaseUseCase,
@@ -253,6 +253,7 @@ impl AppState {
             update_catalog_use_case: Arc::new(MockUpdateCatalogUseCase::new()),
             scan_index_use_case: Arc::new(MockScanIndexUseCase::new()),
             search_catalog_use_case: Arc::new(MockSearchCatalogUseCase::new()),
+            trend_prices_use_case: Arc::new(MockTrendPricesUseCase::new()),
         }
     }
 }

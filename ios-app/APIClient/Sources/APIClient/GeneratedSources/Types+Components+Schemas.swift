@@ -2125,6 +2125,114 @@ extension Components {
                 case updated_at
             }
         }
+        /// A card to price, by set and collector number: no language, the price does not depend on it.
+        ///
+        /// - Remark: Generated from `#/components/schemas/TrendPriceCardRequest`.
+        public struct TrendPriceCardRequest: Codable, Hashable, Sendable {
+            /// Collector number; leading zeros are ignored.
+            ///
+            /// - Remark: Generated from `#/components/schemas/TrendPriceCardRequest/collector_number`.
+            public var collector_number: Swift.String
+            /// Set code, 3 to 6 characters.
+            ///
+            /// - Remark: Generated from `#/components/schemas/TrendPriceCardRequest/set_code`.
+            public var set_code: Swift.String
+            /// Creates a new `TrendPriceCardRequest`.
+            ///
+            /// - Parameters:
+            ///   - collector_number: Collector number; leading zeros are ignored.
+            ///   - set_code: Set code, 3 to 6 characters.
+            public init(
+                collector_number: Swift.String,
+                set_code: Swift.String
+            ) {
+                self.collector_number = collector_number
+                self.set_code = set_code
+            }
+            public enum CodingKeys: String, CodingKey {
+                case collector_number
+                case set_code
+            }
+        }
+        /// The latest Cardmarket trend prices of one requested card.
+        ///
+        /// - Remark: Generated from `#/components/schemas/TrendPriceResponse`.
+        public struct TrendPriceResponse: Codable, Hashable, Sendable {
+            /// The collector number as requested.
+            ///
+            /// - Remark: Generated from `#/components/schemas/TrendPriceResponse/collector_number`.
+            public var collector_number: Swift.String
+            /// Trend price of the foil finish, in cents; `null` when there is none.
+            ///
+            /// - Remark: Generated from `#/components/schemas/TrendPriceResponse/foil_trend_cents`.
+            public var foil_trend_cents: Swift.Int32?
+            /// The set code as requested, uppercased.
+            ///
+            /// - Remark: Generated from `#/components/schemas/TrendPriceResponse/set_code`.
+            public var set_code: Swift.String
+            /// Trend price of the normal finish, in cents; `null` when there is none.
+            ///
+            /// - Remark: Generated from `#/components/schemas/TrendPriceResponse/trend_cents`.
+            public var trend_cents: Swift.Int32?
+            /// Creates a new `TrendPriceResponse`.
+            ///
+            /// - Parameters:
+            ///   - collector_number: The collector number as requested.
+            ///   - foil_trend_cents: Trend price of the foil finish, in cents; `null` when there is none.
+            ///   - set_code: The set code as requested, uppercased.
+            ///   - trend_cents: Trend price of the normal finish, in cents; `null` when there is none.
+            public init(
+                collector_number: Swift.String,
+                foil_trend_cents: Swift.Int32? = nil,
+                set_code: Swift.String,
+                trend_cents: Swift.Int32? = nil
+            ) {
+                self.collector_number = collector_number
+                self.foil_trend_cents = foil_trend_cents
+                self.set_code = set_code
+                self.trend_cents = trend_cents
+            }
+            public enum CodingKeys: String, CodingKey {
+                case collector_number
+                case foil_trend_cents
+                case set_code
+                case trend_cents
+            }
+        }
+        /// - Remark: Generated from `#/components/schemas/TrendPricesRequest`.
+        public struct TrendPricesRequest: Codable, Hashable, Sendable {
+            /// The cards to price, 500 at most.
+            ///
+            /// - Remark: Generated from `#/components/schemas/TrendPricesRequest/cards`.
+            public var cards: [Components.Schemas.TrendPriceCardRequest]
+            /// Creates a new `TrendPricesRequest`.
+            ///
+            /// - Parameters:
+            ///   - cards: The cards to price, 500 at most.
+            public init(cards: [Components.Schemas.TrendPriceCardRequest]) {
+                self.cards = cards
+            }
+            public enum CodingKeys: String, CodingKey {
+                case cards
+            }
+        }
+        /// The trend prices of the requested cards, in the order of the request.
+        ///
+        /// - Remark: Generated from `#/components/schemas/TrendPricesResponse`.
+        public struct TrendPricesResponse: Codable, Hashable, Sendable {
+            /// - Remark: Generated from `#/components/schemas/TrendPricesResponse/prices`.
+            public var prices: [Components.Schemas.TrendPriceResponse]
+            /// Creates a new `TrendPricesResponse`.
+            ///
+            /// - Parameters:
+            ///   - prices:
+            public init(prices: [Components.Schemas.TrendPriceResponse]) {
+                self.prices = prices
+            }
+            public enum CodingKeys: String, CodingKey {
+                case prices
+            }
+        }
         /// - Remark: Generated from `#/components/schemas/UpdateCollectionEntryRequest`.
         public struct UpdateCollectionEntryRequest: Codable, Hashable, Sendable {
             /// New finish. A change onto an existing entry merges the two.

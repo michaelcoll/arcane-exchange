@@ -2,15 +2,15 @@ use super::dto::ScanIndexEntryResponse;
 use crate::application::repository::MockCatalogRepository;
 use crate::application::service::catalog::scan_index::ScanIndexService;
 use crate::application::use_case::{
-    MockScanIndexUseCase, MockSearchCatalogUseCase, ScanIndexUseCase,
+    MockScanIndexUseCase, MockSearchCatalogUseCase, MockTrendPricesUseCase, ScanIndexUseCase,
 };
-use crate::domain::catalog::{CatalogSearchItem, ScanIndex, ScanIndexEntry};
+use crate::domain::catalog::{CatalogSearchItem, ScanIndex, ScanIndexEntry, TrendPrices};
 use crate::domain::error::FunctionalError;
 use crate::domain::pagination::{PageRequest, Paginated};
 use crate::domain::rarity_code::RarityCode;
 use crate::domain::set_name::{SetCode, SetName};
 use crate::infrastructure::testing::{
-    BEARER, assert_error, assert_routes_refuse_anonymous, authed, json_of, send,
+    BEARER, assert_error, assert_routes_refuse_anonymous, authed, authed_json, json_of, send,
 };
 use crate::infrastructure::{AppState, create_router};
 use axum::body::Body;
@@ -191,6 +191,7 @@ async fn the_catalog_routes_require_a_token() {
         &[
             (Method::GET, "/catalog/scan-index"),
             (Method::GET, "/catalog/cards?q=bolt"),
+            (Method::POST, "/catalog/trend-prices"),
         ],
     )
     .await;
@@ -324,6 +325,91 @@ async fn the_search_refuses_an_invalid_set_code() {
         create_router(AppState::for_testing()),
         Method::GET,
         "/catalog/cards?set_code=A",
+    )
+    .await;
+
+    assert_error(response, StatusCode::BAD_REQUEST, "invalid_set_code").await;
+}
+
+// ---- POST /catalog/trend-prices ----
+
+fn trend_prices_app(mock: MockTrendPricesUseCase) -> axum::Router {
+    create_router(AppState {
+        trend_prices_use_case: Arc::new(mock),
+        ..AppState::for_testing()
+    })
+}
+
+#[tokio::test]
+async fn the_trend_prices_answer_each_requested_card_in_order_with_absent_prices_as_null() {
+    let mut mock = MockTrendPricesUseCase::new();
+    mock.expect_get_trend_prices()
+        .times(1)
+        .withf(|cards| {
+            *cards
+                == [
+                    (SetCode::new("MKM"), "012".to_string()),
+                    (SetCode::new("LEA"), "161".to_string()),
+                ]
+        })
+        .returning(|_| {
+            Box::pin(async {
+                Ok(vec![
+                    TrendPrices {
+                        trend_cents: Some(120),
+                        foil_trend_cents: Some(900),
+                    },
+                    TrendPrices::default(),
+                ])
+            })
+        });
+
+    let response = authed_json(
+        trend_prices_app(mock),
+        Method::POST,
+        "/catalog/trend-prices",
+        json!({ "cards": [
+            { "set_code": "mkm", "collector_number": "012" },
+            { "set_code": "LEA", "collector_number": "161" },
+        ] }),
+    )
+    .await;
+
+    assert_eq!(response.status(), StatusCode::OK);
+    assert_eq!(
+        json_of(response).await,
+        json!({ "prices": [
+            { "set_code": "MKM", "collector_number": "012", "trend_cents": 120, "foil_trend_cents": 900 },
+            { "set_code": "LEA", "collector_number": "161", "trend_cents": null, "foil_trend_cents": null },
+        ] })
+    );
+}
+
+#[tokio::test]
+async fn the_trend_prices_map_a_list_over_the_bound_to_a_bad_request() {
+    let mut mock = MockTrendPricesUseCase::new();
+    mock.expect_get_trend_prices().returning(|_| {
+        Box::pin(async { Err(FunctionalError::InvalidRequest("too many".to_string()).into()) })
+    });
+
+    let response = authed_json(
+        trend_prices_app(mock),
+        Method::POST,
+        "/catalog/trend-prices",
+        json!({ "cards": [{ "set_code": "MKM", "collector_number": "12" }] }),
+    )
+    .await;
+
+    assert_error(response, StatusCode::BAD_REQUEST, "invalid_request").await;
+}
+
+#[tokio::test]
+async fn the_trend_prices_refuse_an_invalid_set_code() {
+    let response = authed_json(
+        create_router(AppState::for_testing()),
+        Method::POST,
+        "/catalog/trend-prices",
+        json!({ "cards": [{ "set_code": "A", "collector_number": "12" }] }),
     )
     .await;
 

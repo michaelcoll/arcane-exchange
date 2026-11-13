@@ -27,6 +27,9 @@ public protocol APIProtocol: Sendable {
     /// - Remark: HTTP `GET /catalog/scan-index`.
     /// - Remark: Generated from `#/paths//catalog/scan-index/get(get_scan_index)`.
     func get_scan_index(_ input: Operations.get_scan_index.Input) async throws -> Operations.get_scan_index.Output
+    /// - Remark: HTTP `POST /catalog/trend-prices`.
+    /// - Remark: Generated from `#/paths//catalog/trend-prices/post(get_trend_prices)`.
+    func get_trend_prices(_ input: Operations.get_trend_prices.Input) async throws -> Operations.get_trend_prices.Output
     /// - Remark: HTTP `GET /collection`.
     /// - Remark: Generated from `#/paths//collection/get(get_collection)`.
     func get_collection(_ input: Operations.get_collection.Input) async throws -> Operations.get_collection.Output
@@ -233,6 +236,17 @@ extension APIProtocol {
     /// - Remark: Generated from `#/paths//catalog/scan-index/get(get_scan_index)`.
     public func get_scan_index(headers: Operations.get_scan_index.Input.Headers = .init()) async throws -> Operations.get_scan_index.Output {
         try await get_scan_index(Operations.get_scan_index.Input(headers: headers))
+    }
+    /// - Remark: HTTP `POST /catalog/trend-prices`.
+    /// - Remark: Generated from `#/paths//catalog/trend-prices/post(get_trend_prices)`.
+    public func get_trend_prices(
+        headers: Operations.get_trend_prices.Input.Headers = .init(),
+        body: Operations.get_trend_prices.Input.Body
+    ) async throws -> Operations.get_trend_prices.Output {
+        try await get_trend_prices(Operations.get_trend_prices.Input(
+            headers: headers,
+            body: body
+        ))
     }
     /// - Remark: HTTP `GET /collection`.
     /// - Remark: Generated from `#/paths//collection/get(get_collection)`.
