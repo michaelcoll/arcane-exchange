@@ -1,0 +1,41 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT p.trend AS \"trend?\", p.trend_foil AS \"trend_foil?\"\n               FROM unnest($1::text[], $2::text[]) WITH ORDINALITY AS k (set_code, collector_number, ord)\n                        LEFT JOIN catalog_card cc\n                                  ON (cc.set_code, cc.collector_number) = (k.set_code, k.collector_number)\n                        LEFT JOIN LATERAL (SELECT trend, trend_foil\n                                           FROM cardmarket_price\n                                           WHERE id_produit = cc.cardmarket_id\n                                           ORDER BY date DESC\n                                           LIMIT 1) p ON TRUE\n               ORDER BY k.ord",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "trend?",
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "cardmarket_price",
+            "name": "trend"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "trend_foil?",
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "cardmarket_price",
+            "name": "trend_foil"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "TextArray",
+        "TextArray"
+      ]
+    },
+    "nullable": [
+      true,
+      true
+    ]
+  },
+  "hash": "4ea7940b08b9e2f9a47ba84aa4bafcc03719a4c138f44a0a98fb9f3b107aeab5"
+}

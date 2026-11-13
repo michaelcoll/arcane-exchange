@@ -1,5 +1,6 @@
 use super::dto::{
     CatalogCardResponse, CatalogSearchParams, PaginatedCatalogResponse, ScanIndexEntryResponse,
+    TrendPriceResponse, TrendPricesRequest, TrendPricesResponse,
 };
 use crate::application::error::AppError;
 use crate::domain::pagination::PageRequest;
@@ -9,13 +10,14 @@ use crate::infrastructure::adapter_in::auth_extractor::AuthenticatedUser;
 use axum::extract::State;
 use axum::http::{HeaderMap, HeaderValue, StatusCode, header};
 use axum::response::{IntoResponse, Response};
-use axum::routing::get;
+use axum::routing::{get, post};
 use axum_extra::extract::Query;
 
 pub fn create_catalog_router() -> axum::Router<AppState> {
     axum::Router::new()
         .route("/cards", get(search_catalog))
         .route("/scan-index", get(get_scan_index))
+        .route("/trend-prices", post(get_trend_prices))
 }
 
 #[utoipa::path(
@@ -110,6 +112,54 @@ pub(crate) async fn get_scan_index(
         index.gzipped_json.clone(),
     )
         .into_response())
+}
+
+#[utoipa::path(
+    post,
+    path = "/catalog/trend-prices",
+    request_body = TrendPricesRequest,
+    responses(
+        (status = 200, description = "One entry per requested card, in the order of the request: the latest Cardmarket trend price of each finish, in cents, `null` when there is none (card absent from the catalog, without Cardmarket id, or unpriced). Does not depend on the language, nor on anyone owning the card", body = TrendPricesResponse),
+        (status = 400, description = "More than 500 cards (`invalid_request`), or invalid set code"),
+        (status = 401, description = "Missing or invalid token"),
+    ),
+    security(("bearer_auth" = [])),
+    tag = "catalog",
+)]
+pub(crate) async fn get_trend_prices(
+    AuthenticatedUser(_user): AuthenticatedUser,
+    State(state): State<AppState>,
+    axum::Json(request): axum::Json<TrendPricesRequest>,
+) -> Result<axum::Json<TrendPricesResponse>, AppError> {
+    let set_codes = request
+        .cards
+        .iter()
+        .map(|card| SetCode::try_new(card.set_code.trim()))
+        .collect::<Result<Vec<_>, _>>()?;
+    let keys = set_codes
+        .iter()
+        .cloned()
+        .zip(
+            request
+                .cards
+                .iter()
+                .map(|card| card.collector_number.clone()),
+        )
+        .collect();
+
+    let prices = state.trend_prices_use_case.get_trend_prices(keys).await?;
+
+    Ok(axum::Json(TrendPricesResponse {
+        prices: request
+            .cards
+            .into_iter()
+            .zip(set_codes)
+            .zip(prices)
+            .map(|((card, set_code), prices)| {
+                TrendPriceResponse::new(card, set_code.to_string(), prices)
+            })
+            .collect(),
+    }))
 }
 
 /// Whether one of the entity tags of `If-None-Match` (a comma-separated list, possibly weak) is `etag`.

@@ -6,7 +6,7 @@ use crate::domain::binder::{Binder, BinderId, ReceivingBinder};
 use crate::domain::card::{Card, CardId, CollectionEntry, CopyId};
 use crate::domain::card_import::{CardImport, CardImportId};
 use crate::domain::card_offer::CardOfferSortField;
-use crate::domain::catalog::{CatalogSearchItem, ScanIndex};
+use crate::domain::catalog::{CatalogSearchItem, ScanIndex, TrendPrices};
 use crate::domain::collection::{CollectionQuery, SearchQuery, SearchScope};
 use crate::domain::collection_entry::{CardEntries, CollectionEntryId};
 use crate::domain::collection_stats::CollectionStats;
@@ -318,6 +318,20 @@ pub trait SearchCatalogUseCase: Send + Sync {
         set_code: Option<SetCode>,
         page: PageRequest,
     ) -> Result<Paginated<CatalogSearchItem>, AppError>;
+}
+
+#[async_trait]
+#[cfg_attr(test, automock)]
+pub trait TrendPricesUseCase: Send + Sync {
+    /// The latest Cardmarket trend prices of `cards` (set and collector number, the number
+    /// without its leading zeros), in the order given: one entry per card, with no price for a
+    /// card absent from the catalog or without a Cardmarket id. Written nowhere.
+    ///
+    /// `InvalidRequest` (`400`) for more than 500 cards.
+    async fn get_trend_prices(
+        &self,
+        cards: Vec<(SetCode, String)>,
+    ) -> Result<Vec<TrendPrices>, AppError>;
 }
 
 #[async_trait]

@@ -1,6 +1,7 @@
-use crate::domain::catalog::CatalogSearchItem;
+use crate::domain::catalog::{CatalogSearchItem, TrendPrices};
 use crate::infrastructure::adapter_in::{SetInfoResponse, default_page_size};
 use serde::{Deserialize, Serialize};
+use ts_rs::TS;
 use utoipa::ToSchema;
 
 #[derive(Deserialize)]
@@ -71,4 +72,57 @@ pub struct ScanIndexEntryResponse {
     /// French name; absent when Scryfall does not have one, the client then shows the English name.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub french_name: Option<String>,
+}
+
+/// A card to price, by set and collector number: no language, the price does not depend on it.
+#[derive(Deserialize, Debug, TS, ToSchema)]
+#[serde(rename = "TrendPriceCardRequest")]
+#[ts(export)]
+pub struct TrendPriceCardRequest {
+    /// Set code, 3 to 6 characters.
+    pub set_code: String,
+    /// Collector number; leading zeros are ignored.
+    pub collector_number: String,
+}
+
+#[derive(Deserialize, Debug, TS, ToSchema)]
+#[serde(rename = "TrendPricesRequest")]
+#[ts(export)]
+pub struct TrendPricesRequest {
+    /// The cards to price, 500 at most.
+    pub cards: Vec<TrendPriceCardRequest>,
+}
+
+/// The latest Cardmarket trend prices of one requested card.
+#[derive(Serialize, Debug, TS, ToSchema)]
+#[serde(rename = "TrendPrice")]
+#[ts(export)]
+pub struct TrendPriceResponse {
+    /// The set code as requested, uppercased.
+    pub set_code: String,
+    /// The collector number as requested.
+    pub collector_number: String,
+    /// Trend price of the normal finish, in cents; `null` when there is none.
+    pub trend_cents: Option<u32>,
+    /// Trend price of the foil finish, in cents; `null` when there is none.
+    pub foil_trend_cents: Option<u32>,
+}
+
+impl TrendPriceResponse {
+    pub(crate) fn new(card: TrendPriceCardRequest, set_code: String, prices: TrendPrices) -> Self {
+        Self {
+            set_code,
+            collector_number: card.collector_number,
+            trend_cents: prices.trend_cents,
+            foil_trend_cents: prices.foil_trend_cents,
+        }
+    }
+}
+
+/// The trend prices of the requested cards, in the order of the request.
+#[derive(Serialize, Debug, TS, ToSchema)]
+#[serde(rename = "TrendPrices")]
+#[ts(export)]
+pub struct TrendPricesResponse {
+    pub prices: Vec<TrendPriceResponse>,
 }

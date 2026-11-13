@@ -46,6 +46,14 @@ pub struct ScanIndexEntry {
     pub french_name: Option<String>,
 }
 
+/// The latest Cardmarket trend prices of a catalog card, in cents: one per finish, `None` when
+/// Cardmarket has none (or the card has no Cardmarket id, or is not in the catalog).
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct TrendPrices {
+    pub trend_cents: Option<u32>,
+    pub foil_trend_cents: Option<u32>,
+}
+
 /// The published scan index: its JSON, gzipped, and the ETag derived from its content.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct ScanIndex {

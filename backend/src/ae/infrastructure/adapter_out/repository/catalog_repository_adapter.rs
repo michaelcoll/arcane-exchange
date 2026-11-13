@@ -1,6 +1,6 @@
 use crate::application::error::AppError;
 use crate::application::repository::CatalogRepository;
-use crate::domain::catalog::{CatalogCard, CatalogSearchItem, ScanIndexEntry};
+use crate::domain::catalog::{CatalogCard, CatalogSearchItem, ScanIndexEntry, TrendPrices};
 use crate::domain::pagination::{Paginated, Pagination};
 use crate::domain::set_name::{SetCode, SetName};
 use crate::infrastructure::adapter_out::repository::entities::{
@@ -105,6 +105,44 @@ impl CatalogRepository for CatalogRepositoryAdapter {
             .transpose()?)
     }
 
+    #[tracing::instrument(name = "catalog_repo.trend_prices", skip_all, fields(sentry.op = "db"))]
+    async fn trend_prices(
+        &self,
+        cards: &[(SetCode, String)],
+    ) -> Result<Vec<TrendPrices>, AppError> {
+        let set_codes: Vec<String> = cards.iter().map(|(code, _)| code.to_string()).collect();
+        let numbers: Vec<String> = cards.iter().map(|(_, number)| number.clone()).collect();
+
+        // The latest price of the catalog's Cardmarket id, not `mv_last_cardmarket_prices`: that
+        // view is built from `card`, which a card nobody owns is not in. The primary key
+        // (id_produit, date) makes the lookup an index seek per card.
+        let rows = sqlx::query!(
+            r#"SELECT p.trend AS "trend?", p.trend_foil AS "trend_foil?"
+               FROM unnest($1::text[], $2::text[]) WITH ORDINALITY AS k (set_code, collector_number, ord)
+                        LEFT JOIN catalog_card cc
+                                  ON (cc.set_code, cc.collector_number) = (k.set_code, k.collector_number)
+                        LEFT JOIN LATERAL (SELECT trend, trend_foil
+                                           FROM cardmarket_price
+                                           WHERE id_produit = cc.cardmarket_id
+                                           ORDER BY date DESC
+                                           LIMIT 1) p ON TRUE
+               ORDER BY k.ord"#,
+            &set_codes,
+            &numbers,
+        )
+        .fetch_all(&self.pool)
+        .await?;
+
+        rows.into_iter()
+            .map(|row| {
+                Ok(TrendPrices {
+                    trend_cents: row.trend.map(trend_from_db).transpose()?,
+                    foil_trend_cents: row.trend_foil.map(trend_from_db).transpose()?,
+                })
+            })
+            .collect()
+    }
+
     #[tracing::instrument(name = "catalog_repo.search", skip_all, fields(sentry.op = "db"))]
     async fn search(
         &self,
@@ -202,6 +240,10 @@ impl CatalogRepository for CatalogRepositoryAdapter {
             })
             .collect()
     }
+}
+
+fn trend_from_db(trend: i32) -> Result<u32, AppError> {
+    u32::try_from(trend).map_err(|_| invalid_db_value("trend price", &trend.to_string()).into())
 }
 
 #[cfg(test)]
@@ -721,5 +763,92 @@ mod tests {
         adapter.replace_all(&[set("MKM")], &cards).await.unwrap();
 
         assert_eq!(count(&pool, Table::CatalogCard).await, 12_000);
+    }
+
+    // ---- trend_prices ----
+
+    async fn price(pool: &PgPool, id_produit: i32, date: &str, trend: i32, trend_foil: i32) {
+        sqlx::query(
+            "INSERT INTO cardmarket_price (id_produit, date, trend, trend_foil)
+             VALUES ($1, $2::date, $3, $4)",
+        )
+        .bind(id_produit)
+        .bind(date)
+        .bind(trend)
+        .bind(trend_foil)
+        .execute(pool)
+        .await
+        .unwrap();
+    }
+
+    fn key(set_code: &str, number: &str) -> (SetCode, String) {
+        (SetCode::new(set_code), number.to_string())
+    }
+
+    #[sqlx::test]
+    async fn trend_prices_of_a_card_nobody_owns_come_from_its_cardmarket_id(pool: PgPool) {
+        let adapter = catalog_with(&pool, &[catalog_card("MKM", "12")]).await;
+        price(&pool, 42, "2026-11-12", 120, 900).await;
+
+        let prices = adapter.trend_prices(&[key("MKM", "12")]).await.unwrap();
+
+        assert_eq!(
+            prices,
+            vec![TrendPrices {
+                trend_cents: Some(120),
+                foil_trend_cents: Some(900),
+            }]
+        );
+    }
+
+    #[sqlx::test]
+    async fn trend_prices_read_the_latest_price_of_the_card(pool: PgPool) {
+        let adapter = catalog_with(&pool, &[catalog_card("MKM", "12")]).await;
+        price(&pool, 42, "2026-11-10", 100, 800).await;
+        price(&pool, 42, "2026-11-12", 120, 900).await;
+        price(&pool, 42, "2026-11-11", 110, 850).await;
+
+        let prices = adapter.trend_prices(&[key("MKM", "12")]).await.unwrap();
+
+        assert_eq!(prices[0].trend_cents, Some(120));
+    }
+
+    #[sqlx::test]
+    async fn trend_prices_are_absent_without_catalog_card_cardmarket_id_or_price(pool: PgPool) {
+        let without_id = CatalogCard {
+            cardmarket_id: None,
+            ..catalog_card("MKM", "13")
+        };
+        let without_price = CatalogCard {
+            cardmarket_id: Some(43),
+            ..catalog_card("MKM", "14")
+        };
+        let adapter = catalog_with(
+            &pool,
+            &[catalog_card("MKM", "12"), without_id, without_price],
+        )
+        .await;
+        price(&pool, 42, "2026-11-12", 120, 900).await;
+
+        let prices = adapter
+            .trend_prices(&[
+                key("MKM", "99"),
+                key("MKM", "13"),
+                key("MKM", "14"),
+                key("MKM", "12"),
+            ])
+            .await
+            .unwrap();
+
+        let absent = TrendPrices::default();
+        assert_eq!(prices[..3], [absent, absent, absent]);
+        assert_eq!(prices[3].trend_cents, Some(120));
+    }
+
+    #[sqlx::test]
+    async fn trend_prices_without_keys_are_empty(pool: PgPool) {
+        let adapter = catalog_with(&pool, &[catalog_card("MKM", "12")]).await;
+
+        assert!(adapter.trend_prices(&[]).await.unwrap().is_empty());
     }
 }

@@ -282,6 +282,38 @@ paths:
                 $ref: '#/components/schemas/ErrorResponse'
       security:
       - bearer_auth: []
+  /catalog/trend-prices:
+    post:
+      tags:
+      - catalog
+      operationId: get_trend_prices
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TrendPricesRequest'
+        required: true
+      responses:
+        '200':
+          description: 'One entry per requested card, in the order of the request: the latest Cardmarket trend price of each finish, in cents, `null` when there is none (card absent from the catalog, without Cardmarket id, or unpriced). Does not depend on the language, nor on anyone owning the card'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TrendPricesResponse'
+        '400':
+          description: More than 500 cards (`invalid_request`), or invalid set code
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Missing or invalid token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      security:
+      - bearer_auth: []
   /collection:
     get:
       tags:
@@ -3255,6 +3287,66 @@ components:
         updated_at:
           type: string
           description: RFC 3339 timestamp
+    TrendPriceCardRequest:
+      type: object
+      description: 'A card to price, by set and collector number: no language, the price does not depend on it.'
+      required:
+      - set_code
+      - collector_number
+      properties:
+        collector_number:
+          type: string
+          description: Collector number; leading zeros are ignored.
+        set_code:
+          type: string
+          description: Set code, 3 to 6 characters.
+    TrendPriceResponse:
+      type: object
+      description: The latest Cardmarket trend prices of one requested card.
+      required:
+      - set_code
+      - collector_number
+      properties:
+        collector_number:
+          type: string
+          description: The collector number as requested.
+        foil_trend_cents:
+          type:
+          - integer
+          - 'null'
+          format: int32
+          description: Trend price of the foil finish, in cents; `null` when there is none.
+          minimum: 0
+        set_code:
+          type: string
+          description: The set code as requested, uppercased.
+        trend_cents:
+          type:
+          - integer
+          - 'null'
+          format: int32
+          description: Trend price of the normal finish, in cents; `null` when there is none.
+          minimum: 0
+    TrendPricesRequest:
+      type: object
+      required:
+      - cards
+      properties:
+        cards:
+          type: array
+          items:
+            $ref: '#/components/schemas/TrendPriceCardRequest'
+          description: The cards to price, 500 at most.
+    TrendPricesResponse:
+      type: object
+      description: The trend prices of the requested cards, in the order of the request.
+      required:
+      - prices
+      properties:
+        prices:
+          type: array
+          items:
+            $ref: '#/components/schemas/TrendPriceResponse'
     UpdateCollectionEntryRequest:
       type: object
       properties:

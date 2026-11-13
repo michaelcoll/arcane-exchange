@@ -1,0 +1,31 @@
+meta {
+  name: trend prices
+  type: http
+  seq: 3
+}
+
+post {
+  url: {{baseUrl}}/catalog/trend-prices
+  body: json
+  auth: inherit
+}
+
+body:json {
+  {
+    "cards": [
+      { "set_code": "MKM", "collector_number": "12" },
+      { "set_code": "LEA", "collector_number": "161" }
+    ]
+  }
+}
+
+docs {
+  The latest Cardmarket trend prices (normal and foil, in cents) of up to 500 cards, by set and
+  collector number, in the order of the request. A card absent from the catalog or without a price
+  has `null` prices. A read: nothing is written. Run `maintenance/update catalog` first.
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}
