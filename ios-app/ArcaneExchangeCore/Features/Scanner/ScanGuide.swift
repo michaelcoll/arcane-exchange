@@ -24,6 +24,14 @@ package enum ScanGuide {
     /// Hold the card a little beyond the minimum focus distance, not right on it.
     package static let focusMargin = 1.1
 
+    /// Where the preview shows the whole image in an area of the given size: as large as fits,
+    /// centred (`resizeAspect`).
+    package static func fittedImage(in size: CGSize) -> CGRect {
+        let width = min(size.width, size.height * imageAspect)
+        let height = width / imageAspect
+        return CGRect(x: (size.width - width) / 2, y: (size.height - height) / 2, width: width, height: height)
+    }
+
     /// The card outline.
     package static var card: CGRect {
         let height = widthFraction * imageAspect / cardAspect

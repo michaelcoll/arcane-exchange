@@ -15,7 +15,7 @@ package enum CameraStatus: Equatable {
 
 /// Keeps the camera open and, for every frame it can keep up with, finds the card (`VNDetectRectanglesRequest`),
 /// straightens the strip of its printed line (perspective correction) and runs Vision text recognition on it.
-/// The text lines go to `onFrame`, on the capture queue.
+/// The text lines and the card found go to `onFrame`, on the capture queue.
 ///
 /// Glue only, taken over from the prototype `prototypes/ocr-collector-line`: no unit test, the camera does
 /// not exist in the simulator. Everything it feeds is tested (`CardRecogniser`, `ReadingStabiliser`,
@@ -23,8 +23,8 @@ package enum CameraStatus: Equatable {
 package final class CameraScanner: NSObject, @unchecked Sendable {
     package let session = AVCaptureSession()
     /// Receives the text lines Vision read in the card strip of one frame (empty when no card was
-    /// found) and the frame's time in seconds. Set before `start()`.
-    package var onFrame: (@Sendable ([String], TimeInterval) -> Void)?
+    /// found), the card found (nil when none) and the frame's time in seconds. Set before `start()`.
+    package var onFrame: (@Sendable ([String], CardContour?, TimeInterval) -> Void)?
 
     private let queue = DispatchQueue(label: "scanner.camera")
     private var configured = false
@@ -41,6 +41,8 @@ package final class CameraScanner: NSObject, @unchecked Sendable {
             guard await AVCaptureDevice.requestAccess(for: .video) else { return .denied }
         default: return .denied
         }
+        // Stopped while the player answered: a `stop()` already queued must not be overtaken.
+        guard !Task.isCancelled else { return .starting }
         return await withCheckedContinuation { continuation in
             queue.async { [self] in
                 if !configured {
@@ -149,8 +151,9 @@ extension CameraScanner: AVCaptureVideoDataOutputSampleBufferDelegate {
     ) {
         guard let buffer = CMSampleBufferGetImageBuffer(sampleBuffer) else { return }
         let frameTime = CMTimeGetSeconds(CMSampleBufferGetPresentationTimeStamp(sampleBuffer))
-        let lines = Self.cardContour(in: buffer).map { Self.linesInCollectorStrip(of: $0, in: buffer) } ?? []
-        onFrame?(lines, frameTime)
+        let contour = Self.cardContour(in: buffer)
+        let lines = contour.map { Self.linesInPrintedLineStrip(of: $0, in: buffer) } ?? []
+        onFrame?(lines, contour, frameTime)
     }
 
     /// The card's edges: a portrait rectangle about a card's shape (63 / 88 = 0.72, widened for
@@ -172,14 +175,14 @@ extension CameraScanner: AVCaptureVideoDataOutputSampleBufferDelegate {
 
     /// Straightens the printed line strip of the card found (rotation and perspective) and reads
     /// all of it.
-    private static func linesInCollectorStrip(of contour: CardContour, in buffer: CVPixelBuffer) -> [String] {
+    private static func linesInPrintedLineStrip(of contour: CardContour, in buffer: CVPixelBuffer) -> [String] {
         let image = CIImage(cvPixelBuffer: buffer).oriented(.right)
         let extent = image.extent
         // Core Image's origin is bottom-left, the contour's top-left.
         func pixel(_ point: CGPoint) -> CIVector {
             CIVector(x: extent.minX + point.x * extent.width, y: extent.minY + (1 - point.y) * extent.height)
         }
-        let strip = contour.collectorStrip
+        let strip = contour.printedLineStrip
         let straightened = image.applyingFilter("CIPerspectiveCorrection", parameters: [
             "inputTopLeft": pixel(strip.topLeft), "inputTopRight": pixel(strip.topRight),
             "inputBottomRight": pixel(strip.bottomRight), "inputBottomLeft": pixel(strip.bottomLeft)

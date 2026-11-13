@@ -2,13 +2,13 @@ import APIClient
 import ArcaneExchangeCore
 import SwiftUI
 
-/// The Scanner tab: the camera, full screen, and the scan batch it fills, shown in the drawer.
+/// The Scanner tab: the camera, full screen without the tab bar, and the scan batch it fills, shown
+/// in the drawer. The close button goes back to the Collection tab.
 struct ScannerView: View {
+    @Environment(AppRouter.self) private var router
     @State private var scanner: ScannerViewModel
     @State private var validation: ScanValidationViewModel
-    @State private var isDrawerOpen = false
-    @State private var isConfirmingClear = false
-    @State private var isValidating = false
+    @State private var drawerDetent: PresentationDetent = .scannerCollapsed
     private let index: ScanIndexModel
 
     init(index: ScanIndexModel, api: any APIProtocol) {
@@ -25,14 +25,28 @@ struct ScannerView: View {
     var body: some View {
         ZStack {
             Color.black.ignoresSafeArea()
-            content
+            background
+                // What the camera does not show stays clear of the folded drawer.
+                .safeAreaPadding(.bottom, ScannerDrawer.collapsedHeight)
+        }
+        .overlay(alignment: .top) { topBar }
+        .toolbar(.hidden, for: .tabBar)
+        // The drawer is always there on this tab: whatever the camera does, the batch stays to
+        // correct, validate or empty. It goes with the tab.
+        .sheet(isPresented: .constant(router.tab == .scanner)) {
+            ScannerDrawer(scanner: scanner, validation: validation, detent: $drawerDetent) {
+                router.tab = .collection
+            }
         }
         // On every opening of the tab, not only at launch.
         .task { await index.refresh() }
-        // Restarts when the index becomes ready, and stops with the tab.
-        .task(id: index.state) {
-            if index.state == .ready {
+        // Restarts when the index becomes ready, and stops with the tab. The drawer pulled up to its
+        // full height hides the camera: it stops, to save the battery.
+        .task(id: CameraDemand(isIndexReady: index.state == .ready, isHidden: drawerDetent == .large)) {
+            if index.state == .ready, drawerDetent != .large {
                 await scanner.start()
+            } else {
+                scanner.stop()
             }
         }
         .onDisappear { scanner.stop() }
@@ -42,42 +56,11 @@ struct ScannerView: View {
             await scanner.refreshPrices()
         }
         .sensoryFeedback(.success, trigger: scanner.recognitionCount)
-        // Nothing is added while the list or the confirmation is open.
-        .onChange(of: isDrawerOpen || isConfirmingClear || isValidating) { _, paused in scanner.isPaused = paused }
-        .sheet(isPresented: $isValidating) {
-            ScanValidationSheet(
-                model: validation,
-                cardCount: scanner.batch.cardCount,
-                valueCents: scanner.batchValue?.cents
-            ) {
-                // Back to the camera.
-                withAnimation(.snappy) { isDrawerOpen = false }
-            } onRefused: {
-                // The refused lines are flagged in the list.
-                withAnimation(.snappy) { isDrawerOpen = true }
-            }
-        }
-        .alert("Vider le lot ?", isPresented: $isConfirmingClear) {
-            Button("Annuler", role: .cancel) {}
-            Button("Vider", role: .destructive) { scanner.clear() }
-        } message: {
-            Text("Les cartes scannées seront retirées du lot. Ta collection n'est pas modifiée.")
-        }
     }
 
-    /// The Foil switch, and the toast offering to undo the card just added.
+    /// The toast offering to undo the card just added.
     private var topBar: some View {
         VStack(spacing: 10) {
-            HStack {
-                Spacer()
-                Toggle(isOn: $scanner.foil) {
-                    Label("Foil", systemImage: "sparkles")
-                }
-                .toggleStyle(.button)
-                .tint(Palette.secondary)
-                .background(.regularMaterial, in: Capsule())
-                .accessibilityHint("Les cartes lues ensuite sont enregistrées en foil")
-            }
             if let card = scanner.undoOffer {
                 UndoToast(card: card) { scanner.undoLastAdd() }
                     .transition(.move(edge: .top).combined(with: .opacity))
@@ -92,34 +75,6 @@ struct ScannerView: View {
                 scanner.dismissUndoOffer()
             }
         }
-    }
-
-    /// The drawer is always there: whatever the camera does, the batch stays to correct, validate or empty.
-    private var content: some View {
-        ZStack(alignment: .bottom) {
-            background
-            if isDrawerOpen {
-                Color.black.opacity(0.4)
-                    .ignoresSafeArea()
-                    .onTapGesture { withAnimation(.snappy) { isDrawerOpen = false } }
-            }
-            ScannerDrawer(
-                scanner: scanner,
-                isOpen: $isDrawerOpen,
-                rejectedLineIDs: validation.rejectedLineIDs,
-                onClear: { isConfirmingClear = true },
-                onFinish: { isValidating = true }
-            )
-        }
-        .overlay(alignment: .top) {
-            if isCameraRunning {
-                topBar
-            }
-        }
-    }
-
-    private var isCameraRunning: Bool {
-        index.state == .ready && (scanner.cameraStatus == .starting || scanner.cameraStatus == .running)
     }
 
     /// What fills the screen behind the drawer: the camera, or why there is none.
@@ -148,7 +103,9 @@ struct ScannerView: View {
             ZStack {
                 CameraPreview(session: scanner.camera.session)
                     .ignoresSafeArea()
-                CardOutline()
+                // Over the same area as the image, or the contour drifts from the card.
+                DetectedCardOutline(card: scanner.detectedCard)
+                    .ignoresSafeArea()
             }
         case .denied:
             ContentUnavailableView {
@@ -175,6 +132,12 @@ struct ScannerView: View {
     }
 }
 
+/// What decides whether the camera runs: the scan index, and the drawer covering it.
+private struct CameraDemand: Equatable {
+    let isIndexReady: Bool
+    let isHidden: Bool
+}
+
 /// The toast that follows each addition: the card added, and the way to take it off.
 private struct UndoToast: View {
     let card: RecognisedCard
@@ -197,29 +160,32 @@ private struct UndoToast: View {
     }
 }
 
-/// The outline of a card over the camera image, where `ScanGuide` expects it.
-private struct CardOutline: View {
+/// The card the camera finds, drawn in the app's blue over the camera image: the player sees
+/// whether the card is picked up. Laid over the same area as `CameraPreview`.
+private struct DetectedCardOutline: View {
+    let card: CardContour?
+
     var body: some View {
         GeometryReader { geometry in
-            // The preview shows the whole 16:9 portrait image, centred in the screen.
-            let image = fittedImage(in: geometry.size)
-            let card = ScanGuide.card
-            RoundedRectangle(cornerRadius: 10, style: .continuous)
-                .stroke(.white.opacity(0.7), style: StrokeStyle(lineWidth: 2, dash: [10, 6]))
-                .frame(width: card.width * image.width, height: card.height * image.height)
-                .position(x: image.minX + card.midX * image.width, y: image.minY + card.midY * image.height)
+            if let card {
+                // The preview shows the whole 16:9 portrait image, centred in its area.
+                let outline = Path { path in
+                    path.addLines(card.corners(in: ScanGuide.fittedImage(in: geometry.size)))
+                    path.closeSubpath()
+                }
+                outline.fill(Palette.primary.opacity(0.15))
+                outline.stroke(Palette.primary, style: StrokeStyle(lineWidth: 4, lineJoin: .round))
+            }
         }
         .allowsHitTesting(false)
         .accessibilityHidden(true)
     }
-
-    private func fittedImage(in size: CGSize) -> CGRect {
-        let width = min(size.width, size.height * ScanGuide.imageAspect)
-        let height = width / ScanGuide.imageAspect
-        return CGRect(x: (size.width - width) / 2, y: (size.height - height) / 2, width: width, height: height)
-    }
 }
 
 #Preview {
-    ScannerView(index: ScanIndexModel(api: APIClientFactory.preview), api: APIClientFactory.preview)
+    // The drawer only shows on the Scanner tab.
+    let router = AppRouter()
+    router.tab = .scanner
+    return ScannerView(index: ScanIndexModel(api: APIClientFactory.preview), api: APIClientFactory.preview)
+        .environment(router)
 }

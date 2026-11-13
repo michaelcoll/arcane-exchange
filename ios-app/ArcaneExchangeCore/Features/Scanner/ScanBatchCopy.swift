@@ -7,11 +7,6 @@ package enum ScanBatchCopy {
         "\(count) carte\(count > 1 ? "s" : "")"
     }
 
-    /// "5 cartes · 3 uniques".
-    package static func summary(cards: Int, uniques: Int) -> String {
-        "\(Self.cards(cards)) · \(uniques) unique\(uniques > 1 ? "s" : "")"
-    }
-
     /// The drawer's button.
     package static func addToCollection(cards: Int) -> String {
         "Ajouter \(Self.cards(cards)) à la collection"

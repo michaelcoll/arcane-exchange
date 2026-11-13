@@ -21,6 +21,18 @@ struct CardContourTests {
         #expect(abs(contour.bottomRight.y - upright.maxY) < 1e-9 && contour.bottomRight.x == upright.maxX)
     }
 
+    @Test func theImageFitsAnAreaTallerThanItIsCentredVertically() {
+        let image = ScanGuide.fittedImage(in: CGSize(width: 90, height: 400))
+        #expect(image.width == 90 && abs(image.height - 160) < 1e-9)
+        #expect(image.minX == 0 && abs(image.minY - 120) < 1e-9)
+    }
+
+    @Test func theImageFitsAnAreaWiderThanItIsCentredHorizontally() {
+        let image = ScanGuide.fittedImage(in: CGSize(width: 300, height: 160))
+        #expect(abs(image.width - 90) < 1e-9 && image.height == 160)
+        #expect(abs(image.minX - 105) < 1e-9 && image.minY == 0)
+    }
+
     @Test func aRectangleLyingOnItsSideIsNoCard() {
         // A card's height across the image: 88 mm wide, 63 mm high, in a 9:16 image.
         let width = 0.8
@@ -45,8 +57,8 @@ struct CardContourTests {
         #expect(contour != nil)
     }
 
-    @Test func theCollectorStripIsTheBottomOfTheCardAndABitBelow() throws {
-        let strip = try #require(fromVision(upright)).collectorStrip
+    @Test func thePrintedLineStripIsTheBottomOfTheCardAndABitBelow() throws {
+        let strip = try #require(fromVision(upright)).printedLineStrip
         let top = upright.maxY - upright.height * ScanGuide.stripAboveBottom
         let bottom = upright.maxY + upright.height * ScanGuide.marginBelowBottom
         #expect(abs(strip.topLeft.y - top) < 1e-9 && abs(strip.topRight.y - top) < 1e-9)
@@ -54,13 +66,21 @@ struct CardContourTests {
         #expect(strip.topLeft.x == upright.minX && strip.bottomRight.x == upright.maxX)
     }
 
-    @Test func theCollectorStripFollowsTheCardsSides() {
+    @Test func thePrintedLineStripFollowsTheCardsSides() {
         // A card leaning right: its bottom edge is shifted right of its top edge.
         let contour = CardContour(topLeft: CGPoint(x: 0.1, y: 0.1), topRight: CGPoint(x: 0.8, y: 0.1),
                                   bottomRight: CGPoint(x: 0.9, y: 0.6), bottomLeft: CGPoint(x: 0.2, y: 0.6))
-        let strip = contour.collectorStrip
+        let strip = contour.printedLineStrip
         let shift = 0.1 * (1 + ScanGuide.marginBelowBottom)
         #expect(abs(strip.bottomLeft.x - (0.1 + shift)) < 1e-9)
         #expect(strip.topLeft.x > 0.1 && strip.topLeft.x < 0.2)
+    }
+
+    @Test func cornersAreMappedIntoTheRectTheImageIsShownIn() {
+        let contour = CardContour(topLeft: CGPoint(x: 0.1, y: 0.2), topRight: CGPoint(x: 0.9, y: 0.2),
+                                  bottomRight: CGPoint(x: 0.9, y: 0.8), bottomLeft: CGPoint(x: 0.1, y: 0.8))
+        let corners = contour.corners(in: CGRect(x: 10, y: 20, width: 100, height: 200))
+        #expect(corners == [CGPoint(x: 20, y: 60), CGPoint(x: 100, y: 60),
+                            CGPoint(x: 100, y: 180), CGPoint(x: 20, y: 180)])
     }
 }

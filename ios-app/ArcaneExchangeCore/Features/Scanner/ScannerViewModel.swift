@@ -11,6 +11,8 @@ import Foundation
 package final class ScannerViewModel {
     /// The last card retained by the stabiliser, whether the batch took it or not.
     package private(set) var lastRecognised: RecognisedCard?
+    /// The finish `lastRecognised` joined the batch in: the Foil switch when it was added.
+    package private(set) var lastRecognisedFoil = false
     /// Counts the cards the batch took: drives the haptic feedback.
     package private(set) var recognitionCount = 0
 
@@ -26,6 +28,9 @@ package final class ScannerViewModel {
     /// the offer after a few seconds (`dismissUndoOffer()`).
     package private(set) var undoOffer: RecognisedCard?
 
+    /// The card the camera finds in the latest frame, drawn over the preview; nil when none.
+    package private(set) var detectedCard: CardContour?
+
     package private(set) var cameraStatus = CameraStatus.starting
     /// The camera, for the preview layer.
     package let camera: CameraScanner
@@ -37,24 +42,30 @@ package final class ScannerViewModel {
 
     private let prices: ScanBatchPrices
 
+    /// `lastRecognised` lets a preview start from a card already read; the app starts from none.
     package init(
         index: ScanIndexModel,
         storage: any ScanBatchStorage,
         camera: CameraScanner = CameraScanner(),
-        prices: ScanBatchPrices = ScanBatchPrices(api: nil)
+        prices: ScanBatchPrices = ScanBatchPrices(api: nil),
+        lastRecognised: RecognisedCard? = nil
     ) {
         self.index = index
         self.storage = storage
         self.camera = camera
         self.prices = prices
+        self.lastRecognised = lastRecognised
         batch = storage.load() ?? ScanBatch()
     }
 
     /// Opens the camera (asking for access the first time) and feeds the frames in.
     package func start() async {
-        camera.onFrame = { [weak self] lines, time in
+        camera.onFrame = { [weak self] lines, contour, time in
             DispatchQueue.main.async {
-                MainActor.assumeIsolated { self?.frame(lines: lines, at: time) }
+                MainActor.assumeIsolated {
+                    self?.detectedCard = contour
+                    self?.frame(lines: lines, at: time)
+                }
             }
         }
         cameraStatus = await camera.start()
@@ -62,6 +73,7 @@ package final class ScannerViewModel {
 
     package func stop() {
         camera.stop()
+        detectedCard = nil
     }
 
     package func frame(lines: [String], at time: TimeInterval) {
@@ -75,6 +87,8 @@ package final class ScannerViewModel {
     private func retain(_ card: RecognisedCard) {
         lastRecognised = card
         if batch.addFromCamera(card, foil: foil) {
+            // A repeat read leaves the line, and so its finish, as it was.
+            lastRecognisedFoil = foil
             undoOffer = card
             recognitionCount += 1
         }

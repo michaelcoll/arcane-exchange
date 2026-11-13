@@ -39,10 +39,17 @@ package struct CardContour: Equatable, Sendable {
         return height > width
     }
 
+    /// The four corners, clockwise from the top left, placed in `rect` (where the image is shown).
+    package func corners(in rect: CGRect) -> [CGPoint] {
+        [topLeft, topRight, bottomRight, bottomLeft].map {
+            CGPoint(x: rect.minX + $0.x * rect.width, y: rect.minY + $0.y * rect.height)
+        }
+    }
+
     /// The printed line strip, following the card's sides: from `ScanGuide.stripAboveBottom`
     /// above its bottom edge to `ScanGuide.marginBelowBottom` below it, in case Vision took the
     /// inner frame of a black-bordered card for its edge.
-    package var collectorStrip: CardContour {
+    package var printedLineStrip: CardContour {
         func along(_ top: CGPoint, _ bottom: CGPoint, _ fraction: Double) -> CGPoint {
             CGPoint(x: top.x + (bottom.x - top.x) * fraction, y: top.y + (bottom.y - top.y) * fraction)
         }
