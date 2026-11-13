@@ -7,6 +7,8 @@ struct ScannerDrawer: View {
     let scanner: ScannerViewModel
     @Binding var isOpen: Bool
     let onClear: () -> Void
+    @Environment(\.api) private var api
+    @State private var correction: ScanCorrectionTarget?
 
     var body: some View {
         VStack(spacing: 0) {
@@ -26,6 +28,9 @@ struct ScannerDrawer: View {
             }
         }
         .background(.regularMaterial, in: UnevenRoundedRectangle(topLeadingRadius: 24, topTrailingRadius: 24))
+        .sheet(item: $correction) { target in
+            ScanCorrectionSheet(target: target, scanner: scanner, api: api)
+        }
     }
 
     private var header: some View {
@@ -63,6 +68,9 @@ struct ScannerDrawer: View {
                     .font(.subheadline.weight(.semibold))
                     .foregroundStyle(.secondary)
                 Spacer()
+                Button("Ajouter", systemImage: "plus") { correction = .add }
+                    .font(.subheadline)
+                    .padding(.trailing, 8)
                 if scanner.batch.cardCount > 0 {
                     Button("Vider", role: .destructive, action: onClear)
                         .font(.subheadline)
@@ -84,7 +92,9 @@ struct ScannerDrawer: View {
                     ScanBatchRow(line: line, quantity: Binding(
                         get: { line.quantity },
                         set: { scanner.setQuantity($0, ofLine: line.id) }
-                    ))
+                    )) {
+                        ScanLineMenu(line: line, scanner: scanner) { correction = .replace(lineID: line.id) }
+                    }
                     .listRowBackground(Color.clear)
                 }
                 .listStyle(.plain)
@@ -95,9 +105,10 @@ struct ScannerDrawer: View {
 }
 
 /// A line of the scan batch: its card, its finish, and the stepper of its quantity.
-private struct ScanBatchRow: View {
+private struct ScanBatchRow<Corrections: View>: View {
     let line: ScanBatchLine
     @Binding var quantity: Int
+    @ViewBuilder let corrections: Corrections
 
     var body: some View {
         HStack(spacing: 12) {
@@ -122,6 +133,7 @@ private struct ScanBatchRow: View {
                 }
             }
             Spacer(minLength: 0)
+            corrections
             Stepper(value: $quantity, in: 0 ... ScanBatch.maxQuantity) {
                 Text("\(quantity)")
                     .font(.body.monospacedDigit())
