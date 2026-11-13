@@ -6,7 +6,7 @@ import type { SealedProductType } from './SealedProductType';
  */
 export type UpdatePurchaseRequest = {
   /**
-   * Amount spent, in cents, strictly positive (`invalid_purchase_price`, 400).
+   * Amount paid, in cents, strictly positive (`invalid_purchase_price`, 400).
    */
   amount_cents?: number;
   /**

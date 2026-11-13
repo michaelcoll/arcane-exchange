@@ -22,12 +22,64 @@ func purchase(
     )
 }
 
+func singleCardPurchase(
+    _ id: String,
+    card: String = "Gobelin",
+    foil: Bool = false,
+    quantity: Int32 = 4,
+    cents: Int32 = 800,
+    on day: String = "2026-11-13"
+) -> Purchase {
+    Purchase(
+        amount_cents: cents,
+        card: .init(
+            collector_number: "87",
+            language_code: "FR",
+            name: card,
+            set: .init(code: "FDN", name: "Foundations")
+        ),
+        foil: foil,
+        id: id,
+        kind: .single_card,
+        purchased_on: day,
+        quantity: quantity
+    )
+}
+
 private func page(_ items: [Purchase], total: Int64? = nil) -> Operations.list_purchases.Output {
     .ok(.init(body: .json(.init(items: items, page: 0, page_size: 20, total: total ?? Int64(items.count)))))
 }
 
 @MainActor
 struct PurchasesViewModelTests {
+    @Test func listsASingleCardPurchaseAmongTheOthers() async {
+        let api = FakeAPI()
+        api.onListPurchases = { _ in page([singleCardPurchase("2"), purchase("1")]) }
+        let model = PurchasesViewModel(api: api)
+
+        await model.reload()
+
+        #expect(model.paginator.items.map(\.id) == ["2", "1"])
+        #expect(model.paginator.items.first?.card?.name == "Gobelin")
+        #expect(model.paginator.items.first?.quantity == 4)
+    }
+
+    @Test func deletesASingleCardPurchaseLikeAnyOther() async {
+        let api = FakeAPI()
+        api.onListPurchases = { _ in page([singleCardPurchase("2")]) }
+        nonisolated(unsafe) var deleted: String?
+        api.onDeletePurchase = { input in
+            deleted = input.path.id
+            return .noContent(.init())
+        }
+        let model = PurchasesViewModel(api: api)
+        await model.reload()
+
+        await model.delete(singleCardPurchase("2"))
+
+        #expect(deleted == "2")
+    }
+
     @Test func loadsThePurchasesInTheOrderOfTheAPI() async {
         let api = FakeAPI()
         api.onListPurchases = { _ in page([purchase("2", on: "2026-11-13"), purchase("1", on: "2026-11-01")]) }

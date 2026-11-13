@@ -45,14 +45,33 @@ struct AddCollectionEntryForm: View {
                 }
             }
             Section {
-                Picker("Produit scellé", selection: $model.sealedProductID) {
+                Picker(
+                    "Produit scellé",
+                    selection: Binding(get: { model.sealedProductID }, set: { model.chooseSealedProduct($0) })
+                ) {
                     Text("Aucun").tag(String?.none)
                     ForEach(model.sealedProducts, id: \.id) { product in
                         Text(PurchaseCopy.choice(of: product)).tag(String?.some(product.id))
                     }
                 }
+                if model.sealedProductID == nil {
+                    LabeledContent("Prix d'achat") {
+                        HStack(spacing: 4) {
+                            TextField("Aucun", text: $model.priceText)
+                                .keyboardType(.decimalPad)
+                                .multilineTextAlignment(.trailing)
+                            Text("€").foregroundStyle(.secondary)
+                        }
+                    }
+                }
             } footer: {
-                Text("Les cartes rejoignent le contenu du produit, sans prix d'achat.")
+                if let loadError = model.loadError {
+                    Text(loadError)
+                } else if model.sealedProductID == nil {
+                    Text("Par exemplaire. Renseigné, il enregistre un achat à l'unité daté d'aujourd'hui.")
+                } else {
+                    Text("Les cartes rejoignent le contenu du produit, sans prix d'achat.")
+                }
             }
         }
         .disabled(model.isWriting)
@@ -71,7 +90,7 @@ struct AddCollectionEntryForm: View {
                         }
                     }
                 }
-                .disabled(model.isWriting)
+                .disabled(model.isWriting || !model.canSubmit)
             }
         }
         .alert(

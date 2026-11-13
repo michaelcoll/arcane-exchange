@@ -13,7 +13,7 @@ use crate::domain::collection_stats::CollectionStats;
 use crate::domain::pagination::{PageRequest, Paginated};
 use crate::domain::price::PriceHistoryEntry;
 use crate::domain::purchase::{
-    Purchase, PurchaseDetail, PurchaseEditRequest, PurchaseId, SealedProductRequest,
+    Purchase, PurchaseAmount, PurchaseDetail, PurchaseEditRequest, PurchaseId, SealedProductRequest,
 };
 use crate::domain::rarity_trade_filter::{RarityTradeFilter, RarityTradeFilterRule};
 use crate::domain::set_name::{SetCode, SetName};
@@ -533,14 +533,26 @@ pub trait GetCollectionEntriesUseCase: Send + Sync {
 #[cfg_attr(test, automock)]
 pub trait AddCollectionEntryUseCase: Send + Sync {
     /// Adds `quantity` copies of a card to the collection, in a finish and a binder (or none),
-    /// without purchase price, and returns the entries of the card, then asks for a refresh of
-    /// the card prices views without waiting for it. The Card is created when it does not exist
-    /// ([`CreateCardUseCase`]), in the language asked even when Scryfall has none. The copies are
-    /// merged into the entry of the same finish and binder when there is one.
+    /// and returns the entries of the card, then asks for a refresh of the card prices views
+    /// without waiting for it. The Card is created when it does not exist ([`CreateCardUseCase`]),
+    /// in the language asked even when Scryfall has none. The copies are merged into the entry of
+    /// the same finish and binder when there is one.
+    ///
+    /// Without `purchase_price` the copies come without purchase price and no Purchase is
+    /// recorded. With one (cents per copy), the copies carry it (a merge averages it with the
+    /// entry's, weighted by quantity) and a single card Purchase of the price times the quantity
+    /// is recorded, dated today, in the same transaction.
+    ///
+    /// With `sealed_product_id` the copies come from that sealed product instead
+    /// ([`AttachCardToSealedProductUseCase`]): they have no purchase price, so it is refused
+    /// together with `purchase_price`.
     ///
     /// Refused with `InvalidQuantity` (`400`) outside 1 to 255 (also when a merge goes over 255),
-    /// `CardNotInCatalog` (`404`) for a set and number the catalog does not have, and
-    /// `BinderNotFound` (`404`) for an absent binder or another player's.
+    /// `InvalidRequest` (`400`) for a `purchase_price` together with a `sealed_product_id`,
+    /// `CardNotInCatalog` (`404`) for a set and number the catalog does not have,
+    /// `BinderNotFound` (`404`) for an absent binder or another player's, and, with a
+    /// `sealed_product_id`, `PurchaseNotFound` (`404`).
+    #[allow(clippy::too_many_arguments)]
     async fn add_collection_entry(
         &self,
         user_id: &UserId,
@@ -548,6 +560,8 @@ pub trait AddCollectionEntryUseCase: Send + Sync {
         foil: bool,
         quantity: i32,
         binder_id: Option<BinderId>,
+        purchase_price: Option<PurchaseAmount>,
+        sealed_product_id: Option<PurchaseId>,
     ) -> Result<CardEntries, AppError>;
 }
 
@@ -568,7 +582,7 @@ pub trait UpdateCollectionEntryUseCase: Send + Sync {
         id: CollectionEntryId,
         quantity: Option<i32>,
         foil: Option<bool>,
-        purchase_price: Option<crate::domain::purchase::PurchaseAmount>,
+        purchase_price: Option<PurchaseAmount>,
     ) -> Result<CardEntries, AppError>;
 }
 

@@ -77,6 +77,9 @@ pub enum FunctionalError {
     ReservedQuantityExceeded,
     /// No Purchase has this identifier for the caller, whoever else it belongs to.
     PurchaseNotFound,
+    /// A request the API understands but refuses as a whole (a field that does not apply to what it
+    /// targets); carries the reason.
+    InvalidRequest(String),
 }
 
 impl FunctionalError {
@@ -135,6 +138,7 @@ impl FunctionalError {
             FunctionalError::InvalidPurchasePrice => "invalid_purchase_price",
             FunctionalError::ReservedQuantityExceeded => "reserved_quantity_exceeded",
             FunctionalError::PurchaseNotFound => "purchase_not_found",
+            FunctionalError::InvalidRequest(_) => "invalid_request",
         }
     }
 }
@@ -254,6 +258,7 @@ impl From<FunctionalError> for String {
                 "The edit would leave fewer copies than the accepted trades committed".to_string()
             }
             FunctionalError::PurchaseNotFound => "Purchase not found".to_string(),
+            FunctionalError::InvalidRequest(reason) => format!("Invalid request: {reason}"),
         }
     }
 }

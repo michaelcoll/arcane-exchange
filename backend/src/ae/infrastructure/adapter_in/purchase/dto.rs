@@ -1,6 +1,6 @@
 use crate::domain::purchase::{
     Purchase, PurchaseContentLine, PurchaseDetail, PurchaseEditRequest, PurchaseKind,
-    SealedProductRequest, SealedProductType,
+    PurchasedCard, SealedProductRequest, SealedProductType,
 };
 use crate::domain::set_name::SetCode;
 use crate::infrastructure::adapter_in::collection::dto::card_image_urls;
@@ -51,6 +51,38 @@ impl From<SealedProductType> for SealedProductTypeParam {
 #[ts(export)]
 pub enum PurchaseKindResponse {
     SealedProduct,
+    SingleCard,
+}
+
+/// The card a single card Purchase bought.
+#[derive(Debug, Serialize, TS, ToSchema)]
+#[serde(rename = "PurchasedCard")]
+#[ts(export)]
+pub struct PurchasedCardResponse {
+    pub set: SetInfoResponse,
+    pub collector_number: String,
+    pub language_code: String,
+    pub name: String,
+    /// Front image, relative to the frontend (e.g. `/card-images/FDN_1_EN.webp?v=gatherer`);
+    /// `null` while the card's image is pending.
+    pub image_url: Option<String>,
+    /// Back image of a double-faced card, like `image_url`; `null` for a single-faced card.
+    pub image_back_url: Option<String>,
+}
+
+impl From<PurchasedCard> for PurchasedCardResponse {
+    fn from(card: PurchasedCard) -> Self {
+        let (image_url, image_back_url) = card_image_urls(&card.id, card.image);
+
+        Self {
+            set: card.set.into(),
+            collector_number: card.id.collector_number,
+            language_code: card.id.language_code.to_string(),
+            name: card.name,
+            image_url,
+            image_back_url,
+        }
+    }
 }
 
 #[derive(Debug, Serialize, TS, ToSchema)]
@@ -73,24 +105,52 @@ pub struct PurchaseResponse {
     /// Sealed product only.
     #[schema(value_type = SetInfoResponse, required = false)]
     pub set: Option<SetInfoResponse>,
+    /// Single card only.
+    #[schema(value_type = PurchasedCardResponse, required = false)]
+    pub card: Option<PurchasedCardResponse>,
+    /// Single card only: whether the copies are foil.
+    pub foil: Option<bool>,
+    /// Single card only: the copies bought.
+    pub quantity: Option<u32>,
 }
 
 impl From<Purchase> for PurchaseResponse {
     fn from(purchase: Purchase) -> Self {
-        let PurchaseKind::SealedProduct {
-            product_type,
-            name,
-            set,
-        } = purchase.kind;
-
-        Self {
+        let response = Self {
             id: purchase.id.to_string(),
             kind: PurchaseKindResponse::SealedProduct,
             amount_cents: purchase.amount.cents(),
             purchased_on: purchase.purchased_on,
-            product_type: Some(product_type.into()),
-            name,
-            set: Some(set.into()),
+            product_type: None,
+            name: None,
+            set: None,
+            card: None,
+            foil: None,
+            quantity: None,
+        };
+
+        match purchase.kind {
+            PurchaseKind::SealedProduct {
+                product_type,
+                name,
+                set,
+            } => Self {
+                product_type: Some(product_type.into()),
+                name,
+                set: Some(set.into()),
+                ..response
+            },
+            PurchaseKind::SingleCard {
+                card,
+                foil,
+                quantity,
+            } => Self {
+                kind: PurchaseKindResponse::SingleCard,
+                card: Some(card.into()),
+                foil: Some(foil),
+                quantity: Some(quantity),
+                ..response
+            },
         }
     }
 }

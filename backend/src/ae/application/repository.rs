@@ -12,7 +12,8 @@ use crate::domain::collection_stats::CollectionStats;
 use crate::domain::pagination::{Paginated, Pagination};
 use crate::domain::price::{FullPriceGuide, PriceHistoryEntry};
 use crate::domain::purchase::{
-    NewSealedProduct, Purchase, PurchaseChanges, PurchaseContentLine, PurchaseId,
+    NewSealedProduct, NewSingleCardPurchase, Purchase, PurchaseChanges, PurchaseContentLine,
+    PurchaseId,
 };
 use crate::domain::rarity_trade_filter::{RarityTradeFilter, RarityTradeFilterRule};
 use crate::domain::set_name::{SetCode, SetName};
@@ -545,7 +546,9 @@ pub trait CollectionEntryRepository: Send + Sync {
     /// Adds `quantity` copies of the card in the finish, stored in `binder_id` (or in no binder).
     /// The card must exist. An entry of the same card, finish and binder absorbs them
     /// ([`EntryCopies::merge`](crate::domain::collection_entry::EntryCopies::merge)), otherwise a new
-    /// entry without purchase price is written. Returns the entries of the card.
+    /// entry is written. The copies have no purchase price, unless `purchase` is given: they then
+    /// carry its price per copy, and the single card Purchase is recorded with its content (the
+    /// card, the finish, the quantity) in the same transaction. Returns the entries of the card.
     ///
     /// # Errors
     ///
@@ -558,6 +561,7 @@ pub trait CollectionEntryRepository: Send + Sync {
         foil: bool,
         quantity: u8,
         binder_id: Option<BinderId>,
+        purchase: Option<NewSingleCardPurchase>,
     ) -> Result<CardEntries, AppError>;
 
     /// Applies `update` to the entry and returns the entries of its card. The reservation guard

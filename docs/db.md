@@ -1,4 +1,4 @@
-# ae_727 — public schema
+# postgres — public schema
 
 ```mermaid
 erDiagram

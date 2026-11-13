@@ -132,6 +132,7 @@ impl IntoResponse for AppError {
                 | FunctionalError::AddedAtSortRequiresPlayerUsername
                 | FunctionalError::InvalidQuantity
                 | FunctionalError::InvalidPurchasePrice
+                | FunctionalError::InvalidRequest(_)
                 | FunctionalError::SelfTrade => StatusCode::BAD_REQUEST,
                 FunctionalError::PriceNotFound
                 | FunctionalError::CardNotFound

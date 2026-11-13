@@ -8,6 +8,7 @@ use crate::domain::collection_entry::{
 };
 use crate::domain::error::FunctionalError;
 use crate::domain::language_code::LanguageCode;
+use crate::domain::purchase::NewSingleCardPurchase;
 use crate::domain::user::UserId;
 use async_trait::async_trait;
 use chrono::{DateTime, Utc};
@@ -367,8 +368,8 @@ pub(super) async fn insert_entry(
     Ok(())
 }
 
-/// Adds `quantity` copies without purchase price to the entry of the same finish and binder, or
-/// to a new one, within the caller's transaction. Returns the entries of the card.
+/// Adds `quantity` copies, each with `purchase_price` when given, to the entry of the same finish
+/// and binder, or to a new one, within the caller's transaction. Returns the entries of the card.
 pub(super) async fn add_copies(
     conn: &mut PgConnection,
     user_id: &UserId,
@@ -376,6 +377,7 @@ pub(super) async fn add_copies(
     foil: bool,
     quantity: u8,
     binder_id: Option<BinderId>,
+    purchase_price: Option<u32>,
 ) -> Result<CardEntries, AppError> {
     if let Some(binder_id) = binder_id {
         ensure_binder_owned(conn, user_id, binder_id).await?;
@@ -384,7 +386,7 @@ pub(super) async fn add_copies(
     let locked = lock_card_entries(conn, user_id, card_id).await?;
     let added = EntryCopies {
         quantity: u32::from(quantity),
-        purchase_price: None,
+        purchase_price,
         added_at: Utc::now(),
     };
     let target_binder = binder_id.map(|id| id.0);
@@ -402,6 +404,48 @@ pub(super) async fn add_copies(
     }
 
     find_card_entries(conn, user_id, card_id).await
+}
+
+/// Records the Purchase of the copies just added, with its one line of content. Its content has no
+/// link to the entry, so what the entry later becomes does not change it (ADR-0023).
+async fn insert_single_card_purchase(
+    conn: &mut PgConnection,
+    user_id: &UserId,
+    card_id: &CardId,
+    foil: bool,
+    quantity: u8,
+    purchase: &NewSingleCardPurchase,
+) -> Result<(), AppError> {
+    let purchase_id = sqlx::query_scalar!(
+        r#"
+        INSERT INTO purchase (user_id, kind, amount_cents, purchased_on)
+        VALUES ($1, 'single_card', $2, $3)
+        RETURNING id
+        "#,
+        user_id.as_str(),
+        i32::try_from(purchase.amount.cents()).map_err(|_| corrupt("amount"))?,
+        purchase.purchased_on,
+    )
+    .fetch_one(&mut *conn)
+    .await?;
+
+    let (set_code, collector_number, language_code) = card_columns(card_id);
+    sqlx::query!(
+        r#"
+        INSERT INTO purchase_content
+            (purchase_id, set_code, collector_number, language_code, foil, quantity)
+        VALUES ($1, $2, $3, $4, $5, $6)
+        "#,
+        purchase_id,
+        set_code,
+        collector_number,
+        language_code,
+        foil,
+        i32::from(quantity),
+    )
+    .execute(conn)
+    .await?;
+    Ok(())
 }
 
 #[async_trait]
@@ -424,9 +468,23 @@ impl CollectionEntryRepository for CollectionEntryRepositoryAdapter {
         foil: bool,
         quantity: u8,
         binder_id: Option<BinderId>,
+        purchase: Option<NewSingleCardPurchase>,
     ) -> Result<CardEntries, AppError> {
         let mut tx = self.pool.begin().await?;
-        let entries = add_copies(&mut tx, user_id, card_id, foil, quantity, binder_id).await?;
+        let entries = add_copies(
+            &mut tx,
+            user_id,
+            card_id,
+            foil,
+            quantity,
+            binder_id,
+            purchase.map(|purchase| purchase.price_per_copy.cents()),
+        )
+        .await?;
+        if let Some(purchase) = purchase {
+            insert_single_card_purchase(&mut tx, user_id, card_id, foil, quantity, &purchase)
+                .await?;
+        }
         tx.commit().await?;
         Ok(entries)
     }
@@ -590,6 +648,7 @@ impl CollectionEntryRepository for CollectionEntryRepositoryAdapter {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::domain::purchase::PurchaseAmount;
     use crate::infrastructure::adapter_out::repository::common_repository_tests::{
         insert_binder, insert_card, insert_set, insert_trade, insert_trade_card, insert_user,
     };
@@ -745,7 +804,7 @@ mod tests {
         let binder = BinderId(insert_binder(&pool, USER, "Trade").await);
 
         let entries = adapter(pool)
-            .add(&user(), &card(), true, 3, Some(binder))
+            .add(&user(), &card(), true, 3, Some(binder), None)
             .await
             .unwrap();
 
@@ -762,7 +821,7 @@ mod tests {
         seed(&pool).await;
 
         let entries = adapter(pool)
-            .add(&user(), &card(), false, 1, None)
+            .add(&user(), &card(), false, 1, None, None)
             .await
             .unwrap();
 
@@ -780,7 +839,7 @@ mod tests {
             .unwrap();
 
         let entries = adapter(pool)
-            .add(&user(), &card(), false, 3, Some(binder))
+            .add(&user(), &card(), false, 3, Some(binder), None)
             .await
             .unwrap();
 
@@ -798,7 +857,7 @@ mod tests {
         insert_entry(&pool, USER, true, 1, None, day(2), None).await;
 
         let entries = adapter(pool)
-            .add(&user(), &card(), true, 1, None)
+            .add(&user(), &card(), true, 1, None, None)
             .await
             .unwrap();
 
@@ -812,7 +871,7 @@ mod tests {
         insert_entry(&pool, USER, false, 2, None, day(2), Some("Trade")).await;
 
         let entries = adapter(pool)
-            .add(&user(), &card(), true, 1, None)
+            .add(&user(), &card(), true, 1, None, None)
             .await
             .unwrap();
 
@@ -825,7 +884,7 @@ mod tests {
         insert_entry(&pool, USER, false, 255, None, day(2), None).await;
 
         let error = adapter(pool)
-            .add(&user(), &card(), false, 1, None)
+            .add(&user(), &card(), false, 1, None, None)
             .await
             .unwrap_err();
 
@@ -838,7 +897,7 @@ mod tests {
         let others = BinderId(insert_binder(&pool, OTHER, "Bob's binder").await);
 
         let error = adapter(pool.clone())
-            .add(&user(), &card(), false, 1, Some(others))
+            .add(&user(), &card(), false, 1, Some(others), None)
             .await
             .unwrap_err();
 
@@ -855,7 +914,14 @@ mod tests {
         seed(&pool).await;
 
         let error = adapter(pool)
-            .add(&user(), &card(), false, 1, Some(BinderId(Uuid::new_v4())))
+            .add(
+                &user(),
+                &card(),
+                false,
+                1,
+                Some(BinderId(Uuid::new_v4())),
+                None,
+            )
             .await
             .unwrap_err();
 
@@ -868,12 +934,167 @@ mod tests {
         insert_entry(&pool, OTHER, false, 4, None, day(1), None).await;
 
         let entries = adapter(pool)
-            .add(&user(), &card(), false, 1, None)
+            .add(&user(), &card(), false, 1, None, None)
             .await
             .unwrap();
 
         assert_eq!(entries.entries.len(), 1);
         assert_eq!(entries.entries[0].quantity, 1);
+    }
+
+    // ---- add: with a purchase ----
+
+    fn single_card_purchase(price: i32, quantity: u8) -> NewSingleCardPurchase {
+        NewSingleCardPurchase::try_new(
+            PurchaseAmount::try_new(price).unwrap(),
+            quantity,
+            chrono::NaiveDate::from_ymd_opt(2026, 11, 13).unwrap(),
+        )
+        .unwrap()
+    }
+
+    #[sqlx::test]
+    async fn add_with_a_purchase_gives_the_copies_their_price_and_records_the_purchase(
+        pool: PgPool,
+    ) {
+        seed(&pool).await;
+
+        let entries = adapter(pool.clone())
+            .add(
+                &user(),
+                &card(),
+                true,
+                4,
+                None,
+                Some(single_card_purchase(200, 4)),
+            )
+            .await
+            .unwrap();
+
+        assert_eq!(entries.entries[0].purchase_price, Some(200));
+        let purchases: Vec<(String, i32, chrono::NaiveDate)> =
+            sqlx::query_as("SELECT kind, amount_cents, purchased_on FROM purchase")
+                .fetch_all(&pool)
+                .await
+                .unwrap();
+        assert_eq!(
+            purchases,
+            vec![(
+                "single_card".to_string(),
+                800,
+                chrono::NaiveDate::from_ymd_opt(2026, 11, 13).unwrap()
+            )]
+        );
+        let content: Vec<(String, String, String, bool, i32)> = sqlx::query_as(
+            "SELECT set_code, collector_number, language_code, foil, quantity FROM purchase_content",
+        )
+        .fetch_all(&pool)
+        .await
+        .unwrap();
+        assert_eq!(
+            content,
+            vec![("TST".into(), "1".into(), "EN".into(), true, 4)]
+        );
+    }
+
+    #[sqlx::test]
+    async fn add_without_a_purchase_records_none(pool: PgPool) {
+        seed(&pool).await;
+
+        adapter(pool.clone())
+            .add(&user(), &card(), false, 2, None, None)
+            .await
+            .unwrap();
+
+        let purchases: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM purchase")
+            .fetch_one(&pool)
+            .await
+            .unwrap();
+        assert_eq!(purchases, 0);
+    }
+
+    #[sqlx::test]
+    async fn add_with_a_purchase_merges_the_price_by_weighted_average(pool: PgPool) {
+        seed(&pool).await;
+        insert_entry(&pool, USER, false, 2, Some(500), day(2), None).await;
+
+        let entries = adapter(pool)
+            .add(
+                &user(),
+                &card(),
+                false,
+                2,
+                None,
+                Some(single_card_purchase(300, 2)),
+            )
+            .await
+            .unwrap();
+
+        assert_eq!(entries.entries.len(), 1);
+        assert_eq!(entries.entries[0].quantity, 4);
+        assert_eq!(entries.entries[0].purchase_price, Some(400));
+    }
+
+    #[sqlx::test]
+    async fn a_refused_merge_records_no_purchase(pool: PgPool) {
+        seed(&pool).await;
+        insert_entry(&pool, USER, false, 255, None, day(2), None).await;
+
+        let error = adapter(pool.clone())
+            .add(
+                &user(),
+                &card(),
+                false,
+                1,
+                None,
+                Some(single_card_purchase(200, 1)),
+            )
+            .await
+            .unwrap_err();
+
+        assert_eq!(error.code(), "invalid_quantity");
+        let purchases: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM purchase")
+            .fetch_one(&pool)
+            .await
+            .unwrap();
+        assert_eq!(purchases, 0);
+    }
+
+    #[sqlx::test]
+    async fn a_purchase_that_cannot_be_written_takes_the_entry_with_it(pool: PgPool) {
+        seed(&pool).await;
+        sqlx::query(
+            r#"CREATE FUNCTION refuse_purchase() RETURNS trigger AS
+               $$ BEGIN RAISE EXCEPTION 'purchase refused'; END $$ LANGUAGE plpgsql"#,
+        )
+        .execute(&pool)
+        .await
+        .unwrap();
+        sqlx::query(
+            "CREATE TRIGGER refuse_purchase BEFORE INSERT ON purchase
+             FOR EACH ROW EXECUTE FUNCTION refuse_purchase()",
+        )
+        .execute(&pool)
+        .await
+        .unwrap();
+
+        let result = adapter(pool.clone())
+            .add(
+                &user(),
+                &card(),
+                false,
+                1,
+                None,
+                Some(single_card_purchase(200, 1)),
+            )
+            .await;
+
+        assert!(result.is_err());
+        let entries: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM collection_entry")
+            .fetch_one(&pool)
+            .await
+            .unwrap();
+        assert_eq!(entries, 0);
     }
 
     // ---- update: quantity ----

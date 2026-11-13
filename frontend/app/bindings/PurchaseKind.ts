@@ -3,4 +3,4 @@
 /**
  * What a Purchase bought.
  */
-export type PurchaseKind = 'sealed_product';
+export type PurchaseKind = 'sealed_product' | 'single_card';

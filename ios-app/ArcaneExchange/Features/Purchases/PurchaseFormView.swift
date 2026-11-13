@@ -2,37 +2,40 @@ import APIClient
 import ArcaneExchangeCore
 import SwiftUI
 
-/// The form that records a sealed product, or edits one: type, set among the known sets, optional
-/// name, price in euros and day of the purchase (today for a new one).
-struct SealedProductFormView: View {
-    @State private var model: SealedProductFormViewModel
+/// The form that records a sealed product, or edits a purchase: type, set among the known sets,
+/// optional name, price in euros and day of the purchase (today for a new one). A single card
+/// purchase only has its amount and its day.
+struct PurchaseFormView: View {
+    @State private var model: PurchaseFormViewModel
     private let onSaved: () -> Void
 
     @Environment(\.dismiss) private var dismiss
 
     init(api: any APIProtocol, editing purchase: Purchase?, onSaved: @escaping () -> Void) {
-        _model = State(initialValue: SealedProductFormViewModel(api: api, editing: purchase))
+        _model = State(initialValue: PurchaseFormViewModel(api: api, editing: purchase))
         self.onSaved = onSaved
     }
 
     var body: some View {
         NavigationStack {
             Form {
-                Section {
-                    Picker("Type", selection: $model.productType) {
-                        ForEach(SealedProductType.allCases, id: \.self) { type in
-                            Text(PurchaseCopy.label(for: type)).tag(type)
+                if !model.isSingleCard {
+                    Section {
+                        Picker("Type", selection: $model.productType) {
+                            ForEach(SealedProductType.allCases, id: \.self) { type in
+                                Text(PurchaseCopy.label(for: type)).tag(type)
+                            }
                         }
+                        NavigationLink {
+                            SealedProductSetPicker(model: model)
+                        } label: {
+                            LabeledContent("Set", value: model.selectedSet?.name ?? "Choisir")
+                        }
+                        TextField("Nom (facultatif)", text: $model.name)
                     }
-                    NavigationLink {
-                        SealedProductSetPicker(model: model)
-                    } label: {
-                        LabeledContent("Set", value: model.selectedSet?.name ?? "Choisir")
-                    }
-                    TextField("Nom (facultatif)", text: $model.name)
                 }
                 Section {
-                    LabeledContent("Prix") {
+                    LabeledContent(model.isSingleCard ? "Montant" : "Prix") {
                         HStack(spacing: 4) {
                             TextField("0", text: $model.priceText)
                                 .keyboardType(.decimalPad)
@@ -76,7 +79,7 @@ struct SealedProductFormView: View {
 
 /// The searchable list of sets a sealed product can belong to.
 private struct SealedProductSetPicker: View {
-    let model: SealedProductFormViewModel
+    let model: PurchaseFormViewModel
 
     @Environment(\.dismiss) private var dismiss
     @State private var query = ""

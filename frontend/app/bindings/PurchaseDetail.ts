@@ -17,12 +17,12 @@ export type PurchaseDetail = {
    */
   lines_without_trend: number;
   /**
-   * Value of the content minus the amount of the Purchase, in cents: negative when the content
-   * is worth less than was paid.
+   * Profitability: the value of the content minus the amount of the Purchase, in cents,
+   * negative when the content is worth less than was paid.
    */
-  gap_cents: number;
+  profitability_cents: number;
   /**
-   * The gap as a percentage of the amount of the Purchase.
+   * The profitability as a percentage of the amount of the Purchase.
    */
-  gap_percent: number;
+  profitability_percent: number;
 };

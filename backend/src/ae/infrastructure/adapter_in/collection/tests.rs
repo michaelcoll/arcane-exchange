@@ -1219,15 +1219,19 @@ mod entries {
         let mut mock = MockAddCollectionEntryUseCase::new();
         mock.expect_add_collection_entry()
             .times(1)
-            .withf(|_, card_id, foil, quantity, binder_id| {
-                card_id.set_code.to_string() == "MKM"
-                    && card_id.collector_number == "H13"
-                    && card_id.language_code.to_string() == "JA"
-                    && *foil
-                    && *quantity == 4
-                    && binder_id.map(|id| id.0) == Some(Uuid::nil())
-            })
-            .returning(|_, _, _, _, _| Box::pin(async { Ok(card_entries()) }));
+            .withf(
+                |_, card_id, foil, quantity, binder_id, purchase_price, sealed_product_id| {
+                    card_id.set_code.to_string() == "MKM"
+                        && card_id.collector_number == "H13"
+                        && card_id.language_code.to_string() == "JA"
+                        && *foil
+                        && *quantity == 4
+                        && binder_id.map(|id| id.0) == Some(Uuid::nil())
+                        && purchase_price.is_none()
+                        && sealed_product_id.is_none()
+                },
+            )
+            .returning(|_, _, _, _, _, _, _| Box::pin(async { Ok(card_entries()) }));
 
         let response = authed_json(
             add_app(mock),
@@ -1255,8 +1259,8 @@ mod entries {
         let mut mock = MockAddCollectionEntryUseCase::new();
         mock.expect_add_collection_entry()
             .times(1)
-            .withf(|_, _, _, _, binder_id| binder_id.is_none())
-            .returning(|_, _, _, _, _| Box::pin(async { Ok(card_entries()) }));
+            .withf(|_, _, _, _, binder_id, _, _| binder_id.is_none())
+            .returning(|_, _, _, _, _, _, _| Box::pin(async { Ok(card_entries()) }));
 
         let response = authed_json(
             add_app(mock),
@@ -1277,16 +1281,6 @@ mod entries {
 
     const SEALED_PRODUCT_ID: &str = "7b6c1f0e-3c6d-4d1a-9a7a-1f4f3c7d2e10";
 
-    fn attach_app(
-        mock: crate::application::use_case::MockAttachCardToSealedProductUseCase,
-    ) -> axum::Router {
-        create_router(AppState {
-            attach_card_to_sealed_product_use_case: Arc::new(mock),
-            // The plain addition must not be called: its mock has no expectation.
-            ..AppState::for_testing()
-        })
-    }
-
     fn sealed_product_body(sealed_product_id: &str) -> serde_json::Value {
         json!({
             "set_code": "mkm",
@@ -1300,22 +1294,26 @@ mod entries {
     }
 
     #[tokio::test]
-    async fn post_with_a_sealed_product_attaches_the_copies_to_it() {
-        let mut mock = crate::application::use_case::MockAttachCardToSealedProductUseCase::new();
-        mock.expect_attach_card()
+    async fn post_with_a_sealed_product_hands_it_to_the_use_case() {
+        let mut mock = MockAddCollectionEntryUseCase::new();
+        mock.expect_add_collection_entry()
             .times(1)
-            .withf(|user_id, purchase_id, card_id, foil, quantity, binder_id| {
-                user_id.as_str() == "test-user-id"
-                    && purchase_id.0.to_string() == SEALED_PRODUCT_ID
-                    && card_id.set_code.to_string() == "MKM"
-                    && *foil
-                    && *quantity == 4
-                    && binder_id.map(|id| id.0) == Some(Uuid::nil())
-            })
-            .returning(|_, _, _, _, _, _| Box::pin(async { Ok(card_entries()) }));
+            .withf(
+                |user_id, card_id, foil, quantity, binder_id, purchase_price, sealed_product_id| {
+                    user_id.as_str() == "test-user-id"
+                        && card_id.set_code.to_string() == "MKM"
+                        && *foil
+                        && *quantity == 4
+                        && binder_id.map(|id| id.0) == Some(Uuid::nil())
+                        && purchase_price.is_none()
+                        && sealed_product_id.map(|id| id.0.to_string()).as_deref()
+                            == Some(SEALED_PRODUCT_ID)
+                },
+            )
+            .returning(|_, _, _, _, _, _, _| Box::pin(async { Ok(card_entries()) }));
 
         let response = authed_json(
-            attach_app(mock),
+            add_app(mock),
             Method::POST,
             "/collection/entries",
             sealed_product_body(SEALED_PRODUCT_ID),
@@ -1329,13 +1327,14 @@ mod entries {
 
     #[tokio::test]
     async fn post_with_a_sealed_product_that_is_not_the_players_is_not_found() {
-        let mut mock = crate::application::use_case::MockAttachCardToSealedProductUseCase::new();
-        mock.expect_attach_card().returning(|_, _, _, _, _, _| {
-            Box::pin(async { Err(FunctionalError::PurchaseNotFound.into()) })
-        });
+        let mut mock = MockAddCollectionEntryUseCase::new();
+        mock.expect_add_collection_entry()
+            .returning(|_, _, _, _, _, _, _| {
+                Box::pin(async { Err(FunctionalError::PurchaseNotFound.into()) })
+            });
 
         let response = authed_json(
-            attach_app(mock),
+            add_app(mock),
             Method::POST,
             "/collection/entries",
             sealed_product_body(SEALED_PRODUCT_ID),
@@ -1359,6 +1358,57 @@ mod entries {
     }
 
     #[tokio::test]
+    async fn post_hands_the_purchase_price_per_copy_to_the_use_case() {
+        let mut mock = MockAddCollectionEntryUseCase::new();
+        mock.expect_add_collection_entry()
+            .times(1)
+            .withf(|_, _, _, quantity, _, purchase_price, _| {
+                *quantity == 4 && purchase_price.map(|price| price.cents()) == Some(200)
+            })
+            .returning(|_, _, _, _, _, _, _| Box::pin(async { Ok(card_entries()) }));
+
+        let response = authed_json(
+            add_app(mock),
+            Method::POST,
+            "/collection/entries",
+            json!({
+                "set_code": "MKM",
+                "collector_number": "12",
+                "language_code": "FR",
+                "foil": false,
+                "quantity": 4,
+                "purchase_price": 200,
+            }),
+        )
+        .await;
+
+        assert_eq!(response.status(), StatusCode::CREATED);
+    }
+
+    #[tokio::test]
+    async fn post_refuses_a_purchase_price_of_zero_or_less_with_its_code() {
+        for price in [-1, 0] {
+            // No use case is called: the default mocks have no expectation.
+            let response = authed_json(
+                create_router(AppState::for_testing()),
+                Method::POST,
+                "/collection/entries",
+                json!({
+                    "set_code": "MKM",
+                    "collector_number": "12",
+                    "language_code": "FR",
+                    "foil": false,
+                    "quantity": 1,
+                    "purchase_price": price,
+                }),
+            )
+            .await;
+
+            assert_error(response, StatusCode::BAD_REQUEST, "invalid_purchase_price").await;
+        }
+    }
+
+    #[tokio::test]
     async fn post_maps_each_refusal_to_its_status_and_code() {
         let cases = [
             (
@@ -1376,11 +1426,16 @@ mod entries {
                 StatusCode::BAD_REQUEST,
                 "invalid_quantity",
             ),
+            (
+                FunctionalError::InvalidRequest("exclusive".to_string()),
+                StatusCode::BAD_REQUEST,
+                "invalid_request",
+            ),
         ];
         for (error, status, code) in cases {
             let mut mock = MockAddCollectionEntryUseCase::new();
             mock.expect_add_collection_entry()
-                .returning(move |_, _, _, _, _| {
+                .returning(move |_, _, _, _, _, _, _| {
                     let error = error.clone();
                     Box::pin(async move { Err(error.into()) })
                 });

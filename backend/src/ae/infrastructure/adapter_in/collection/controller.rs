@@ -299,8 +299,8 @@ pub(crate) async fn get_collection_entries(
     path = "/collection/entries",
     request_body = AddCollectionEntryRequest,
     responses(
-        (status = 201, description = "The entries of the card, after the addition. The copies join the entry of the same finish and binder when there is one (quantities add up, purchase price kept, earliest added date), otherwise a new entry without purchase price is written. The card is created when it does not exist yet", body = CardEntriesResponse),
-        (status = 400, description = "Quantity out of 1 to 255 (`invalid_quantity`), also when a merge goes over 255; invalid set code, collector number or language code"),
+        (status = 201, description = "The entries of the card, after the addition. The copies join the entry of the same finish and binder when there is one (quantities add up, purchase price averaged, earliest added date), otherwise a new entry is written, with the `purchase_price` when given. With a `purchase_price`, a single card Purchase of the price times the quantity is recorded, dated today, in the same transaction. The card is created when it does not exist yet", body = CardEntriesResponse),
+        (status = 400, description = "Quantity out of 1 to 255 (`invalid_quantity`), also when a merge goes over 255; purchase price of 0 or less (`invalid_purchase_price`); `purchase_price` together with `sealed_product_id` (`invalid_request`); invalid set code, collector number or language code"),
         (status = 401, description = "Missing or invalid token"),
         (status = 404, description = "No catalog card has this set and collector number (`card_not_in_catalog`), the binder is not one of the caller's (`binder_not_found`), or the sealed product does not exist, is another player's or is not a sealed product (`purchase_not_found`)"),
     ),
@@ -323,27 +323,25 @@ pub(crate) async fn add_collection_entry(
         .map(parse_binder_id)
         .transpose()?;
 
-    let entries = match payload.sealed_product_id.as_deref() {
-        Some(sealed_product_id) => {
-            state
-                .attach_card_to_sealed_product_use_case
-                .attach_card(
-                    &user.id,
-                    parse_purchase_id(sealed_product_id)?,
-                    card_id,
-                    payload.foil,
-                    payload.quantity,
-                    binder_id,
-                )
-                .await?
-        }
-        None => {
-            state
-                .add_collection_entry_use_case
-                .add_collection_entry(&user.id, card_id, payload.foil, payload.quantity, binder_id)
-                .await?
-        }
-    };
+    let entries = state
+        .add_collection_entry_use_case
+        .add_collection_entry(
+            &user.id,
+            card_id,
+            payload.foil,
+            payload.quantity,
+            binder_id,
+            payload
+                .purchase_price
+                .map(PurchaseAmount::try_new)
+                .transpose()?,
+            payload
+                .sealed_product_id
+                .as_deref()
+                .map(parse_purchase_id)
+                .transpose()?,
+        )
+        .await?;
 
     Ok((
         StatusCode::CREATED,

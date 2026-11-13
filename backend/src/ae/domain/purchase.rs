@@ -73,6 +73,16 @@ pub fn normalize_sealed_product_name(name: Option<&str>) -> Option<String> {
         .map(str::to_string)
 }
 
+/// A card bought on its own, as a Purchase shows it.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct PurchasedCard {
+    pub id: CardId,
+    pub name: String,
+    pub set: SetName,
+    /// `None` while the card's image is pending.
+    pub image: Option<CardImage>,
+}
+
 /// What a Purchase bought.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum PurchaseKind {
@@ -81,6 +91,45 @@ pub enum PurchaseKind {
         name: Option<String>,
         set: SetName,
     },
+    /// The card, finish and quantity added with a purchase price.
+    SingleCard {
+        card: PurchasedCard,
+        foil: bool,
+        quantity: u32,
+    },
+}
+
+/// The single card Purchase an addition with a purchase price records: the copies of the card
+/// added, dated the day they are.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct NewSingleCardPurchase {
+    /// The purchase price of each copy.
+    pub price_per_copy: PurchaseAmount,
+    /// What the Purchase cost: the price of a copy times the copies.
+    pub amount: PurchaseAmount,
+    pub purchased_on: NaiveDate,
+}
+
+impl NewSingleCardPurchase {
+    /// # Errors
+    ///
+    /// [`FunctionalError::InvalidPurchasePrice`] when the amount does not fit what a Purchase
+    /// stores.
+    pub fn try_new(
+        price_per_copy: PurchaseAmount,
+        quantity: u8,
+        purchased_on: NaiveDate,
+    ) -> Result<Self, FunctionalError> {
+        let amount = i32::try_from(u64::from(price_per_copy.cents()) * u64::from(quantity))
+            .map_err(|_| FunctionalError::InvalidPurchasePrice)
+            .and_then(PurchaseAmount::try_new)?;
+
+        Ok(Self {
+            price_per_copy,
+            amount,
+            purchased_on,
+        })
+    }
 }
 
 /// What a player bought, on a given day.
@@ -266,6 +315,30 @@ mod tests {
         assert_eq!(
             PurchaseAmount::try_new(i32::MAX).unwrap().cents(),
             i32::MAX as u32
+        );
+    }
+
+    #[test]
+    fn a_single_card_purchase_costs_the_price_times_the_quantity() {
+        let day = NaiveDate::from_ymd_opt(2026, 11, 13).unwrap();
+
+        let price = PurchaseAmount::try_new(200).unwrap();
+
+        let purchase = NewSingleCardPurchase::try_new(price, 4, day).unwrap();
+
+        assert_eq!(purchase.price_per_copy.cents(), 200);
+        assert_eq!(purchase.amount.cents(), 800);
+        assert_eq!(purchase.purchased_on, day);
+    }
+
+    #[test]
+    fn a_single_card_amount_over_what_a_purchase_stores_is_refused() {
+        let day = NaiveDate::from_ymd_opt(2026, 11, 13).unwrap();
+        let price = PurchaseAmount::try_new(i32::MAX).unwrap();
+
+        assert_eq!(
+            NewSingleCardPurchase::try_new(price, 2, day),
+            Err(FunctionalError::InvalidPurchasePrice)
         );
     }
 

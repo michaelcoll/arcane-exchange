@@ -2,8 +2,8 @@ import APIClient
 import Foundation
 
 /// Backs the form that adds copies of a catalog impression to the collection: language, finish,
-/// quantity and binder. The language defaults to the last one the player added a card in, French
-/// at first.
+/// quantity, binder and an optional purchase price per copy. The language defaults to the last one
+/// the player added a card in, French at first.
 @MainActor
 @Observable
 package final class AddCollectionEntryViewModel {
@@ -16,13 +16,18 @@ package final class AddCollectionEntryViewModel {
     package var quantity = 1
     /// The binder to store the copies in; `nil` for none.
     package var binderID: String?
-    /// The sealed product the copies come from; `nil` for none.
-    package var sealedProductID: String?
+    /// The sealed product the copies come from; `nil` for none. Set by `chooseSealedProduct(_:)`.
+    package private(set) var sealedProductID: String?
+    /// The purchase price of one copy in euros, as typed. Empty for a copy with no price, which
+    /// records no purchase. Not used, and hidden by the form, once a sealed product is chosen.
+    package var priceText = ""
 
     /// The player's binders. Empty until `loadBinders()` answered.
     package private(set) var binders: [Binder] = []
     /// The player's sealed products, most recent first. Empty until `loadSealedProducts()` answered.
     package private(set) var sealedProducts: [Purchase] = []
+    /// Set when the sealed products could not be read in full. French message, ready to show.
+    package private(set) var loadError: String?
     package private(set) var isWriting = false
     /// Set when the addition was refused. French message, ready to show.
     package var writeError: String?
@@ -39,15 +44,50 @@ package final class AddCollectionEntryViewModel {
         binders = await api.bindersOrEmpty()
     }
 
+    /// Reads every page of the purchases, the sealed products being among them whatever their age.
     package func loadSealedProducts() async {
-        // A failed read leaves "Aucun" as the only choice: the copies can still be added.
-        let query = Operations.list_purchases.Input.Query(page: 0, page_size: 100)
-        let items = try? await api.list_purchases(query: query).ok.body.json.items
-        sealedProducts = items?.filter { $0.product_type != nil } ?? []
+        var purchases: [Purchase] = []
+        var page: Int32 = 0
+        loadError = nil
+        do {
+            while true {
+                let query = Operations.list_purchases.Input.Query(page: page, page_size: 100)
+                let response = try await api.list_purchases(query: query).ok.body.json
+                purchases += response.items
+                page += 1
+                if response.items.isEmpty || purchases.count >= Int(response.total) {
+                    break
+                }
+            }
+        } catch {
+            // A failed read leaves "Aucun" as the only choice, or the products read so far: the
+            // copies can still be added.
+            loadError = APIError.read(error).message
+        }
+        sealedProducts = purchases.filter { $0.product_type != nil }
+    }
+
+    /// Picks the sealed product the copies come from, or none. The price typed so far goes: a
+    /// sealed product carries none.
+    package func chooseSealedProduct(_ id: String?) {
+        sealedProductID = id
+        priceText = ""
+    }
+
+    /// The price of one copy in cents; nil when a sealed product is chosen, or the field is empty
+    /// or is not a positive amount.
+    private var priceCents: Int? {
+        sealedProductID == nil ? EuroInput.cents(from: priceText) : nil
+    }
+
+    /// The price is empty (no purchase), a positive amount, or ignored for a sealed product.
+    package var canSubmit: Bool {
+        sealedProductID != nil || priceText.trimmingCharacters(in: .whitespaces).isEmpty || priceCents != nil
     }
 
     /// Returns whether the copies were added, so the form can close.
     package func add() async -> Bool {
+        guard canSubmit else { return false }
         isWriting = true
         defer { isWriting = false }
         do {
@@ -56,6 +96,7 @@ package final class AddCollectionEntryViewModel {
                 collector_number: card.collector_number,
                 foil: foil,
                 language_code: language.rawValue,
+                purchase_price: priceCents.map { Int32($0) },
                 quantity: Int32(quantity),
                 sealed_product_id: sealedProductID,
                 set_code: card.set.code

@@ -19,6 +19,7 @@ body:json {
 
 docs {
   Every field is optional: `amount_cents`, `purchased_on`, `product_type`, `set_code`, `name`
-  (an empty name clears it). The collection is untouched. `invalid_purchase_price` (400),
-  `set_not_found` (404), `purchase_not_found` (404).
+  (an empty name clears it). A single card purchase only takes `amount_cents` and `purchased_on`.
+  The collection is untouched. `invalid_purchase_price` (400), `invalid_request` (400, type, set or
+  name on a single card purchase), `set_not_found` (404), `purchase_not_found` (404).
 }

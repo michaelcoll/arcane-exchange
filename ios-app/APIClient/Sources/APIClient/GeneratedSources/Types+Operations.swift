@@ -3084,7 +3084,7 @@ public enum Operations {
                     self.body = body
                 }
             }
-            /// The entries of the card, after the addition. The copies join the entry of the same finish and binder when there is one (quantities add up, purchase price kept, earliest added date), otherwise a new entry without purchase price is written. The card is created when it does not exist yet
+            /// The entries of the card, after the addition. The copies join the entry of the same finish and binder when there is one (quantities add up, purchase price averaged, earliest added date), otherwise a new entry is written, with the `purchase_price` when given. With a `purchase_price`, a single card Purchase of the price times the quantity is recorded, dated today, in the same transaction. The card is created when it does not exist yet
             ///
             /// - Remark: Generated from `#/paths//collection/entries/post(add_collection_entry)/responses/201`.
             ///
@@ -3135,7 +3135,7 @@ public enum Operations {
                     self.body = body
                 }
             }
-            /// Quantity out of 1 to 255 (`invalid_quantity`), also when a merge goes over 255; invalid set code, collector number or language code
+            /// Quantity out of 1 to 255 (`invalid_quantity`), also when a merge goes over 255; purchase price of 0 or less (`invalid_purchase_price`); `purchase_price` together with `sealed_product_id` (`invalid_request`); invalid set code, collector number or language code
             ///
             /// - Remark: Generated from `#/paths//collection/entries/post(add_collection_entry)/responses/400`.
             ///
@@ -7827,7 +7827,7 @@ public enum Operations {
                     self.body = body
                 }
             }
-            /// The Purchase with its content: each line carries the current trend price of its card in its finish, when Cardmarket has one. Also the value of the content (lines without a trend price left out and counted) and its gap with the amount, in cents and in percent. Nothing of this is stored
+            /// The Purchase with its content: each line carries the current trend price of its card in its finish, when Cardmarket has one. Also the value of the content (lines without a trend price left out and counted) and its profitability against the amount, in cents and in percent. Nothing of this is stored
             ///
             /// - Remark: Generated from `#/paths//purchases/{id}/get(get_purchase)/responses/200`.
             ///
@@ -8117,7 +8117,7 @@ public enum Operations {
                     self.body = body
                 }
             }
-            /// Amount not strictly positive; `code` is `invalid_purchase_price`
+            /// Amount not strictly positive (`invalid_purchase_price`); type, set or name on a single card purchase, which only has an amount and a date (`invalid_request`)
             ///
             /// - Remark: Generated from `#/paths//purchases/{id}/patch(update_purchase)/responses/400`.
             ///

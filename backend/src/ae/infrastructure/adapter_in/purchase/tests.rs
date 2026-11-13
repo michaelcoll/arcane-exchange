@@ -10,7 +10,7 @@ use crate::domain::language_code::LanguageCode;
 use crate::domain::pagination::{Paginated, Pagination};
 use crate::domain::purchase::{
     Purchase, PurchaseAmount, PurchaseContentLine, PurchaseDetail, PurchaseId, PurchaseKind,
-    SealedProductType,
+    PurchasedCard, SealedProductType,
 };
 use crate::domain::set_name::{SetCode, SetName};
 use crate::infrastructure::testing::{
@@ -54,7 +54,109 @@ fn purchase_json(name: serde_json::Value) -> serde_json::Value {
         "product_type": "PRECONSTRUCTED_DECK",
         "name": name,
         "set": { "code": "FDN", "name": "Foundations" },
+        "card": null,
+        "foil": null,
+        "quantity": null,
     })
+}
+
+fn single_card_purchase() -> Purchase {
+    Purchase {
+        id: PurchaseId(Uuid::parse_str(ID).unwrap()),
+        kind: PurchaseKind::SingleCard {
+            card: PurchasedCard {
+                id: CardId::new("FDN", "87", LanguageCode::FR),
+                name: "Gobelin".to_string(),
+                set: SetName {
+                    code: SetCode::new("FDN"),
+                    name: "Foundations".to_string(),
+                },
+                image: Some(CardImage {
+                    source: CardImageSource::GathererLocalized,
+                    has_back: false,
+                }),
+            },
+            foil: true,
+            quantity: 4,
+        },
+        amount: PurchaseAmount::try_new(800).unwrap(),
+        purchased_on: day(),
+    }
+}
+
+fn single_card_purchase_json() -> serde_json::Value {
+    json!({
+        "id": ID,
+        "kind": "single_card",
+        "amount_cents": 800,
+        "purchased_on": "2026-11-13",
+        "product_type": null,
+        "name": null,
+        "set": null,
+        "card": {
+            "set": { "code": "FDN", "name": "Foundations" },
+            "collector_number": "87",
+            "language_code": "FR",
+            "name": "Gobelin",
+            "image_url": "/card-images/FDN_87_FR.webp?v=gatherer",
+            "image_back_url": null,
+        },
+        "foil": true,
+        "quantity": 4,
+    })
+}
+
+#[tokio::test]
+async fn get_purchase_returns_a_single_card_with_its_card_finish_and_quantity() {
+    let mut mock_uc = MockGetPurchaseUseCase::new();
+    mock_uc.expect_get_purchase().times(1).returning(|_, _| {
+        Box::pin(async {
+            Ok(PurchaseDetail {
+                purchase: single_card_purchase(),
+                content: vec![],
+            })
+        })
+    });
+    let app = create_router(AppState {
+        get_purchase_use_case: Arc::new(mock_uc),
+        ..AppState::for_testing()
+    });
+
+    let response = authed(app, Method::GET, &format!("/purchases/{ID}")).await;
+
+    assert_eq!(response.status(), StatusCode::OK);
+    assert_eq!(
+        json_of(response).await["purchase"],
+        single_card_purchase_json()
+    );
+}
+
+#[tokio::test]
+async fn list_purchases_renders_a_single_card_with_its_card() {
+    let mut mock_uc = MockListPurchasesUseCase::new();
+    mock_uc
+        .expect_list_purchases()
+        .times(1)
+        .returning(|_, page| {
+            Box::pin(async move {
+                Ok(Paginated {
+                    items: vec![single_card_purchase()],
+                    total: 1,
+                    pagination: Pagination::try_new(page.page, page.page_size, 1_000).unwrap(),
+                })
+            })
+        });
+    let app = create_router(AppState {
+        list_purchases_use_case: Arc::new(mock_uc),
+        ..AppState::for_testing()
+    });
+
+    let response = authed(app, Method::GET, "/purchases").await;
+
+    assert_eq!(
+        json_of(response).await["items"],
+        json!([single_card_purchase_json()])
+    );
 }
 
 fn db_error() -> AppError {
@@ -384,6 +486,11 @@ async fn update_purchase_propagates_refusals() {
             FunctionalError::SetNotFound,
             StatusCode::NOT_FOUND,
             "set_not_found",
+        ),
+        (
+            FunctionalError::InvalidRequest("a single card purchase has no type".to_string()),
+            StatusCode::BAD_REQUEST,
+            "invalid_request",
         ),
     ] {
         let mut mock_uc = MockUpdatePurchaseUseCase::new();

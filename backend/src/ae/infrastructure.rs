@@ -16,8 +16,8 @@ use crate::application::service::catalog::create_card::CreateCardService;
 use crate::application::service::catalog::scan_index::ScanIndexService;
 use crate::application::service::catalog::search::SearchCatalogService;
 use crate::application::service::collection::add_entry::AddCollectionEntryService;
-use crate::application::service::collection::get::CollectionService;
 use crate::application::service::collection::attach_card_to_sealed_product::AttachCardToSealedProductService;
+use crate::application::service::collection::get::CollectionService;
 use crate::application::service::collection::get_card_import::CardImportQueryService;
 use crate::application::service::collection::get_entries::GetCollectionEntriesService;
 use crate::application::service::collection::get_price_history::CollectionPriceHistoryService;
@@ -182,7 +182,6 @@ pub struct AppState {
     pub delete_binder_use_case: Arc<dyn DeleteBinderUseCase>,
     pub list_purchases_use_case: Arc<dyn ListPurchasesUseCase>,
     pub get_purchase_use_case: Arc<dyn GetPurchaseUseCase>,
-    pub attach_card_to_sealed_product_use_case: Arc<dyn AttachCardToSealedProductUseCase>,
     pub create_sealed_product_use_case: Arc<dyn CreateSealedProductUseCase>,
     pub update_purchase_use_case: Arc<dyn UpdatePurchaseUseCase>,
     pub delete_purchase_use_case: Arc<dyn DeletePurchaseUseCase>,
@@ -365,11 +364,18 @@ fn create_app_state(
         enqueue_cardmarket_id_use_case.clone(),
         enqueue_card_image_use_case.clone(),
     ));
+    let attach_card_to_sealed_product_service: Arc<dyn AttachCardToSealedProductUseCase> =
+        Arc::new(AttachCardToSealedProductService::new(
+            create_card_service.clone(),
+            repos.purchase.clone(),
+            card_prices_refresh.clone(),
+        ));
     let add_collection_entry_service: Arc<dyn AddCollectionEntryUseCase> =
         Arc::new(AddCollectionEntryService::new(
             create_card_service.clone(),
             repos.collection_entry.clone(),
             card_prices_refresh.clone(),
+            attach_card_to_sealed_product_service,
         ));
     let update_collection_entry_service: Arc<dyn UpdateCollectionEntryUseCase> =
         Arc::new(UpdateCollectionEntryService::new(
@@ -398,12 +404,6 @@ fn create_app_state(
         Arc::new(ListPurchasesService::new(repos.purchase.clone()));
     let get_purchase_service: Arc<dyn GetPurchaseUseCase> =
         Arc::new(GetPurchaseService::new(repos.purchase.clone()));
-    let attach_card_to_sealed_product_service: Arc<dyn AttachCardToSealedProductUseCase> =
-        Arc::new(AttachCardToSealedProductService::new(
-            create_card_service.clone(),
-            repos.purchase.clone(),
-            card_prices_refresh.clone(),
-        ));
     let create_sealed_product_service: Arc<dyn CreateSealedProductUseCase> =
         Arc::new(CreateSealedProductService::new(repos.purchase.clone()));
     let update_purchase_service: Arc<dyn UpdatePurchaseUseCase> =
@@ -509,7 +509,6 @@ fn create_app_state(
         delete_binder_use_case: delete_binder_service,
         list_purchases_use_case: list_purchases_service,
         get_purchase_use_case: get_purchase_service,
-        attach_card_to_sealed_product_use_case: attach_card_to_sealed_product_service,
         create_sealed_product_use_case: create_sealed_product_service,
         update_purchase_use_case: update_purchase_service,
         delete_purchase_use_case: delete_purchase_service,

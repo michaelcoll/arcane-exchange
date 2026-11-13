@@ -9,11 +9,11 @@ private func sets(_ pairs: (String, String)...) -> Operations.list_sets.Output {
 }
 
 @MainActor
-struct SealedProductFormViewModelTests {
+struct PurchaseFormViewModelTests {
     @Test func loadsTheSetsToPickFrom() async {
         let api = FakeAPI()
         api.onListSets = { _ in sets(("FDN", "Foundations"), ("ECL", "Lorwyn Eclipsed")) }
-        let model = SealedProductFormViewModel(api: api)
+        let model = PurchaseFormViewModel(api: api)
 
         await model.loadSets()
 
@@ -24,7 +24,7 @@ struct SealedProductFormViewModelTests {
     @Test func showsTheTranslatedMessageOfAFailedSetsLoad() async {
         let api = FakeAPI()
         api.onListSets = { _ in throw APIError(code: "internal", status: 500) }
-        let model = SealedProductFormViewModel(api: api)
+        let model = PurchaseFormViewModel(api: api)
 
         await model.loadSets()
 
@@ -32,13 +32,13 @@ struct SealedProductFormViewModelTests {
     }
 
     @Test func startsOnToday() {
-        let model = SealedProductFormViewModel(api: FakeAPI())
+        let model = PurchaseFormViewModel(api: FakeAPI())
 
         #expect(PurchaseDate.string(from: model.date) == PurchaseDate.string(from: Date()))
     }
 
     @Test func cannotBeSubmittedWithoutASetOrAPositivePrice() {
-        let model = SealedProductFormViewModel(api: FakeAPI())
+        let model = PurchaseFormViewModel(api: FakeAPI())
         #expect(!model.canSubmit)
 
         model.setCode = "FDN"
@@ -58,7 +58,7 @@ struct SealedProductFormViewModelTests {
             if case let .json(body) = input.body { sent = body }
             return .created(.init(body: .json(purchase("1"))))
         }
-        let model = SealedProductFormViewModel(api: api)
+        let model = PurchaseFormViewModel(api: api)
         model.productType = .PRECONSTRUCTED_DECK
         model.setCode = "FDN"
         model.name = "Deck Bleu"
@@ -82,7 +82,7 @@ struct SealedProductFormViewModelTests {
             if case let .json(body) = input.body { sent = body }
             return .created(.init(body: .json(purchase("1"))))
         }
-        let model = SealedProductFormViewModel(api: api)
+        let model = PurchaseFormViewModel(api: api)
         model.setCode = "FDN"
         model.priceText = "5"
 
@@ -95,7 +95,7 @@ struct SealedProductFormViewModelTests {
     @Test func translatesARefusedCreation() async {
         let api = FakeAPI()
         api.onCreatePurchase = { _ in throw APIError(code: "set_not_found", status: 404) }
-        let model = SealedProductFormViewModel(api: api)
+        let model = PurchaseFormViewModel(api: api)
         model.setCode = "ZZZ"
         model.priceText = "5"
 
@@ -108,7 +108,7 @@ struct SealedProductFormViewModelTests {
 
     @Test func doesNotCallTheAPIWithoutAValidForm() async {
         let api = FakeAPI()
-        let model = SealedProductFormViewModel(api: api)
+        let model = PurchaseFormViewModel(api: api)
 
         let saved = await model.submit()
 
@@ -117,7 +117,7 @@ struct SealedProductFormViewModelTests {
     }
 
     @Test func editingStartsFromThePurchase() {
-        let model = SealedProductFormViewModel(
+        let model = PurchaseFormViewModel(
             api: FakeAPI(),
             editing: purchase("1", type: .DISPLAY, name: "Boîte", set: ("ECL", "Lorwyn Eclipsed"), cents: 12000, on: "2026-10-02")
         )
@@ -140,7 +140,7 @@ struct SealedProductFormViewModelTests {
             if case let .json(body) = input.body { sent = body }
             return .ok(.init(body: .json(purchase("1"))))
         }
-        let model = SealedProductFormViewModel(api: api, editing: purchase("1", name: "Ancien nom"))
+        let model = PurchaseFormViewModel(api: api, editing: purchase("1", name: "Ancien nom"))
         model.name = ""
         model.priceText = "6,50"
 
@@ -155,10 +155,34 @@ struct SealedProductFormViewModelTests {
         #expect(api.calls == ["update_purchase"])
     }
 
+    @Test func editingASingleCardPurchaseNeedsOnlyAPriceAndSendsOnlyThePriceAndTheDay() async {
+        let api = FakeAPI()
+        nonisolated(unsafe) var sent: Components.Schemas.UpdatePurchaseRequest?
+        api.onUpdatePurchase = { input in
+            if case let .json(body) = input.body { sent = body }
+            return .ok(.init(body: .json(singleCardPurchase("1"))))
+        }
+        let model = PurchaseFormViewModel(api: api, editing: singleCardPurchase("1", cents: 800))
+
+        #expect(model.isSingleCard)
+        #expect(model.canSubmit)
+        #expect(model.priceText == "8")
+        model.priceText = "6,50"
+        let saved = await model.submit()
+
+        #expect(saved)
+        #expect(sent == .init(amount_cents: 650, purchased_on: "2026-11-13"))
+    }
+
+    @Test func aSealedProductIsNotASingleCard() {
+        #expect(!PurchaseFormViewModel(api: FakeAPI(), editing: purchase("1")).isSingleCard)
+        #expect(!PurchaseFormViewModel(api: FakeAPI()).isSingleCard)
+    }
+
     @Test func translatesARefusedEdit() async {
         let api = FakeAPI()
         api.onUpdatePurchase = { _ in throw APIError(code: "purchase_not_found", status: 404) }
-        let model = SealedProductFormViewModel(api: api, editing: purchase("1"))
+        let model = PurchaseFormViewModel(api: api, editing: purchase("1"))
 
         let saved = await model.submit()
 

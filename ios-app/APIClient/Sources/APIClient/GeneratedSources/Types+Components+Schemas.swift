@@ -10,7 +10,7 @@ public import Foundation
 extension Components {
     /// Types generated from the `#/components/schemas` section of the OpenAPI document.
     public enum Schemas {
-        /// A copy to add to the collection, without purchase price.
+        /// A copy to add to the collection.
         ///
         /// - Remark: Generated from `#/components/schemas/AddCollectionEntryRequest`.
         public struct AddCollectionEntryRequest: Codable, Hashable, Sendable {
@@ -28,6 +28,14 @@ extension Components {
             ///
             /// - Remark: Generated from `#/components/schemas/AddCollectionEntryRequest/language_code`.
             public var language_code: Swift.String
+            /// Purchase price per copy, in cents, strictly positive. The copies carry it, and a single
+            /// card Purchase of the price times the quantity is recorded, dated today; without it, no
+            /// Purchase is recorded. Exclusive with `sealed_product_id` (`invalid_request`, 400). Signed
+            /// so a value of 0 or less fails with `invalid_purchase_price` (400) instead of a JSON
+            /// extractor rejection.
+            ///
+            /// - Remark: Generated from `#/components/schemas/AddCollectionEntryRequest/purchase_price`.
+            public var purchase_price: Swift.Int32?
             /// Copies added, 1 to 255. Signed so an out-of-range value fails with `invalid_quantity`
             /// (400) instead of a JSON extractor rejection.
             ///
@@ -50,6 +58,7 @@ extension Components {
             ///   - collector_number: Collector number of the catalog card.
             ///   - foil:
             ///   - language_code: Language of the copy: not checked against Scryfall, which may not have the card in it.
+            ///   - purchase_price: Purchase price per copy, in cents, strictly positive. The copies carry it, and a single
             ///   - quantity: Copies added, 1 to 255. Signed so an out-of-range value fails with `invalid_quantity`
             ///   - sealed_product_id: A sealed product of the player to attach the copies to: they are added without purchase
             ///   - set_code: Set code of the catalog card.
@@ -58,6 +67,7 @@ extension Components {
                 collector_number: Swift.String,
                 foil: Swift.Bool,
                 language_code: Swift.String,
+                purchase_price: Swift.Int32? = nil,
                 quantity: Swift.Int32,
                 sealed_product_id: Swift.String? = nil,
                 set_code: Swift.String
@@ -66,6 +76,7 @@ extension Components {
                 self.collector_number = collector_number
                 self.foil = foil
                 self.language_code = language_code
+                self.purchase_price = purchase_price
                 self.quantity = quantity
                 self.sealed_product_id = sealed_product_id
                 self.set_code = set_code
@@ -75,6 +86,7 @@ extension Components {
                 case collector_number
                 case foil
                 case language_code
+                case purchase_price
                 case quantity
                 case sealed_product_id
                 case set_code
@@ -752,7 +764,7 @@ extension Components {
         ///
         /// - Remark: Generated from `#/components/schemas/CreateSealedProductRequest`.
         public struct CreateSealedProductRequest: Codable, Hashable, Sendable {
-            /// Amount spent, in cents. Signed so an amount that is not strictly positive fails with
+            /// Amount paid, in cents. Signed so an amount that is not strictly positive fails with
             /// `invalid_purchase_price` (400) instead of a JSON extractor rejection.
             ///
             /// - Remark: Generated from `#/components/schemas/CreateSealedProductRequest/amount_cents`.
@@ -774,7 +786,7 @@ extension Components {
             /// Creates a new `CreateSealedProductRequest`.
             ///
             /// - Parameters:
-            ///   - amount_cents: Amount spent, in cents. Signed so an amount that is not strictly positive fails with
+            ///   - amount_cents: Amount paid, in cents. Signed so an amount that is not strictly positive fails with
             ///   - name: Free-text label; a blank name is stored as absent.
             ///   - product_type:
             ///   - purchased_on: Day of the purchase, `YYYY-MM-DD`.
@@ -1261,19 +1273,19 @@ extension Components {
             ///
             /// - Remark: Generated from `#/components/schemas/PurchaseDetailResponse/content_value_cents`.
             public var content_value_cents: Swift.Int64
-            /// Value of the content minus the amount of the Purchase, in cents: negative when the content
-            /// is worth less than was paid.
-            ///
-            /// - Remark: Generated from `#/components/schemas/PurchaseDetailResponse/gap_cents`.
-            public var gap_cents: Swift.Int64
-            /// The gap as a percentage of the amount of the Purchase.
-            ///
-            /// - Remark: Generated from `#/components/schemas/PurchaseDetailResponse/gap_percent`.
-            public var gap_percent: Swift.Double
             /// Lines left out of the value because they have no trend price.
             ///
             /// - Remark: Generated from `#/components/schemas/PurchaseDetailResponse/lines_without_trend`.
             public var lines_without_trend: Swift.Int32
+            /// Profitability: the value of the content minus the amount of the Purchase, in cents,
+            /// negative when the content is worth less than was paid.
+            ///
+            /// - Remark: Generated from `#/components/schemas/PurchaseDetailResponse/profitability_cents`.
+            public var profitability_cents: Swift.Int64
+            /// The profitability as a percentage of the amount of the Purchase.
+            ///
+            /// - Remark: Generated from `#/components/schemas/PurchaseDetailResponse/profitability_percent`.
+            public var profitability_percent: Swift.Double
             /// - Remark: Generated from `#/components/schemas/PurchaseDetailResponse/purchase`.
             public var purchase: Components.Schemas.PurchaseResponse
             /// Creates a new `PurchaseDetailResponse`.
@@ -1281,31 +1293,31 @@ extension Components {
             /// - Parameters:
             ///   - content:
             ///   - content_value_cents: Sum of the quantities times the trend price of the lines that have one, in cents.
-            ///   - gap_cents: Value of the content minus the amount of the Purchase, in cents: negative when the content
-            ///   - gap_percent: The gap as a percentage of the amount of the Purchase.
             ///   - lines_without_trend: Lines left out of the value because they have no trend price.
+            ///   - profitability_cents: Profitability: the value of the content minus the amount of the Purchase, in cents,
+            ///   - profitability_percent: The profitability as a percentage of the amount of the Purchase.
             ///   - purchase:
             public init(
                 content: [Components.Schemas.PurchaseContentLineResponse],
                 content_value_cents: Swift.Int64,
-                gap_cents: Swift.Int64,
-                gap_percent: Swift.Double,
                 lines_without_trend: Swift.Int32,
+                profitability_cents: Swift.Int64,
+                profitability_percent: Swift.Double,
                 purchase: Components.Schemas.PurchaseResponse
             ) {
                 self.content = content
                 self.content_value_cents = content_value_cents
-                self.gap_cents = gap_cents
-                self.gap_percent = gap_percent
                 self.lines_without_trend = lines_without_trend
+                self.profitability_cents = profitability_cents
+                self.profitability_percent = profitability_percent
                 self.purchase = purchase
             }
             public enum CodingKeys: String, CodingKey {
                 case content
                 case content_value_cents
-                case gap_cents
-                case gap_percent
                 case lines_without_trend
+                case profitability_cents
+                case profitability_percent
                 case purchase
             }
         }
@@ -1314,13 +1326,22 @@ extension Components {
         /// - Remark: Generated from `#/components/schemas/PurchaseKindResponse`.
         @frozen public enum PurchaseKindResponse: String, Codable, Hashable, Sendable, CaseIterable {
             case sealed_product = "sealed_product"
+            case single_card = "single_card"
         }
         /// - Remark: Generated from `#/components/schemas/PurchaseResponse`.
         public struct PurchaseResponse: Codable, Hashable, Sendable {
-            /// Amount spent, in cents.
+            /// Amount paid, in cents.
             ///
             /// - Remark: Generated from `#/components/schemas/PurchaseResponse/amount_cents`.
             public var amount_cents: Swift.Int32
+            /// Single card only.
+            ///
+            /// - Remark: Generated from `#/components/schemas/PurchaseResponse/card`.
+            public var card: Components.Schemas.PurchasedCardResponse?
+            /// Single card only: whether the copies are foil.
+            ///
+            /// - Remark: Generated from `#/components/schemas/PurchaseResponse/foil`.
+            public var foil: Swift.Bool?
             /// - Remark: Generated from `#/components/schemas/PurchaseResponse/id`.
             public var id: Swift.String
             /// - Remark: Generated from `#/components/schemas/PurchaseResponse/kind`.
@@ -1337,6 +1358,10 @@ extension Components {
             ///
             /// - Remark: Generated from `#/components/schemas/PurchaseResponse/purchased_on`.
             public var purchased_on: Swift.String
+            /// Single card only: the copies bought.
+            ///
+            /// - Remark: Generated from `#/components/schemas/PurchaseResponse/quantity`.
+            public var quantity: Swift.Int32?
             /// Sealed product only.
             ///
             /// - Remark: Generated from `#/components/schemas/PurchaseResponse/set`.
@@ -1344,37 +1369,103 @@ extension Components {
             /// Creates a new `PurchaseResponse`.
             ///
             /// - Parameters:
-            ///   - amount_cents: Amount spent, in cents.
+            ///   - amount_cents: Amount paid, in cents.
+            ///   - card: Single card only.
+            ///   - foil: Single card only: whether the copies are foil.
             ///   - id:
             ///   - kind:
             ///   - name: Sealed product only: the optional name the player gave it.
             ///   - product_type: Sealed product only.
             ///   - purchased_on: Day of the purchase, `YYYY-MM-DD`.
+            ///   - quantity: Single card only: the copies bought.
             ///   - set: Sealed product only.
             public init(
                 amount_cents: Swift.Int32,
+                card: Components.Schemas.PurchasedCardResponse? = nil,
+                foil: Swift.Bool? = nil,
                 id: Swift.String,
                 kind: Components.Schemas.PurchaseKindResponse,
                 name: Swift.String? = nil,
                 product_type: Components.Schemas.SealedProductTypeParam? = nil,
                 purchased_on: Swift.String,
+                quantity: Swift.Int32? = nil,
                 set: Components.Schemas.SetInfoResponse? = nil
             ) {
                 self.amount_cents = amount_cents
+                self.card = card
+                self.foil = foil
                 self.id = id
                 self.kind = kind
                 self.name = name
                 self.product_type = product_type
                 self.purchased_on = purchased_on
+                self.quantity = quantity
                 self.set = set
             }
             public enum CodingKeys: String, CodingKey {
                 case amount_cents
+                case card
+                case foil
                 case id
                 case kind
                 case name
                 case product_type
                 case purchased_on
+                case quantity
+                case set
+            }
+        }
+        /// The card a single card Purchase bought.
+        ///
+        /// - Remark: Generated from `#/components/schemas/PurchasedCardResponse`.
+        public struct PurchasedCardResponse: Codable, Hashable, Sendable {
+            /// - Remark: Generated from `#/components/schemas/PurchasedCardResponse/collector_number`.
+            public var collector_number: Swift.String
+            /// Back image of a double-faced card, like `image_url`; `null` for a single-faced card.
+            ///
+            /// - Remark: Generated from `#/components/schemas/PurchasedCardResponse/image_back_url`.
+            public var image_back_url: Swift.String?
+            /// Front image, relative to the frontend (e.g. `/card-images/FDN_1_EN.webp?v=gatherer`);
+            /// `null` while the card's image is pending.
+            ///
+            /// - Remark: Generated from `#/components/schemas/PurchasedCardResponse/image_url`.
+            public var image_url: Swift.String?
+            /// - Remark: Generated from `#/components/schemas/PurchasedCardResponse/language_code`.
+            public var language_code: Swift.String
+            /// - Remark: Generated from `#/components/schemas/PurchasedCardResponse/name`.
+            public var name: Swift.String
+            /// - Remark: Generated from `#/components/schemas/PurchasedCardResponse/set`.
+            public var set: Components.Schemas.SetInfoResponse
+            /// Creates a new `PurchasedCardResponse`.
+            ///
+            /// - Parameters:
+            ///   - collector_number:
+            ///   - image_back_url: Back image of a double-faced card, like `image_url`; `null` for a single-faced card.
+            ///   - image_url: Front image, relative to the frontend (e.g. `/card-images/FDN_1_EN.webp?v=gatherer`);
+            ///   - language_code:
+            ///   - name:
+            ///   - set:
+            public init(
+                collector_number: Swift.String,
+                image_back_url: Swift.String? = nil,
+                image_url: Swift.String? = nil,
+                language_code: Swift.String,
+                name: Swift.String,
+                set: Components.Schemas.SetInfoResponse
+            ) {
+                self.collector_number = collector_number
+                self.image_back_url = image_back_url
+                self.image_url = image_url
+                self.language_code = language_code
+                self.name = name
+                self.set = set
+            }
+            public enum CodingKeys: String, CodingKey {
+                case collector_number
+                case image_back_url
+                case image_url
+                case language_code
+                case name
                 case set
             }
         }
@@ -2076,7 +2167,7 @@ extension Components {
         ///
         /// - Remark: Generated from `#/components/schemas/UpdatePurchaseRequest`.
         public struct UpdatePurchaseRequest: Codable, Hashable, Sendable {
-            /// Amount spent, in cents, strictly positive (`invalid_purchase_price`, 400).
+            /// Amount paid, in cents, strictly positive (`invalid_purchase_price`, 400).
             ///
             /// - Remark: Generated from `#/components/schemas/UpdatePurchaseRequest/amount_cents`.
             public var amount_cents: Swift.Int32?
@@ -2097,7 +2188,7 @@ extension Components {
             /// Creates a new `UpdatePurchaseRequest`.
             ///
             /// - Parameters:
-            ///   - amount_cents: Amount spent, in cents, strictly positive (`invalid_purchase_price`, 400).
+            ///   - amount_cents: Amount paid, in cents, strictly positive (`invalid_purchase_price`, 400).
             ///   - name: An empty name clears the stored one.
             ///   - product_type:
             ///   - purchased_on: Day of the purchase, `YYYY-MM-DD`.
