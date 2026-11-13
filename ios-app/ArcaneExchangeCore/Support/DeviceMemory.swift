@@ -9,6 +9,8 @@ package enum PlayerKey: String, CaseIterable {
     case searchRecentCardQueries = "search.recentCardQueries"
     case searchRecentPlayers = "search.recentPlayers"
     case addCardLanguage = "collection.addCard.language"
+    /// The scan batch: a player's work in progress, forgotten at sign-out.
+    case scanBatch = "scanner.batch"
     // Kept in the App Group, which the widgets extension reads with the same codec.
     case collectionWidgetSnapshot = "home_widget_snapshot.CollectionWidget"
     case tradesWidgetSnapshot = "home_widget_snapshot.TradesWidget"
