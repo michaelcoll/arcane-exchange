@@ -11,6 +11,7 @@ use crate::domain::language_code::LanguageCode;
 use crate::domain::purchase::{NewSingleCardPurchase, PurchaseId};
 use crate::domain::scan_batch::{ScanBatchCopies, ScanBatchId, ScanBatchOutcome};
 use crate::domain::user::UserId;
+use crate::infrastructure::adapter_out::repository::entities::invalid_db_value;
 use crate::infrastructure::adapter_out::repository::sealed_product_content::{
     add_content_line, ensure_sealed_product, lock_sealed_product,
 };
@@ -130,7 +131,7 @@ async fn recorded_scan_batch(
     conn: &mut PgConnection,
     user_id: &UserId,
     batch_id: ScanBatchId,
-) -> Result<Option<ScanBatchOutcome>, sqlx::Error> {
+) -> Result<Option<ScanBatchOutcome>, AppError> {
     let copies_added = sqlx::query_scalar!(
         "SELECT copies_added FROM scan_batch WHERE user_id = $1 AND id = $2",
         user_id.as_str(),
@@ -138,10 +139,15 @@ async fn recorded_scan_batch(
     )
     .fetch_optional(conn)
     .await?;
-    Ok(copies_added.map(|copies_added| ScanBatchOutcome {
-        copies_added: u32::try_from(copies_added).unwrap_or_default(),
-        already_validated: true,
-    }))
+    copies_added
+        .map(|copies_added| {
+            Ok(ScanBatchOutcome {
+                copies_added: u32::try_from(copies_added)
+                    .map_err(|_| invalid_db_value("copies added", &copies_added.to_string()))?,
+                already_validated: true,
+            })
+        })
+        .transpose()
 }
 
 /// The three parts of a card's identity, as the columns hold them.
@@ -523,7 +529,7 @@ impl CollectionEntryRepository for CollectionEntryRepositoryAdapter {
         batch_id: ScanBatchId,
     ) -> Result<Option<ScanBatchOutcome>, AppError> {
         let mut conn = self.pool.acquire().await?;
-        Ok(recorded_scan_batch(&mut conn, user_id, batch_id).await?)
+        recorded_scan_batch(&mut conn, user_id, batch_id).await
     }
 
     #[tracing::instrument(

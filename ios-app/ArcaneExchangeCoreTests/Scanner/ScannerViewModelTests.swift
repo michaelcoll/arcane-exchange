@@ -124,6 +124,28 @@ struct ScannerViewModelTests {
         #expect(scanner.batch.lines.map(\.foil) == [true, false])
     }
 
+    @Test func remembersTheFinishTheLastCardWasReadIn() async {
+        let scanner = ScannerViewModel(index: await index(loaded: true), storage: MemoryStorage())
+        scanner.foil = true
+        show(lines, to: scanner, from: 0)
+
+        scanner.foil = false
+
+        #expect(scanner.lastRecognisedFoil)
+    }
+
+    @Test func keepsTheFinishOfTheLineWhenTheSameCardIsReadAgain() async {
+        let scanner = ScannerViewModel(index: await index(loaded: true), storage: MemoryStorage())
+        show(lines, to: scanner, from: 0)
+        showNothing(to: scanner, from: 5)
+
+        scanner.foil = true
+        show(lines, to: scanner, from: 10)
+
+        #expect(scanner.batch.lines.map(\.foil) == [false])
+        #expect(!scanner.lastRecognisedFoil)
+    }
+
     @Test func offersToUndoTheCardJustAdded() async {
         let scanner = ScannerViewModel(index: await index(loaded: true), storage: MemoryStorage())
         show(lines, to: scanner, from: 0)

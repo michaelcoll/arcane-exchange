@@ -4,10 +4,12 @@ import SwiftUI
 
 /// The corrections of a scan batch line: its language, its finish, and the way to replace a wrong
 /// reading by an impression picked in the catalog.
-struct ScanLineMenu: View {
+/// Opened by a tap on its label, the line itself.
+struct ScanLineMenu<Label: View>: View {
     let line: ScanBatchLine
     let scanner: ScannerViewModel
     let onReplace: () -> Void
+    @ViewBuilder let label: Label
 
     var body: some View {
         Menu {
@@ -25,11 +27,14 @@ struct ScanLineMenu: View {
             ))
             Button("Remplacer la carte…", systemImage: "arrow.triangle.2.circlepath", action: onReplace)
         } label: {
-            Image(systemName: "ellipsis.circle")
-                .font(.title3)
-                .frame(minWidth: 32, minHeight: 32)
+            label
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .contentShape(Rectangle())
         }
-        .accessibilityLabel("Corriger \(line.displayName)")
+        // The line keeps its own colours, not the accent of a button.
+        .tint(.primary)
+        .foregroundStyle(.primary)
+        .accessibilityHint("Corriger la langue, le foil ou la carte")
     }
 }
 
