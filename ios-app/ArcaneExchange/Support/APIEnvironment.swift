@@ -11,6 +11,10 @@ extension EnvironmentValues {
     /// the session's client; this default, used by previews, has its own.
     @Entry var avatarStore = PlayerAvatarStore(api: APIClientFactory.preview)
 
+    /// The scan index the Scanner tab recognises cards against, downloaded at launch. The app sets
+    /// the one built on the session's client; this default, used by previews, has its own.
+    @Entry var scanIndex = ScanIndexModel(api: APIClientFactory.preview)
+
     /// The API client for the public endpoints of the login screen: no token, and a 401 signs
     /// nobody out.
     @Entry var anonymousAPI: any APIProtocol = APIClientFactory.anonymous()

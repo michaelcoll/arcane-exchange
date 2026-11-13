@@ -12,6 +12,7 @@ struct ArcaneExchangeApp: App {
     /// the Clerk session back to the login screen.
     private let api: any APIProtocol
     private let avatarStore: PlayerAvatarStore
+    private let scanIndex: ScanIndexModel
     /// Lets the next 401 sign the player out again once they have signed back in.
     private let unauthorizedLatch = UnauthorizedLatch()
     /// `false` on a build without a Clerk publishable key: the app then shows
@@ -32,6 +33,7 @@ struct ArcaneExchangeApp: App {
         )
         self.api = api
         avatarStore = PlayerAvatarStore(api: api)
+        scanIndex = ScanIndexModel(api: api)
     }
 
     var body: some Scene {
@@ -43,6 +45,7 @@ struct ArcaneExchangeApp: App {
                     .environment(router)
                     .environment(\.api, api)
                     .environment(\.avatarStore, avatarStore)
+                    .environment(\.scanIndex, scanIndex)
                     .onChange(of: Clerk.shared.user != nil) { _, isSignedIn in
                         if isSignedIn {
                             Task { await unauthorizedLatch.rearm() }

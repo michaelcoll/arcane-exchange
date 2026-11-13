@@ -8,6 +8,7 @@ package final class AppRouter {
     /// The tabs of the root navigation, named so it does not shadow SwiftUI's `Tab` view type.
     package enum Destination: Hashable {
         case collection
+        case scanner
         case trades
         case search
     }
