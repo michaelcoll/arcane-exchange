@@ -6,15 +6,34 @@ import SwiftUI
 /// impression by its image, then fill the form (language, finish, quantity, binder).
 struct CatalogSearchView: View {
     @State private var model: CatalogSearchViewModel
-    private let api: any APIProtocol
-    /// Called once a card was added, before the sheet closes.
-    private let onAdded: () -> Void
+    /// How a result is used: the form of the manual addition, or a pick handed to the caller (the scan
+    /// batch corrections).
+    private enum Use {
+        case addForm(api: any APIProtocol, onAdded: () -> Void)
+        case pick(title: String, onPick: (CatalogCard) -> Void)
+    }
+
+    private let use: Use
     @Environment(\.dismiss) private var dismiss
 
+    /// `onAdded` is called once a card was added, before the sheet closes.
     init(api: any APIProtocol, onAdded: @escaping () -> Void) {
-        self.api = api
-        self.onAdded = onAdded
+        use = .addForm(api: api, onAdded: onAdded)
         _model = State(initialValue: CatalogSearchViewModel(api: api))
+    }
+
+    /// Hands the impression picked to `onPick` and closes, with no form.
+    init(search: CatalogSearchViewModel, title: String, onPick: @escaping (CatalogCard) -> Void) {
+        use = .pick(title: title, onPick: onPick)
+        _model = State(initialValue: search)
+    }
+
+    private var title: String {
+        if case let .pick(title, _) = use {
+            title
+        } else {
+            "Ajouter une carte"
+        }
     }
 
     var body: some View {
@@ -23,7 +42,7 @@ struct CatalogSearchView: View {
                 setField
                 content
             }
-            .navigationTitle("Ajouter une carte")
+            .navigationTitle(title)
             .navigationBarTitleDisplayMode(.inline)
             .searchable(
                 text: $model.query,
@@ -32,9 +51,11 @@ struct CatalogSearchView: View {
             )
             .task(id: model.searchKey) { await model.search() }
             .navigationDestination(for: CatalogCard.self) { card in
-                AddCollectionEntryForm(card: card, api: api) {
-                    onAdded()
-                    dismiss()
+                if case let .addForm(api, onAdded) = use {
+                    AddCollectionEntryForm(card: card, api: api) {
+                        onAdded()
+                        dismiss()
+                    }
                 }
             }
             .toolbar {
@@ -87,16 +108,31 @@ struct CatalogSearchView: View {
     private var results: some View {
         List {
             ForEach(model.paginator.items, id: \.self) { card in
-                NavigationLink(value: card) {
-                    CatalogCardRow(card: card)
-                }
-                .task { await model.paginator.loadMore(after: card) }
+                row(for: card)
+                    .task { await model.paginator.loadMore(after: card) }
             }
             if model.paginator.state == .loadingMore {
                 ProgressView().frame(maxWidth: .infinity)
             }
         }
         .listStyle(.plain)
+    }
+
+    @ViewBuilder private func row(for card: CatalogCard) -> some View {
+        switch use {
+        case .addForm:
+            NavigationLink(value: card) {
+                CatalogCardRow(card: card)
+            }
+        case let .pick(_, onPick):
+            Button {
+                onPick(card)
+                dismiss()
+            } label: {
+                CatalogCardRow(card: card)
+            }
+            .buttonStyle(.plain)
+        }
     }
 }
 

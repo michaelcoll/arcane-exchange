@@ -89,6 +89,28 @@ package final class ScannerViewModel {
         undoOffer = nil
     }
 
+    /// Corrections of a line (`ScanCorrectionViewModel` and the list): each one withdraws the undo offer.
+    package func setLanguage(_ language: CardLanguage, ofLine id: String) {
+        batch.setLanguage(language, ofLine: id)
+        undoOffer = nil
+    }
+
+    package func setFoil(_ foil: Bool, ofLine id: String) {
+        batch.setFoil(foil, ofLine: id)
+        undoOffer = nil
+    }
+
+    package func replaceCard(ofLine id: String, with card: RecognisedCard) {
+        batch.replaceCard(ofLine: id, with: card)
+        undoOffer = nil
+    }
+
+    /// Adds a card picked in the catalog: one copy, in the finish of the Foil switch.
+    package func addFromCatalog(_ card: RecognisedCard, language: CardLanguage) {
+        batch.addFromCatalog(card, language: language, foil: foil)
+        undoOffer = nil
+    }
+
     /// Empties the batch, which gets a new identifier.
     package func clear() {
         batch.clear()
