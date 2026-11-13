@@ -11,7 +11,9 @@ use crate::domain::collection_entry::{CardEntries, CollectionEntryId, EntryUpdat
 use crate::domain::collection_stats::CollectionStats;
 use crate::domain::pagination::{Paginated, Pagination};
 use crate::domain::price::{FullPriceGuide, PriceHistoryEntry};
-use crate::domain::purchase::{NewSealedProduct, Purchase, PurchaseChanges, PurchaseId};
+use crate::domain::purchase::{
+    NewSealedProduct, Purchase, PurchaseChanges, PurchaseContentLine, PurchaseId,
+};
 use crate::domain::rarity_trade_filter::{RarityTradeFilter, RarityTradeFilterRule};
 use crate::domain::set_name::{SetCode, SetName};
 use crate::domain::showcase::ShowcaseCard;
@@ -343,6 +345,30 @@ pub trait PurchaseRepository: Send + Sync {
 
     /// `PurchaseNotFound` if `id` is not one of `user_id`'s Purchases.
     async fn find(&self, user_id: &UserId, id: PurchaseId) -> Result<Purchase, AppError>;
+
+    /// The content of `id`, by card name, set and collector number, each line with the current
+    /// trend price of its card in its finish. `PurchaseNotFound` if `id` is not one of
+    /// `user_id`'s Purchases.
+    async fn content(
+        &self,
+        user_id: &UserId,
+        id: PurchaseId,
+    ) -> Result<Vec<PurchaseContentLine>, AppError>;
+
+    /// In one transaction, adds `quantity` copies of the card to the collection like
+    /// [`CollectionEntryRepository::add`] and adds the card, its finish and the quantity to the
+    /// content of the sealed product `id` (a line already there gets the quantity added).
+    /// `PurchaseNotFound` if `id` is not a sealed product of `user_id`, plus the errors of
+    /// [`CollectionEntryRepository::add`]. Nothing is written on error.
+    async fn add_card_to_sealed_product(
+        &self,
+        user_id: &UserId,
+        id: PurchaseId,
+        card_id: &CardId,
+        foil: bool,
+        quantity: u8,
+        binder_id: Option<BinderId>,
+    ) -> Result<CardEntries, AppError>;
 
     /// Records a sealed product. `SetNotFound` if its set is unknown.
     async fn create_sealed_product(

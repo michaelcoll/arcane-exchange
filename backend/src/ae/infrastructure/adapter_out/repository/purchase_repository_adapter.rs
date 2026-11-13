@@ -1,13 +1,20 @@
 use crate::application::error::{AppError, InfraError};
 use crate::application::repository::PurchaseRepository;
+use crate::domain::binder::BinderId;
+use crate::domain::card::CardId;
+use crate::domain::collection_entry::CardEntries;
 use crate::domain::error::FunctionalError;
 use crate::domain::pagination::{Paginated, Pagination};
 use crate::domain::purchase::{
-    NewSealedProduct, Purchase, PurchaseAmount, PurchaseChanges, PurchaseId, PurchaseKind,
-    SealedProductType,
+    NewSealedProduct, Purchase, PurchaseAmount, PurchaseChanges, PurchaseContentLine, PurchaseId,
+    PurchaseKind, SealedProductType,
 };
 use crate::domain::set_name::{SetCode, SetName};
 use crate::domain::user::UserId;
+use crate::infrastructure::adapter_out::repository::collection_entry_repository_adapter::add_copies;
+use crate::infrastructure::adapter_out::repository::entities::{
+    card_id_from_db, card_image_from_db,
+};
 use async_trait::async_trait;
 use chrono::NaiveDate;
 use sqlx::{Pool, Postgres};
@@ -150,6 +157,115 @@ impl PurchaseRepository for PurchaseRepositoryAdapter {
         .try_into()
     }
 
+    #[tracing::instrument(name = "purchase_repo.content", skip_all, fields(sentry.op = "db"))]
+    async fn content(
+        &self,
+        user_id: &UserId,
+        id: PurchaseId,
+    ) -> Result<Vec<PurchaseContentLine>, AppError> {
+        // Ownership first: another player's Purchase is not found, not empty.
+        self.find(user_id, id).await?;
+
+        // The trend comes from the last Cardmarket prices (ADR-0013) of the finish: they do not
+        // depend on the language. Read here, never stored with the Purchase.
+        let rows = sqlx::query!(
+            r#"
+            SELECT pc.set_code, pc.collector_number, pc.language_code, pc.foil, pc.quantity,
+                   c.name, c.image_source AS "image_source?", c.image_has_back,
+                   lp.trend AS "trend?"
+            FROM purchase_content pc
+                     JOIN card c ON (c.set_code, c.collector_number, c.language_code) =
+                                    (pc.set_code, pc.collector_number, pc.language_code)
+                     LEFT JOIN mv_last_cardmarket_prices lp
+                               ON (lp.set_code, lp.collector_number, lp.foil) =
+                                  (pc.set_code, pc.collector_number, pc.foil)
+            WHERE pc.purchase_id = $1
+            ORDER BY c.name, pc.set_code, pc.collector_number, pc.language_code, pc.foil
+            "#,
+            id.0
+        )
+        .fetch_all(&self.pool)
+        .await?;
+
+        rows.into_iter()
+            .map(|row| {
+                Ok(PurchaseContentLine {
+                    card_id: card_id_from_db(
+                        &row.set_code,
+                        row.collector_number,
+                        &row.language_code,
+                    )
+                    .map_err(AppError::from)?,
+                    name: row.name,
+                    image: card_image_from_db(row.image_source.as_deref(), row.image_has_back)
+                        .map_err(AppError::from)?,
+                    foil: row.foil,
+                    quantity: u32::try_from(row.quantity).map_err(|_| corrupt("quantity"))?,
+                    trend_cents: row
+                        .trend
+                        .map(|trend| u32::try_from(trend).map_err(|_| corrupt("trend")))
+                        .transpose()?,
+                })
+            })
+            .collect()
+    }
+
+    #[tracing::instrument(
+        name = "purchase_repo.add_card_to_sealed_product",
+        skip_all,
+        fields(sentry.op = "db")
+    )]
+    async fn add_card_to_sealed_product(
+        &self,
+        user_id: &UserId,
+        id: PurchaseId,
+        card_id: &CardId,
+        foil: bool,
+        quantity: u8,
+        binder_id: Option<BinderId>,
+    ) -> Result<CardEntries, AppError> {
+        let mut tx = self.pool.begin().await?;
+
+        // Locked so a deletion of the Purchase waits for the content line to be written.
+        let sealed_product = sqlx::query_scalar!(
+            r#"
+            SELECT id FROM purchase
+            WHERE id = $1 AND user_id = $2 AND kind = 'sealed_product'
+            FOR SHARE
+            "#,
+            id.0,
+            user_id.as_str()
+        )
+        .fetch_optional(&mut *tx)
+        .await?;
+        if sealed_product.is_none() {
+            return Err(FunctionalError::PurchaseNotFound.into());
+        }
+
+        let entries = add_copies(&mut tx, user_id, card_id, foil, quantity, binder_id).await?;
+
+        sqlx::query!(
+            r#"
+            INSERT INTO purchase_content
+                (purchase_id, set_code, collector_number, language_code, foil, quantity)
+            VALUES ($1, $2, $3, $4, $5, $6)
+            ON CONFLICT (purchase_id, set_code, collector_number, language_code, foil)
+                DO UPDATE SET quantity = purchase_content.quantity + EXCLUDED.quantity
+            "#,
+            id.0,
+            card_id.set_code.to_string(),
+            card_id.collector_number,
+            card_id.language_code.to_string(),
+            foil,
+            i32::from(quantity)
+        )
+        .execute(&mut *tx)
+        .await?;
+
+        tx.commit().await?;
+        Ok(entries)
+    }
+
     #[tracing::instrument(
         name = "purchase_repo.create_sealed_product",
         skip_all,
@@ -243,8 +359,10 @@ impl PurchaseRepository for PurchaseRepositoryAdapter {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::domain::language_code::LanguageCode;
     use crate::infrastructure::adapter_out::repository::common_repository_tests::{
-        insert_card_without_cardmarket_id, insert_collection_entry, insert_set, insert_user,
+        insert_binder, insert_card, insert_card_without_cardmarket_id, insert_collection_entry,
+        insert_set, insert_user, refresh_view,
     };
     use chrono::Utc;
     use sqlx::PgPool;
@@ -574,6 +692,264 @@ mod tests {
             repository.find(&user("user-1"), purchase.id).await,
             Err(AppError::Functional(FunctionalError::PurchaseNotFound))
         ));
+    }
+
+    fn card() -> CardId {
+        CardId::new("FDN", "1", LanguageCode::FR)
+    }
+
+    async fn seed_card(pool: &PgPool, number: &str, name: &str) {
+        insert_card_without_cardmarket_id(pool, "FDN", number, "FR", name).await;
+    }
+
+    async fn count(pool: &PgPool, table: &str) -> i64 {
+        sqlx::query_scalar(sqlx::AssertSqlSafe(format!("SELECT COUNT(*) FROM {table}")))
+            .fetch_one(pool)
+            .await
+            .unwrap()
+    }
+
+    async fn sealed_product(repository: &PurchaseRepositoryAdapter, owner: &str) -> PurchaseId {
+        repository
+            .create_sealed_product(&user(owner), booster(day(1), 499))
+            .await
+            .unwrap()
+            .id
+    }
+
+    #[sqlx::test]
+    async fn attaching_in_several_goes_adds_up_the_quantity_of_a_card_in_a_finish(pool: PgPool) {
+        let repository = setup(&pool).await;
+        seed_card(&pool, "1", "Card").await;
+        seed_card(&pool, "2", "Other").await;
+        let id = sealed_product(&repository, "user-1").await;
+        let user = user("user-1");
+
+        for (card_id, foil, quantity) in [
+            (card(), false, 2),
+            (card(), false, 3),
+            (card(), true, 1),
+            (CardId::new("FDN", "2", LanguageCode::FR), false, 1),
+        ] {
+            repository
+                .add_card_to_sealed_product(&user, id, &card_id, foil, quantity, None)
+                .await
+                .unwrap();
+        }
+
+        let content = repository.content(&user, id).await.unwrap();
+        let lines: Vec<_> = content
+            .iter()
+            .map(|line| {
+                (
+                    line.card_id.collector_number.as_str(),
+                    line.foil,
+                    line.quantity,
+                )
+            })
+            .collect();
+        assert_eq!(
+            lines,
+            vec![("1", false, 5), ("1", true, 1), ("2", false, 1)]
+        );
+    }
+
+    #[sqlx::test]
+    async fn attached_copies_enter_the_chosen_binder_without_purchase_price(pool: PgPool) {
+        let repository = setup(&pool).await;
+        seed_card(&pool, "1", "Card").await;
+        let binder = BinderId(insert_binder(&pool, "user-1", "Trade").await);
+        let id = sealed_product(&repository, "user-1").await;
+
+        let entries = repository
+            .add_card_to_sealed_product(&user("user-1"), id, &card(), false, 3, Some(binder))
+            .await
+            .unwrap();
+
+        assert_eq!(entries.entries.len(), 1);
+        assert_eq!(entries.entries[0].quantity, 3);
+        assert_eq!(entries.entries[0].purchase_price, None);
+        assert_eq!(
+            entries.entries[0].binder.as_ref().map(|b| b.id),
+            Some(binder)
+        );
+    }
+
+    #[sqlx::test]
+    async fn a_failed_entry_write_leaves_the_content_untouched(pool: PgPool) {
+        let repository = setup(&pool).await;
+        seed_card(&pool, "1", "Card").await;
+        let id = sealed_product(&repository, "user-1").await;
+        // The binder of another player is refused after the content was written.
+        let others = BinderId(insert_binder(&pool, "user-2", "Bob's").await);
+
+        let error = repository
+            .add_card_to_sealed_product(&user("user-1"), id, &card(), false, 1, Some(others))
+            .await
+            .unwrap_err();
+
+        assert_eq!(error.code(), "binder_not_found");
+        assert_eq!(count(&pool, "purchase_content").await, 0);
+        assert_eq!(count(&pool, "collection_entry").await, 0);
+    }
+
+    #[sqlx::test]
+    async fn a_merge_over_255_copies_leaves_the_content_untouched(pool: PgPool) {
+        let repository = setup(&pool).await;
+        seed_card(&pool, "1", "Card").await;
+        insert_collection_entry(
+            &pool,
+            "FDN",
+            "1",
+            "FR",
+            false,
+            "user-1",
+            255,
+            100,
+            Utc::now(),
+        )
+        .await;
+        let id = sealed_product(&repository, "user-1").await;
+
+        let error = repository
+            .add_card_to_sealed_product(&user("user-1"), id, &card(), false, 1, None)
+            .await
+            .unwrap_err();
+
+        assert_eq!(error.code(), "invalid_quantity");
+        assert_eq!(count(&pool, "purchase_content").await, 0);
+    }
+
+    #[sqlx::test]
+    async fn a_player_cannot_attach_cards_to_the_purchase_of_another(pool: PgPool) {
+        let repository = setup(&pool).await;
+        seed_card(&pool, "1", "Card").await;
+        let theirs = sealed_product(&repository, "user-2").await;
+
+        let error = repository
+            .add_card_to_sealed_product(&user("user-1"), theirs, &card(), false, 1, None)
+            .await
+            .unwrap_err();
+
+        assert_eq!(error.code(), "purchase_not_found");
+        assert_eq!(count(&pool, "purchase_content").await, 0);
+        assert_eq!(count(&pool, "collection_entry").await, 0);
+    }
+
+    #[sqlx::test]
+    async fn a_single_card_purchase_takes_no_attachment(pool: PgPool) {
+        let repository = setup(&pool).await;
+        seed_card(&pool, "1", "Card").await;
+        let id: Uuid = sqlx::query_scalar(
+            r#"INSERT INTO purchase (user_id, kind, amount_cents, purchased_on)
+               VALUES ('user-1', 'single_card', 200, '2026-11-13') RETURNING id"#,
+        )
+        .fetch_one(&pool)
+        .await
+        .unwrap();
+
+        let error = repository
+            .add_card_to_sealed_product(&user("user-1"), PurchaseId(id), &card(), false, 1, None)
+            .await
+            .unwrap_err();
+
+        assert_eq!(error.code(), "purchase_not_found");
+        assert_eq!(count(&pool, "collection_entry").await, 0);
+    }
+
+    #[sqlx::test]
+    async fn content_reads_the_trend_of_the_finish_and_none_when_cardmarket_has_none(pool: PgPool) {
+        let repository = setup(&pool).await;
+        insert_card(&pool, "FDN", "1", "FR", "Card", 10).await;
+        seed_card(&pool, "2", "No price").await;
+        sqlx::query(
+            "INSERT INTO cardmarket_price (id_produit, date, trend, trend_foil) VALUES (10, '2026-11-12', 120, 900)",
+        )
+        .execute(&pool)
+        .await
+        .unwrap();
+        refresh_view(&pool).await;
+        let id = sealed_product(&repository, "user-1").await;
+        let user = user("user-1");
+        for (card_id, foil) in [
+            (card(), false),
+            (card(), true),
+            (CardId::new("FDN", "2", LanguageCode::FR), false),
+        ] {
+            repository
+                .add_card_to_sealed_product(&user, id, &card_id, foil, 2, None)
+                .await
+                .unwrap();
+        }
+
+        let content = repository.content(&user, id).await.unwrap();
+
+        let trends: Vec<_> = content
+            .iter()
+            .map(|line| (line.name.as_str(), line.foil, line.trend_cents))
+            .collect();
+        assert_eq!(
+            trends,
+            vec![
+                ("Card", false, Some(120)),
+                ("Card", true, Some(900)),
+                ("No price", false, None),
+            ]
+        );
+    }
+
+    #[sqlx::test]
+    async fn content_of_the_purchase_of_another_player_is_not_found(pool: PgPool) {
+        let repository = setup(&pool).await;
+        let theirs = sealed_product(&repository, "user-2").await;
+
+        let result = repository.content(&user("user-1"), theirs).await;
+
+        assert!(matches!(
+            result,
+            Err(AppError::Functional(FunctionalError::PurchaseNotFound))
+        ));
+    }
+
+    #[sqlx::test]
+    async fn the_content_and_the_amount_survive_a_removal_a_move_and_a_trade_transfer(
+        pool: PgPool,
+    ) {
+        let repository = setup(&pool).await;
+        seed_card(&pool, "1", "Card").await;
+        let id = sealed_product(&repository, "user-1").await;
+        let user = user("user-1");
+        repository
+            .add_card_to_sealed_product(&user, id, &card(), false, 2, None)
+            .await
+            .unwrap();
+        let before = (
+            repository.find(&user, id).await.unwrap(),
+            repository.content(&user, id).await.unwrap(),
+        );
+
+        // What a Trade transfer, a move and a removal do to the entry: it goes to another
+        // player, to another binder, then away.
+        let binder = insert_binder(&pool, "user-1", "Elsewhere").await;
+        sqlx::query("UPDATE collection_entry SET binder_id = $1")
+            .bind(binder)
+            .execute(&pool)
+            .await
+            .unwrap();
+        sqlx::query("UPDATE collection_entry SET user_id = 'user-2'")
+            .execute(&pool)
+            .await
+            .unwrap();
+        sqlx::query("DELETE FROM collection_entry")
+            .execute(&pool)
+            .await
+            .unwrap();
+
+        let after = (
+            repository.find(&user, id).await.unwrap(),
+            repository.content(&user, id).await.unwrap(),
+        );
+        assert_eq!(before, after);
     }
 
     #[sqlx::test]

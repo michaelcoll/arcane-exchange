@@ -33,6 +33,12 @@ extension Components {
             ///
             /// - Remark: Generated from `#/components/schemas/AddCollectionEntryRequest/quantity`.
             public var quantity: Swift.Int32
+            /// A sealed product of the player to attach the copies to: they are added without purchase
+            /// price and the card joins the content of the sealed product. A product that does not exist,
+            /// is another player's or is not a sealed product is refused with `purchase_not_found` (404).
+            ///
+            /// - Remark: Generated from `#/components/schemas/AddCollectionEntryRequest/sealed_product_id`.
+            public var sealed_product_id: Swift.String?
             /// Set code of the catalog card.
             ///
             /// - Remark: Generated from `#/components/schemas/AddCollectionEntryRequest/set_code`.
@@ -45,6 +51,7 @@ extension Components {
             ///   - foil:
             ///   - language_code: Language of the copy: not checked against Scryfall, which may not have the card in it.
             ///   - quantity: Copies added, 1 to 255. Signed so an out-of-range value fails with `invalid_quantity`
+            ///   - sealed_product_id: A sealed product of the player to attach the copies to: they are added without purchase
             ///   - set_code: Set code of the catalog card.
             public init(
                 binder_id: Swift.String? = nil,
@@ -52,6 +59,7 @@ extension Components {
                 foil: Swift.Bool,
                 language_code: Swift.String,
                 quantity: Swift.Int32,
+                sealed_product_id: Swift.String? = nil,
                 set_code: Swift.String
             ) {
                 self.binder_id = binder_id
@@ -59,6 +67,7 @@ extension Components {
                 self.foil = foil
                 self.language_code = language_code
                 self.quantity = quantity
+                self.sealed_product_id = sealed_product_id
                 self.set_code = set_code
             }
             public enum CodingKeys: String, CodingKey {
@@ -67,6 +76,7 @@ extension Components {
                 case foil
                 case language_code
                 case quantity
+                case sealed_product_id
                 case set_code
             }
         }
@@ -1171,6 +1181,132 @@ extension Components {
                 case date
                 case low
                 case trend
+            }
+        }
+        /// A card of the content of a Purchase, in a finish.
+        ///
+        /// - Remark: Generated from `#/components/schemas/PurchaseContentLineResponse`.
+        public struct PurchaseContentLineResponse: Codable, Hashable, Sendable {
+            /// - Remark: Generated from `#/components/schemas/PurchaseContentLineResponse/collector_number`.
+            public var collector_number: Swift.String
+            /// - Remark: Generated from `#/components/schemas/PurchaseContentLineResponse/foil`.
+            public var foil: Swift.Bool
+            /// Front image, `null` while it is pending.
+            ///
+            /// - Remark: Generated from `#/components/schemas/PurchaseContentLineResponse/image_url`.
+            public var image_url: Swift.String?
+            /// - Remark: Generated from `#/components/schemas/PurchaseContentLineResponse/language_code`.
+            public var language_code: Swift.String
+            /// - Remark: Generated from `#/components/schemas/PurchaseContentLineResponse/name`.
+            public var name: Swift.String
+            /// Copies of this card and finish the Purchase brought.
+            ///
+            /// - Remark: Generated from `#/components/schemas/PurchaseContentLineResponse/quantity`.
+            public var quantity: Swift.Int32
+            /// - Remark: Generated from `#/components/schemas/PurchaseContentLineResponse/set_code`.
+            public var set_code: Swift.String
+            /// Current Cardmarket trend price of the card in its finish, in cents; `null` when
+            /// Cardmarket has none. Read on each request, never stored with the Purchase.
+            ///
+            /// - Remark: Generated from `#/components/schemas/PurchaseContentLineResponse/trend_cents`.
+            public var trend_cents: Swift.Int32?
+            /// Creates a new `PurchaseContentLineResponse`.
+            ///
+            /// - Parameters:
+            ///   - collector_number:
+            ///   - foil:
+            ///   - image_url: Front image, `null` while it is pending.
+            ///   - language_code:
+            ///   - name:
+            ///   - quantity: Copies of this card and finish the Purchase brought.
+            ///   - set_code:
+            ///   - trend_cents: Current Cardmarket trend price of the card in its finish, in cents; `null` when
+            public init(
+                collector_number: Swift.String,
+                foil: Swift.Bool,
+                image_url: Swift.String? = nil,
+                language_code: Swift.String,
+                name: Swift.String,
+                quantity: Swift.Int32,
+                set_code: Swift.String,
+                trend_cents: Swift.Int32? = nil
+            ) {
+                self.collector_number = collector_number
+                self.foil = foil
+                self.image_url = image_url
+                self.language_code = language_code
+                self.name = name
+                self.quantity = quantity
+                self.set_code = set_code
+                self.trend_cents = trend_cents
+            }
+            public enum CodingKeys: String, CodingKey {
+                case collector_number
+                case foil
+                case image_url
+                case language_code
+                case name
+                case quantity
+                case set_code
+                case trend_cents
+            }
+        }
+        /// A Purchase with its content and its profitability.
+        ///
+        /// - Remark: Generated from `#/components/schemas/PurchaseDetailResponse`.
+        public struct PurchaseDetailResponse: Codable, Hashable, Sendable {
+            /// - Remark: Generated from `#/components/schemas/PurchaseDetailResponse/content`.
+            public var content: [Components.Schemas.PurchaseContentLineResponse]
+            /// Sum of the quantities times the trend price of the lines that have one, in cents.
+            ///
+            /// - Remark: Generated from `#/components/schemas/PurchaseDetailResponse/content_value_cents`.
+            public var content_value_cents: Swift.Int64
+            /// Value of the content minus the amount of the Purchase, in cents: negative when the content
+            /// is worth less than was paid.
+            ///
+            /// - Remark: Generated from `#/components/schemas/PurchaseDetailResponse/gap_cents`.
+            public var gap_cents: Swift.Int64
+            /// The gap as a percentage of the amount of the Purchase.
+            ///
+            /// - Remark: Generated from `#/components/schemas/PurchaseDetailResponse/gap_percent`.
+            public var gap_percent: Swift.Double
+            /// Lines left out of the value because they have no trend price.
+            ///
+            /// - Remark: Generated from `#/components/schemas/PurchaseDetailResponse/lines_without_trend`.
+            public var lines_without_trend: Swift.Int32
+            /// - Remark: Generated from `#/components/schemas/PurchaseDetailResponse/purchase`.
+            public var purchase: Components.Schemas.PurchaseResponse
+            /// Creates a new `PurchaseDetailResponse`.
+            ///
+            /// - Parameters:
+            ///   - content:
+            ///   - content_value_cents: Sum of the quantities times the trend price of the lines that have one, in cents.
+            ///   - gap_cents: Value of the content minus the amount of the Purchase, in cents: negative when the content
+            ///   - gap_percent: The gap as a percentage of the amount of the Purchase.
+            ///   - lines_without_trend: Lines left out of the value because they have no trend price.
+            ///   - purchase:
+            public init(
+                content: [Components.Schemas.PurchaseContentLineResponse],
+                content_value_cents: Swift.Int64,
+                gap_cents: Swift.Int64,
+                gap_percent: Swift.Double,
+                lines_without_trend: Swift.Int32,
+                purchase: Components.Schemas.PurchaseResponse
+            ) {
+                self.content = content
+                self.content_value_cents = content_value_cents
+                self.gap_cents = gap_cents
+                self.gap_percent = gap_percent
+                self.lines_without_trend = lines_without_trend
+                self.purchase = purchase
+            }
+            public enum CodingKeys: String, CodingKey {
+                case content
+                case content_value_cents
+                case gap_cents
+                case gap_percent
+                case lines_without_trend
+                case purchase
             }
         }
         /// What a Purchase bought.

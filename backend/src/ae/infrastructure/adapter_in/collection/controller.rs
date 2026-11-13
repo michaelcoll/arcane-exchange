@@ -15,7 +15,7 @@ use crate::domain::set_name::SetCode;
 use crate::infrastructure::AppState;
 use crate::infrastructure::adapter_in::auth_extractor::AuthenticatedUser;
 use crate::infrastructure::adapter_in::card::dto::{PriceHistoryEntryResponse, PriceHistoryParams};
-use crate::infrastructure::adapter_in::{parse_binder_id, parse_entry_id};
+use crate::infrastructure::adapter_in::{parse_binder_id, parse_entry_id, parse_purchase_id};
 use axum::body::to_bytes;
 use axum::extract::{Path, State};
 use axum::http::StatusCode;
@@ -302,7 +302,7 @@ pub(crate) async fn get_collection_entries(
         (status = 201, description = "The entries of the card, after the addition. The copies join the entry of the same finish and binder when there is one (quantities add up, purchase price kept, earliest added date), otherwise a new entry without purchase price is written. The card is created when it does not exist yet", body = CardEntriesResponse),
         (status = 400, description = "Quantity out of 1 to 255 (`invalid_quantity`), also when a merge goes over 255; invalid set code, collector number or language code"),
         (status = 401, description = "Missing or invalid token"),
-        (status = 404, description = "No catalog card has this set and collector number (`card_not_in_catalog`), or the binder is not one of the caller's (`binder_not_found`)"),
+        (status = 404, description = "No catalog card has this set and collector number (`card_not_in_catalog`), the binder is not one of the caller's (`binder_not_found`), or the sealed product does not exist, is another player's or is not a sealed product (`purchase_not_found`)"),
     ),
     security(("bearer_auth" = [])),
     tag = "collection",
@@ -323,10 +323,27 @@ pub(crate) async fn add_collection_entry(
         .map(parse_binder_id)
         .transpose()?;
 
-    let entries = state
-        .add_collection_entry_use_case
-        .add_collection_entry(&user.id, card_id, payload.foil, payload.quantity, binder_id)
-        .await?;
+    let entries = match payload.sealed_product_id.as_deref() {
+        Some(sealed_product_id) => {
+            state
+                .attach_card_to_sealed_product_use_case
+                .attach_card(
+                    &user.id,
+                    parse_purchase_id(sealed_product_id)?,
+                    card_id,
+                    payload.foil,
+                    payload.quantity,
+                    binder_id,
+                )
+                .await?
+        }
+        None => {
+            state
+                .add_collection_entry_use_case
+                .add_collection_entry(&user.id, card_id, payload.foil, payload.quantity, binder_id)
+                .await?
+        }
+    };
 
     Ok((
         StatusCode::CREATED,

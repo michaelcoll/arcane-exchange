@@ -28,6 +28,30 @@ struct PurchaseCopyTests {
         #expect(PurchaseCopy.subtitle(of: product) == "Deck préconstruit · Foundations · 13 nov. 2026")
     }
 
+    @Test func aChoiceShowsTheNameOfAProductThatHasOneOrItsTypeAndSetWithItsDate() {
+        let unnamed = purchase("1", type: .DISPLAY, set: ("ECL", "Lorwyn Eclipsed"), on: "2026-11-13")
+        let named = purchase("2", type: .PRECONSTRUCTED_DECK, name: "Deck Bleu", on: "2026-11-01")
+
+        #expect(PurchaseCopy.choice(of: unnamed) == "Display · Lorwyn Eclipsed · 13 nov. 2026")
+        #expect(PurchaseCopy.choice(of: named) == "Deck Bleu · 1 nov. 2026")
+    }
+
+    @Test(arguments: [
+        (855, 12.4, "+8,55\u{00A0}€ (+12 %)"),
+        (-300, -75.0, "−3\u{00A0}€ (−75 %)"),
+        (0, 0.0, "0\u{00A0}€ (0 %)"),
+        (-1, -0.04, "−0,01\u{00A0}€ (0 %)")
+    ])
+    func writesTheProfitabilityWithItsSign(cents: Int, percent: Double, label: String) {
+        #expect(PurchaseCopy.profitability(cents: cents, percent: percent) == label)
+    }
+
+    @Test func countsTheLinesLeftOutOfTheValue() {
+        #expect(PurchaseCopy.withoutTrend(0) == nil)
+        #expect(PurchaseCopy.withoutTrend(1) == "1 carte sans prix de tendance, exclue de la valeur")
+        #expect(PurchaseCopy.withoutTrend(3) == "3 cartes sans prix de tendance, exclues de la valeur")
+    }
+
     @Test(arguments: [
         ("49,99", 4999),
         ("49.99", 4999),

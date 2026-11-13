@@ -367,6 +367,43 @@ pub(super) async fn insert_entry(
     Ok(())
 }
 
+/// Adds `quantity` copies without purchase price to the entry of the same finish and binder, or
+/// to a new one, within the caller's transaction. Returns the entries of the card.
+pub(super) async fn add_copies(
+    conn: &mut PgConnection,
+    user_id: &UserId,
+    card_id: &CardId,
+    foil: bool,
+    quantity: u8,
+    binder_id: Option<BinderId>,
+) -> Result<CardEntries, AppError> {
+    if let Some(binder_id) = binder_id {
+        ensure_binder_owned(conn, user_id, binder_id).await?;
+    }
+
+    let locked = lock_card_entries(conn, user_id, card_id).await?;
+    let added = EntryCopies {
+        quantity: u32::from(quantity),
+        purchase_price: None,
+        added_at: Utc::now(),
+    };
+    let target_binder = binder_id.map(|id| id.0);
+    let same_copy = locked
+        .iter()
+        .find(|entry| entry.foil == foil && entry.binder_id == target_binder);
+    match same_copy {
+        Some(existing) => {
+            let merged = existing.copies().merge(&added)?;
+            write_copies(conn, existing.id, &merged).await?;
+        }
+        None => {
+            insert_entry(conn, user_id, card_id, foil, target_binder, &added).await?;
+        }
+    }
+
+    find_card_entries(conn, user_id, card_id).await
+}
+
 #[async_trait]
 impl CollectionEntryRepository for CollectionEntryRepositoryAdapter {
     #[tracing::instrument(name = "collection_entry_repo.find_by_card", skip_all, fields(sentry.op = "db"))]
@@ -389,32 +426,7 @@ impl CollectionEntryRepository for CollectionEntryRepositoryAdapter {
         binder_id: Option<BinderId>,
     ) -> Result<CardEntries, AppError> {
         let mut tx = self.pool.begin().await?;
-
-        if let Some(binder_id) = binder_id {
-            ensure_binder_owned(&mut tx, user_id, binder_id).await?;
-        }
-
-        let locked = lock_card_entries(&mut tx, user_id, card_id).await?;
-        let added = EntryCopies {
-            quantity: u32::from(quantity),
-            purchase_price: None,
-            added_at: Utc::now(),
-        };
-        let target_binder = binder_id.map(|id| id.0);
-        let same_copy = locked
-            .iter()
-            .find(|entry| entry.foil == foil && entry.binder_id == target_binder);
-        match same_copy {
-            Some(existing) => {
-                let merged = existing.copies().merge(&added)?;
-                write_copies(&mut tx, existing.id, &merged).await?;
-            }
-            None => {
-                insert_entry(&mut tx, user_id, card_id, foil, target_binder, &added).await?;
-            }
-        }
-
-        let entries = find_card_entries(&mut tx, user_id, card_id).await?;
+        let entries = add_copies(&mut tx, user_id, card_id, foil, quantity, binder_id).await?;
         tx.commit().await?;
         Ok(entries)
     }

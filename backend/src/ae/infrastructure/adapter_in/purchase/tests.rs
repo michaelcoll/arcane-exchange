@@ -3,10 +3,14 @@ use crate::application::use_case::{
     MockCreateSealedProductUseCase, MockDeletePurchaseUseCase, MockGetPurchaseUseCase,
     MockListPurchasesUseCase, MockUpdatePurchaseUseCase,
 };
+use crate::domain::card::CardId;
+use crate::domain::card_image::{CardImage, CardImageSource};
 use crate::domain::error::FunctionalError;
+use crate::domain::language_code::LanguageCode;
 use crate::domain::pagination::{Paginated, Pagination};
 use crate::domain::purchase::{
-    Purchase, PurchaseAmount, PurchaseId, PurchaseKind, SealedProductType,
+    Purchase, PurchaseAmount, PurchaseContentLine, PurchaseDetail, PurchaseId, PurchaseKind,
+    SealedProductType,
 };
 use crate::domain::set_name::{SetCode, SetName};
 use crate::infrastructure::testing::{
@@ -115,13 +119,40 @@ async fn list_purchases_propagates_a_pagination_refusal() {
 }
 
 #[tokio::test]
-async fn get_purchase_returns_the_purchase() {
+async fn get_purchase_returns_the_purchase_with_its_content_and_profitability() {
     let mut mock_uc = MockGetPurchaseUseCase::new();
     mock_uc
         .expect_get_purchase()
         .withf(|_, id| *id == PurchaseId(Uuid::parse_str(ID).unwrap()))
         .times(1)
-        .returning(|_, _| Box::pin(async { Ok(purchase(None)) }));
+        .returning(|_, _| {
+            Box::pin(async {
+                Ok(PurchaseDetail {
+                    purchase: purchase(None),
+                    content: vec![
+                        PurchaseContentLine {
+                            card_id: CardId::new("FDN", "1", LanguageCode::FR),
+                            name: "Card".to_string(),
+                            image: Some(CardImage {
+                                source: CardImageSource::GathererLocalized,
+                                has_back: false,
+                            }),
+                            foil: true,
+                            quantity: 2,
+                            trend_cents: Some(1000),
+                        },
+                        PurchaseContentLine {
+                            card_id: CardId::new("FDN", "2", LanguageCode::EN),
+                            name: "No price".to_string(),
+                            image: None,
+                            foil: false,
+                            quantity: 1,
+                            trend_cents: None,
+                        },
+                    ],
+                })
+            })
+        });
     let app = create_router(AppState {
         get_purchase_use_case: Arc::new(mock_uc),
         ..AppState::for_testing()
@@ -130,7 +161,38 @@ async fn get_purchase_returns_the_purchase() {
     let response = authed(app, Method::GET, &format!("/purchases/{ID}")).await;
 
     assert_eq!(response.status(), StatusCode::OK);
-    assert_eq!(json_of(response).await, purchase_json(json!(null)));
+    assert_eq!(
+        json_of(response).await,
+        json!({
+            "purchase": purchase_json(json!(null)),
+            "content": [
+                {
+                    "set_code": "FDN",
+                    "collector_number": "1",
+                    "language_code": "FR",
+                    "name": "Card",
+                    "image_url": "/card-images/FDN_1_FR.webp?v=gatherer",
+                    "foil": true,
+                    "quantity": 2,
+                    "trend_cents": 1000,
+                },
+                {
+                    "set_code": "FDN",
+                    "collector_number": "2",
+                    "language_code": "EN",
+                    "name": "No price",
+                    "image_url": null,
+                    "foil": false,
+                    "quantity": 1,
+                    "trend_cents": null,
+                },
+            ],
+            "content_value_cents": 2000,
+            "lines_without_trend": 1,
+            "profitability_cents": -2999,
+            "profitability_percent": -2999.0 * 100.0 / 4999.0,
+        })
+    );
 }
 
 #[tokio::test]

@@ -106,4 +106,77 @@ struct AddCollectionEntryViewModelTests {
 
         #expect(model.binders.map(\.name) == ["Trade"])
     }
+
+    @Test func offersTheSealedProductsOfThePlayerMostRecentFirst() async {
+        let api = FakeAPI()
+        nonisolated(unsafe) var asked: Int32?
+        api.onListPurchases = { input in
+            asked = input.query.page_size
+            return .ok(.init(body: .json(.init(
+                items: [purchase("2", on: "2026-11-13"), purchase("1", on: "2026-11-01")],
+                page: 0,
+                page_size: 100,
+                total: 2
+            ))))
+        }
+        let model = AddCollectionEntryViewModel(card: card, api: api, defaults: isolatedDefaults())
+
+        await model.loadSealedProducts()
+
+        #expect(model.sealedProducts.map(\.id) == ["2", "1"])
+        #expect(asked == 100)
+        #expect(model.sealedProductID == nil)
+    }
+
+    @Test func aFailedReadLeavesNoSealedProductToChoose() async {
+        let api = FakeAPI()
+        api.onListPurchases = { _ in throw APIError(code: "internal", status: 500) }
+        let model = AddCollectionEntryViewModel(card: card, api: api, defaults: isolatedDefaults())
+
+        await model.loadSealedProducts()
+
+        #expect(model.sealedProducts.isEmpty)
+    }
+
+    @Test func attachesTheCopiesToTheChosenSealedProduct() async {
+        let api = FakeAPI()
+        nonisolated(unsafe) var sent: Components.Schemas.AddCollectionEntryRequest?
+        api.onAddCollectionEntry = { input in
+            if case let .json(body) = input.body { sent = body }
+            return added
+        }
+        let model = AddCollectionEntryViewModel(card: card, api: api, defaults: isolatedDefaults())
+        model.sealedProductID = "p-1"
+
+        let accepted = await model.add()
+
+        #expect(accepted)
+        #expect(sent?.sealed_product_id == "p-1")
+    }
+
+    @Test func withoutASealedProductNoneIsSent() async {
+        let api = FakeAPI()
+        nonisolated(unsafe) var sent: Components.Schemas.AddCollectionEntryRequest?
+        api.onAddCollectionEntry = { input in
+            if case let .json(body) = input.body { sent = body }
+            return added
+        }
+        let model = AddCollectionEntryViewModel(card: card, api: api, defaults: isolatedDefaults())
+
+        _ = await model.add()
+
+        #expect(sent?.sealed_product_id == nil)
+    }
+
+    @Test func aSealedProductThatIsGoneIsRefusedWithATranslatedMessage() async {
+        let api = FakeAPI()
+        api.onAddCollectionEntry = { _ in throw APIError(code: "purchase_not_found", status: 404) }
+        let model = AddCollectionEntryViewModel(card: card, api: api, defaults: isolatedDefaults())
+        model.sealedProductID = "p-1"
+
+        let accepted = await model.add()
+
+        #expect(!accepted)
+        #expect(model.writeError == "Cet achat n'existe plus.")
+    }
 }
