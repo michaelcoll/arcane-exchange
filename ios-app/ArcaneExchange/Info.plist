@@ -54,6 +54,8 @@
 			</dict>
 		</dict>
 	</dict>
+	<key>NSCameraUsageDescription</key>
+	<string>Arcane Exchange utilise la caméra pour reconnaître tes cartes grâce à la ligne imprimée en bas de chaque carte.</string>
 	<key>UIAppFonts</key>
 	<array>
 		<string>Keyrune.ttf</string>
