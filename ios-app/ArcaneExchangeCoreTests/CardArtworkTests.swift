@@ -35,6 +35,13 @@ struct CardArtworkTests {
         #expect(urls.map(\.lastPathComponent) == ["A.webp", "B.webp"])
     }
 
+    /// The scan index carries no image path: the file is addressed by set and number, in English,
+    /// the image a card in fallback shares.
+    @Test func addressesTheEnglishImageOfAPrintingBySetAndNumber() {
+        let url = CardArtwork.url(forSet: "mom", number: "123", apiBaseURL: apiBaseURL)
+        #expect(url?.absoluteString == "https://ae.piconsoft.fr/card-images/MOM_123_EN.webp")
+    }
+
     @Test func mapsAnEmptyPageToNoWork() {
         #expect(CardArtwork.urls(for: [], apiBaseURL: apiBaseURL).isEmpty)
     }

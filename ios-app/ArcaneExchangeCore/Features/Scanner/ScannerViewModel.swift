@@ -35,10 +35,18 @@ package final class ScannerViewModel {
 
     private let storage: any ScanBatchStorage
 
-    package init(index: ScanIndexModel, storage: any ScanBatchStorage, camera: CameraScanner = CameraScanner()) {
+    private let prices: ScanBatchPrices
+
+    package init(
+        index: ScanIndexModel,
+        storage: any ScanBatchStorage,
+        camera: CameraScanner = CameraScanner(),
+        prices: ScanBatchPrices = ScanBatchPrices(api: nil)
+    ) {
         self.index = index
         self.storage = storage
         self.camera = camera
+        self.prices = prices
         batch = storage.load() ?? ScanBatch()
     }
 
@@ -84,23 +92,23 @@ package final class ScannerViewModel {
     }
 
     /// Sets the quantity of a line, 0 removing it.
-    package func setQuantity(_ quantity: Int, ofLine id: String) {
+    package func setQuantity(_ quantity: Int, ofLine id: ScanBatchLine.Key) {
         batch.setQuantity(quantity, ofLine: id)
         undoOffer = nil
     }
 
     /// Corrections of a line (`ScanCorrectionViewModel` and the list): each one withdraws the undo offer.
-    package func setLanguage(_ language: CardLanguage, ofLine id: String) {
+    package func setLanguage(_ language: CardLanguage, ofLine id: ScanBatchLine.Key) {
         batch.setLanguage(language, ofLine: id)
         undoOffer = nil
     }
 
-    package func setFoil(_ foil: Bool, ofLine id: String) {
+    package func setFoil(_ foil: Bool, ofLine id: ScanBatchLine.Key) {
         batch.setFoil(foil, ofLine: id)
         undoOffer = nil
     }
 
-    package func replaceCard(ofLine id: String, with card: RecognisedCard) {
+    package func replaceCard(ofLine id: ScanBatchLine.Key, with card: RecognisedCard) {
         batch.replaceCard(ofLine: id, with: card)
         undoOffer = nil
     }
@@ -109,6 +117,21 @@ package final class ScannerViewModel {
     package func addFromCatalog(_ card: RecognisedCard, language: CardLanguage) {
         batch.addFromCatalog(card, language: language, foil: foil)
         undoOffer = nil
+    }
+
+    /// Asks for the trend prices of the batch: on opening and after each new card.
+    package func refreshPrices() async {
+        await prices.refresh(for: batch.lines)
+    }
+
+    /// What a line is worth in its finish and quantity; nil when the prices are hidden or unknown.
+    package func lineCents(of line: ScanBatchLine) -> Int? {
+        prices.cents(of: line)
+    }
+
+    /// The value of the batch, with the lines left out; nil when the prices are hidden.
+    package var batchValue: BatchValue? {
+        prices.value(of: batch)
     }
 
     /// Empties the batch, which gets a new identifier.
