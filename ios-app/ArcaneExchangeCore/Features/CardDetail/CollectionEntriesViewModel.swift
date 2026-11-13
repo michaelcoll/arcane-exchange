@@ -4,7 +4,7 @@ import Foundation
 package typealias CollectionEntryDetail = Components.Schemas.CollectionEntryDetailResponse
 
 /// Backs the entries of a card in "Dans ma collection": what the player owns of the card in each
-/// finish and binder, and the edit (quantity, finish) or removal of one entry. Every write answers
+/// finish and binder, and the edit (quantity, finish, purchase price) or removal of one entry. Every write answers
 /// with the entries of the card, which replace the list: the screen shows the edit at once.
 @MainActor
 @Observable
@@ -49,11 +49,19 @@ package final class CollectionEntriesViewModel {
         foil ? reservedFoil : reservedNormal
     }
 
-    /// Returns whether the edit was accepted, so the sheet that asked can close.
-    package func edit(_ entry: CollectionEntryDetail, quantity: Int, foil: Bool) async -> Bool {
+    /// Returns whether the edit was accepted, so the sheet that asked can close. `purchaseCents` is
+    /// the price per copy typed in the sheet: nil (nothing typed) and an unchanged price are not sent.
+    package func edit(
+        _ entry: CollectionEntryDetail,
+        quantity: Int,
+        foil: Bool,
+        purchaseCents: Int? = nil
+    ) async -> Bool {
         await write {
+            let changedPrice = purchaseCents == entry.purchase_price.map(Int.init) ? nil : purchaseCents
             let body = Components.Schemas.UpdateCollectionEntryRequest(
                 foil: foil == entry.foil ? nil : foil,
+                purchase_price: changedPrice.map(Int32.init),
                 quantity: quantity == Int(entry.quantity) ? nil : Int32(quantity)
             )
             let output = try await self.api.update_collection_entry(path: .init(id: entry.id), body: .json(body))

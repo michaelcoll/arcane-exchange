@@ -435,6 +435,7 @@ impl CollectionEntryRepository for CollectionEntryRepositoryAdapter {
         let foil = update.foil.unwrap_or(entry.foil);
         let updated = EntryCopies {
             quantity,
+            purchase_price: update.purchase_price.or(entry.purchase_price),
             ..entry.copies()
         };
 
@@ -655,13 +656,14 @@ mod tests {
         EntryUpdate {
             quantity: Some(quantity),
             foil: None,
+            ..EntryUpdate::default()
         }
     }
 
     fn foil_update(foil: bool) -> EntryUpdate {
         EntryUpdate {
-            quantity: None,
             foil: Some(foil),
+            ..EntryUpdate::default()
         }
     }
 
@@ -1017,6 +1019,48 @@ mod tests {
     }
 
     #[sqlx::test]
+    async fn update_replaces_the_purchase_price_and_nothing_else(pool: PgPool) {
+        seed(&pool).await;
+        let normal = insert_entry(&pool, USER, false, 3, Some(500), day(1), None).await;
+
+        let entries = adapter(pool)
+            .update(
+                &user(),
+                normal,
+                EntryUpdate {
+                    purchase_price: Some(120),
+                    ..EntryUpdate::default()
+                },
+            )
+            .await
+            .unwrap();
+
+        assert_eq!(entries.entries.len(), 1);
+        assert_eq!(entries.entries[0].quantity, 3);
+        assert_eq!(entries.entries[0].purchase_price, Some(120));
+    }
+
+    #[sqlx::test]
+    async fn update_sets_a_purchase_price_on_an_entry_without_one(pool: PgPool) {
+        seed(&pool).await;
+        let normal = insert_entry(&pool, USER, false, 2, None, day(1), None).await;
+
+        let entries = adapter(pool)
+            .update(
+                &user(),
+                normal,
+                EntryUpdate {
+                    purchase_price: Some(75),
+                    ..EntryUpdate::default()
+                },
+            )
+            .await
+            .unwrap();
+
+        assert_eq!(entries.entries[0].purchase_price, Some(75));
+    }
+
+    #[sqlx::test]
     async fn update_applies_a_new_quantity_together_with_the_finish_change(pool: PgPool) {
         seed(&pool).await;
         let normal = insert_entry(&pool, USER, false, 4, None, day(1), None).await;
@@ -1029,6 +1073,7 @@ mod tests {
                 EntryUpdate {
                     quantity: Some(2),
                     foil: Some(true),
+                    ..EntryUpdate::default()
                 },
             )
             .await

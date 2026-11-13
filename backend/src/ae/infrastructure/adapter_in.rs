@@ -121,6 +121,7 @@ impl IntoResponse for AppError {
                 | FunctionalError::PaginationTooDeep { .. }
                 | FunctionalError::AddedAtSortRequiresPlayerUsername
                 | FunctionalError::InvalidQuantity
+                | FunctionalError::InvalidPurchasePrice
                 | FunctionalError::SelfTrade => StatusCode::BAD_REQUEST,
                 FunctionalError::PriceNotFound
                 | FunctionalError::CardNotFound

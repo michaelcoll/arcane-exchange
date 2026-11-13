@@ -71,6 +71,8 @@ pub enum FunctionalError {
     CollectionEntryNotFound,
     /// A quantity outside the 1 to 255 an entry holds.
     InvalidQuantity,
+    /// A purchase price of zero or less: a price is a strictly positive amount of cents.
+    InvalidPurchasePrice,
     /// The edit would take the copies a player owns under what the accepted Trades committed.
     ReservedQuantityExceeded,
 }
@@ -128,6 +130,7 @@ impl FunctionalError {
             FunctionalError::ScanIndexUnavailable => "scan_index_unavailable",
             FunctionalError::CollectionEntryNotFound => "collection_entry_not_found",
             FunctionalError::InvalidQuantity => "invalid_quantity",
+            FunctionalError::InvalidPurchasePrice => "invalid_purchase_price",
             FunctionalError::ReservedQuantityExceeded => "reserved_quantity_exceeded",
         }
     }
@@ -241,6 +244,9 @@ impl From<FunctionalError> for String {
             FunctionalError::ScanIndexUnavailable => "No catalog loaded yet".to_string(),
             FunctionalError::CollectionEntryNotFound => "Collection entry not found".to_string(),
             FunctionalError::InvalidQuantity => "Quantity must be between 1 and 255".to_string(),
+            FunctionalError::InvalidPurchasePrice => {
+                "Purchase price must be greater than 0".to_string()
+            }
             FunctionalError::ReservedQuantityExceeded => {
                 "The edit would leave fewer copies than the accepted trades committed".to_string()
             }

@@ -1,7 +1,7 @@
 import ArcaneExchangeCore
 import SwiftUI
 
-/// Edits one entry of a card: its quantity and finish, moves all or some of its copies to another
+/// Edits one entry of a card: its quantity, finish and purchase price, moves all or some of its copies to another
 /// binder (or out of any binder), or removes it. A refusal (a quantity under
 /// what an accepted trade committed, say) stays in the model's `writeError`, shown as an alert.
 struct CollectionEntryEditSheet: View {
@@ -11,6 +11,7 @@ struct CollectionEntryEditSheet: View {
     @Environment(\.dismiss) private var dismiss
     @State private var quantity: Int
     @State private var foil: Bool
+    @State private var purchasePrice: String
     @State private var targetBinderID: String?
     @State private var movedQuantity: Int
 
@@ -19,7 +20,13 @@ struct CollectionEntryEditSheet: View {
         self.model = model
         _quantity = State(initialValue: Int(entry.quantity))
         _foil = State(initialValue: entry.foil)
+        _purchasePrice = State(initialValue: entry.purchase_price.map { Self.euros(cents: Int($0)) } ?? "")
         _movedQuantity = State(initialValue: Int(entry.quantity))
+    }
+
+    /// The price as typed back into the field: "2,50", without the currency sign.
+    private static func euros(cents: Int) -> String {
+        String(format: "%d,%02d", cents / 100, cents % 100)
     }
 
     /// A move needs a target other than the binder the entry is already in.
@@ -35,6 +42,13 @@ struct CollectionEntryEditSheet: View {
                     Picker("Finition", selection: $foil) {
                         Text("Normale").tag(false)
                         Text("Foil").tag(true)
+                    }
+                    HStack {
+                        Text("Prix d'achat")
+                        TextField("Aucun", text: $purchasePrice)
+                            .keyboardType(.decimalPad)
+                            .multilineTextAlignment(.trailing)
+                        Text("€")
                     }
                 } footer: {
                     if let binder = entry.binder {
@@ -81,7 +95,12 @@ struct CollectionEntryEditSheet: View {
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Enregistrer") {
                         Task {
-                            if await model.edit(entry, quantity: quantity, foil: foil) {
+                            if await model.edit(
+                                entry,
+                                quantity: quantity,
+                                foil: foil,
+                                purchaseCents: Price.cents(fromEuros: purchasePrice)
+                            ) {
                                 dismiss()
                             }
                         }

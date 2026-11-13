@@ -104,6 +104,7 @@ package enum APIErrorMessages {
         "binder_not_empty": "Ce binder contient encore des cartes : déplace-les ou retire-les d'abord.",
         "collection_entry_not_found": "Cet exemplaire n'existe plus dans ta collection.",
         "invalid_quantity": "La quantité doit être comprise entre 1 et 255.",
+        "invalid_purchase_price": "Le prix d'achat doit être supérieur à 0 €.",
         "reserved_quantity_exceeded":
             "Des cartes sont réservées par un échange accepté : tu ne peux pas descendre sous cette quantité.",
         "card_not_in_catalog": "Cette carte n'existe pas dans le catalogue.",

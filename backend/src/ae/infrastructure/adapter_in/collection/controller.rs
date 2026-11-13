@@ -340,7 +340,7 @@ pub(crate) async fn add_collection_entry(
     request_body = UpdateCollectionEntryRequest,
     responses(
         (status = 200, description = "The entries of the card, after the edit. A finish change onto an existing entry merges the two: quantities add up, purchase price is the average of the prices present weighted by quantity, added date is the earliest", body = CardEntriesResponse),
-        (status = 400, description = "Quantity out of 1 to 255 (`invalid_quantity`), also when a merge goes over 255"),
+        (status = 400, description = "Quantity out of 1 to 255 (`invalid_quantity`), also when a merge goes over 255; purchase price of 0 or less (`invalid_purchase_price`)"),
         (status = 401, description = "Missing or invalid token"),
         (status = 404, description = "Entry not found, or not owned by the caller (`collection_entry_not_found`)"),
         (status = 409, description = "The edit would take the owned copies under what accepted trades committed (`reserved_quantity_exceeded`)"),
@@ -361,6 +361,7 @@ pub(crate) async fn update_collection_entry(
             parse_entry_id(&id)?,
             payload.quantity,
             payload.foil,
+            payload.purchase_price,
         )
         .await?;
 

@@ -13,11 +13,14 @@ patch {
 body:json {
   {
     "quantity": 2,
-    "foil": false
+    "foil": false,
+    "purchase_price": 250
   }
 }
 
 docs {
-  Both fields are optional. A finish change onto an existing entry merges the two.
+  All fields are optional. A finish change onto an existing entry merges the two.
+  `purchase_price` (cents per copy) replaces the entry's price and creates or changes no purchase;
+  `invalid_purchase_price` (400) for 0 or less.
   `reserved_quantity_exceeded` (409) when lowering below the copies engaged in accepted Trades.
 }

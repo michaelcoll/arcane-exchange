@@ -403,6 +403,12 @@ pub(crate) struct UpdateCollectionEntryRequest {
     pub(crate) quantity: Option<i32>,
     /// New finish. A change onto an existing entry merges the two.
     pub(crate) foil: Option<bool>,
+    /// New purchase price per copy, in cents, strictly positive: it replaces the entry's and
+    /// creates or changes no purchase. Signed so a value of 0 or less fails with
+    /// `invalid_purchase_price` (400) instead of a JSON extractor rejection.
+    #[serde(default)]
+    #[ts(optional)]
+    pub(crate) purchase_price: Option<i32>,
 }
 
 #[derive(Deserialize, Debug, TS, ToSchema)]

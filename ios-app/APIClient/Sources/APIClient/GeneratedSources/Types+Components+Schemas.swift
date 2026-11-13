@@ -1748,6 +1748,12 @@ extension Components {
             ///
             /// - Remark: Generated from `#/components/schemas/UpdateCollectionEntryRequest/foil`.
             public var foil: Swift.Bool?
+            /// New purchase price per copy, in cents, strictly positive: it replaces the entry's and
+            /// creates or changes no purchase. Signed so a value of 0 or less fails with
+            /// `invalid_purchase_price` (400) instead of a JSON extractor rejection.
+            ///
+            /// - Remark: Generated from `#/components/schemas/UpdateCollectionEntryRequest/purchase_price`.
+            public var purchase_price: Swift.Int32?
             /// New quantity, 1 to 255. Signed so an out-of-range value fails with `invalid_quantity`
             /// (400) instead of a JSON extractor rejection.
             ///
@@ -1757,16 +1763,20 @@ extension Components {
             ///
             /// - Parameters:
             ///   - foil: New finish. A change onto an existing entry merges the two.
+            ///   - purchase_price: New purchase price per copy, in cents, strictly positive: it replaces the entry's and
             ///   - quantity: New quantity, 1 to 255. Signed so an out-of-range value fails with `invalid_quantity`
             public init(
                 foil: Swift.Bool? = nil,
+                purchase_price: Swift.Int32? = nil,
                 quantity: Swift.Int32? = nil
             ) {
                 self.foil = foil
+                self.purchase_price = purchase_price
                 self.quantity = quantity
             }
             public enum CodingKeys: String, CodingKey {
                 case foil
+                case purchase_price
                 case quantity
             }
         }

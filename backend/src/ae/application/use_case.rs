@@ -474,11 +474,13 @@ pub trait AddCollectionEntryUseCase: Send + Sync {
 #[async_trait]
 #[cfg_attr(test, automock)]
 pub trait UpdateCollectionEntryUseCase: Send + Sync {
-    /// Changes the quantity and/or the finish of an entry and returns the entries of its card,
-    /// then asks for a refresh of the card prices views without waiting for it. A finish change
-    /// onto an existing entry merges the two.
+    /// Changes the quantity, the finish and/or the purchase price (cents per copy) of an entry and
+    /// returns the entries of its card, then asks for a refresh of the card prices views without
+    /// waiting for it. A finish change onto an existing entry merges the two. A new purchase
+    /// price replaces the entry's and creates or changes no Purchase.
     ///
-    /// Refused with `InvalidQuantity` (`400`) outside 1 to 255, `CollectionEntryNotFound`
+    /// Refused with `InvalidQuantity` (`400`) outside 1 to 255, `InvalidPurchasePrice` (`400`)
+    /// for a price of zero or less, `CollectionEntryNotFound`
     /// (`404`) for an absent entry or another player's, and `ReservedQuantityExceeded` (`409`)
     /// when it takes the owned copies under what the accepted Trades committed.
     async fn update_collection_entry(
@@ -487,6 +489,7 @@ pub trait UpdateCollectionEntryUseCase: Send + Sync {
         id: CollectionEntryId,
         quantity: Option<i32>,
         foil: Option<bool>,
+        purchase_price: Option<i32>,
     ) -> Result<CardEntries, AppError>;
 }
 

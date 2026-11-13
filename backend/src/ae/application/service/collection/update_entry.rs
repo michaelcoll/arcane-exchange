@@ -2,7 +2,7 @@ use crate::application::error::AppError;
 use crate::application::repository::{CardPricesRefreshRequester, CollectionEntryRepository};
 use crate::application::use_case::UpdateCollectionEntryUseCase;
 use crate::domain::collection_entry::{
-    CardEntries, CollectionEntryId, EntryUpdate, validate_quantity,
+    CardEntries, CollectionEntryId, EntryUpdate, validate_purchase_price, validate_quantity,
 };
 use crate::domain::user::UserId;
 use async_trait::async_trait;
@@ -34,10 +34,12 @@ impl UpdateCollectionEntryUseCase for UpdateCollectionEntryService {
         id: CollectionEntryId,
         quantity: Option<i32>,
         foil: Option<bool>,
+        purchase_price: Option<i32>,
     ) -> Result<CardEntries, AppError> {
         let update = EntryUpdate {
             quantity: quantity.map(validate_quantity).transpose()?,
             foil,
+            purchase_price: purchase_price.map(validate_purchase_price).transpose()?,
         };
 
         let entries = self.repository.update(user_id, id, update).await?;
@@ -75,6 +77,7 @@ mod tests {
                         == EntryUpdate {
                             quantity: Some(3),
                             foil: Some(true),
+                            purchase_price: Some(250),
                         }
             })
             .times(1)
@@ -82,7 +85,13 @@ mod tests {
         let service = service(repository, refresh(1));
 
         let result = service
-            .update_collection_entry(&UserId::new("user_1"), entry_id(), Some(3), Some(true))
+            .update_collection_entry(
+                &UserId::new("user_1"),
+                entry_id(),
+                Some(3),
+                Some(true),
+                Some(250),
+            )
             .await;
 
         assert!(result.is_ok());
@@ -94,11 +103,37 @@ mod tests {
             let service = service(MockCollectionEntryRepository::new(), refresh(0));
 
             let error = service
-                .update_collection_entry(&UserId::new("user_1"), entry_id(), Some(quantity), None)
+                .update_collection_entry(
+                    &UserId::new("user_1"),
+                    entry_id(),
+                    Some(quantity),
+                    None,
+                    None,
+                )
                 .await
                 .unwrap_err();
 
             assert_eq!(error.code(), "invalid_quantity");
+        }
+    }
+
+    #[tokio::test]
+    async fn refuses_a_purchase_price_of_zero_or_less_without_touching_anything() {
+        for price in [-100, -1, 0] {
+            let service = service(MockCollectionEntryRepository::new(), refresh(0));
+
+            let error = service
+                .update_collection_entry(
+                    &UserId::new("user_1"),
+                    entry_id(),
+                    None,
+                    None,
+                    Some(price),
+                )
+                .await
+                .unwrap_err();
+
+            assert_eq!(error.code(), "invalid_purchase_price");
         }
     }
 
@@ -111,7 +146,7 @@ mod tests {
         let service = service(repository, refresh(0));
 
         let error = service
-            .update_collection_entry(&UserId::new("user_1"), entry_id(), Some(1), None)
+            .update_collection_entry(&UserId::new("user_1"), entry_id(), Some(1), None, None)
             .await
             .unwrap_err();
 
