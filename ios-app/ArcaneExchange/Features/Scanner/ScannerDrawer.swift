@@ -6,7 +6,11 @@ import SwiftUI
 struct ScannerDrawer: View {
     let scanner: ScannerViewModel
     @Binding var isOpen: Bool
+    /// The lines the catalog refused on the last validation, flagged in the list.
+    var rejectedLineIDs: Set<String> = []
     let onClear: () -> Void
+    /// Opens the validation sheet.
+    let onFinish: () -> Void
     @Environment(\.api) private var api
     @State private var correction: ScanCorrectionTarget?
 
@@ -22,9 +26,19 @@ struct ScannerDrawer: View {
 
             if isOpen {
                 list
+                let cards = scanner.batch.cardCount
+                Button("Ajouter \(cards) carte\(cards > 1 ? "s" : "") à la collection", action: onFinish)
+                    .buttonStyle(.borderedProminent)
+                    .disabled(scanner.batch.lines.isEmpty)
+                    .padding([.horizontal, .bottom], 16)
             } else {
-                ScannerResultCard(card: scanner.lastRecognised)
-                    .padding([.horizontal, .bottom], 12)
+                HStack(spacing: 8) {
+                    ScannerResultCard(card: scanner.lastRecognised)
+                    Button("Terminer", action: onFinish)
+                        .buttonStyle(.borderedProminent)
+                        .disabled(scanner.batch.lines.isEmpty)
+                }
+                .padding([.horizontal, .bottom], 12)
             }
         }
         .background(.regularMaterial, in: UnevenRoundedRectangle(topLeadingRadius: 24, topTrailingRadius: 24))
@@ -89,7 +103,7 @@ struct ScannerDrawer: View {
                 .padding(.vertical, 32)
             } else {
                 List(scanner.batch.lines) { line in
-                    ScanBatchRow(line: line, quantity: Binding(
+                    ScanBatchRow(line: line, isRejected: rejectedLineIDs.contains(line.id), quantity: Binding(
                         get: { line.quantity },
                         set: { scanner.setQuantity($0, ofLine: line.id) }
                     )) {
@@ -107,6 +121,8 @@ struct ScannerDrawer: View {
 /// A line of the scan batch: its card, its finish, and the stepper of its quantity.
 private struct ScanBatchRow<Corrections: View>: View {
     let line: ScanBatchLine
+    /// The catalog refused this card on the last validation.
+    var isRejected = false
     @Binding var quantity: Int
     @ViewBuilder let corrections: Corrections
 
@@ -122,6 +138,11 @@ private struct ScanBatchRow<Corrections: View>: View {
                     Text("\(line.set) · #\(line.number) · \(line.language.rawValue)")
                         .font(.caption.monospaced())
                         .foregroundStyle(.secondary)
+                    if isRejected {
+                        Label("Hors catalogue", systemImage: "exclamationmark.triangle.fill")
+                            .font(.caption2.weight(.bold))
+                            .foregroundStyle(.red)
+                    }
                     if line.foil {
                         Text("Foil")
                             .font(.caption2.weight(.bold))
