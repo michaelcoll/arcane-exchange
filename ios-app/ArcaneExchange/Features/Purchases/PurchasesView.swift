@@ -116,8 +116,12 @@ struct PurchasesView: View {
             )
         case .content:
             List(model.paginator.items, id: \.id) { purchase in
-                row(purchase)
-                    .task { await model.paginator.loadMore(after: purchase) }
+                NavigationLink {
+                    PurchaseDetailView(purchase: purchase, api: api)
+                } label: {
+                    row(purchase)
+                }
+                .task { await model.paginator.loadMore(after: purchase) }
             }
             .refreshable { await model.reload() }
         }

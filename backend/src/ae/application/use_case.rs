@@ -12,7 +12,9 @@ use crate::domain::collection_entry::{CardEntries, CollectionEntryId};
 use crate::domain::collection_stats::CollectionStats;
 use crate::domain::pagination::{PageRequest, Paginated};
 use crate::domain::price::PriceHistoryEntry;
-use crate::domain::purchase::{Purchase, PurchaseEditRequest, PurchaseId, SealedProductRequest};
+use crate::domain::purchase::{
+    Purchase, PurchaseDetail, PurchaseEditRequest, PurchaseId, SealedProductRequest,
+};
 use crate::domain::rarity_trade_filter::{RarityTradeFilter, RarityTradeFilterRule};
 use crate::domain::set_name::{SetCode, SetName};
 use crate::domain::showcase::ShowcaseCard;
@@ -173,8 +175,33 @@ pub trait ListPurchasesUseCase: Send + Sync {
 #[async_trait]
 #[cfg_attr(test, automock)]
 pub trait GetPurchaseUseCase: Send + Sync {
-    /// `PurchaseNotFound` (`404`), also for a Purchase of another player.
-    async fn get_purchase(&self, user_id: UserId, id: PurchaseId) -> Result<Purchase, AppError>;
+    /// The Purchase with its content, each line with its current trend price. `PurchaseNotFound`
+    /// (`404`), also for a Purchase of another player.
+    async fn get_purchase(
+        &self,
+        user_id: UserId,
+        id: PurchaseId,
+    ) -> Result<PurchaseDetail, AppError>;
+}
+
+#[async_trait]
+#[cfg_attr(test, automock)]
+pub trait AttachCardToSealedProductUseCase: Send + Sync {
+    /// Adds `quantity` copies of a card to the collection like
+    /// [`AddCollectionEntryUseCase::add_collection_entry`], without purchase price, and adds the
+    /// card, its finish and the quantity to the content of the sealed product `purchase_id`: a
+    /// line already there for the same card and finish gets the quantity added. The entry and
+    /// the content are written together. Refused like the addition, plus `PurchaseNotFound`
+    /// (`404`) for an unknown Purchase, another player's, or one that is not a sealed product.
+    async fn attach_card(
+        &self,
+        user_id: &UserId,
+        purchase_id: PurchaseId,
+        card_id: CardId,
+        foil: bool,
+        quantity: i32,
+        binder_id: Option<BinderId>,
+    ) -> Result<CardEntries, AppError>;
 }
 
 #[async_trait]

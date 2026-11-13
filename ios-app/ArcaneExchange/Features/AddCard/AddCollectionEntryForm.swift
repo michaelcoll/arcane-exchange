@@ -44,9 +44,22 @@ struct AddCollectionEntryForm: View {
                     }
                 }
             }
+            Section {
+                Picker("Produit scellé", selection: $model.sealedProductID) {
+                    Text("Aucun").tag(String?.none)
+                    ForEach(model.sealedProducts, id: \.id) { product in
+                        Text(PurchaseCopy.choice(of: product)).tag(String?.some(product.id))
+                    }
+                }
+            } footer: {
+                Text("Les cartes rejoignent le contenu du produit, sans prix d'achat.")
+            }
         }
         .disabled(model.isWriting)
-        .task { await model.loadBinders() }
+        .task {
+            await model.loadBinders()
+            await model.loadSealedProducts()
+        }
         .navigationTitle("Exemplaire")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {

@@ -392,6 +392,12 @@ pub(crate) struct AddCollectionEntryRequest {
     #[serde(default)]
     #[ts(optional)]
     pub(crate) binder_id: Option<String>,
+    /// A sealed product of the player to attach the copies to: they are added without purchase
+    /// price and the card joins the content of the sealed product. A product that does not exist,
+    /// is another player's or is not a sealed product is refused with `purchase_not_found` (404).
+    #[serde(default)]
+    #[ts(optional)]
+    pub(crate) sealed_product_id: Option<String>,
 }
 
 #[derive(Deserialize, Debug, TS, ToSchema)]

@@ -1,6 +1,6 @@
 use super::dto::{
-    CreateSealedProductRequest, PaginatedPurchasesResponse, PurchaseResponse, PurchasesParams,
-    UpdatePurchaseRequest,
+    CreateSealedProductRequest, PaginatedPurchasesResponse, PurchaseDetailResponse,
+    PurchaseResponse, PurchasesParams, UpdatePurchaseRequest,
 };
 use crate::application::error::AppError;
 use crate::domain::pagination::PageRequest;
@@ -71,7 +71,7 @@ pub(crate) async fn list_purchases(
     path = "/purchases/{id}",
     params(("id" = uuid::Uuid, Path, description = "Purchase id")),
     responses(
-        (status = 200, description = "The Purchase", body = PurchaseResponse),
+        (status = 200, description = "The Purchase with its content: each line carries the current trend price of its card in its finish, when Cardmarket has one. Also the value of the content (lines without a trend price left out and counted) and its profitability against the amount, in cents and in percent. Nothing of this is stored", body = PurchaseDetailResponse),
         (status = 401, description = "Missing or invalid token"),
         (status = 404, description = "Purchase not found, or not owned by the caller; `code` is `purchase_not_found`"),
     ),
@@ -82,13 +82,13 @@ pub(crate) async fn get_purchase(
     AuthenticatedUser(user): AuthenticatedUser,
     State(state): State<AppState>,
     Path(id): Path<String>,
-) -> Result<axum::Json<PurchaseResponse>, AppError> {
-    let purchase = state
+) -> Result<axum::Json<PurchaseDetailResponse>, AppError> {
+    let detail = state
         .get_purchase_use_case
         .get_purchase(user.id, parse_purchase_id(&id)?)
         .await?;
 
-    Ok(axum::Json(purchase.into()))
+    Ok(axum::Json(detail.into()))
 }
 
 #[utoipa::path(

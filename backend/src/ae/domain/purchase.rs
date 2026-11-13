@@ -1,3 +1,5 @@
+use crate::domain::card::CardId;
+use crate::domain::card_image::CardImage;
 use crate::domain::error::FunctionalError;
 use crate::domain::set_name::{SetCode, SetName};
 use chrono::NaiveDate;
@@ -133,9 +135,124 @@ pub struct PurchaseChanges {
     pub name: Option<Option<String>>,
 }
 
+/// A line of the content of a Purchase: a card in a finish, with the quantity it brought.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct PurchaseContentLine {
+    pub card_id: CardId,
+    pub name: String,
+    pub image: Option<CardImage>,
+    pub foil: bool,
+    pub quantity: u32,
+    /// The current Cardmarket trend price of the card in its finish, in cents, read when the
+    /// Purchase is read and never stored. `None` when Cardmarket has none.
+    pub trend_cents: Option<u32>,
+}
+
+/// A Purchase with what it contained.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct PurchaseDetail {
+    pub purchase: Purchase,
+    pub content: Vec<PurchaseContentLine>,
+}
+
+impl PurchaseDetail {
+    /// The sum of the quantities times the trend price of the lines that have one, in cents.
+    pub fn content_value_cents(&self) -> u64 {
+        self.content
+            .iter()
+            .filter_map(|line| {
+                line.trend_cents
+                    .map(|trend| u64::from(trend) * u64::from(line.quantity))
+            })
+            .sum()
+    }
+
+    /// How many lines have no trend price, so are left out of the value.
+    pub fn lines_without_trend(&self) -> u32 {
+        self.content
+            .iter()
+            .filter(|line| line.trend_cents.is_none())
+            .count() as u32
+    }
+
+    /// The Profitability of the Purchase in cents: the value of the content minus the amount of
+    /// the Purchase, positive when the content is worth more than was paid.
+    pub fn profitability_cents(&self) -> i64 {
+        self.content_value_cents() as i64 - i64::from(self.purchase.amount.cents())
+    }
+
+    /// [`Self::profitability_cents`] as a percentage of the amount of the Purchase.
+    pub fn profitability_percent(&self) -> f64 {
+        self.profitability_cents() as f64 * 100.0 / f64::from(self.purchase.amount.cents())
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::domain::language_code::LanguageCode;
+    use uuid::Uuid;
+
+    fn line(quantity: u32, trend_cents: Option<u32>) -> PurchaseContentLine {
+        PurchaseContentLine {
+            card_id: CardId::new("FDN", "1", LanguageCode::EN),
+            name: "Card".to_string(),
+            image: None,
+            foil: false,
+            quantity,
+            trend_cents,
+        }
+    }
+
+    fn detail(amount: i32, content: Vec<PurchaseContentLine>) -> PurchaseDetail {
+        PurchaseDetail {
+            purchase: Purchase {
+                id: PurchaseId(Uuid::nil()),
+                kind: PurchaseKind::SealedProduct {
+                    product_type: SealedProductType::Booster,
+                    name: None,
+                    set: SetName {
+                        code: SetCode::new("FDN"),
+                        name: "Foundations".to_string(),
+                    },
+                },
+                amount: PurchaseAmount::try_new(amount).unwrap(),
+                purchased_on: NaiveDate::from_ymd_opt(2026, 11, 13).unwrap(),
+            },
+            content,
+        }
+    }
+
+    #[test]
+    fn value_sums_quantity_times_trend_and_skips_lines_without_trend() {
+        let detail = detail(
+            500,
+            vec![line(2, Some(100)), line(1, Some(350)), line(3, None)],
+        );
+
+        assert_eq!(detail.content_value_cents(), 550);
+        assert_eq!(detail.lines_without_trend(), 1);
+        assert_eq!(detail.profitability_cents(), 50);
+        assert_eq!(detail.profitability_percent(), 10.0);
+    }
+
+    #[test]
+    fn profitability_is_negative_when_the_content_is_worth_less_than_the_amount() {
+        let detail = detail(400, vec![line(1, Some(100))]);
+
+        assert_eq!(detail.profitability_cents(), -300);
+        assert_eq!(detail.profitability_percent(), -75.0);
+    }
+
+    #[test]
+    fn an_empty_content_is_worth_nothing() {
+        let detail = detail(400, vec![]);
+
+        assert_eq!(detail.content_value_cents(), 0);
+        assert_eq!(detail.lines_without_trend(), 0);
+        assert_eq!(detail.profitability_cents(), -400);
+        assert_eq!(detail.profitability_percent(), -100.0);
+    }
 
     #[test]
     fn amount_must_be_strictly_positive() {

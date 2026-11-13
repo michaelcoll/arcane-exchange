@@ -40,8 +40,9 @@ use crate::application::use_case::{
     MockUpdateCollectionEntryUseCase,
 };
 use crate::application::use_case::{
-    MockCreateSealedProductUseCase, MockDeletePurchaseUseCase, MockGetPurchaseUseCase,
-    MockListPurchasesUseCase, MockUpdatePurchaseUseCase,
+    MockAttachCardToSealedProductUseCase, MockCreateSealedProductUseCase,
+    MockDeletePurchaseUseCase, MockGetPurchaseUseCase, MockListPurchasesUseCase,
+    MockUpdatePurchaseUseCase,
 };
 use crate::domain::card::CardInfo;
 use crate::domain::card_import::CardImportId;
@@ -237,6 +238,9 @@ impl AppState {
             delete_binder_use_case: Arc::new(MockDeleteBinderUseCase::new()),
             list_purchases_use_case: Arc::new(MockListPurchasesUseCase::new()),
             get_purchase_use_case: Arc::new(MockGetPurchaseUseCase::new()),
+            attach_card_to_sealed_product_use_case: Arc::new(
+                MockAttachCardToSealedProductUseCase::new(),
+            ),
             create_sealed_product_use_case: Arc::new(MockCreateSealedProductUseCase::new()),
             update_purchase_use_case: Arc::new(MockUpdatePurchaseUseCase::new()),
             delete_purchase_use_case: Arc::new(MockDeletePurchaseUseCase::new()),

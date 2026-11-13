@@ -1275,6 +1275,89 @@ mod entries {
         assert_eq!(response.status(), StatusCode::CREATED);
     }
 
+    const SEALED_PRODUCT_ID: &str = "7b6c1f0e-3c6d-4d1a-9a7a-1f4f3c7d2e10";
+
+    fn attach_app(
+        mock: crate::application::use_case::MockAttachCardToSealedProductUseCase,
+    ) -> axum::Router {
+        create_router(AppState {
+            attach_card_to_sealed_product_use_case: Arc::new(mock),
+            // The plain addition must not be called: its mock has no expectation.
+            ..AppState::for_testing()
+        })
+    }
+
+    fn sealed_product_body(sealed_product_id: &str) -> serde_json::Value {
+        json!({
+            "set_code": "mkm",
+            "collector_number": "H13",
+            "language_code": "JA",
+            "foil": true,
+            "quantity": 4,
+            "binder_id": Uuid::nil().to_string(),
+            "sealed_product_id": sealed_product_id,
+        })
+    }
+
+    #[tokio::test]
+    async fn post_with_a_sealed_product_attaches_the_copies_to_it() {
+        let mut mock = crate::application::use_case::MockAttachCardToSealedProductUseCase::new();
+        mock.expect_attach_card()
+            .times(1)
+            .withf(|user_id, purchase_id, card_id, foil, quantity, binder_id| {
+                user_id.as_str() == "test-user-id"
+                    && purchase_id.0.to_string() == SEALED_PRODUCT_ID
+                    && card_id.set_code.to_string() == "MKM"
+                    && *foil
+                    && *quantity == 4
+                    && binder_id.map(|id| id.0) == Some(Uuid::nil())
+            })
+            .returning(|_, _, _, _, _, _| Box::pin(async { Ok(card_entries()) }));
+
+        let response = authed_json(
+            attach_app(mock),
+            Method::POST,
+            "/collection/entries",
+            sealed_product_body(SEALED_PRODUCT_ID),
+        )
+        .await;
+
+        assert_eq!(response.status(), StatusCode::CREATED);
+        let body = json_of(response).await;
+        assert_eq!(body["entries"].as_array().unwrap().len(), 2);
+    }
+
+    #[tokio::test]
+    async fn post_with_a_sealed_product_that_is_not_the_players_is_not_found() {
+        let mut mock = crate::application::use_case::MockAttachCardToSealedProductUseCase::new();
+        mock.expect_attach_card().returning(|_, _, _, _, _, _| {
+            Box::pin(async { Err(FunctionalError::PurchaseNotFound.into()) })
+        });
+
+        let response = authed_json(
+            attach_app(mock),
+            Method::POST,
+            "/collection/entries",
+            sealed_product_body(SEALED_PRODUCT_ID),
+        )
+        .await;
+
+        assert_error(response, StatusCode::NOT_FOUND, "purchase_not_found").await;
+    }
+
+    #[tokio::test]
+    async fn post_treats_a_sealed_product_identifier_that_is_not_a_uuid_as_unknown() {
+        let response = authed_json(
+            create_router(AppState::for_testing()),
+            Method::POST,
+            "/collection/entries",
+            sealed_product_body("not-a-uuid"),
+        )
+        .await;
+
+        assert_error(response, StatusCode::NOT_FOUND, "purchase_not_found").await;
+    }
+
     #[tokio::test]
     async fn post_maps_each_refusal_to_its_status_and_code() {
         let cases = [

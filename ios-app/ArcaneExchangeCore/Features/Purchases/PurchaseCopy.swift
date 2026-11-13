@@ -33,6 +33,32 @@ package enum PurchaseCopy {
         let date = PurchaseDate.display(purchase.purchased_on)
         return purchase.name == nil ? date : "\(kind(of: purchase)) · \(date)"
     }
+
+    /// How a sealed product reads in a list to pick from: its name, else "Type · Set", then its
+    /// date.
+    package static func choice(of purchase: Purchase) -> String {
+        "\(title(of: purchase)) · \(PurchaseDate.display(purchase.purchased_on))"
+    }
+
+    /// The profitability, the value of the content minus the price, signed: "+8,50 € (+12 %)".
+    package static func profitability(cents: Int, percent: Double) -> String {
+        let rounded = Int(percent.rounded())
+        return "\(sign(of: cents))\(Price.euros(cents: abs(cents))) (\(sign(of: rounded))\(abs(rounded)) %)"
+    }
+
+    /// "2 cartes sans prix de tendance, exclues de la valeur"; nil when none is left out.
+    package static func withoutTrend(_ count: Int) -> String? {
+        switch count {
+        case ...0: nil
+        case 1: "1 carte sans prix de tendance, exclue de la valeur"
+        default: "\(count) cartes sans prix de tendance, exclues de la valeur"
+        }
+    }
+
+    /// A real minus sign, like the web client; a plus only on a gain, nothing on zero.
+    private static func sign(of value: Int) -> String {
+        value < 0 ? "−" : (value > 0 ? "+" : "")
+    }
 }
 
 /// The day of a purchase: `YYYY-MM-DD` on the wire, in the device's calendar (the app is only

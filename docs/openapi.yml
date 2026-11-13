@@ -593,7 +593,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
         '404':
-          description: No catalog card has this set and collector number (`card_not_in_catalog`), or the binder is not one of the caller's (`binder_not_found`)
+          description: No catalog card has this set and collector number (`card_not_in_catalog`), the binder is not one of the caller's (`binder_not_found`), or the sealed product does not exist, is another player's or is not a sealed product (`purchase_not_found`)
           content:
             application/json:
               schema:
@@ -1240,11 +1240,11 @@ paths:
           format: uuid
       responses:
         '200':
-          description: The Purchase
+          description: 'The Purchase with its content: each line carries the current trend price of its card in its finish, when Cardmarket has one. Also the value of the content (lines without a trend price left out and counted) and its gap with the amount, in cents and in percent. Nothing of this is stored'
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/PurchaseResponse'
+                $ref: '#/components/schemas/PurchaseDetailResponse'
         '401':
           description: Missing or invalid token
           content:
@@ -2048,6 +2048,14 @@ components:
           description: |-
             Copies added, 1 to 255. Signed so an out-of-range value fails with `invalid_quantity`
             (400) instead of a JSON extractor rejection.
+        sealed_product_id:
+          type:
+          - string
+          - 'null'
+          description: |-
+            A sealed product of the player to attach the copies to: they are added without purchase
+            price and the card joins the content of the sealed product. A product that does not exist,
+            is another player's or is not a sealed product is refused with `purchase_not_found` (404).
         set_code:
           type: string
           description: Set code of the catalog card.
@@ -2700,6 +2708,83 @@ components:
         trend:
           type: integer
           format: int64
+    PurchaseContentLineResponse:
+      type: object
+      description: A card of the content of a Purchase, in a finish.
+      required:
+      - set_code
+      - collector_number
+      - language_code
+      - name
+      - foil
+      - quantity
+      properties:
+        collector_number:
+          type: string
+        foil:
+          type: boolean
+        image_url:
+          type:
+          - string
+          - 'null'
+          description: Front image, `null` while it is pending.
+        language_code:
+          type: string
+        name:
+          type: string
+        quantity:
+          type: integer
+          format: int32
+          description: Copies of this card and finish the Purchase brought.
+          minimum: 0
+        set_code:
+          type: string
+        trend_cents:
+          type:
+          - integer
+          - 'null'
+          format: int32
+          description: |-
+            Current Cardmarket trend price of the card in its finish, in cents; `null` when
+            Cardmarket has none. Read on each request, never stored with the Purchase.
+          minimum: 0
+    PurchaseDetailResponse:
+      type: object
+      description: A Purchase with its content and its profitability.
+      required:
+      - purchase
+      - content
+      - content_value_cents
+      - lines_without_trend
+      - gap_cents
+      - gap_percent
+      properties:
+        content:
+          type: array
+          items:
+            $ref: '#/components/schemas/PurchaseContentLineResponse'
+        content_value_cents:
+          type: integer
+          format: int64
+          description: Sum of the quantities times the trend price of the lines that have one, in cents.
+          minimum: 0
+        gap_cents:
+          type: integer
+          format: int64
+          description: |-
+            Value of the content minus the amount of the Purchase, in cents: negative when the content
+            is worth less than was paid.
+        gap_percent:
+          type: number
+          format: double
+          description: The gap as a percentage of the amount of the Purchase.
+        lines_without_trend:
+          type: integer
+          format: int32
+          description: Lines left out of the value because they have no trend price.
+          minimum: 0
+        purchase:
+          $ref: '#/components/schemas/PurchaseResponse'
     PurchaseKindResponse:
       type: string
       description: What a Purchase bought.

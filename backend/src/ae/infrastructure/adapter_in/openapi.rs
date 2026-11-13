@@ -15,8 +15,9 @@ use super::collection::dto::{
 };
 use super::maintenance::dto::EnqueueResponse;
 use super::purchase::dto::{
-    CreateSealedProductRequest, PaginatedPurchasesResponse, PurchaseKindResponse, PurchaseResponse,
-    SealedProductTypeParam, UpdatePurchaseRequest,
+    CreateSealedProductRequest, PaginatedPurchasesResponse, PurchaseContentLineResponse,
+    PurchaseDetailResponse, PurchaseKindResponse, PurchaseResponse, SealedProductTypeParam,
+    UpdatePurchaseRequest,
 };
 use super::stats::dto::StatsResponse;
 use super::trade::dto::{
@@ -121,6 +122,8 @@ use utoipa::OpenApi;
         BinderNameRequest,
         PurchaseResponse,
         PurchaseKindResponse,
+        PurchaseDetailResponse,
+        PurchaseContentLineResponse,
         SealedProductTypeParam,
         PaginatedPurchasesResponse,
         CreateSealedProductRequest,

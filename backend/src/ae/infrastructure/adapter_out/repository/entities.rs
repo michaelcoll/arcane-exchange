@@ -74,7 +74,7 @@ pub(crate) fn from_db_rarity(s: &str) -> Result<RarityCode, InfraError> {
     RarityCode::try_new(s).map_err(|_| invalid_db_value("rarity code", s))
 }
 
-fn card_id_from_db(
+pub(super) fn card_id_from_db(
     set_code: &str,
     collector_number: String,
     language_code: &str,
@@ -89,7 +89,7 @@ fn card_id_from_db(
 
 /// The image of a card from its `image_source` and `image_has_back` columns, `None` while it is
 /// pending.
-fn card_image_from_db(
+pub(super) fn card_image_from_db(
     image_source: Option<&str>,
     image_has_back: bool,
 ) -> Result<Option<CardImage>, InfraError> {

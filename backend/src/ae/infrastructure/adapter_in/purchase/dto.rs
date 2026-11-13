@@ -1,7 +1,9 @@
 use crate::domain::purchase::{
-    Purchase, PurchaseEditRequest, PurchaseKind, SealedProductRequest, SealedProductType,
+    Purchase, PurchaseContentLine, PurchaseDetail, PurchaseEditRequest, PurchaseKind,
+    SealedProductRequest, SealedProductType,
 };
 use crate::domain::set_name::SetCode;
+use crate::infrastructure::adapter_in::collection::dto::card_image_urls;
 use crate::infrastructure::adapter_in::{SetInfoResponse, default_page_size};
 use chrono::NaiveDate;
 use serde::{Deserialize, Serialize};
@@ -89,6 +91,72 @@ impl From<Purchase> for PurchaseResponse {
             product_type: Some(product_type.into()),
             name,
             set: Some(set.into()),
+        }
+    }
+}
+
+/// A card of the content of a Purchase, in a finish.
+#[derive(Debug, Serialize, TS, ToSchema)]
+#[serde(rename = "PurchaseContentLine")]
+#[ts(export)]
+pub struct PurchaseContentLineResponse {
+    pub set_code: String,
+    pub collector_number: String,
+    pub language_code: String,
+    pub name: String,
+    /// Front image, `null` while it is pending.
+    pub image_url: Option<String>,
+    pub foil: bool,
+    /// Copies of this card and finish the Purchase brought.
+    pub quantity: u32,
+    /// Current Cardmarket trend price of the card in its finish, in cents; `null` when
+    /// Cardmarket has none. Read on each request, never stored with the Purchase.
+    pub trend_cents: Option<u32>,
+}
+
+impl From<PurchaseContentLine> for PurchaseContentLineResponse {
+    fn from(line: PurchaseContentLine) -> Self {
+        let (image_url, _) = card_image_urls(&line.card_id, line.image);
+        Self {
+            set_code: line.card_id.set_code.to_string(),
+            collector_number: line.card_id.collector_number,
+            language_code: line.card_id.language_code.to_string(),
+            name: line.name,
+            image_url,
+            foil: line.foil,
+            quantity: line.quantity,
+            trend_cents: line.trend_cents,
+        }
+    }
+}
+
+/// A Purchase with its content and its profitability.
+#[derive(Debug, Serialize, TS, ToSchema)]
+#[serde(rename = "PurchaseDetail")]
+#[ts(export)]
+pub struct PurchaseDetailResponse {
+    pub purchase: PurchaseResponse,
+    pub content: Vec<PurchaseContentLineResponse>,
+    /// Sum of the quantities times the trend price of the lines that have one, in cents.
+    pub content_value_cents: u64,
+    /// Lines left out of the value because they have no trend price.
+    pub lines_without_trend: u32,
+    /// Profitability: the value of the content minus the amount of the Purchase, in cents,
+    /// negative when the content is worth less than was paid.
+    pub profitability_cents: i64,
+    /// The profitability as a percentage of the amount of the Purchase.
+    pub profitability_percent: f64,
+}
+
+impl From<PurchaseDetail> for PurchaseDetailResponse {
+    fn from(detail: PurchaseDetail) -> Self {
+        Self {
+            content_value_cents: detail.content_value_cents(),
+            lines_without_trend: detail.lines_without_trend(),
+            profitability_cents: detail.profitability_cents(),
+            profitability_percent: detail.profitability_percent(),
+            purchase: detail.purchase.into(),
+            content: detail.content.into_iter().map(Into::into).collect(),
         }
     }
 }

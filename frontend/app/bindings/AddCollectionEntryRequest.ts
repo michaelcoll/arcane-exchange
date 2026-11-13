@@ -26,4 +26,10 @@ export type AddCollectionEntryRequest = {
    * Binder to store the copies in; absent for none.
    */
   binder_id?: string;
+  /**
+   * A sealed product of the player to attach the copies to: they are added without purchase
+   * price and the card joins the content of the sealed product. A product that does not exist,
+   * is another player's or is not a sealed product is refused with `purchase_not_found` (404).
+   */
+  sealed_product_id?: string;
 };

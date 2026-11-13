@@ -3237,7 +3237,7 @@ public enum Operations {
                     self.body = body
                 }
             }
-            /// No catalog card has this set and collector number (`card_not_in_catalog`), or the binder is not one of the caller's (`binder_not_found`)
+            /// No catalog card has this set and collector number (`card_not_in_catalog`), the binder is not one of the caller's (`binder_not_found`), or the sealed product does not exist, is another player's or is not a sealed product (`purchase_not_found`)
             ///
             /// - Remark: Generated from `#/paths//collection/entries/post(add_collection_entry)/responses/404`.
             ///
@@ -7803,12 +7803,12 @@ public enum Operations {
                 /// - Remark: Generated from `#/paths/purchases/{id}/GET/responses/200/content`.
                 @frozen public enum Body: Sendable, Hashable {
                     /// - Remark: Generated from `#/paths/purchases/{id}/GET/responses/200/content/application\/json`.
-                    case json(Components.Schemas.PurchaseResponse)
+                    case json(Components.Schemas.PurchaseDetailResponse)
                     /// The associated value of the enum case if `self` is `.json`.
                     ///
                     /// - Throws: An error if `self` is not `.json`.
                     /// - SeeAlso: `.json`.
-                    public var json: Components.Schemas.PurchaseResponse {
+                    public var json: Components.Schemas.PurchaseDetailResponse {
                         get throws {
                             switch self {
                             case let .json(body):
@@ -7827,7 +7827,7 @@ public enum Operations {
                     self.body = body
                 }
             }
-            /// The Purchase
+            /// The Purchase with its content: each line carries the current trend price of its card in its finish, when Cardmarket has one. Also the value of the content (lines without a trend price left out and counted) and its gap with the amount, in cents and in percent. Nothing of this is stored
             ///
             /// - Remark: Generated from `#/paths//purchases/{id}/get(get_purchase)/responses/200`.
             ///
