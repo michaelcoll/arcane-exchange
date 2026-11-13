@@ -1,15 +1,16 @@
 import ArcaneExchangeCore
 import SwiftUI
 
-/// The Scanner tab: the camera, full screen, and the card it recognises. Nothing is added to a
-/// scan batch yet.
+/// The Scanner tab: the camera, full screen, and the scan batch it fills, shown in the drawer.
 struct ScannerView: View {
     @State private var scanner: ScannerViewModel
+    @State private var isDrawerOpen = false
+    @State private var isConfirmingClear = false
     private let index: ScanIndexModel
 
     init(index: ScanIndexModel) {
         self.index = index
-        _scanner = State(initialValue: ScannerViewModel(index: index))
+        _scanner = State(initialValue: ScannerViewModel(index: index, storage: DeviceScanBatchStorage()))
     }
 
     var body: some View {
@@ -27,6 +28,43 @@ struct ScannerView: View {
         }
         .onDisappear { scanner.stop() }
         .sensoryFeedback(.success, trigger: scanner.recognitionCount)
+        // Nothing is added while the list or the confirmation is open.
+        .onChange(of: isDrawerOpen || isConfirmingClear) { _, paused in scanner.isPaused = paused }
+        .alert("Vider le lot ?", isPresented: $isConfirmingClear) {
+            Button("Annuler", role: .cancel) {}
+            Button("Vider", role: .destructive) { scanner.clear() }
+        } message: {
+            Text("Les cartes scannées seront retirées du lot. Ta collection n'est pas modifiée.")
+        }
+    }
+
+    /// The Foil switch, and the toast offering to undo the card just added.
+    private var topBar: some View {
+        VStack(spacing: 10) {
+            HStack {
+                Spacer()
+                Toggle(isOn: $scanner.foil) {
+                    Label("Foil", systemImage: "sparkles")
+                }
+                .toggleStyle(.button)
+                .tint(Palette.secondary)
+                .background(.regularMaterial, in: Capsule())
+                .accessibilityHint("Les cartes lues ensuite sont enregistrées en foil")
+            }
+            if let card = scanner.undoOffer {
+                UndoToast(card: card) { scanner.undoLastAdd() }
+                    .transition(.move(edge: .top).combined(with: .opacity))
+            }
+        }
+        .padding()
+        .animation(.snappy, value: scanner.undoOffer)
+        // A few seconds after each addition, the offer goes away.
+        .task(id: scanner.recognitionCount) {
+            try? await Task.sleep(for: .seconds(3))
+            if !Task.isCancelled {
+                scanner.dismissUndoOffer()
+            }
+        }
     }
 
     @ViewBuilder private var content: some View {
@@ -55,9 +93,14 @@ struct ScannerView: View {
                 CameraPreview(session: scanner.camera.session)
                     .ignoresSafeArea()
                 CardOutline()
-                ScannerResultCard(card: scanner.lastRecognised)
-                    .padding()
+                if isDrawerOpen {
+                    Color.black.opacity(0.4)
+                        .ignoresSafeArea()
+                        .onTapGesture { withAnimation(.snappy) { isDrawerOpen = false } }
+                }
+                ScannerDrawer(scanner: scanner, isOpen: $isDrawerOpen) { isConfirmingClear = true }
             }
+            .overlay(alignment: .top) { topBar }
         case .denied:
             ContentUnavailableView {
                 Label("Caméra refusée", systemImage: "camera.fill")
@@ -80,6 +123,28 @@ struct ScannerView: View {
             )
             .environment(\.colorScheme, .dark)
         }
+    }
+}
+
+/// The toast that follows each addition: the card added, and the way to take it off.
+private struct UndoToast: View {
+    let card: RecognisedCard
+    let onUndo: () -> Void
+
+    var body: some View {
+        HStack(spacing: 10) {
+            Image(systemName: "checkmark.circle.fill")
+                .foregroundStyle(Palette.primary)
+            Text(card.displayName)
+                .font(.subheadline.weight(.semibold))
+                .lineLimit(1)
+            Spacer(minLength: 0)
+            Button("Annuler", action: onUndo)
+                .font(.subheadline.weight(.semibold))
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 10)
+        .background(.regularMaterial, in: Capsule())
     }
 }
 

@@ -132,6 +132,15 @@ final class FakeAPI: APIProtocol, @unchecked Sendable {
         return try await onGetTrendPrices(input)
     }
 
+    var onValidateScanBatch: (Operations.validate_scan_batch.Input) async throws -> Operations.validate_scan_batch.Output = { _ in
+        throw NotStubbed(operation: "validate_scan_batch")
+    }
+
+    func validate_scan_batch(_ input: Operations.validate_scan_batch.Input) async throws -> Operations.validate_scan_batch.Output {
+        record("validate_scan_batch")
+        return try await onValidateScanBatch(input)
+    }
+
     var onGetScanIndex:(Operations.get_scan_index.Input) async throws -> Operations.get_scan_index.Output = { _ in
         throw NotStubbed(operation: "get_scan_index")
     }

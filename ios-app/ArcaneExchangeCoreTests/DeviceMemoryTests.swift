@@ -83,6 +83,7 @@ struct DeviceMemoryTests {
             "collection.filters",
             "home_widget_snapshot.CollectionWidget",
             "home_widget_snapshot.TradesWidget",
+            "scanner.batch",
             "search.recentCardQueries",
             "search.recentPlayers",
             "search.sort.player",
