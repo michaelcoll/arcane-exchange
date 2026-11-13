@@ -17,6 +17,7 @@ pub mod common_repository_tests;
 pub mod entities;
 pub mod purchase_repository_adapter;
 pub mod receiving_binder_repository_adapter;
+mod sealed_product_content;
 pub mod set_names_repository_adapter;
 pub mod showcase_repository_adapter;
 pub mod stats_repository_adapter;

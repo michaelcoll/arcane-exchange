@@ -1,0 +1,19 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        INSERT INTO purchase_content\n            (purchase_id, set_code, collector_number, language_code, foil, quantity)\n        VALUES ($1, $2, $3, $4, $5, $6)\n        ON CONFLICT (purchase_id, set_code, collector_number, language_code, foil)\n            DO UPDATE SET quantity = purchase_content.quantity + EXCLUDED.quantity\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Varchar",
+        "Varchar",
+        "Varchar",
+        "Bool",
+        "Int4"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "398077b70dc555cb9001b358d7731a27fee7e8257bd21c5c28dbafa5f2f8ffe5"
+}

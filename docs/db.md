@@ -120,6 +120,12 @@ erDiagram
         boolean foil PK
         integer quantity "not null"
     }
+    scan_batch {
+        character_varying(50) user_id PK, FK
+        uuid id PK
+        timestamp_with_time_zone validated_at "not null, default: now()"
+        integer copies_added "not null"
+    }
     set_name {
         character_varying(6) set_code PK
         character_varying(255) name "not null"
@@ -181,6 +187,7 @@ erDiagram
     users ||--o{ purchase : "user_id"
     purchase ||--o{ purchase_content : "purchase_id"
     card ||--o{ purchase_content : "set_code, collector_number, language_code"
+    users ||--o{ scan_batch : "user_id"
     users ||--o{ trade : "initiator_user_id"
     users ||--o{ trade : "respondent_user_id"
     card ||--o{ trade_card : "set_code, collector_number, language_code"

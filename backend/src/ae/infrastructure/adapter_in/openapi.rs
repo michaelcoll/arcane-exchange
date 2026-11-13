@@ -16,6 +16,9 @@ use super::collection::dto::{
     PriceGuideResponse, RarityCodeParam, ReservedQuantityResponse, SortByParam, SortDirParam,
     UpdateCollectionEntryRequest,
 };
+use super::collection::dto::{
+    ScanBatchLineRequest, ScanBatchValidatedResponse, ValidateScanBatchRequest,
+};
 use super::maintenance::dto::EnqueueResponse;
 use super::purchase::dto::{
     CreateSealedProductRequest, PaginatedPurchasesResponse, PurchaseContentLineResponse,
@@ -34,7 +37,7 @@ use super::trade_settings::dto::{
     SetReceivingBinderRequest, SetVisibilityRequest, TradeBindersResponse, VisibilityResponse,
 };
 use super::user::dto::UserProfileResponse;
-use super::{ErrorResponse, SetInfoResponse};
+use super::{ErrorResponse, SetInfoResponse, UnknownCardResponse};
 use utoipa::OpenApi;
 
 #[derive(OpenApi)]
@@ -48,6 +51,7 @@ use utoipa::OpenApi;
         super::collection::controller::get_collection_price_history,
         super::collection::controller::get_collection_entries,
         super::collection::controller::add_collection_entry,
+        super::collection::controller::validate_scan_batch,
         super::collection::controller::update_collection_entry,
         super::collection::controller::move_collection_entry,
         super::collection::controller::remove_collection_entry,
@@ -117,6 +121,9 @@ use utoipa::OpenApi;
         EntryBinderResponse,
         ReservedQuantityResponse,
         AddCollectionEntryRequest,
+        ValidateScanBatchRequest,
+        ScanBatchLineRequest,
+        ScanBatchValidatedResponse,
         UpdateCollectionEntryRequest,
         CatalogCardResponse,
         PaginatedCatalogResponse,
@@ -166,6 +173,7 @@ use utoipa::OpenApi;
         SetReceivingBinderRequest,
         UserProfileResponse,
         ErrorResponse,
+        UnknownCardResponse,
     )),
     modifiers(&SecurityAddon, &ErrorResponseAddon),
     info(

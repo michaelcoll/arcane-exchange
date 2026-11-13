@@ -8,8 +8,12 @@ use crate::domain::collection_entry::{
 };
 use crate::domain::error::FunctionalError;
 use crate::domain::language_code::LanguageCode;
-use crate::domain::purchase::NewSingleCardPurchase;
+use crate::domain::purchase::{NewSingleCardPurchase, PurchaseId};
+use crate::domain::scan_batch::{ScanBatchCopies, ScanBatchId, ScanBatchOutcome};
 use crate::domain::user::UserId;
+use crate::infrastructure::adapter_out::repository::sealed_product_content::{
+    add_content_line, ensure_sealed_product, lock_sealed_product,
+};
 use async_trait::async_trait;
 use chrono::{DateTime, Utc};
 use sqlx::{PgConnection, Pool, Postgres};
@@ -119,6 +123,25 @@ async fn ensure_binder_owned(
     } else {
         Err(FunctionalError::BinderNotFound.into())
     }
+}
+
+/// What the first validation of the scan batch answered, `None` when it was never recorded.
+async fn recorded_scan_batch(
+    conn: &mut PgConnection,
+    user_id: &UserId,
+    batch_id: ScanBatchId,
+) -> Result<Option<ScanBatchOutcome>, sqlx::Error> {
+    let copies_added = sqlx::query_scalar!(
+        "SELECT copies_added FROM scan_batch WHERE user_id = $1 AND id = $2",
+        user_id.as_str(),
+        batch_id.0,
+    )
+    .fetch_optional(conn)
+    .await?;
+    Ok(copies_added.map(|copies_added| ScanBatchOutcome {
+        copies_added: u32::try_from(copies_added).unwrap_or_default(),
+        already_validated: true,
+    }))
 }
 
 /// The three parts of a card's identity, as the columns hold them.
@@ -489,6 +512,110 @@ impl CollectionEntryRepository for CollectionEntryRepositoryAdapter {
         Ok(entries)
     }
 
+    #[tracing::instrument(
+        name = "collection_entry_repo.find_scan_batch",
+        skip_all,
+        fields(sentry.op = "db")
+    )]
+    async fn find_scan_batch(
+        &self,
+        user_id: &UserId,
+        batch_id: ScanBatchId,
+    ) -> Result<Option<ScanBatchOutcome>, AppError> {
+        let mut conn = self.pool.acquire().await?;
+        Ok(recorded_scan_batch(&mut conn, user_id, batch_id).await?)
+    }
+
+    #[tracing::instrument(
+        name = "collection_entry_repo.ensure_scan_batch_destination",
+        skip_all,
+        fields(sentry.op = "db")
+    )]
+    async fn ensure_scan_batch_destination(
+        &self,
+        user_id: &UserId,
+        binder_id: Option<BinderId>,
+        sealed_product_id: Option<PurchaseId>,
+    ) -> Result<(), AppError> {
+        let mut conn = self.pool.acquire().await?;
+        if let Some(binder_id) = binder_id {
+            ensure_binder_owned(&mut conn, user_id, binder_id).await?;
+        }
+        if let Some(sealed_product_id) = sealed_product_id {
+            ensure_sealed_product(&mut conn, user_id, sealed_product_id).await?;
+        }
+        Ok(())
+    }
+
+    #[tracing::instrument(
+        name = "collection_entry_repo.add_scan_batch",
+        skip_all,
+        fields(sentry.op = "db")
+    )]
+    async fn add_scan_batch(
+        &self,
+        user_id: &UserId,
+        batch_id: ScanBatchId,
+        binder_id: Option<BinderId>,
+        sealed_product_id: Option<PurchaseId>,
+        lines: &[ScanBatchCopies],
+    ) -> Result<ScanBatchOutcome, AppError> {
+        let mut tx = self.pool.begin().await?;
+
+        let copies_added: u32 = lines.iter().map(|line| u32::from(line.quantity)).sum();
+        // A concurrent send of the same batch waits here for the first one to commit.
+        let recorded = sqlx::query!(
+            "INSERT INTO scan_batch (user_id, id, copies_added) VALUES ($1, $2, $3)
+             ON CONFLICT DO NOTHING",
+            user_id.as_str(),
+            batch_id.0,
+            i32::try_from(copies_added).map_err(|_| FunctionalError::InvalidQuantity)?,
+        )
+        .execute(&mut *tx)
+        .await?;
+        if recorded.rows_affected() == 0 {
+            return recorded_scan_batch(&mut tx, user_id, batch_id)
+                .await?
+                .ok_or_else(|| {
+                    AppError::Infra(InfraError::RepositoryError(
+                        "a recorded scan batch vanished".to_string(),
+                    ))
+                });
+        }
+
+        if let Some(sealed_product_id) = sealed_product_id {
+            lock_sealed_product(&mut tx, user_id, sealed_product_id).await?;
+        }
+        for line in lines {
+            add_copies(
+                &mut tx,
+                user_id,
+                &line.card_id,
+                line.foil,
+                line.quantity,
+                binder_id,
+                None,
+            )
+            .await?;
+            if let Some(sealed_product_id) = sealed_product_id {
+                add_content_line(
+                    &mut tx,
+                    sealed_product_id,
+                    &line.card_id,
+                    line.foil,
+                    line.quantity,
+                )
+                .await?;
+            }
+        }
+
+        tx.commit().await?;
+        Ok(ScanBatchOutcome {
+            copies_added,
+            already_validated: false,
+        })
+    }
+
     #[tracing::instrument(name = "collection_entry_repo.update", skip_all, fields(sentry.op = "db"))]
     async fn update(
         &self,
@@ -736,6 +863,399 @@ mod tests {
             foil: Some(foil),
             ..EntryUpdate::default()
         }
+    }
+
+    // ---- add_scan_batch ----
+
+    fn batch_id() -> ScanBatchId {
+        ScanBatchId(Uuid::from_u128(42))
+    }
+
+    fn copies(card_id: CardId, foil: bool, quantity: u8) -> ScanBatchCopies {
+        ScanBatchCopies {
+            card_id,
+            foil,
+            quantity,
+        }
+    }
+
+    async fn insert_purchase(pool: &PgPool, user_id: &str, kind: &str) -> PurchaseId {
+        let id = if kind == "sealed_product" {
+            sqlx::query_scalar(
+                r#"INSERT INTO purchase
+                       (user_id, kind, amount_cents, purchased_on, product_type, set_code)
+                   VALUES ($1, 'sealed_product', 499, '2026-11-13', 'BOOSTER', 'TST')
+                   RETURNING id"#,
+            )
+        } else {
+            sqlx::query_scalar(
+                r#"INSERT INTO purchase (user_id, kind, amount_cents, purchased_on)
+                   VALUES ($1, 'single_card', 200, '2026-11-13') RETURNING id"#,
+            )
+        }
+        .bind(user_id)
+        .fetch_one(pool)
+        .await
+        .unwrap();
+        PurchaseId(id)
+    }
+
+    async fn count(pool: &PgPool, table: &str) -> i64 {
+        sqlx::query_scalar(sqlx::AssertSqlSafe(format!("SELECT COUNT(*) FROM {table}")))
+            .fetch_one(pool)
+            .await
+            .unwrap()
+    }
+
+    async fn copies_held(pool: &PgPool, user_id: &str) -> i64 {
+        sqlx::query_scalar(
+            "SELECT COALESCE(SUM(quantity), 0)::BIGINT FROM collection_entry WHERE user_id = $1",
+        )
+        .bind(user_id)
+        .fetch_one(pool)
+        .await
+        .unwrap()
+    }
+
+    #[sqlx::test]
+    async fn a_batch_adds_its_copies_to_the_binder_without_purchase_price_or_purchase(
+        pool: PgPool,
+    ) {
+        seed(&pool).await;
+        insert_card(&pool, "TST", "2", "EN", "Other", 2).await;
+        let binder = BinderId(insert_binder(&pool, USER, "Opened").await);
+        let adapter = adapter(pool.clone());
+
+        let outcome = adapter
+            .add_scan_batch(
+                &user(),
+                batch_id(),
+                Some(binder),
+                None,
+                &[
+                    copies(card(), false, 2),
+                    copies(CardId::new("TST", "2", LanguageCode::EN), true, 1),
+                ],
+            )
+            .await
+            .unwrap();
+
+        assert_eq!(
+            outcome,
+            ScanBatchOutcome {
+                copies_added: 3,
+                already_validated: false
+            }
+        );
+        let entries: Vec<(String, bool, i32, Option<i32>)> = sqlx::query_as(
+            "SELECT collector_number, foil, quantity, purchase_price
+             FROM collection_entry WHERE binder_id = $1 ORDER BY collector_number",
+        )
+        .bind(binder.0)
+        .fetch_all(&pool)
+        .await
+        .unwrap();
+        assert_eq!(
+            entries,
+            vec![
+                ("1".to_string(), false, 2, None),
+                ("2".to_string(), true, 1, None),
+            ]
+        );
+        assert_eq!(count(&pool, "purchase").await, 0);
+        assert_eq!(count(&pool, "scan_batch").await, 1);
+    }
+
+    #[sqlx::test]
+    async fn a_batch_merges_into_the_entry_of_the_same_card_finish_and_binder(pool: PgPool) {
+        seed(&pool).await;
+        insert_entry(&pool, USER, false, 3, Some(100), day(1), None).await;
+        let adapter = adapter(pool.clone());
+
+        adapter
+            .add_scan_batch(
+                &user(),
+                batch_id(),
+                None,
+                None,
+                &[copies(card(), false, 2), copies(card(), false, 1)],
+            )
+            .await
+            .unwrap();
+
+        let found = adapter.find_by_card(&user(), &card()).await.unwrap();
+        assert_eq!(found.entries.len(), 1);
+        assert_eq!(found.entries[0].quantity, 6);
+        assert_eq!(found.entries[0].purchase_price, Some(100));
+    }
+
+    #[sqlx::test]
+    async fn sending_the_same_batch_again_writes_nothing(pool: PgPool) {
+        seed(&pool).await;
+        let adapter = adapter(pool.clone());
+        let lines = [copies(card(), false, 2)];
+        adapter
+            .add_scan_batch(&user(), batch_id(), None, None, &lines)
+            .await
+            .unwrap();
+
+        let outcome = adapter
+            .add_scan_batch(&user(), batch_id(), None, None, &lines)
+            .await
+            .unwrap();
+
+        assert!(outcome.already_validated);
+        assert_eq!(copies_held(&pool, USER).await, 2);
+        assert_eq!(count(&pool, "scan_batch").await, 1);
+    }
+
+    #[sqlx::test]
+    async fn sending_the_same_batch_again_answers_the_copies_of_the_first_send(pool: PgPool) {
+        seed(&pool).await;
+        let adapter = adapter(pool.clone());
+        adapter
+            .add_scan_batch(
+                &user(),
+                batch_id(),
+                None,
+                None,
+                &[copies(card(), false, 2), copies(card(), true, 3)],
+            )
+            .await
+            .unwrap();
+
+        let again = adapter
+            .add_scan_batch(&user(), batch_id(), None, None, &[copies(card(), false, 9)])
+            .await
+            .unwrap();
+
+        assert_eq!(
+            again,
+            ScanBatchOutcome {
+                copies_added: 5,
+                already_validated: true
+            }
+        );
+        assert_eq!(copies_held(&pool, USER).await, 5);
+    }
+
+    #[sqlx::test]
+    async fn find_scan_batch_knows_only_the_batches_of_the_player_that_were_recorded(pool: PgPool) {
+        seed(&pool).await;
+        let adapter = adapter(pool.clone());
+        assert_eq!(
+            adapter.find_scan_batch(&user(), batch_id()).await.unwrap(),
+            None
+        );
+        adapter
+            .add_scan_batch(&user(), batch_id(), None, None, &[copies(card(), false, 4)])
+            .await
+            .unwrap();
+
+        let found = adapter.find_scan_batch(&user(), batch_id()).await.unwrap();
+        let of_another = adapter
+            .find_scan_batch(&UserId::new(OTHER), batch_id())
+            .await
+            .unwrap();
+
+        assert_eq!(
+            found,
+            Some(ScanBatchOutcome {
+                copies_added: 4,
+                already_validated: true
+            })
+        );
+        assert_eq!(of_another, None);
+    }
+
+    #[sqlx::test]
+    async fn the_destination_of_a_batch_is_checked_without_writing(pool: PgPool) {
+        seed(&pool).await;
+        let mine = BinderId(insert_binder(&pool, USER, "Mine").await);
+        let theirs = BinderId(insert_binder(&pool, OTHER, "Bob's").await);
+        let sealed_product = insert_purchase(&pool, USER, "sealed_product").await;
+        let single_card = insert_purchase(&pool, USER, "single_card").await;
+        let adapter = adapter(pool.clone());
+
+        assert!(
+            adapter
+                .ensure_scan_batch_destination(&user(), Some(mine), Some(sealed_product))
+                .await
+                .is_ok()
+        );
+        assert!(
+            adapter
+                .ensure_scan_batch_destination(&user(), None, None)
+                .await
+                .is_ok()
+        );
+        let binder_error = adapter
+            .ensure_scan_batch_destination(&user(), Some(theirs), None)
+            .await
+            .unwrap_err();
+        assert_eq!(binder_error.code(), "binder_not_found");
+        for id in [single_card, PurchaseId(Uuid::new_v4())] {
+            let error = adapter
+                .ensure_scan_batch_destination(&user(), None, Some(id))
+                .await
+                .unwrap_err();
+            assert_eq!(error.code(), "purchase_not_found");
+        }
+        assert_eq!(count(&pool, "scan_batch").await, 0);
+        assert_eq!(count(&pool, "collection_entry").await, 0);
+    }
+
+    #[sqlx::test]
+    async fn the_same_batch_identifier_of_another_player_is_a_new_batch(pool: PgPool) {
+        seed(&pool).await;
+        let adapter = adapter(pool.clone());
+        let lines = [copies(card(), false, 2)];
+        adapter
+            .add_scan_batch(&user(), batch_id(), None, None, &lines)
+            .await
+            .unwrap();
+
+        let outcome = adapter
+            .add_scan_batch(&UserId::new(OTHER), batch_id(), None, None, &lines)
+            .await
+            .unwrap();
+
+        assert!(!outcome.already_validated);
+        assert_eq!(copies_held(&pool, OTHER).await, 2);
+    }
+
+    #[sqlx::test]
+    async fn a_card_the_database_lacks_writes_nothing_and_leaves_the_batch_unrecorded(
+        pool: PgPool,
+    ) {
+        seed(&pool).await;
+        let adapter = adapter(pool.clone());
+
+        let result = adapter
+            .add_scan_batch(
+                &user(),
+                batch_id(),
+                None,
+                None,
+                &[
+                    copies(card(), false, 2),
+                    copies(CardId::new("TST", "999", LanguageCode::EN), false, 1),
+                ],
+            )
+            .await;
+
+        assert!(result.is_err());
+        assert_eq!(count(&pool, "collection_entry").await, 0);
+        assert_eq!(count(&pool, "scan_batch").await, 0);
+    }
+
+    #[sqlx::test]
+    async fn a_merge_over_255_copies_writes_nothing(pool: PgPool) {
+        seed(&pool).await;
+        insert_entry(&pool, USER, false, 255, None, day(1), None).await;
+        insert_card(&pool, "TST", "2", "EN", "Other", 2).await;
+        let adapter = adapter(pool.clone());
+
+        let error = adapter
+            .add_scan_batch(
+                &user(),
+                batch_id(),
+                None,
+                None,
+                &[
+                    copies(CardId::new("TST", "2", LanguageCode::EN), false, 1),
+                    copies(card(), false, 1),
+                ],
+            )
+            .await
+            .unwrap_err();
+
+        assert_eq!(error.code(), "invalid_quantity");
+        assert_eq!(copies_held(&pool, USER).await, 255);
+        assert_eq!(count(&pool, "scan_batch").await, 0);
+    }
+
+    #[sqlx::test]
+    async fn a_batch_feeds_the_content_of_the_sealed_product_without_a_new_purchase(pool: PgPool) {
+        seed(&pool).await;
+        let sealed_product = insert_purchase(&pool, USER, "sealed_product").await;
+        let adapter = adapter(pool.clone());
+
+        adapter
+            .add_scan_batch(
+                &user(),
+                batch_id(),
+                None,
+                Some(sealed_product),
+                &[
+                    copies(card(), false, 2),
+                    copies(card(), false, 1),
+                    copies(card(), true, 1),
+                ],
+            )
+            .await
+            .unwrap();
+
+        let content: Vec<(bool, i32)> = sqlx::query_as(
+            "SELECT foil, quantity FROM purchase_content WHERE purchase_id = $1 ORDER BY foil",
+        )
+        .bind(sealed_product.0)
+        .fetch_all(&pool)
+        .await
+        .unwrap();
+        assert_eq!(content, vec![(false, 3), (true, 1)]);
+        assert_eq!(count(&pool, "purchase").await, 1);
+        assert_eq!(copies_held(&pool, USER).await, 4);
+    }
+
+    #[sqlx::test]
+    async fn a_player_cannot_validate_into_the_binder_of_another(pool: PgPool) {
+        seed(&pool).await;
+        let theirs = BinderId(insert_binder(&pool, OTHER, "Bob's").await);
+        let adapter = adapter(pool.clone());
+
+        let error = adapter
+            .add_scan_batch(
+                &user(),
+                batch_id(),
+                Some(theirs),
+                None,
+                &[copies(card(), false, 1)],
+            )
+            .await
+            .unwrap_err();
+
+        assert_eq!(error.code(), "binder_not_found");
+        assert_eq!(count(&pool, "collection_entry").await, 0);
+        assert_eq!(count(&pool, "scan_batch").await, 0);
+    }
+
+    #[sqlx::test]
+    async fn a_player_cannot_validate_into_a_purchase_that_is_not_their_sealed_product(
+        pool: PgPool,
+    ) {
+        seed(&pool).await;
+        let theirs = insert_purchase(&pool, OTHER, "sealed_product").await;
+        let single_card = insert_purchase(&pool, USER, "single_card").await;
+        let adapter = adapter(pool.clone());
+
+        for id in [theirs, single_card, PurchaseId(Uuid::new_v4())] {
+            let error = adapter
+                .add_scan_batch(
+                    &user(),
+                    batch_id(),
+                    None,
+                    Some(id),
+                    &[copies(card(), false, 1)],
+                )
+                .await
+                .unwrap_err();
+
+            assert_eq!(error.code(), "purchase_not_found");
+        }
+        assert_eq!(count(&pool, "collection_entry").await, 0);
+        assert_eq!(count(&pool, "purchase_content").await, 0);
+        assert_eq!(count(&pool, "scan_batch").await, 0);
     }
 
     // ---- find_by_card ----

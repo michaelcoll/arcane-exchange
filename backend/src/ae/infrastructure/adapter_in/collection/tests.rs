@@ -118,6 +118,7 @@ async fn every_route_refuses_an_anonymous_request() {
         (Method::GET, "/collection/price-history"),
         (Method::GET, "/collection/cards/FDN/1/EN/entries"),
         (Method::POST, "/collection/entries"),
+        (Method::POST, "/collection/scan-batches"),
         (
             Method::PATCH,
             "/collection/entries/6f2f0e5e-6b52-4b3e-9f0c-0d2c3f1d9a11",
@@ -1771,5 +1772,219 @@ mod entries {
         .await;
 
         assert_error(response, StatusCode::CONFLICT, "reserved_quantity_exceeded").await;
+    }
+}
+
+// ============================================================
+// POST /collection/scan-batches
+// ============================================================
+
+mod scan_batches {
+    use super::*;
+    use crate::application::use_case::MockValidateScanBatchUseCase;
+    use crate::domain::card::CardId;
+    use crate::domain::scan_batch::ScanBatchOutcome;
+    use crate::infrastructure::testing::authed_json;
+
+    const BATCH_ID: &str = "0b6f5f0e-3c6d-4d1a-9a7a-1f4f3c7d2e10";
+    const BINDER_ID: &str = "7b6c1f0e-3c6d-4d1a-9a7a-1f4f3c7d2e11";
+    const SEALED_PRODUCT_ID: &str = "7b6c1f0e-3c6d-4d1a-9a7a-1f4f3c7d2e12";
+
+    fn app(mock: MockValidateScanBatchUseCase) -> axum::Router {
+        create_router(AppState {
+            validate_scan_batch_use_case: Arc::new(mock),
+            ..AppState::for_testing()
+        })
+    }
+
+    fn body() -> serde_json::Value {
+        json!({
+            "batch_id": BATCH_ID,
+            "binder_id": BINDER_ID,
+            "sealed_product_id": SEALED_PRODUCT_ID,
+            "lines": [
+                { "set_code": "mkm", "collector_number": "12", "language_code": "FR",
+                  "foil": false, "quantity": 2 },
+                { "set_code": "MKM", "collector_number": "13", "language_code": "EN",
+                  "foil": true, "quantity": 1 },
+            ],
+        })
+    }
+
+    fn answering(already_validated: bool) -> MockValidateScanBatchUseCase {
+        let mut mock = MockValidateScanBatchUseCase::new();
+        mock.expect_validate_scan_batch()
+            .times(1)
+            .withf(|_, batch_id, binder_id, sealed_product_id, lines| {
+                batch_id.0.to_string() == BATCH_ID
+                    && binder_id.map(|id| id.0.to_string()).as_deref() == Some(BINDER_ID)
+                    && sealed_product_id.map(|id| id.0.to_string()).as_deref()
+                        == Some(SEALED_PRODUCT_ID)
+                    && lines.len() == 2
+                    && lines[0].card_id == CardId::new("MKM", "12", LanguageCode::FR)
+                    && !lines[0].foil
+                    && lines[0].quantity == 2
+                    && lines[1].foil
+            })
+            .returning(move |_, _, _, _, _| {
+                Box::pin(async move {
+                    Ok(ScanBatchOutcome {
+                        copies_added: 3,
+                        already_validated,
+                    })
+                })
+            });
+        mock
+    }
+
+    async fn refused_with(error: FunctionalError) -> Response {
+        let mut mock = MockValidateScanBatchUseCase::new();
+        mock.expect_validate_scan_batch()
+            .returning(move |_, _, _, _, _| {
+                let error = error.clone();
+                Box::pin(async move { Err(error.into()) })
+            });
+        authed_json(app(mock), Method::POST, "/collection/scan-batches", body()).await
+    }
+
+    use axum::response::Response;
+
+    #[tokio::test]
+    async fn a_first_send_is_created_with_the_number_of_copies_added() {
+        let response = authed_json(
+            app(answering(false)),
+            Method::POST,
+            "/collection/scan-batches",
+            body(),
+        )
+        .await;
+
+        assert_eq!(response.status(), StatusCode::CREATED);
+        assert_eq!(json_of(response).await, json!({ "copies_added": 3 }));
+    }
+
+    #[tokio::test]
+    async fn a_send_again_is_ok_with_the_same_answer() {
+        let response = authed_json(
+            app(answering(true)),
+            Method::POST,
+            "/collection/scan-batches",
+            body(),
+        )
+        .await;
+
+        assert_eq!(response.status(), StatusCode::OK);
+        assert_eq!(json_of(response).await, json!({ "copies_added": 3 }));
+    }
+
+    #[tokio::test]
+    async fn binder_and_sealed_product_are_optional() {
+        let mut mock = MockValidateScanBatchUseCase::new();
+        mock.expect_validate_scan_batch()
+            .times(1)
+            .withf(|_, _, binder_id, sealed_product_id, _| {
+                binder_id.is_none() && sealed_product_id.is_none()
+            })
+            .returning(|_, _, _, _, _| {
+                Box::pin(async {
+                    Ok(ScanBatchOutcome {
+                        copies_added: 1,
+                        already_validated: false,
+                    })
+                })
+            });
+
+        let response = authed_json(
+            app(mock),
+            Method::POST,
+            "/collection/scan-batches",
+            json!({
+                "batch_id": BATCH_ID,
+                "lines": [{ "set_code": "MKM", "collector_number": "12",
+                            "language_code": "FR", "foil": false, "quantity": 1 }],
+            }),
+        )
+        .await;
+
+        assert_eq!(response.status(), StatusCode::CREATED);
+    }
+
+    #[tokio::test]
+    async fn a_batch_identifier_that_is_not_a_uuid_is_an_invalid_request() {
+        let response = authed_json(
+            app(MockValidateScanBatchUseCase::new()),
+            Method::POST,
+            "/collection/scan-batches",
+            json!({ "batch_id": "not-a-uuid", "lines": [] }),
+        )
+        .await;
+
+        assert_error(response, StatusCode::BAD_REQUEST, "invalid_request").await;
+    }
+
+    #[tokio::test]
+    async fn an_unknown_language_code_is_refused_before_the_use_case() {
+        let mut payload = body();
+        payload["lines"][0]["language_code"] = json!("XX");
+
+        let response = authed_json(
+            app(MockValidateScanBatchUseCase::new()),
+            Method::POST,
+            "/collection/scan-batches",
+            payload,
+        )
+        .await;
+
+        assert_error(response, StatusCode::BAD_REQUEST, "invalid_language_code").await;
+    }
+
+    #[tokio::test]
+    async fn the_refusals_of_the_use_case_keep_their_status_and_stable_code() {
+        let cases = [
+            (
+                FunctionalError::InvalidRequest("empty".to_string()),
+                StatusCode::BAD_REQUEST,
+                "invalid_request",
+            ),
+            (
+                FunctionalError::InvalidQuantity,
+                StatusCode::BAD_REQUEST,
+                "invalid_quantity",
+            ),
+            (
+                FunctionalError::BinderNotFound,
+                StatusCode::NOT_FOUND,
+                "binder_not_found",
+            ),
+            (
+                FunctionalError::PurchaseNotFound,
+                StatusCode::NOT_FOUND,
+                "purchase_not_found",
+            ),
+        ];
+
+        for (error, status, code) in cases {
+            assert_error(refused_with(error).await, status, code).await;
+        }
+    }
+
+    #[tokio::test]
+    async fn cards_the_catalog_does_not_have_are_named_in_the_response() {
+        let response = refused_with(FunctionalError::CardsNotInCatalog(vec![
+            CardId::new("MKM", "998", LanguageCode::FR),
+            CardId::new("TMKM", "7", LanguageCode::EN),
+        ]))
+        .await;
+
+        assert_eq!(response.status(), StatusCode::NOT_FOUND);
+        let body = json_of(response).await;
+        assert_eq!(body["code"], "card_not_in_catalog");
+        assert_eq!(
+            body["lines"],
+            json!([
+                { "set_code": "MKM", "collector_number": "998", "language_code": "FR" },
+                { "set_code": "TMKM", "collector_number": "7", "language_code": "EN" },
+            ])
+        );
     }
 }

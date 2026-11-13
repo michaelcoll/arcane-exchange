@@ -16,6 +16,7 @@ use crate::domain::purchase::{
     PurchaseId,
 };
 use crate::domain::rarity_trade_filter::{RarityTradeFilter, RarityTradeFilterRule};
+use crate::domain::scan_batch::{ScanBatchCopies, ScanBatchId, ScanBatchOutcome};
 use crate::domain::set_name::{SetCode, SetName};
 use crate::domain::showcase::ShowcaseCard;
 use crate::domain::trade::{
@@ -570,6 +571,51 @@ pub trait CollectionEntryRepository: Send + Sync {
         binder_id: Option<BinderId>,
         purchase: Option<NewSingleCardPurchase>,
     ) -> Result<CardEntries, AppError>;
+
+    /// What the first validation of the scan batch `batch_id` answered for `user_id`
+    /// (`already_validated` set), `None` when the batch was never recorded.
+    async fn find_scan_batch(
+        &self,
+        user_id: &UserId,
+        batch_id: ScanBatchId,
+    ) -> Result<Option<ScanBatchOutcome>, AppError>;
+
+    /// Reads, writing nothing, that `binder_id` is a binder of the player and `sealed_product_id`
+    /// a sealed product of the player, so a scan batch is refused before any card is created.
+    ///
+    /// # Errors
+    ///
+    /// - `BinderNotFound` when the binder is absent or another player's;
+    /// - `PurchaseNotFound` when `sealed_product_id` is not a sealed product of the player.
+    async fn ensure_scan_batch_destination(
+        &self,
+        user_id: &UserId,
+        binder_id: Option<BinderId>,
+        sealed_product_id: Option<PurchaseId>,
+    ) -> Result<(), AppError>;
+
+    /// In one transaction, records the scan batch `batch_id` for `user_id`, with the copies it
+    /// holds, and adds the copies of each line like [`add`](Self::add), without purchase price,
+    /// to `binder_id` (or to no binder). With `sealed_product_id` each line also joins the content
+    /// of that sealed product like [`PurchaseRepository::add_card_to_sealed_product`]. When the
+    /// batch was already recorded for the player, writes nothing and answers what the first
+    /// validation answered (`already_validated` set). The cards must exist.
+    ///
+    /// # Errors
+    ///
+    /// - `BinderNotFound` when the binder is absent or another player's;
+    /// - `PurchaseNotFound` when `sealed_product_id` is not a sealed product of the player;
+    /// - `InvalidQuantity` when a merge goes over 255.
+    ///
+    /// Nothing is written on error, the batch is not recorded.
+    async fn add_scan_batch(
+        &self,
+        user_id: &UserId,
+        batch_id: ScanBatchId,
+        binder_id: Option<BinderId>,
+        sealed_product_id: Option<PurchaseId>,
+        lines: &[ScanBatchCopies],
+    ) -> Result<ScanBatchOutcome, AppError>;
 
     /// Applies `update` to the entry and returns the entries of its card. The reservation guard
     /// and the write share one transaction, with the card's entries locked and the Trades that

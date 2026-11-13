@@ -896,6 +896,50 @@ paths:
                 $ref: '#/components/schemas/ErrorResponse'
       security:
       - bearer_auth: []
+  /collection/scan-batches:
+    post:
+      tags:
+      - collection
+      operationId: validate_scan_batch
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ValidateScanBatchRequest'
+        required: true
+      responses:
+        '200':
+          description: 'The batch had been validated already: nothing is written, and the answer is the one of the first send'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ScanBatchValidatedResponse'
+        '201':
+          description: The batch was added to the collection, all or none, in one transaction. Each line adds its copies like `POST /collection/entries` without purchase price (the card is created when it does not exist yet, copies join the entry of the same card, finish and binder), and joins the content of the sealed product when there is one. No Purchase is recorded
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ScanBatchValidatedResponse'
+        '400':
+          description: A batch without line or an identifier that is not a UUID (`invalid_request`); quantity out of 1 to 255 (`invalid_quantity`), also when a merge goes over 255; invalid set code, collector number or language code
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Missing or invalid token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: A line has no catalog card (`card_not_in_catalog`, with `lines` naming the cards concerned), the binder is not one of the caller's (`binder_not_found`), or the sealed product does not exist, is another player's or is a single card Purchase (`purchase_not_found`)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      security:
+      - bearer_auth: []
   /collection/stats:
     get:
       tags:
@@ -2566,6 +2610,15 @@ components:
         error:
           type: string
           description: Technical message, in English — never shown to the user as is.
+        lines:
+          type:
+          - array
+          - 'null'
+          items:
+            $ref: '#/components/schemas/UnknownCardResponse'
+          description: |-
+            Only for `card_not_in_catalog` on a scan batch: the cards of the batch the catalog does
+            not have.
     MessageResponse:
       type: object
       required:
@@ -3013,6 +3066,43 @@ components:
           type: integer
           format: int32
           minimum: 0
+    ScanBatchLineRequest:
+      type: object
+      description: 'A line of a scan batch: copies of a card in a finish.'
+      required:
+      - set_code
+      - collector_number
+      - language_code
+      - foil
+      - quantity
+      properties:
+        collector_number:
+          type: string
+          description: Collector number of the catalog card.
+        foil:
+          type: boolean
+        language_code:
+          type: string
+          description: Language of the copies.
+        quantity:
+          type: integer
+          format: int32
+          description: |-
+            Copies of the line, 1 to 255. Signed so an out-of-range value fails with
+            `invalid_quantity` (400) instead of a JSON extractor rejection.
+        set_code:
+          type: string
+          description: Set code of the catalog card.
+    ScanBatchValidatedResponse:
+      type: object
+      required:
+      - copies_added
+      properties:
+        copies_added:
+          type: integer
+          format: int32
+          description: 'Copies the batch adds to the collection: the sum of the quantities of its lines.'
+          minimum: 0
     ScanIndexEntryResponse:
       type: object
       description: |-
@@ -3347,6 +3437,20 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/TrendPriceResponse'
+    UnknownCardResponse:
+      type: object
+      description: A card of a scan batch the catalog does not have, as the batch named it.
+      required:
+      - set_code
+      - collector_number
+      - language_code
+      properties:
+        collector_number:
+          type: string
+        language_code:
+          type: string
+        set_code:
+          type: string
     UpdateCollectionEntryRequest:
       type: object
       properties:
@@ -3440,6 +3544,36 @@ components:
           minimum: 0
         username:
           type: string
+    ValidateScanBatchRequest:
+      type: object
+      description: A scan batch to add to the collection, all or none.
+      required:
+      - batch_id
+      - lines
+      properties:
+        batch_id:
+          type: string
+          description: |-
+            Identifier of the batch, a UUID generated by the client when it creates the batch and kept
+            until a validation succeeds: it makes the validation idempotent. One that is not a UUID is
+            refused with `invalid_request` (400).
+        binder_id:
+          type:
+          - string
+          - 'null'
+          description: Binder to store the copies in; absent for none.
+        lines:
+          type: array
+          items:
+            $ref: '#/components/schemas/ScanBatchLineRequest'
+          description: The lines of the batch, at least one.
+        sealed_product_id:
+          type:
+          - string
+          - 'null'
+          description: |-
+            A sealed product of the player whose content the cards join. They come without purchase
+            price whether or not there is one, and no Purchase is recorded.
     VisibilityResponse:
       type: object
       required:

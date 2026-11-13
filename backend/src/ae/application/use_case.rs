@@ -16,6 +16,7 @@ use crate::domain::purchase::{
     Purchase, PurchaseAmount, PurchaseDetail, PurchaseEditRequest, PurchaseId, SealedProductRequest,
 };
 use crate::domain::rarity_trade_filter::{RarityTradeFilter, RarityTradeFilterRule};
+use crate::domain::scan_batch::{ScanBatchId, ScanBatchLine, ScanBatchOutcome};
 use crate::domain::set_name::{SetCode, SetName};
 use crate::domain::showcase::ShowcaseCard;
 use crate::domain::stats::Stats;
@@ -577,6 +578,35 @@ pub trait AddCollectionEntryUseCase: Send + Sync {
         purchase_price: Option<PurchaseAmount>,
         sealed_product_id: Option<PurchaseId>,
     ) -> Result<CardEntries, AppError>;
+}
+
+#[async_trait]
+#[cfg_attr(test, automock)]
+pub trait ValidateScanBatchUseCase: Send + Sync {
+    /// Adds the copies of a scan batch to the collection, all or none: for each line the Card is
+    /// created when it does not exist ([`CreateCardUseCase`]) and its copies are added like
+    /// [`AddCollectionEntryUseCase::add_collection_entry`], without purchase price. With
+    /// `sealed_product_id` each card also joins the content of that sealed product; without it no
+    /// Purchase is recorded. Then asks once for a refresh of the card prices views, without
+    /// waiting for it.
+    ///
+    /// The batch is recorded under `batch_id` for the player in the same transaction: a batch
+    /// already recorded writes nothing and answers like the first time, with
+    /// `already_validated` set.
+    ///
+    /// Refused, writing nothing, with `InvalidRequest` (`400`) for a batch without line,
+    /// `InvalidQuantity` (`400`) for a quantity outside 1 to 255 (also when a merge goes over
+    /// 255), `CardsNotInCatalog` (`404`) naming the lines the catalog does not have,
+    /// `BinderNotFound` (`404`) and `PurchaseNotFound` (`404`) for a binder or a sealed product
+    /// that is absent, another player's, or (for the latter) a single card Purchase.
+    async fn validate_scan_batch(
+        &self,
+        user_id: &UserId,
+        batch_id: ScanBatchId,
+        binder_id: Option<BinderId>,
+        sealed_product_id: Option<PurchaseId>,
+        lines: Vec<ScanBatchLine>,
+    ) -> Result<ScanBatchOutcome, AppError>;
 }
 
 #[async_trait]

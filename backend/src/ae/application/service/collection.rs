@@ -10,6 +10,7 @@ pub mod move_entry;
 pub mod remove_entry;
 pub mod run_card_import;
 pub mod update_entry;
+pub mod validate_scan_batch;
 
 /// Test fixtures shared by the tests of the Collection entry use cases.
 #[cfg(test)]

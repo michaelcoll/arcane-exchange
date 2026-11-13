@@ -893,21 +893,30 @@ extension Components {
             ///
             /// - Remark: Generated from `#/components/schemas/ErrorResponse/error`.
             public var error: Swift.String
+            /// Only for `card_not_in_catalog` on a scan batch: the cards of the batch the catalog does
+            /// not have.
+            ///
+            /// - Remark: Generated from `#/components/schemas/ErrorResponse/lines`.
+            public var lines: [Components.Schemas.UnknownCardResponse]?
             /// Creates a new `ErrorResponse`.
             ///
             /// - Parameters:
             ///   - code: Stable snake_case identifier of the error (e.g. `binder_export`, `internal`).
             ///   - error: Technical message, in English — never shown to the user as is.
+            ///   - lines: Only for `card_not_in_catalog` on a scan batch: the cards of the batch the catalog does
             public init(
                 code: Swift.String,
-                error: Swift.String
+                error: Swift.String,
+                lines: [Components.Schemas.UnknownCardResponse]? = nil
             ) {
                 self.code = code
                 self.error = error
+                self.lines = lines
             }
             public enum CodingKeys: String, CodingKey {
                 case code
                 case error
+                case lines
             }
         }
         /// - Remark: Generated from `#/components/schemas/MessageResponse`.
@@ -1658,6 +1667,75 @@ extension Components {
                 case normal
             }
         }
+        /// A line of a scan batch: copies of a card in a finish.
+        ///
+        /// - Remark: Generated from `#/components/schemas/ScanBatchLineRequest`.
+        public struct ScanBatchLineRequest: Codable, Hashable, Sendable {
+            /// Collector number of the catalog card.
+            ///
+            /// - Remark: Generated from `#/components/schemas/ScanBatchLineRequest/collector_number`.
+            public var collector_number: Swift.String
+            /// - Remark: Generated from `#/components/schemas/ScanBatchLineRequest/foil`.
+            public var foil: Swift.Bool
+            /// Language of the copies.
+            ///
+            /// - Remark: Generated from `#/components/schemas/ScanBatchLineRequest/language_code`.
+            public var language_code: Swift.String
+            /// Copies of the line, 1 to 255. Signed so an out-of-range value fails with
+            /// `invalid_quantity` (400) instead of a JSON extractor rejection.
+            ///
+            /// - Remark: Generated from `#/components/schemas/ScanBatchLineRequest/quantity`.
+            public var quantity: Swift.Int32
+            /// Set code of the catalog card.
+            ///
+            /// - Remark: Generated from `#/components/schemas/ScanBatchLineRequest/set_code`.
+            public var set_code: Swift.String
+            /// Creates a new `ScanBatchLineRequest`.
+            ///
+            /// - Parameters:
+            ///   - collector_number: Collector number of the catalog card.
+            ///   - foil:
+            ///   - language_code: Language of the copies.
+            ///   - quantity: Copies of the line, 1 to 255. Signed so an out-of-range value fails with
+            ///   - set_code: Set code of the catalog card.
+            public init(
+                collector_number: Swift.String,
+                foil: Swift.Bool,
+                language_code: Swift.String,
+                quantity: Swift.Int32,
+                set_code: Swift.String
+            ) {
+                self.collector_number = collector_number
+                self.foil = foil
+                self.language_code = language_code
+                self.quantity = quantity
+                self.set_code = set_code
+            }
+            public enum CodingKeys: String, CodingKey {
+                case collector_number
+                case foil
+                case language_code
+                case quantity
+                case set_code
+            }
+        }
+        /// - Remark: Generated from `#/components/schemas/ScanBatchValidatedResponse`.
+        public struct ScanBatchValidatedResponse: Codable, Hashable, Sendable {
+            /// Copies the batch adds to the collection: the sum of the quantities of its lines.
+            ///
+            /// - Remark: Generated from `#/components/schemas/ScanBatchValidatedResponse/copies_added`.
+            public var copies_added: Swift.Int32
+            /// Creates a new `ScanBatchValidatedResponse`.
+            ///
+            /// - Parameters:
+            ///   - copies_added: Copies the batch adds to the collection: the sum of the quantities of its lines.
+            public init(copies_added: Swift.Int32) {
+                self.copies_added = copies_added
+            }
+            public enum CodingKeys: String, CodingKey {
+                case copies_added
+            }
+        }
         /// One entry of the scan index, keyed by set and collector number.
         ///
         /// The body of `GET /catalog/scan-index` is a JSON array of these; it is built and gzipped once
@@ -2233,6 +2311,37 @@ extension Components {
                 case prices
             }
         }
+        /// A card of a scan batch the catalog does not have, as the batch named it.
+        ///
+        /// - Remark: Generated from `#/components/schemas/UnknownCardResponse`.
+        public struct UnknownCardResponse: Codable, Hashable, Sendable {
+            /// - Remark: Generated from `#/components/schemas/UnknownCardResponse/collector_number`.
+            public var collector_number: Swift.String
+            /// - Remark: Generated from `#/components/schemas/UnknownCardResponse/language_code`.
+            public var language_code: Swift.String
+            /// - Remark: Generated from `#/components/schemas/UnknownCardResponse/set_code`.
+            public var set_code: Swift.String
+            /// Creates a new `UnknownCardResponse`.
+            ///
+            /// - Parameters:
+            ///   - collector_number:
+            ///   - language_code:
+            ///   - set_code:
+            public init(
+                collector_number: Swift.String,
+                language_code: Swift.String,
+                set_code: Swift.String
+            ) {
+                self.collector_number = collector_number
+                self.language_code = language_code
+                self.set_code = set_code
+            }
+            public enum CodingKeys: String, CodingKey {
+                case collector_number
+                case language_code
+                case set_code
+            }
+        }
         /// - Remark: Generated from `#/components/schemas/UpdateCollectionEntryRequest`.
         public struct UpdateCollectionEntryRequest: Codable, Hashable, Sendable {
             /// New finish. A change onto an existing entry merges the two.
@@ -2387,6 +2496,54 @@ extension Components {
                 case card_count
                 case note
                 case username
+            }
+        }
+        /// A scan batch to add to the collection, all or none.
+        ///
+        /// - Remark: Generated from `#/components/schemas/ValidateScanBatchRequest`.
+        public struct ValidateScanBatchRequest: Codable, Hashable, Sendable {
+            /// Identifier of the batch, a UUID generated by the client when it creates the batch and kept
+            /// until a validation succeeds: it makes the validation idempotent. One that is not a UUID is
+            /// refused with `invalid_request` (400).
+            ///
+            /// - Remark: Generated from `#/components/schemas/ValidateScanBatchRequest/batch_id`.
+            public var batch_id: Swift.String
+            /// Binder to store the copies in; absent for none.
+            ///
+            /// - Remark: Generated from `#/components/schemas/ValidateScanBatchRequest/binder_id`.
+            public var binder_id: Swift.String?
+            /// The lines of the batch, at least one.
+            ///
+            /// - Remark: Generated from `#/components/schemas/ValidateScanBatchRequest/lines`.
+            public var lines: [Components.Schemas.ScanBatchLineRequest]
+            /// A sealed product of the player whose content the cards join. They come without purchase
+            /// price whether or not there is one, and no Purchase is recorded.
+            ///
+            /// - Remark: Generated from `#/components/schemas/ValidateScanBatchRequest/sealed_product_id`.
+            public var sealed_product_id: Swift.String?
+            /// Creates a new `ValidateScanBatchRequest`.
+            ///
+            /// - Parameters:
+            ///   - batch_id: Identifier of the batch, a UUID generated by the client when it creates the batch and kept
+            ///   - binder_id: Binder to store the copies in; absent for none.
+            ///   - lines: The lines of the batch, at least one.
+            ///   - sealed_product_id: A sealed product of the player whose content the cards join. They come without purchase
+            public init(
+                batch_id: Swift.String,
+                binder_id: Swift.String? = nil,
+                lines: [Components.Schemas.ScanBatchLineRequest],
+                sealed_product_id: Swift.String? = nil
+            ) {
+                self.batch_id = batch_id
+                self.binder_id = binder_id
+                self.lines = lines
+                self.sealed_product_id = sealed_product_id
+            }
+            public enum CodingKeys: String, CodingKey {
+                case batch_id
+                case binder_id
+                case lines
+                case sealed_product_id
             }
         }
         /// - Remark: Generated from `#/components/schemas/VisibilityResponse`.

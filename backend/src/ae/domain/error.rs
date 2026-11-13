@@ -1,3 +1,5 @@
+use crate::domain::card::CardId;
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum FunctionalError {
     ParseError {
@@ -65,6 +67,8 @@ pub enum FunctionalError {
     ImportNotFound,
     /// No card of the catalog has this set and collector number (a token, for one).
     CardNotInCatalog,
+    /// Cards of a scan batch the catalog does not have: the cards, as the batch named them.
+    CardsNotInCatalog(Vec<CardId>),
     /// No catalog is loaded yet, so there is no scan index to serve.
     ScanIndexUnavailable,
     /// No Collection entry has this identifier for the caller, whoever else it belongs to.
@@ -132,6 +136,7 @@ impl FunctionalError {
             FunctionalError::ImportAlreadyRunning => "import_already_running",
             FunctionalError::ImportNotFound => "import_not_found",
             FunctionalError::CardNotInCatalog => "card_not_in_catalog",
+            FunctionalError::CardsNotInCatalog(_) => "card_not_in_catalog",
             FunctionalError::ScanIndexUnavailable => "scan_index_unavailable",
             FunctionalError::CollectionEntryNotFound => "collection_entry_not_found",
             FunctionalError::InvalidQuantity => "invalid_quantity",
@@ -248,6 +253,10 @@ impl From<FunctionalError> for String {
             FunctionalError::CardNotInCatalog => {
                 "No card of the catalog has this set and collector number".to_string()
             }
+            FunctionalError::CardsNotInCatalog(cards) => format!(
+                "{} card(s) of the batch are not in the catalog",
+                cards.len()
+            ),
             FunctionalError::ScanIndexUnavailable => "No catalog loaded yet".to_string(),
             FunctionalError::CollectionEntryNotFound => "Collection entry not found".to_string(),
             FunctionalError::InvalidQuantity => "Quantity must be between 1 and 255".to_string(),
