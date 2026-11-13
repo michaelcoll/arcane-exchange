@@ -373,7 +373,7 @@ impl From<CardEntries> for CardEntriesResponse {
     }
 }
 
-/// A copy to add to the collection, without purchase price.
+/// A copy to add to the collection.
 #[derive(Deserialize, Debug, TS, ToSchema)]
 #[serde(rename = "AddCollectionEntryRequest")]
 #[ts(export)]
@@ -398,6 +398,14 @@ pub(crate) struct AddCollectionEntryRequest {
     #[serde(default)]
     #[ts(optional)]
     pub(crate) sealed_product_id: Option<String>,
+    /// Purchase price per copy, in cents, strictly positive. The copies carry it, and a single
+    /// card Purchase of the price times the quantity is recorded, dated today; without it, no
+    /// Purchase is recorded. Exclusive with `sealed_product_id` (`invalid_request`, 400). Signed
+    /// so a value of 0 or less fails with `invalid_purchase_price` (400) instead of a JSON
+    /// extractor rejection.
+    #[serde(default)]
+    #[ts(optional)]
+    pub(crate) purchase_price: Option<i32>,
 }
 
 #[derive(Deserialize, Debug, TS, ToSchema)]

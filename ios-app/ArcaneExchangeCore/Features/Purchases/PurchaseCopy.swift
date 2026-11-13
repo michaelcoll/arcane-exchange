@@ -16,22 +16,38 @@ package enum PurchaseCopy {
         }
     }
 
-    /// "Type · Set", what a sealed product without a name is called.
+    /// "Type · Set", what a sealed product without a name is called; "Set · 4 × FR · Foil" for
+    /// the copies of a single card.
     package static func kind(of purchase: Purchase) -> String {
-        [purchase.product_type.map(label(for:)), purchase.set?.name]
+        if let card = purchase.card {
+            let parts: [String?] = [
+                card.set.name,
+                "\(purchase.quantity ?? 0) × \(card.language_code)",
+                purchase.foil == true ? "Foil" : nil
+            ]
+            return parts.compactMap(\.self).joined(separator: " · ")
+        }
+        return [purchase.product_type.map(label(for:)), purchase.set?.name]
             .compactMap(\.self)
             .joined(separator: " · ")
     }
 
-    /// The name the player gave the sealed product, else "Type · Set".
-    package static func title(of purchase: Purchase) -> String {
-        purchase.name ?? kind(of: purchase)
+    /// The set of a purchase: the sealed product's, or the single card's.
+    package static func set(of purchase: Purchase) -> SetInfo? {
+        purchase.set ?? purchase.card?.set
     }
 
-    /// The date, preceded by "Type · Set" when the title is the player's own name.
+    /// The card of a single card purchase, else the name the player gave the sealed product,
+    /// else "Type · Set".
+    package static func title(of purchase: Purchase) -> String {
+        purchase.card?.name ?? purchase.name ?? kind(of: purchase)
+    }
+
+    /// The date, preceded by what describes the purchase when the title does not: "Type · Set"
+    /// under the player's own name, the copies under the name of a card.
     package static func subtitle(of purchase: Purchase) -> String {
         let date = PurchaseDate.display(purchase.purchased_on)
-        return purchase.name == nil ? date : "\(kind(of: purchase)) · \(date)"
+        return purchase.name == nil && purchase.card == nil ? date : "\(kind(of: purchase)) · \(date)"
     }
 
     /// How a sealed product reads in a list to pick from: its name, else "Type · Set", then its

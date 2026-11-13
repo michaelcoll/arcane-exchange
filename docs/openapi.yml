@@ -575,13 +575,13 @@ paths:
         required: true
       responses:
         '201':
-          description: The entries of the card, after the addition. The copies join the entry of the same finish and binder when there is one (quantities add up, purchase price kept, earliest added date), otherwise a new entry without purchase price is written. The card is created when it does not exist yet
+          description: The entries of the card, after the addition. The copies join the entry of the same finish and binder when there is one (quantities add up, purchase price averaged, earliest added date), otherwise a new entry is written, with the `purchase_price` when given. With a `purchase_price`, a single card Purchase of the price times the quantity is recorded, dated today, in the same transaction. The card is created when it does not exist yet
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/CardEntriesResponse'
         '400':
-          description: Quantity out of 1 to 255 (`invalid_quantity`), also when a merge goes over 255; invalid set code, collector number or language code
+          description: Quantity out of 1 to 255 (`invalid_quantity`), also when a merge goes over 255; purchase price of 0 or less (`invalid_purchase_price`); `purchase_price` together with `sealed_product_id` (`invalid_request`); invalid set code, collector number or language code
           content:
             application/json:
               schema:
@@ -1240,7 +1240,7 @@ paths:
           format: uuid
       responses:
         '200':
-          description: 'The Purchase with its content: each line carries the current trend price of its card in its finish, when Cardmarket has one. Also the value of the content (lines without a trend price left out and counted) and its gap with the amount, in cents and in percent. Nothing of this is stored'
+          description: 'The Purchase with its content: each line carries the current trend price of its card in its finish, when Cardmarket has one. Also the value of the content (lines without a trend price left out and counted) and its profitability against the amount, in cents and in percent. Nothing of this is stored'
           content:
             application/json:
               schema:
@@ -1314,7 +1314,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/PurchaseResponse'
         '400':
-          description: Amount not strictly positive; `code` is `invalid_purchase_price`
+          description: Amount not strictly positive (`invalid_purchase_price`); type, set or name on a single card purchase, which only has an amount and a date (`invalid_request`)
           content:
             application/json:
               schema:
@@ -2021,7 +2021,7 @@ components:
   schemas:
     AddCollectionEntryRequest:
       type: object
-      description: A copy to add to the collection, without purchase price.
+      description: A copy to add to the collection.
       required:
       - set_code
       - collector_number
@@ -2042,6 +2042,17 @@ components:
         language_code:
           type: string
           description: 'Language of the copy: not checked against Scryfall, which may not have the card in it.'
+        purchase_price:
+          type:
+          - integer
+          - 'null'
+          format: int32
+          description: |-
+            Purchase price per copy, in cents, strictly positive. The copies carry it, and a single
+            card Purchase of the price times the quantity is recorded, dated today; without it, no
+            Purchase is recorded. Exclusive with `sealed_product_id` (`invalid_request`, 400). Signed
+            so a value of 0 or less fails with `invalid_purchase_price` (400) instead of a JSON
+            extractor rejection.
         quantity:
           type: integer
           format: int32
@@ -2460,7 +2471,7 @@ components:
           type: integer
           format: int32
           description: |-
-            Amount spent, in cents. Signed so an amount that is not strictly positive fails with
+            Amount paid, in cents. Signed so an amount that is not strictly positive fails with
             `invalid_purchase_price` (400) instead of a JSON extractor rejection.
         name:
           type:
@@ -2756,8 +2767,8 @@ components:
       - content
       - content_value_cents
       - lines_without_trend
-      - gap_cents
-      - gap_percent
+      - profitability_cents
+      - profitability_percent
       properties:
         content:
           type: array
@@ -2768,21 +2779,21 @@ components:
           format: int64
           description: Sum of the quantities times the trend price of the lines that have one, in cents.
           minimum: 0
-        gap_cents:
-          type: integer
-          format: int64
-          description: |-
-            Value of the content minus the amount of the Purchase, in cents: negative when the content
-            is worth less than was paid.
-        gap_percent:
-          type: number
-          format: double
-          description: The gap as a percentage of the amount of the Purchase.
         lines_without_trend:
           type: integer
           format: int32
           description: Lines left out of the value because they have no trend price.
           minimum: 0
+        profitability_cents:
+          type: integer
+          format: int64
+          description: |-
+            Profitability: the value of the content minus the amount of the Purchase, in cents,
+            negative when the content is worth less than was paid.
+        profitability_percent:
+          type: number
+          format: double
+          description: The profitability as a percentage of the amount of the Purchase.
         purchase:
           $ref: '#/components/schemas/PurchaseResponse'
     PurchaseKindResponse:
@@ -2790,6 +2801,7 @@ components:
       description: What a Purchase bought.
       enum:
       - sealed_product
+      - single_card
     PurchaseResponse:
       type: object
       required:
@@ -2801,8 +2813,16 @@ components:
         amount_cents:
           type: integer
           format: int32
-          description: Amount spent, in cents.
+          description: Amount paid, in cents.
           minimum: 0
+        card:
+          $ref: '#/components/schemas/PurchasedCardResponse'
+          description: Single card only.
+        foil:
+          type:
+          - boolean
+          - 'null'
+          description: 'Single card only: whether the copies are foil.'
         id:
           type: string
         kind:
@@ -2819,9 +2839,45 @@ components:
           type: string
           format: date
           description: Day of the purchase, `YYYY-MM-DD`.
+        quantity:
+          type:
+          - integer
+          - 'null'
+          format: int32
+          description: 'Single card only: the copies bought.'
+          minimum: 0
         set:
           $ref: '#/components/schemas/SetInfoResponse'
           description: Sealed product only.
+    PurchasedCardResponse:
+      type: object
+      description: The card a single card Purchase bought.
+      required:
+      - set
+      - collector_number
+      - language_code
+      - name
+      properties:
+        collector_number:
+          type: string
+        image_back_url:
+          type:
+          - string
+          - 'null'
+          description: Back image of a double-faced card, like `image_url`; `null` for a single-faced card.
+        image_url:
+          type:
+          - string
+          - 'null'
+          description: |-
+            Front image, relative to the frontend (e.g. `/card-images/FDN_1_EN.webp?v=gatherer`);
+            `null` while the card's image is pending.
+        language_code:
+          type: string
+        name:
+          type: string
+        set:
+          $ref: '#/components/schemas/SetInfoResponse'
     RarityCodeParam:
       type: string
       enum:
@@ -3233,7 +3289,7 @@ components:
           - integer
           - 'null'
           format: int32
-          description: Amount spent, in cents, strictly positive (`invalid_purchase_price`, 400).
+          description: Amount paid, in cents, strictly positive (`invalid_purchase_price`, 400).
         name:
           type:
           - string
@@ -3312,7 +3368,7 @@ tags:
 - name: binders
   description: 'Binders a player stores their collection in: list, creation, renaming, deletion of an empty one (authentication required)'
 - name: purchases
-  description: 'What a player spent to enrich their collection: sealed products bought, listed, edited and deleted without touching the collection (authentication required)'
+  description: 'What a player bought to enrich their collection: sealed products bought, listed, edited and deleted without touching the collection (authentication required)'
 - name: trade-settings
   description: 'Settings deciding what of a player''s collection is exposed for trade: visibility, binders open for trade, rarity filters (authentication required)'
 - name: search

@@ -15,7 +15,7 @@ export type CreateSealedProductRequest = {
    */
   name?: string;
   /**
-   * Amount spent, in cents. Signed so an amount that is not strictly positive fails with
+   * Amount paid, in cents. Signed so an amount that is not strictly positive fails with
    * `invalid_purchase_price` (400) instead of a JSON extractor rejection.
    */
   amount_cents: number;

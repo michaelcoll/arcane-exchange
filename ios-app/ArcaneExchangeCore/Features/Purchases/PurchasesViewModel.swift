@@ -2,7 +2,7 @@ import APIClient
 import Foundation
 
 /// Backs the Achats screen: the player's purchases, most recent first, and the deletion of one
-/// (`/purchases`). Creating and editing a sealed product is `SealedProductFormViewModel`.
+/// (`/purchases`). Creating a sealed product and editing a purchase is `PurchaseFormViewModel`.
 @MainActor
 @Observable
 package final class PurchasesViewModel {

@@ -124,7 +124,7 @@ pub(crate) async fn create_purchase(
     request_body = UpdatePurchaseRequest,
     responses(
         (status = 200, description = "Purchase updated; the collection is untouched", body = PurchaseResponse),
-        (status = 400, description = "Amount not strictly positive; `code` is `invalid_purchase_price`"),
+        (status = 400, description = "Amount not strictly positive (`invalid_purchase_price`); type, set or name on a single card purchase, which only has an amount and a date (`invalid_request`)"),
         (status = 401, description = "Missing or invalid token"),
         (status = 404, description = "Purchase not found, or not owned by the caller (`purchase_not_found`); unknown set (`set_not_found`)"),
     ),

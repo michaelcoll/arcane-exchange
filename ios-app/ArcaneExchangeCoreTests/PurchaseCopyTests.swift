@@ -52,6 +52,15 @@ struct PurchaseCopyTests {
         #expect(PurchaseCopy.withoutTrend(3) == "3 cartes sans prix de tendance, exclues de la valeur")
     }
 
+    @Test func aSingleCardPurchaseIsCalledByItsCardAndDescribedByItsCopies() {
+        let normal = singleCardPurchase("1", card: "Gobelin", foil: false, quantity: 4)
+        let foil = singleCardPurchase("2", card: "Gobelin", foil: true, quantity: 1)
+
+        #expect(PurchaseCopy.title(of: normal) == "Gobelin")
+        #expect(PurchaseCopy.subtitle(of: normal) == "Foundations · 4 × FR · 13 nov. 2026")
+        #expect(PurchaseCopy.subtitle(of: foil) == "Foundations · 1 × FR · Foil · 13 nov. 2026")
+    }
+
     @Test(arguments: [
         ("49,99", 4999),
         ("49.99", 4999),

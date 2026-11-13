@@ -18,7 +18,8 @@ body:json {
     "foil": false,
     "quantity": 1,
     "binder_id": null,
-    "sealed_product_id": null
+    "sealed_product_id": null,
+    "purchase_price": null
   }
 }
 
@@ -26,6 +27,9 @@ docs {
   `201`. Merges into the existing entry of the same card, finish and binder. Set `binder_id` to
   `{{binderId}}` to store the copies in a binder. Set `sealed_product_id` to `{{purchaseId}}` to
   attach them to one of your sealed products: no purchase price, and the card joins its content.
-  `card_not_in_catalog` (404), `purchase_not_found` (404, also for a single card purchase),
-  `invalid_quantity` (400, outside 1 to 255).
+  Set `purchase_price` (cents per copy) to give the copies a price and record a single card
+  purchase of price × quantity, dated today; leave it null for no purchase. The two are exclusive
+  (`invalid_request`, 400). `card_not_in_catalog` (404), `purchase_not_found` (404, also for a
+  single card purchase), `invalid_quantity` (400, outside 1 to 255), `invalid_purchase_price`
+  (400, 0 or less).
 }

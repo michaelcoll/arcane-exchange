@@ -1,0 +1,221 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            SELECT p.id, p.kind, p.amount_cents, p.purchased_on, p.product_type, p.name,\n                   p.set_code, sn.name AS \"set_name?\",\n                   pc.set_code AS \"card_set_code?\", csn.name AS \"card_set_name?\",\n                   pc.collector_number AS \"collector_number?\", pc.language_code AS \"language_code?\",\n                   c.name AS \"card_name?\", c.image_source AS \"image_source?\",\n                   c.image_has_back AS \"image_has_back?\", pc.foil AS \"foil?\",\n                   pc.quantity AS \"quantity?\"\n            FROM purchase p\n                     LEFT JOIN set_name sn ON sn.set_code = p.set_code\n                     LEFT JOIN purchase_content pc ON pc.purchase_id = p.id AND p.kind = 'single_card'\n                     LEFT JOIN card c ON (c.set_code, c.collector_number, c.language_code) =\n                                         (pc.set_code, pc.collector_number, pc.language_code)\n                     LEFT JOIN set_name csn ON csn.set_code = pc.set_code\n            \n            WHERE p.id = $1\n              AND p.user_id = $2\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "purchase",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "kind",
+        "type_info": "Varchar",
+        "origin": {
+          "Table": {
+            "table": "purchase",
+            "name": "kind"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "amount_cents",
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "purchase",
+            "name": "amount_cents"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "purchased_on",
+        "type_info": "Date",
+        "origin": {
+          "Table": {
+            "table": "purchase",
+            "name": "purchased_on"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "product_type",
+        "type_info": "Varchar",
+        "origin": {
+          "Table": {
+            "table": "purchase",
+            "name": "product_type"
+          }
+        }
+      },
+      {
+        "ordinal": 5,
+        "name": "name",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "purchase",
+            "name": "name"
+          }
+        }
+      },
+      {
+        "ordinal": 6,
+        "name": "set_code",
+        "type_info": "Varchar",
+        "origin": {
+          "Table": {
+            "table": "purchase",
+            "name": "set_code"
+          }
+        }
+      },
+      {
+        "ordinal": 7,
+        "name": "set_name?",
+        "type_info": "Varchar",
+        "origin": {
+          "Table": {
+            "table": "set_name",
+            "name": "name"
+          }
+        }
+      },
+      {
+        "ordinal": 8,
+        "name": "card_set_code?",
+        "type_info": "Varchar",
+        "origin": {
+          "Table": {
+            "table": "purchase_content",
+            "name": "set_code"
+          }
+        }
+      },
+      {
+        "ordinal": 9,
+        "name": "card_set_name?",
+        "type_info": "Varchar",
+        "origin": {
+          "Table": {
+            "table": "set_name",
+            "name": "name"
+          }
+        }
+      },
+      {
+        "ordinal": 10,
+        "name": "collector_number?",
+        "type_info": "Varchar",
+        "origin": {
+          "Table": {
+            "table": "purchase_content",
+            "name": "collector_number"
+          }
+        }
+      },
+      {
+        "ordinal": 11,
+        "name": "language_code?",
+        "type_info": "Varchar",
+        "origin": {
+          "Table": {
+            "table": "purchase_content",
+            "name": "language_code"
+          }
+        }
+      },
+      {
+        "ordinal": 12,
+        "name": "card_name?",
+        "type_info": "Varchar",
+        "origin": {
+          "Table": {
+            "table": "card",
+            "name": "name"
+          }
+        }
+      },
+      {
+        "ordinal": 13,
+        "name": "image_source?",
+        "type_info": "Varchar",
+        "origin": {
+          "Table": {
+            "table": "card",
+            "name": "image_source"
+          }
+        }
+      },
+      {
+        "ordinal": 14,
+        "name": "image_has_back?",
+        "type_info": "Bool",
+        "origin": {
+          "Table": {
+            "table": "card",
+            "name": "image_has_back"
+          }
+        }
+      },
+      {
+        "ordinal": 15,
+        "name": "foil?",
+        "type_info": "Bool",
+        "origin": {
+          "Table": {
+            "table": "purchase_content",
+            "name": "foil"
+          }
+        }
+      },
+      {
+        "ordinal": 16,
+        "name": "quantity?",
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "purchase_content",
+            "name": "quantity"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Text"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true
+    ]
+  },
+  "hash": "38d76985721dbf1ec447f8da9f25bcee782843a992ed35fb397d381c90ef73bd"
+}

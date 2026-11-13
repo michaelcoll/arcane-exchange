@@ -47,7 +47,7 @@ struct PurchasesView: View {
                 }
                 .task { await model.reload() }
                 .sheet(item: $form) { target in
-                    SealedProductFormView(api: api, editing: editedPurchase(in: target)) {
+                    PurchaseFormView(api: api, editing: editedPurchase(in: target)) {
                         Task { await model.reload() }
                     }
                 }
@@ -129,7 +129,7 @@ struct PurchasesView: View {
 
     private func row(_ purchase: Purchase) -> some View {
         HStack(spacing: 12) {
-            if let set = purchase.set {
+            if let set = PurchaseCopy.set(of: purchase) {
                 SetSymbol(setCode: set.code)
                     .foregroundStyle(.secondary)
             }

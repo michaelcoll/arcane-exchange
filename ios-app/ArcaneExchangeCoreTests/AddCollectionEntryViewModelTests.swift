@@ -54,6 +54,85 @@ struct AddCollectionEntryViewModelTests {
         ))
     }
 
+    @Test func sendsThePurchasePricePerCopyInCents() async {
+        let api = FakeAPI()
+        nonisolated(unsafe) var sent: Components.Schemas.AddCollectionEntryRequest?
+        api.onAddCollectionEntry = { input in
+            if case let .json(body) = input.body { sent = body }
+            return added
+        }
+        let model = AddCollectionEntryViewModel(card: card, api: api, defaults: isolatedDefaults())
+        model.quantity = 4
+        model.priceText = "2,50"
+
+        let accepted = await model.add()
+
+        #expect(accepted)
+        #expect(sent?.purchase_price == 250)
+        #expect(sent?.quantity == 4)
+    }
+
+    @Test func aChosenSealedProductLeavesNoPriceToSend() async {
+        let api = FakeAPI()
+        nonisolated(unsafe) var sent: Components.Schemas.AddCollectionEntryRequest?
+        api.onAddCollectionEntry = { input in
+            if case let .json(body) = input.body { sent = body }
+            return added
+        }
+        let model = AddCollectionEntryViewModel(card: card, api: api, defaults: isolatedDefaults())
+        model.priceText = "2"
+        model.chooseSealedProduct("p-1")
+
+        let accepted = await model.add()
+
+        #expect(accepted)
+        #expect(sent?.sealed_product_id == "p-1")
+        #expect(sent?.purchase_price == nil)
+    }
+
+    @Test func aCopyWithoutPriceSendsNoPrice() async {
+        let api = FakeAPI()
+        nonisolated(unsafe) var sent: Components.Schemas.AddCollectionEntryRequest?
+        api.onAddCollectionEntry = { input in
+            if case let .json(body) = input.body { sent = body }
+            return added
+        }
+        let model = AddCollectionEntryViewModel(card: card, api: api, defaults: isolatedDefaults())
+        model.priceText = "  "
+
+        let accepted = await model.add()
+
+        #expect(accepted)
+        #expect(sent?.purchase_price == nil)
+    }
+
+    @Test func aPriceThatIsNotPositiveBlocksTheAddition() async {
+        let api = FakeAPI()
+        let model = AddCollectionEntryViewModel(card: card, api: api, defaults: isolatedDefaults())
+        #expect(model.canSubmit)
+
+        for text in ["0", "-1", "abc", "2,999"] {
+            model.priceText = text
+            #expect(!model.canSubmit)
+            let accepted = await model.add()
+            #expect(!accepted)
+        }
+
+        #expect(api.calls.isEmpty)
+    }
+
+    @Test func aRefusedPriceShowsItsTranslatedError() async {
+        let api = FakeAPI()
+        api.onAddCollectionEntry = { _ in throw APIError(code: "invalid_purchase_price", status: 400) }
+        let model = AddCollectionEntryViewModel(card: card, api: api, defaults: isolatedDefaults())
+        model.priceText = "2"
+
+        let accepted = await model.add()
+
+        #expect(!accepted)
+        #expect(model.writeError == "Le prix d'achat doit être supérieur à 0 €.")
+    }
+
     @Test func aCopyOutOfAnyBinderSendsNoBinder() async {
         let api = FakeAPI()
         nonisolated(unsafe) var sent: Components.Schemas.AddCollectionEntryRequest?
@@ -128,7 +207,26 @@ struct AddCollectionEntryViewModelTests {
         #expect(model.sealedProductID == nil)
     }
 
-    @Test func aFailedReadLeavesNoSealedProductToChoose() async {
+    @Test func offersTheSealedProductsOfEveryPageAndNoSingleCardPurchase() async {
+        let api = FakeAPI()
+        nonisolated(unsafe) var asked: [Int32] = []
+        api.onListPurchases = { input in
+            let page = input.query.page ?? 0
+            asked.append(page)
+            let items = page == 0
+                ? [singleCardPurchase("c1"), purchase("s1", on: "2026-11-13")]
+                : [singleCardPurchase("c2"), purchase("s2", on: "2026-10-01")]
+            return .ok(.init(body: .json(.init(items: items, page: page, page_size: 2, total: 4))))
+        }
+        let model = AddCollectionEntryViewModel(card: card, api: api, defaults: isolatedDefaults())
+
+        await model.loadSealedProducts()
+
+        #expect(model.sealedProducts.map(\.id) == ["s1", "s2"])
+        #expect(asked == [0, 1])
+    }
+
+    @Test func aFailedReadLeavesNoSealedProductToChooseAndTellsWhy() async {
         let api = FakeAPI()
         api.onListPurchases = { _ in throw APIError(code: "internal", status: 500) }
         let model = AddCollectionEntryViewModel(card: card, api: api, defaults: isolatedDefaults())
@@ -136,6 +234,17 @@ struct AddCollectionEntryViewModelTests {
         await model.loadSealedProducts()
 
         #expect(model.sealedProducts.isEmpty)
+        #expect(model.loadError == "Erreur technique, réessaie plus tard.")
+    }
+
+    @Test func choosingASealedProductEmptiesThePrice() {
+        let model = AddCollectionEntryViewModel(card: card, api: FakeAPI(), defaults: isolatedDefaults())
+        model.priceText = "2,50"
+
+        model.chooseSealedProduct("p-1")
+
+        #expect(model.sealedProductID == "p-1")
+        #expect(model.priceText.isEmpty)
     }
 
     @Test func attachesTheCopiesToTheChosenSealedProduct() async {
@@ -146,7 +255,7 @@ struct AddCollectionEntryViewModelTests {
             return added
         }
         let model = AddCollectionEntryViewModel(card: card, api: api, defaults: isolatedDefaults())
-        model.sealedProductID = "p-1"
+        model.chooseSealedProduct("p-1")
 
         let accepted = await model.add()
 
@@ -172,7 +281,7 @@ struct AddCollectionEntryViewModelTests {
         let api = FakeAPI()
         api.onAddCollectionEntry = { _ in throw APIError(code: "purchase_not_found", status: 404) }
         let model = AddCollectionEntryViewModel(card: card, api: api, defaults: isolatedDefaults())
-        model.sealedProductID = "p-1"
+        model.chooseSealedProduct("p-1")
 
         let accepted = await model.add()
 
