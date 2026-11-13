@@ -24,7 +24,7 @@ struct RootTabView: View {
             }
 
             Tab("Scanner", systemImage: "viewfinder", value: .scanner) {
-                ScannerView(index: scanIndex)
+                ScannerView(index: scanIndex, api: api)
             }
 
             Tab("Échanges", systemImage: "arrow.left.arrow.right", value: .trades) {

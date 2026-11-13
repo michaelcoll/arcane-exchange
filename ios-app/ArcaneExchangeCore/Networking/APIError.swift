@@ -1,3 +1,4 @@
+import APIClient
 import Foundation
 import OpenAPIRuntime
 
@@ -14,9 +15,18 @@ package struct APIError: Error, Equatable, LocalizedError {
     /// French message, ready to show to the player.
     package let message: String
 
-    package init(code: String?, status: Int?, isNetworkFailure: Bool = false) {
+    /// The cards of a scan batch the catalog refused (`card_not_in_catalog`), as the batch named them.
+    package let unknownCards: [Components.Schemas.UnknownCardResponse]
+
+    package init(
+        code: String?,
+        status: Int?,
+        isNetworkFailure: Bool = false,
+        unknownCards: [Components.Schemas.UnknownCardResponse] = []
+    ) {
         self.code = code
         self.status = status
+        self.unknownCards = unknownCards
         self.isNetworkFailure = isNetworkFailure
         message = isNetworkFailure ? APIErrorMessages.network : APIErrorMessages.message(for: code)
     }

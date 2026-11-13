@@ -1,16 +1,21 @@
+import APIClient
 import ArcaneExchangeCore
 import SwiftUI
 
 /// The Scanner tab: the camera, full screen, and the scan batch it fills, shown in the drawer.
 struct ScannerView: View {
     @State private var scanner: ScannerViewModel
+    @State private var validation: ScanValidationViewModel
     @State private var isDrawerOpen = false
     @State private var isConfirmingClear = false
+    @State private var isValidating = false
     private let index: ScanIndexModel
 
-    init(index: ScanIndexModel) {
+    init(index: ScanIndexModel, api: any APIProtocol) {
         self.index = index
-        _scanner = State(initialValue: ScannerViewModel(index: index, storage: DeviceScanBatchStorage()))
+        let scanner = ScannerViewModel(index: index, storage: DeviceScanBatchStorage())
+        _scanner = State(initialValue: scanner)
+        _validation = State(initialValue: ScanValidationViewModel(scanner: scanner, api: api))
     }
 
     var body: some View {
@@ -29,7 +34,16 @@ struct ScannerView: View {
         .onDisappear { scanner.stop() }
         .sensoryFeedback(.success, trigger: scanner.recognitionCount)
         // Nothing is added while the list or the confirmation is open.
-        .onChange(of: isDrawerOpen || isConfirmingClear) { _, paused in scanner.isPaused = paused }
+        .onChange(of: isDrawerOpen || isConfirmingClear || isValidating) { _, paused in scanner.isPaused = paused }
+        .sheet(isPresented: $isValidating) {
+            ScanValidationSheet(model: validation, cardCount: scanner.batch.cardCount) {
+                // Back to the camera.
+                withAnimation(.snappy) { isDrawerOpen = false }
+            } onRefused: {
+                // The refused lines are flagged in the list.
+                withAnimation(.snappy) { isDrawerOpen = true }
+            }
+        }
         .alert("Vider le lot ?", isPresented: $isConfirmingClear) {
             Button("Annuler", role: .cancel) {}
             Button("Vider", role: .destructive) { scanner.clear() }
@@ -98,7 +112,13 @@ struct ScannerView: View {
                         .ignoresSafeArea()
                         .onTapGesture { withAnimation(.snappy) { isDrawerOpen = false } }
                 }
-                ScannerDrawer(scanner: scanner, isOpen: $isDrawerOpen) { isConfirmingClear = true }
+                ScannerDrawer(
+                    scanner: scanner,
+                    isOpen: $isDrawerOpen,
+                    rejectedLineIDs: validation.rejectedLineIDs,
+                    onClear: { isConfirmingClear = true },
+                    onFinish: { isValidating = true }
+                )
             }
             .overlay(alignment: .top) { topBar }
         case .denied:
@@ -172,5 +192,5 @@ private struct CardOutline: View {
 }
 
 #Preview {
-    ScannerView(index: ScanIndexModel(api: APIClientFactory.preview))
+    ScannerView(index: ScanIndexModel(api: APIClientFactory.preview), api: APIClientFactory.preview)
 }

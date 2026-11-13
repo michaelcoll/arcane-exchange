@@ -87,7 +87,7 @@ private struct CurrentBaseURLMiddleware: ClientMiddleware {
 /// Asks for the reload of the widget a mutation touches, as soon as the server answered it,
 /// whatever the status. A transport failure or a cancellation reloads nothing. An operation
 /// absent from the table (the other mutations, every read) reloads nothing.
-private struct WidgetsReloadMiddleware: ClientMiddleware {
+struct WidgetsReloadMiddleware: ClientMiddleware {
     /// The widgets each operation touches. Confirming a trade touches both: the last confirmation
     /// completes the trade and moves its cards between collections, and the response does not
     /// say whether it did (a reload that changes nothing is harmless). Rating a trade, the import
@@ -105,7 +105,8 @@ private struct WidgetsReloadMiddleware: ClientMiddleware {
         Operations.add_collection_entry.id: [.collection],
         Operations.update_collection_entry.id: [.collection],
         Operations.move_collection_entry.id: [.collection],
-        Operations.remove_collection_entry.id: [.collection]
+        Operations.remove_collection_entry.id: [.collection],
+        Operations.validate_scan_batch.id: [.collection]
     ]
 
     let onWidgetsChanged: @Sendable (HomeWidgetKind) -> Void
@@ -128,9 +129,11 @@ private struct WidgetsReloadMiddleware: ClientMiddleware {
 /// Raises every failure as an `APIError`: a response of status 400 and above, decoded from its
 /// `ErrorResponse` body when it has one, and a transport failure. The generated error cases of
 /// an `Output` are never reached.
-private struct APIErrorMiddleware: ClientMiddleware {
+struct APIErrorMiddleware: ClientMiddleware {
     private struct ErrorBody: Decodable {
         let code: String?
+        /// The cards of a scan batch the catalog does not have.
+        let lines: [Components.Schemas.UnknownCardResponse]?
     }
 
     /// The most an error body is read up to: anything bigger is not an `ErrorResponse`.
@@ -163,21 +166,22 @@ private struct APIErrorMiddleware: ClientMiddleware {
         }
 
         let status = response.status.code
-        var code = await Self.code(in: responseBody)
+        let errorBody = await Self.errorBody(in: responseBody)
+        var code = errorBody?.code
         if status == 401 {
             code = code ?? "unauthorized"
             if let onUnauthorized, await latch.trip() {
                 await onUnauthorized()
             }
         }
-        throw APIError(code: code, status: status)
+        throw APIError(code: code, status: status, unknownCards: errorBody?.lines ?? [])
     }
 
-    private static func code(in body: HTTPBody?) async -> String? {
+    private static func errorBody(in body: HTTPBody?) async -> ErrorBody? {
         guard let body,
               let bytes = try? await ArraySlice<UInt8>(collecting: body, upTo: maxBodySize)
         else { return nil }
-        return (try? JSONDecoder().decode(ErrorBody.self, from: Data(bytes)))?.code
+        return try? JSONDecoder().decode(ErrorBody.self, from: Data(bytes))
     }
 }
 

@@ -44,27 +44,12 @@ package final class AddCollectionEntryViewModel {
         binders = await api.bindersOrEmpty()
     }
 
-    /// Reads every page of the purchases, the sealed products being among them whatever their age.
     package func loadSealedProducts() async {
-        var purchases: [Purchase] = []
-        var page: Int32 = 0
-        loadError = nil
-        do {
-            while true {
-                let query = Operations.list_purchases.Input.Query(page: page, page_size: 100)
-                let response = try await api.list_purchases(query: query).ok.body.json
-                purchases += response.items
-                page += 1
-                if response.items.isEmpty || purchases.count >= Int(response.total) {
-                    break
-                }
-            }
-        } catch {
-            // A failed read leaves "Aucun" as the only choice, or the products read so far: the
-            // copies can still be added.
-            loadError = APIError.read(error).message
-        }
-        sealedProducts = purchases.filter { $0.product_type != nil }
+        // A failed read leaves "Aucun" as the only choice, or the products read so far: the
+        // copies can still be added.
+        let read = await api.readSealedProducts()
+        loadError = read.error
+        sealedProducts = read.products
     }
 
     /// Picks the sealed product the copies come from, or none. The price typed so far goes: a
