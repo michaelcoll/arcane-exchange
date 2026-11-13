@@ -121,7 +121,7 @@ struct CollectionEntriesViewModelTests {
         }
         let model = CollectionEntriesViewModel(card: card, api: api)
 
-        let accepted = await model.edit(entry("e-1", purchase: 800), quantity: 2, foil: false, purchaseCents: 250)
+        let accepted = await model.edit(entry("e-1", purchase: 800), quantity: 2, foil: false, priceText: "2,50")
 
         #expect(accepted)
         #expect(sent?.purchase_price == 250)
@@ -138,10 +138,22 @@ struct CollectionEntriesViewModelTests {
         }
         let model = CollectionEntriesViewModel(card: card, api: api)
 
-        _ = await model.edit(entry("e-1", purchase: 800), quantity: 3, foil: false, purchaseCents: 800)
-        _ = await model.edit(entry("e-1"), quantity: 3, foil: false, purchaseCents: nil)
+        _ = await model.edit(entry("e-1", purchase: 800), quantity: 3, foil: false, priceText: "8")
+        _ = await model.edit(entry("e-1"), quantity: 3, foil: false, priceText: " ")
 
         #expect(sent.map(\.purchase_price) == [nil, nil])
+    }
+
+    @Test(arguments: ["abc", "0", "-3", "1,234"])
+    func editRefusesAPriceThatIsNotAnAmountWithoutWritingAnything(text: String) async {
+        let api = FakeAPI()
+        let model = CollectionEntriesViewModel(card: card, api: api)
+
+        let accepted = await model.edit(entry("e-1"), quantity: 2, foil: false, priceText: text)
+
+        #expect(!accepted)
+        #expect(model.writeError == "Le prix d'achat doit être supérieur à 0 €.")
+        #expect(api.calls.isEmpty)
     }
 
     @Test func translatesARefusedPurchasePriceAndKeepsTheList() async {
@@ -151,7 +163,7 @@ struct CollectionEntriesViewModelTests {
         let model = CollectionEntriesViewModel(card: card, api: api)
         await model.load()
 
-        let accepted = await model.edit(entry("e-1"), quantity: 2, foil: false, purchaseCents: 0)
+        let accepted = await model.edit(entry("e-1"), quantity: 2, foil: false, priceText: "2")
 
         #expect(!accepted)
         #expect(model.writeError == "Le prix d'achat doit être supérieur à 0 €.")

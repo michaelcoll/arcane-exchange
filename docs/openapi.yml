@@ -1145,6 +1145,194 @@ paths:
       responses:
         '204':
           description: Catalog reloaded from the Scryfall bulk; a load already running makes this call a no-op
+  /purchases:
+    get:
+      tags:
+      - purchases
+      operationId: list_purchases
+      parameters:
+      - name: page
+        in: query
+        description: Page number, 0-based (default 0). `page * page_size` must not exceed 2000
+        required: false
+        schema:
+          type: integer
+          format: int32
+          minimum: 0
+      - name: page_size
+        in: query
+        description: Items per page, 1 to 100 (default 20)
+        required: false
+        schema:
+          type: integer
+          format: int32
+          minimum: 0
+      responses:
+        '200':
+          description: The Purchases of the authenticated user, by purchase date then creation date, most recent first
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedPurchasesResponse'
+        '400':
+          description: Pagination out of bounds
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Missing or invalid token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      security:
+      - bearer_auth: []
+    post:
+      tags:
+      - purchases
+      operationId: create_purchase
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateSealedProductRequest'
+        required: true
+      responses:
+        '201':
+          description: Sealed product recorded
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PurchaseResponse'
+        '400':
+          description: Amount not strictly positive; `code` is `invalid_purchase_price`
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Missing or invalid token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Unknown set; `code` is `set_not_found`
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      security:
+      - bearer_auth: []
+  /purchases/{id}:
+    get:
+      tags:
+      - purchases
+      operationId: get_purchase
+      parameters:
+      - name: id
+        in: path
+        description: Purchase id
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        '200':
+          description: The Purchase
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PurchaseResponse'
+        '401':
+          description: Missing or invalid token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Purchase not found, or not owned by the caller; `code` is `purchase_not_found`
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      security:
+      - bearer_auth: []
+    delete:
+      tags:
+      - purchases
+      operationId: delete_purchase
+      parameters:
+      - name: id
+        in: path
+        description: Purchase id
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        '204':
+          description: Purchase deleted with its content; no card leaves the collection
+        '401':
+          description: Missing or invalid token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Purchase not found, or not owned by the caller; `code` is `purchase_not_found`
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      security:
+      - bearer_auth: []
+    patch:
+      tags:
+      - purchases
+      operationId: update_purchase
+      parameters:
+      - name: id
+        in: path
+        description: Purchase id
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdatePurchaseRequest'
+        required: true
+      responses:
+        '200':
+          description: Purchase updated; the collection is untouched
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PurchaseResponse'
+        '400':
+          description: Amount not strictly positive; `code` is `invalid_purchase_price`
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Missing or invalid token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Purchase not found, or not owned by the caller (`purchase_not_found`); unknown set (`set_not_found`)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      security:
+      - bearer_auth: []
   /search/card:
     get:
       tags:
@@ -2251,6 +2439,35 @@ components:
       - public
       - trade
       - private
+    CreateSealedProductRequest:
+      type: object
+      description: A sealed product to record.
+      required:
+      - product_type
+      - set_code
+      - amount_cents
+      - purchased_on
+      properties:
+        amount_cents:
+          type: integer
+          format: int32
+          description: |-
+            Amount spent, in cents. Signed so an amount that is not strictly positive fails with
+            `invalid_purchase_price` (400) instead of a JSON extractor rejection.
+        name:
+          type:
+          - string
+          - 'null'
+          description: Free-text label; a blank name is stored as absent.
+        product_type:
+          $ref: '#/components/schemas/SealedProductTypeParam'
+        purchased_on:
+          type: string
+          format: date
+          description: Day of the purchase, `YYYY-MM-DD`.
+        set_code:
+          type: string
+          description: Code of a known set.
     CreateTradeRequest:
       type: object
       required:
@@ -2394,6 +2611,30 @@ components:
           type: integer
           format: int64
           minimum: 0
+    PaginatedPurchasesResponse:
+      type: object
+      required:
+      - items
+      - total
+      - page
+      - page_size
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/PurchaseResponse'
+        page:
+          type: integer
+          format: int32
+          minimum: 0
+        page_size:
+          type: integer
+          format: int32
+          minimum: 0
+        total:
+          type: integer
+          format: int64
+          minimum: 0
     PaginatedTradesResponse:
       type: object
       required:
@@ -2459,6 +2700,43 @@ components:
         trend:
           type: integer
           format: int64
+    PurchaseKindResponse:
+      type: string
+      description: What a Purchase bought.
+      enum:
+      - sealed_product
+    PurchaseResponse:
+      type: object
+      required:
+      - id
+      - kind
+      - amount_cents
+      - purchased_on
+      properties:
+        amount_cents:
+          type: integer
+          format: int32
+          description: Amount spent, in cents.
+          minimum: 0
+        id:
+          type: string
+        kind:
+          $ref: '#/components/schemas/PurchaseKindResponse'
+        name:
+          type:
+          - string
+          - 'null'
+          description: 'Sealed product only: the optional name the player gave it.'
+        product_type:
+          $ref: '#/components/schemas/SealedProductTypeParam'
+          description: Sealed product only.
+        purchased_on:
+          type: string
+          format: date
+          description: Day of the purchase, `YYYY-MM-DD`.
+        set:
+          $ref: '#/components/schemas/SetInfoResponse'
+          description: Sealed product only.
     RarityCodeParam:
       type: string
       enum:
@@ -2593,6 +2871,14 @@ components:
         set_code:
           type: string
           description: Set code, 3 to 6 uppercase characters.
+    SealedProductTypeParam:
+      type: string
+      enum:
+      - BOOSTER
+      - DISPLAY
+      - BUNDLE
+      - PRERELEASE_PACK
+      - PRECONSTRUCTED_DECK
     SetInfoResponse:
       type: object
       description: A set, as several resources show it.
@@ -2853,6 +3139,34 @@ components:
           description: |-
             New quantity, 1 to 255. Signed so an out-of-range value fails with `invalid_quantity`
             (400) instead of a JSON extractor rejection.
+    UpdatePurchaseRequest:
+      type: object
+      description: The fields of a Purchase to change; those left out are kept.
+      properties:
+        amount_cents:
+          type:
+          - integer
+          - 'null'
+          format: int32
+          description: Amount spent, in cents, strictly positive (`invalid_purchase_price`, 400).
+        name:
+          type:
+          - string
+          - 'null'
+          description: An empty name clears the stored one.
+        product_type:
+          $ref: '#/components/schemas/SealedProductTypeParam'
+        purchased_on:
+          type:
+          - string
+          - 'null'
+          format: date
+          description: Day of the purchase, `YYYY-MM-DD`.
+        set_code:
+          type:
+          - string
+          - 'null'
+          description: Code of a known set.
     UserProfileResponse:
       type: object
       required:
@@ -2912,6 +3226,8 @@ tags:
   description: Player's private collection (authentication required, no public catalog)
 - name: binders
   description: 'Binders a player stores their collection in: list, creation, renaming, deletion of an empty one (authentication required)'
+- name: purchases
+  description: 'What a player spent to enrich their collection: sealed products bought, listed, edited and deleted without touching the collection (authentication required)'
 - name: trade-settings
   description: 'Settings deciding what of a player''s collection is exposed for trade: visibility, binders open for trade, rarity filters (authentication required)'
 - name: search

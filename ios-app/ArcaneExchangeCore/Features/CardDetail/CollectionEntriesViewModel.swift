@@ -49,15 +49,21 @@ package final class CollectionEntriesViewModel {
         foil ? reservedFoil : reservedNormal
     }
 
-    /// Returns whether the edit was accepted, so the sheet that asked can close. `purchaseCents` is
-    /// the price per copy typed in the sheet: nil (nothing typed) and an unchanged price are not sent.
+    /// Returns whether the edit was accepted, so the sheet that asked can close. `priceText` is
+    /// the price per copy in euros as typed in the sheet: empty (nothing typed) and an unchanged
+    /// price are not sent, one that is not a positive amount refuses the edit.
     package func edit(
         _ entry: CollectionEntryDetail,
         quantity: Int,
         foil: Bool,
-        purchaseCents: Int? = nil
+        priceText: String = ""
     ) async -> Bool {
-        await write {
+        let purchaseCents = EuroInput.cents(from: priceText)
+        if purchaseCents == nil, !priceText.trimmingCharacters(in: .whitespaces).isEmpty {
+            writeError = APIErrorMessages.message(for: "invalid_purchase_price")
+            return false
+        }
+        return await write {
             let changedPrice = purchaseCents == entry.purchase_price.map(Int.init) ? nil : purchaseCents
             let body = Components.Schemas.UpdateCollectionEntryRequest(
                 foil: foil == entry.foil ? nil : foil,

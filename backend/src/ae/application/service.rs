@@ -4,6 +4,7 @@ pub mod card;
 pub mod catalog;
 pub mod collection;
 pub mod maintenance;
+pub mod purchase;
 pub mod search;
 pub mod sets;
 pub mod showcase;

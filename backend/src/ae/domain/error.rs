@@ -75,6 +75,8 @@ pub enum FunctionalError {
     InvalidPurchasePrice,
     /// The edit would take the copies a player owns under what the accepted Trades committed.
     ReservedQuantityExceeded,
+    /// No Purchase has this identifier for the caller, whoever else it belongs to.
+    PurchaseNotFound,
 }
 
 impl FunctionalError {
@@ -132,6 +134,7 @@ impl FunctionalError {
             FunctionalError::InvalidQuantity => "invalid_quantity",
             FunctionalError::InvalidPurchasePrice => "invalid_purchase_price",
             FunctionalError::ReservedQuantityExceeded => "reserved_quantity_exceeded",
+            FunctionalError::PurchaseNotFound => "purchase_not_found",
         }
     }
 }
@@ -250,6 +253,7 @@ impl From<FunctionalError> for String {
             FunctionalError::ReservedQuantityExceeded => {
                 "The edit would leave fewer copies than the accepted trades committed".to_string()
             }
+            FunctionalError::PurchaseNotFound => "Purchase not found".to_string(),
         }
     }
 }

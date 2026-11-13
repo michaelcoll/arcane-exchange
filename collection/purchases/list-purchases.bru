@@ -1,0 +1,21 @@
+meta {
+  name: list purchases
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{baseUrl}}/purchases?page=0&page_size=20
+  body: none
+  auth: inherit
+}
+
+params:query {
+  page: 0
+  page_size: 20
+}
+
+docs {
+  The player's purchases, most recent purchase date first, then most recent creation.
+  Copy an `id` into the `purchaseId` variable.
+}

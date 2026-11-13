@@ -14,21 +14,6 @@ package enum Price {
                 .locale(Locale(identifier: "fr_FR"))
         )
     }
-
-    /// Reads an amount typed in euros ("2", "2,5", "2.50") as cents; nil when empty or not an amount
-    /// with at most two decimals. A zero is read as 0: refusing it is the backend's rule.
-    package static func cents(fromEuros text: String) -> Int? {
-        let trimmed = text.trimmingCharacters(in: .whitespaces).replacingOccurrences(of: ",", with: ".")
-        let parts = trimmed.split(separator: ".", omittingEmptySubsequences: false)
-        guard (1 ... 2).contains(parts.count),
-              parts.allSatisfy({ $0.allSatisfy(\.isASCII) && $0.allSatisfy(\.isNumber) }),
-              !parts[0].isEmpty,
-              parts.count == 1 || (1 ... 2).contains(parts[1].count)
-        else { return nil }
-        let euros = Int(parts[0]) ?? 0
-        let decimals = parts.count == 2 ? (Int(parts[1]) ?? 0) * (parts[1].count == 1 ? 10 : 1) : 0
-        return euros * 100 + decimals
-    }
 }
 
 /// Compares what a card is worth today against what it was bought for.

@@ -276,6 +276,51 @@ final class FakeAPI: APIProtocol, @unchecked Sendable {
         return try await onDeleteBinder(input)
     }
 
+    var onListPurchases: (Operations.list_purchases.Input) async throws -> Operations.list_purchases.Output = { _ in
+        throw NotStubbed(operation: "list_purchases")
+    }
+
+    func list_purchases(_ input: Operations.list_purchases.Input) async throws -> Operations.list_purchases.Output {
+        record("list_purchases")
+        return try await onListPurchases(input)
+    }
+
+    var onGetPurchase: (Operations.get_purchase.Input) async throws -> Operations.get_purchase.Output = { _ in
+        throw NotStubbed(operation: "get_purchase")
+    }
+
+    func get_purchase(_ input: Operations.get_purchase.Input) async throws -> Operations.get_purchase.Output {
+        record("get_purchase")
+        return try await onGetPurchase(input)
+    }
+
+    var onCreatePurchase: (Operations.create_purchase.Input) async throws -> Operations.create_purchase.Output = { _ in
+        throw NotStubbed(operation: "create_purchase")
+    }
+
+    func create_purchase(_ input: Operations.create_purchase.Input) async throws -> Operations.create_purchase.Output {
+        record("create_purchase")
+        return try await onCreatePurchase(input)
+    }
+
+    var onUpdatePurchase: (Operations.update_purchase.Input) async throws -> Operations.update_purchase.Output = { _ in
+        throw NotStubbed(operation: "update_purchase")
+    }
+
+    func update_purchase(_ input: Operations.update_purchase.Input) async throws -> Operations.update_purchase.Output {
+        record("update_purchase")
+        return try await onUpdatePurchase(input)
+    }
+
+    var onDeletePurchase: (Operations.delete_purchase.Input) async throws -> Operations.delete_purchase.Output = { _ in
+        throw NotStubbed(operation: "delete_purchase")
+    }
+
+    func delete_purchase(_ input: Operations.delete_purchase.Input) async throws -> Operations.delete_purchase.Output {
+        record("delete_purchase")
+        return try await onDeletePurchase(input)
+    }
+
     var onGetTradeRarityFilters: (Operations.get_trade_rarity_filters.Input) async throws -> Operations.get_trade_rarity_filters.Output = { _ in
         throw NotStubbed(operation: "get_trade_rarity_filters")
     }

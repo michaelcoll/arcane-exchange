@@ -10,6 +10,7 @@ use crate::domain::collection::CollectionQuery;
 use crate::domain::error::FunctionalError;
 use crate::domain::language_code::LanguageCode;
 use crate::domain::pagination::PageRequest;
+use crate::domain::purchase::PurchaseAmount;
 use crate::domain::set_name::SetCode;
 use crate::infrastructure::AppState;
 use crate::infrastructure::adapter_in::auth_extractor::AuthenticatedUser;
@@ -361,7 +362,10 @@ pub(crate) async fn update_collection_entry(
             parse_entry_id(&id)?,
             payload.quantity,
             payload.foil,
-            payload.purchase_price,
+            payload
+                .purchase_price
+                .map(PurchaseAmount::try_new)
+                .transpose()?,
         )
         .await?;
 

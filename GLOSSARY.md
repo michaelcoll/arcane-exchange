@@ -108,10 +108,15 @@ dépense qu'on compare à l'évolution de la valeur de collection.
 _Avoid_ : commande, transaction, dépense
 
 **Produit scellé** :
-Un booster ou une display acheté fermé. Son achat porte un prix et reçoit, au fil des ouvertures,
-les exemplaires qu'il contenait. Sa rentabilité se lit à ce niveau : les exemplaires qui en
-sortent n'ont pas de prix d'achat propre.
+Un booster, une display, un bundle, un pack d'avant-première ou un deck préconstruit acheté fermé.
+Son achat porte un prix, un set et un nom facultatif, et reçoit, au fil des ouvertures, les
+exemplaires qu'il contenait. Sa rentabilité se lit à ce niveau : les exemplaires qui en sortent
+n'ont pas de prix d'achat propre.
 _Avoid_ : pack, sealed, boîte
+
+**Rentabilité** :
+Pour un produit scellé, son prix face à la valeur de tendance actuelle de son contenu.
+_Avoid_ : ROI, bénéfice
 
 **Lot de scan** :
 Les cartes reconnues par la caméra au cours d'une séance, en attente de correction et de

@@ -1,4 +1,4 @@
-# postgres — public schema
+# ae_727 — public schema
 
 ```mermaid
 erDiagram
@@ -101,6 +101,25 @@ erDiagram
         integer trend
         integer avg
     }
+    purchase {
+        uuid id PK "default: gen_random_uuid()"
+        character_varying(50) user_id FK "not null"
+        character_varying(20) kind "not null"
+        integer amount_cents "not null"
+        date purchased_on "not null"
+        timestamp_with_time_zone created_at "not null, default: now()"
+        character_varying(30) product_type
+        character_varying(6) set_code FK
+        text name
+    }
+    purchase_content {
+        uuid purchase_id PK, FK
+        character_varying(6) set_code PK, FK
+        character_varying(10) collector_number PK, FK
+        character_varying(2) language_code PK, FK
+        boolean foil PK
+        integer quantity "not null"
+    }
     set_name {
         character_varying(6) set_code PK
         character_varying(255) name "not null"
@@ -158,6 +177,10 @@ erDiagram
     card ||--o{ collection_entry : "set_code, collector_number, language_code"
     users ||--o{ collection_entry : "user_id"
     users ||--o{ collection_rarity_filters : "user_id"
+    set_name |o--o{ purchase : "set_code"
+    users ||--o{ purchase : "user_id"
+    purchase ||--o{ purchase_content : "purchase_id"
+    card ||--o{ purchase_content : "set_code, collector_number, language_code"
     users ||--o{ trade : "initiator_user_id"
     users ||--o{ trade : "respondent_user_id"
     card ||--o{ trade_card : "set_code, collector_number, language_code"
@@ -215,6 +238,19 @@ erDiagram
 ### mv_last_cardmarket_prices
 
 - unique index `mv_last_cardmarket_prices_unique` (`set_code`, `collector_number`, `foil`)
+
+### purchase
+
+- index `purchase_user_date_idx` (`user_id`, `purchased_on`, `created_at`)
+- check constraint `purchase_amount_positive`: `CHECK ((amount_cents > 0))`
+- check constraint `purchase_kind_check`: `CHECK (((kind)::text = ANY ((ARRAY['sealed_product'::character varying, 'single_card'::character varying])::text[])))`
+- check constraint `purchase_name_trimmed`: `CHECK (((name IS NULL) OR ((name = btrim(name)) AND (name <> ''::text))))`
+- check constraint `purchase_product_type_check`: `CHECK (((product_type)::text = ANY ((ARRAY['BOOSTER'::character varying, 'DISPLAY'::character varying, 'BUNDLE'::character varying, 'PRERELEASE_PACK'::character varying, 'PRECONSTRUCTED_DECK'::character varying])::text[])))`
+- check constraint `purchase_sealed_product_check`: `CHECK (((((kind)::text = 'sealed_product'::text) AND (product_type IS NOT NULL) AND (set_code IS NOT NULL)) OR (((kind)::text = 'single_card'::text) AND (product_type IS NULL) AND (set_code IS NULL) AND (name IS NULL))))`
+
+### purchase_content
+
+- check constraint `purchase_content_quantity_check`: `CHECK ((quantity > 0))`
 
 ### trade
 

@@ -1,0 +1,15 @@
+meta {
+  name: delete purchase
+  type: http
+  seq: 5
+}
+
+delete {
+  url: {{baseUrl}}/purchases/{{purchaseId}}
+  body: none
+  auth: inherit
+}
+
+docs {
+  `204`. Deletes the purchase and its content, never a card of the collection.
+}

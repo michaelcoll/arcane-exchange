@@ -49,6 +49,7 @@ struct APIErrorTests {
         ("user_not_found", "Ce joueur est introuvable."),
         ("card_not_found", "Cette carte est introuvable ou n'est plus disponible."),
         ("set_not_found", "Ce set est introuvable."),
+        ("purchase_not_found", "Cet achat n'existe plus."),
         ("unauthorized", "Ta session a expiré, reconnecte-toi."),
         ("internal", "Erreur technique, réessaie plus tard."),
     ])

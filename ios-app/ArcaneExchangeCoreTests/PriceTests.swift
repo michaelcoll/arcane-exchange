@@ -9,15 +9,6 @@ struct PriceTests {
         #expect(Price.euros(cents: 0).hasPrefix("0"))
     }
 
-    @Test(arguments: [("2", 200), ("2,5", 250), ("2.50", 250), (" 0,99 ", 99), ("12,05", 1205)] as [(String, Int)])
-    func readsEurosAsCents(text: String, cents: Int) {
-        #expect(Price.cents(fromEuros: text) == cents)
-    }
-
-    @Test(arguments: ["", "  ", "abc", "-2", "1,234", "2,5,1"])
-    func readsNothingFromAnUnusableAmount(text: String) {
-        #expect(Price.cents(fromEuros: text) == nil)
-    }
 }
 
 struct PurchaseSpreadTests {

@@ -1,0 +1,15 @@
+meta {
+  name: get purchase
+  type: http
+  seq: 3
+}
+
+get {
+  url: {{baseUrl}}/purchases/{{purchaseId}}
+  body: none
+  auth: inherit
+}
+
+docs {
+  `purchase_not_found` (404), also for a purchase of another player.
+}

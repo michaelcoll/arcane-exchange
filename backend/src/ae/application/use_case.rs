@@ -12,6 +12,7 @@ use crate::domain::collection_entry::{CardEntries, CollectionEntryId};
 use crate::domain::collection_stats::CollectionStats;
 use crate::domain::pagination::{PageRequest, Paginated};
 use crate::domain::price::PriceHistoryEntry;
+use crate::domain::purchase::{Purchase, PurchaseEditRequest, PurchaseId, SealedProductRequest};
 use crate::domain::rarity_trade_filter::{RarityTradeFilter, RarityTradeFilterRule};
 use crate::domain::set_name::{SetCode, SetName};
 use crate::domain::showcase::ShowcaseCard;
@@ -156,6 +157,58 @@ pub trait DeleteBinderUseCase: Send + Sync {
     /// Deletes an empty binder with its trade opening. `BinderNotFound` (`404`), also for a binder
     /// of another player, `BinderNotEmpty` (`409`) if it still holds copies.
     async fn delete_binder(&self, user_id: UserId, id: BinderId) -> Result<(), AppError>;
+}
+
+#[async_trait]
+#[cfg_attr(test, automock)]
+pub trait ListPurchasesUseCase: Send + Sync {
+    /// The player's Purchases, by purchase date then creation date, both most recent first.
+    async fn list_purchases(
+        &self,
+        user_id: UserId,
+        page: PageRequest,
+    ) -> Result<Paginated<Purchase>, AppError>;
+}
+
+#[async_trait]
+#[cfg_attr(test, automock)]
+pub trait GetPurchaseUseCase: Send + Sync {
+    /// `PurchaseNotFound` (`404`), also for a Purchase of another player.
+    async fn get_purchase(&self, user_id: UserId, id: PurchaseId) -> Result<Purchase, AppError>;
+}
+
+#[async_trait]
+#[cfg_attr(test, automock)]
+pub trait CreateSealedProductUseCase: Send + Sync {
+    /// Records a sealed product. A blank name is stored as absent. `InvalidPurchasePrice` (`400`)
+    /// for an amount that is not strictly positive, `SetNotFound` (`404`) for an unknown set.
+    async fn create_sealed_product(
+        &self,
+        user_id: UserId,
+        request: SealedProductRequest,
+    ) -> Result<Purchase, AppError>;
+}
+
+#[async_trait]
+#[cfg_attr(test, automock)]
+pub trait UpdatePurchaseUseCase: Send + Sync {
+    /// Edits a Purchase, never the collection. An empty name clears the stored one. Refused like
+    /// [`CreateSealedProductUseCase::create_sealed_product`], plus `PurchaseNotFound` (`404`), also
+    /// for a Purchase of another player.
+    async fn update_purchase(
+        &self,
+        user_id: UserId,
+        id: PurchaseId,
+        edit: PurchaseEditRequest,
+    ) -> Result<Purchase, AppError>;
+}
+
+#[async_trait]
+#[cfg_attr(test, automock)]
+pub trait DeletePurchaseUseCase: Send + Sync {
+    /// Deletes a Purchase and its content, never a collection entry. `PurchaseNotFound` (`404`),
+    /// also for a Purchase of another player.
+    async fn delete_purchase(&self, user_id: UserId, id: PurchaseId) -> Result<(), AppError>;
 }
 
 #[async_trait]
@@ -479,8 +532,7 @@ pub trait UpdateCollectionEntryUseCase: Send + Sync {
     /// waiting for it. A finish change onto an existing entry merges the two. A new purchase
     /// price replaces the entry's and creates or changes no Purchase.
     ///
-    /// Refused with `InvalidQuantity` (`400`) outside 1 to 255, `InvalidPurchasePrice` (`400`)
-    /// for a price of zero or less, `CollectionEntryNotFound`
+    /// Refused with `InvalidQuantity` (`400`) outside 1 to 255, `CollectionEntryNotFound`
     /// (`404`) for an absent entry or another player's, and `ReservedQuantityExceeded` (`409`)
     /// when it takes the owned copies under what the accepted Trades committed.
     async fn update_collection_entry(
@@ -489,7 +541,7 @@ pub trait UpdateCollectionEntryUseCase: Send + Sync {
         id: CollectionEntryId,
         quantity: Option<i32>,
         foil: Option<bool>,
-        purchase_price: Option<i32>,
+        purchase_price: Option<crate::domain::purchase::PurchaseAmount>,
     ) -> Result<CardEntries, AppError>;
 }
 

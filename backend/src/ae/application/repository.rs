@@ -11,6 +11,7 @@ use crate::domain::collection_entry::{CardEntries, CollectionEntryId, EntryUpdat
 use crate::domain::collection_stats::CollectionStats;
 use crate::domain::pagination::{Paginated, Pagination};
 use crate::domain::price::{FullPriceGuide, PriceHistoryEntry};
+use crate::domain::purchase::{NewSealedProduct, Purchase, PurchaseChanges, PurchaseId};
 use crate::domain::rarity_trade_filter::{RarityTradeFilter, RarityTradeFilterRule};
 use crate::domain::set_name::{SetCode, SetName};
 use crate::domain::showcase::ShowcaseCard;
@@ -328,6 +329,40 @@ pub trait BinderRepository: Send + Sync {
     /// Deletes the empty binder `id`, with its trade opening. `BinderNotFound` if it is not one
     /// of `user_id`'s binders, `BinderNotEmpty` if a collection entry is stored in it.
     async fn delete(&self, user_id: &UserId, id: BinderId) -> Result<(), AppError>;
+}
+
+#[async_trait]
+#[cfg_attr(test, automock)]
+pub trait PurchaseRepository: Send + Sync {
+    /// `user_id`'s Purchases, by purchase date then creation date, both most recent first.
+    async fn list(
+        &self,
+        user_id: &UserId,
+        pagination: Pagination,
+    ) -> Result<Paginated<Purchase>, AppError>;
+
+    /// `PurchaseNotFound` if `id` is not one of `user_id`'s Purchases.
+    async fn find(&self, user_id: &UserId, id: PurchaseId) -> Result<Purchase, AppError>;
+
+    /// Records a sealed product. `SetNotFound` if its set is unknown.
+    async fn create_sealed_product(
+        &self,
+        user_id: &UserId,
+        product: NewSealedProduct,
+    ) -> Result<Purchase, AppError>;
+
+    /// Replaces the fields of `changes` that are set. `PurchaseNotFound` if `id` is not one of
+    /// `user_id`'s Purchases, `SetNotFound` if the new set is unknown.
+    async fn update(
+        &self,
+        user_id: &UserId,
+        id: PurchaseId,
+        changes: PurchaseChanges,
+    ) -> Result<Purchase, AppError>;
+
+    /// Deletes `id` with its content, no collection entry. `PurchaseNotFound` if it is not one
+    /// of `user_id`'s Purchases.
+    async fn delete(&self, user_id: &UserId, id: PurchaseId) -> Result<(), AppError>;
 }
 
 #[async_trait]

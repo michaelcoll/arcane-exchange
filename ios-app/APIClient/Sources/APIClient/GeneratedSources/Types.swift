@@ -6,15 +6,7 @@
 #if compiler(>=6.4)
 @diagnose(UnusedImportAccess, as: ignored)
 #endif
-public import struct Foundation.URL
-#if compiler(>=6.4)
-@diagnose(UnusedImportAccess, as: ignored)
-#endif
-public import struct Foundation.Data
-#if compiler(>=6.4)
-@diagnose(UnusedImportAccess, as: ignored)
-#endif
-public import struct Foundation.Date
+public import Foundation
 /// A type that performs HTTP operations defined by the OpenAPI document.
 public protocol APIProtocol: Sendable {
     /// - Remark: HTTP `GET /autocomplete/user`.
@@ -116,6 +108,21 @@ public protocol APIProtocol: Sendable {
     /// - Remark: HTTP `POST /maintenance/update-catalog`.
     /// - Remark: Generated from `#/paths//maintenance/update-catalog/post(update_catalog)`.
     func update_catalog(_ input: Operations.update_catalog.Input) async throws -> Operations.update_catalog.Output
+    /// - Remark: HTTP `GET /purchases`.
+    /// - Remark: Generated from `#/paths//purchases/get(list_purchases)`.
+    func list_purchases(_ input: Operations.list_purchases.Input) async throws -> Operations.list_purchases.Output
+    /// - Remark: HTTP `POST /purchases`.
+    /// - Remark: Generated from `#/paths//purchases/post(create_purchase)`.
+    func create_purchase(_ input: Operations.create_purchase.Input) async throws -> Operations.create_purchase.Output
+    /// - Remark: HTTP `GET /purchases/{id}`.
+    /// - Remark: Generated from `#/paths//purchases/{id}/get(get_purchase)`.
+    func get_purchase(_ input: Operations.get_purchase.Input) async throws -> Operations.get_purchase.Output
+    /// - Remark: HTTP `PATCH /purchases/{id}`.
+    /// - Remark: Generated from `#/paths//purchases/{id}/patch(update_purchase)`.
+    func update_purchase(_ input: Operations.update_purchase.Input) async throws -> Operations.update_purchase.Output
+    /// - Remark: HTTP `DELETE /purchases/{id}`.
+    /// - Remark: Generated from `#/paths//purchases/{id}/delete(delete_purchase)`.
+    func delete_purchase(_ input: Operations.delete_purchase.Input) async throws -> Operations.delete_purchase.Output
     /// - Remark: HTTP `GET /search/card`.
     /// - Remark: Generated from `#/paths//search/card/get(search_cards)`.
     func search_cards(_ input: Operations.search_cards.Input) async throws -> Operations.search_cards.Output
@@ -469,6 +476,63 @@ extension APIProtocol {
     /// - Remark: Generated from `#/paths//maintenance/update-catalog/post(update_catalog)`.
     public func update_catalog() async throws -> Operations.update_catalog.Output {
         try await update_catalog(Operations.update_catalog.Input())
+    }
+    /// - Remark: HTTP `GET /purchases`.
+    /// - Remark: Generated from `#/paths//purchases/get(list_purchases)`.
+    public func list_purchases(
+        query: Operations.list_purchases.Input.Query = .init(),
+        headers: Operations.list_purchases.Input.Headers = .init()
+    ) async throws -> Operations.list_purchases.Output {
+        try await list_purchases(Operations.list_purchases.Input(
+            query: query,
+            headers: headers
+        ))
+    }
+    /// - Remark: HTTP `POST /purchases`.
+    /// - Remark: Generated from `#/paths//purchases/post(create_purchase)`.
+    public func create_purchase(
+        headers: Operations.create_purchase.Input.Headers = .init(),
+        body: Operations.create_purchase.Input.Body
+    ) async throws -> Operations.create_purchase.Output {
+        try await create_purchase(Operations.create_purchase.Input(
+            headers: headers,
+            body: body
+        ))
+    }
+    /// - Remark: HTTP `GET /purchases/{id}`.
+    /// - Remark: Generated from `#/paths//purchases/{id}/get(get_purchase)`.
+    public func get_purchase(
+        path: Operations.get_purchase.Input.Path,
+        headers: Operations.get_purchase.Input.Headers = .init()
+    ) async throws -> Operations.get_purchase.Output {
+        try await get_purchase(Operations.get_purchase.Input(
+            path: path,
+            headers: headers
+        ))
+    }
+    /// - Remark: HTTP `PATCH /purchases/{id}`.
+    /// - Remark: Generated from `#/paths//purchases/{id}/patch(update_purchase)`.
+    public func update_purchase(
+        path: Operations.update_purchase.Input.Path,
+        headers: Operations.update_purchase.Input.Headers = .init(),
+        body: Operations.update_purchase.Input.Body
+    ) async throws -> Operations.update_purchase.Output {
+        try await update_purchase(Operations.update_purchase.Input(
+            path: path,
+            headers: headers,
+            body: body
+        ))
+    }
+    /// - Remark: HTTP `DELETE /purchases/{id}`.
+    /// - Remark: Generated from `#/paths//purchases/{id}/delete(delete_purchase)`.
+    public func delete_purchase(
+        path: Operations.delete_purchase.Input.Path,
+        headers: Operations.delete_purchase.Input.Headers = .init()
+    ) async throws -> Operations.delete_purchase.Output {
+        try await delete_purchase(Operations.delete_purchase.Input(
+            path: path,
+            headers: headers
+        ))
     }
     /// - Remark: HTTP `GET /search/card`.
     /// - Remark: Generated from `#/paths//search/card/get(search_cards)`.

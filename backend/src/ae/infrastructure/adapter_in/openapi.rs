@@ -14,6 +14,10 @@ use super::collection::dto::{
     UpdateCollectionEntryRequest,
 };
 use super::maintenance::dto::EnqueueResponse;
+use super::purchase::dto::{
+    CreateSealedProductRequest, PaginatedPurchasesResponse, PurchaseKindResponse, PurchaseResponse,
+    SealedProductTypeParam, UpdatePurchaseRequest,
+};
 use super::stats::dto::StatsResponse;
 use super::trade::dto::{
     AddTradeCardRequest, CreateTradeRequest, CreateTradeResponse, PaginatedTradesResponse,
@@ -47,6 +51,11 @@ use utoipa::OpenApi;
         super::binder::controller::create_binder,
         super::binder::controller::rename_binder,
         super::binder::controller::delete_binder,
+        super::purchase::controller::list_purchases,
+        super::purchase::controller::get_purchase,
+        super::purchase::controller::create_purchase,
+        super::purchase::controller::update_purchase,
+        super::purchase::controller::delete_purchase,
         super::trade_settings::controller::get_trade_visibility,
         super::trade_settings::controller::set_trade_visibility,
         super::trade_settings::controller::get_receiving_binder,
@@ -110,6 +119,12 @@ use utoipa::OpenApi;
         BinderResponse,
         BindersResponse,
         BinderNameRequest,
+        PurchaseResponse,
+        PurchaseKindResponse,
+        SealedProductTypeParam,
+        PaginatedPurchasesResponse,
+        CreateSealedProductRequest,
+        UpdatePurchaseRequest,
         RarityFilterResponse,
         RarityFiltersResponse,
         SetRarityFilterRequest,
@@ -152,6 +167,7 @@ use utoipa::OpenApi;
         (name = "card", description = "Single card lookup, price history and sale offers (authentication required)"),
         (name = "collection", description = "Player's private collection (authentication required, no public catalog)"),
         (name = "binders", description = "Binders a player stores their collection in: list, creation, renaming, deletion of an empty one (authentication required)"),
+        (name = "purchases", description = "What a player bought to enrich their collection: sealed products bought, listed, edited and deleted without touching the collection (authentication required)"),
         (name = "trade-settings", description = "Settings deciding what of a player's collection is exposed for trade: visibility, binders open for trade, rarity filters (authentication required)"),
         (name = "search", description = "Public card search across all users' collections (authentication required)"),
         (name = "maintenance", description = "Maintenance operations (public)"),

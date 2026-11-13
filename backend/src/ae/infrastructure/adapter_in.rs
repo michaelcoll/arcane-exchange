@@ -4,6 +4,7 @@ use crate::domain::card::CopyId;
 use crate::domain::collection_entry::CollectionEntryId;
 use crate::domain::error::FunctionalError;
 use crate::domain::language_code::LanguageCode;
+use crate::domain::purchase::PurchaseId;
 use crate::domain::set_name::SetName;
 use axum::Json;
 use axum::http::StatusCode;
@@ -20,6 +21,7 @@ pub mod catalog;
 pub mod collection;
 pub mod maintenance;
 pub mod openapi;
+pub mod purchase;
 pub mod search;
 pub mod sets;
 pub mod showcase;
@@ -81,6 +83,14 @@ pub(crate) fn parse_binder_id(id: &str) -> Result<BinderId, AppError> {
         .map_err(|_| FunctionalError::BinderNotFound.into())
 }
 
+/// The Purchase a request designates by its raw identifier. One that is not a UUID designates no
+/// Purchase: `PurchaseNotFound` (404), like an unknown one.
+pub(crate) fn parse_purchase_id(id: &str) -> Result<PurchaseId, AppError> {
+    id.parse()
+        .map(PurchaseId)
+        .map_err(|_| FunctionalError::PurchaseNotFound.into())
+}
+
 /// The Collection entry a request designates by its raw identifier. One that is not a UUID
 /// designates no entry: `CollectionEntryNotFound` (404), like an unknown one.
 pub(crate) fn parse_entry_id(id: &str) -> Result<CollectionEntryId, AppError> {
@@ -132,6 +142,7 @@ impl IntoResponse for AppError {
                 | FunctionalError::BinderNotFound
                 | FunctionalError::ImportNotFound
                 | FunctionalError::CardNotInCatalog
+                | FunctionalError::PurchaseNotFound
                 | FunctionalError::CollectionEntryNotFound => StatusCode::NOT_FOUND,
                 FunctionalError::TradeAccessDenied => StatusCode::FORBIDDEN,
                 FunctionalError::TradeNotModifiable

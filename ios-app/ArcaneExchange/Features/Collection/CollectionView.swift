@@ -12,6 +12,7 @@ struct CollectionView: View {
     @State private var isShowingFilters = false
     @State private var isShowingImport = false
     @State private var isShowingAddCard = false
+    @State private var isShowingPurchases = false
     @State private var path = NavigationPath()
     @Namespace private var cardTransition
 
@@ -35,6 +36,11 @@ struct CollectionView: View {
                     ToolbarItem(placement: .topBarTrailing) {
                         Button(action: { isShowingImport = true }, label: {
                             Label("Importer", systemImage: "square.and.arrow.down")
+                        })
+                    }
+                    ToolbarItem(placement: .topBarTrailing) {
+                        Button(action: { isShowingPurchases = true }, label: {
+                            Label("Achats", systemImage: "bag")
                         })
                     }
                 }
@@ -64,6 +70,9 @@ struct CollectionView: View {
                 }
                 .sheet(isPresented: $isShowingImport, onDismiss: handleImportDismiss) {
                     ImportView(api: api)
+                }
+                .sheet(isPresented: $isShowingPurchases) {
+                    PurchasesView(api: api)
                 }
         }
         .tradeNavigation(path: $path)
