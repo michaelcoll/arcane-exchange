@@ -1,4 +1,5 @@
 import ArcaneExchangeCore
+import NukeUI
 import SwiftUI
 
 /// The drawer at the bottom of the scanner: how many cards the scan batch holds and the last card
@@ -7,7 +8,7 @@ struct ScannerDrawer: View {
     let scanner: ScannerViewModel
     @Binding var isOpen: Bool
     /// The lines the catalog refused on the last validation, flagged in the list.
-    var rejectedLineIDs: Set<String> = []
+    var rejectedLineIDs: Set<ScanBatchLine.Key> = []
     let onClear: () -> Void
     /// Opens the validation sheet.
     let onFinish: () -> Void
@@ -26,8 +27,7 @@ struct ScannerDrawer: View {
 
             if isOpen {
                 list
-                let cards = scanner.batch.cardCount
-                Button("Ajouter \(cards) carte\(cards > 1 ? "s" : "") à la collection", action: onFinish)
+                Button(ScanBatchCopy.addToCollection(cards: scanner.batch.cardCount), action: onFinish)
                     .buttonStyle(.borderedProminent)
                     .disabled(scanner.batch.lines.isEmpty)
                     .padding([.horizontal, .bottom], 16)
@@ -53,8 +53,15 @@ struct ScannerDrawer: View {
                 .fill(.secondary.opacity(0.5))
                 .frame(width: 36, height: 5)
             HStack {
-                Text(summary)
-                    .font(.headline)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(summary)
+                        .font(.headline)
+                    if let value = scanner.batchValue {
+                        Text(ScanBatchCopy.valueText(cents: value.cents, unpricedLines: value.unpricedLines))
+                            .font(.subheadline.monospacedDigit())
+                            .foregroundStyle(.secondary)
+                    }
+                }
                 Spacer()
                 Label(isOpen ? "Reprendre" : "Voir la liste", systemImage: isOpen ? "chevron.down" : "chevron.up")
                     .labelStyle(.titleAndIcon)
@@ -69,10 +76,7 @@ struct ScannerDrawer: View {
     }
 
     private var summary: String {
-        let batch = scanner.batch
-        let cards = batch.cardCount
-        let unique = batch.lines.count
-        return "\(cards) carte\(cards > 1 ? "s" : "") · \(unique) unique\(unique > 1 ? "s" : "")"
+        ScanBatchCopy.summary(cards: scanner.batch.cardCount, uniques: scanner.batch.lines.count)
     }
 
     private var list: some View {
@@ -103,10 +107,15 @@ struct ScannerDrawer: View {
                 .padding(.vertical, 32)
             } else {
                 List(scanner.batch.lines) { line in
-                    ScanBatchRow(line: line, isRejected: rejectedLineIDs.contains(line.id), quantity: Binding(
-                        get: { line.quantity },
-                        set: { scanner.setQuantity($0, ofLine: line.id) }
-                    )) {
+                    ScanBatchRow(
+                        line: line,
+                        isRejected: rejectedLineIDs.contains(line.id),
+                        cents: scanner.lineCents(of: line),
+                        quantity: Binding(
+                            get: { line.quantity },
+                            set: { scanner.setQuantity($0, ofLine: line.id) }
+                        )
+                    ) {
                         ScanLineMenu(line: line, scanner: scanner) { correction = .replace(lineID: line.id) }
                     }
                     .listRowBackground(Color.clear)
@@ -118,18 +127,39 @@ struct ScannerDrawer: View {
     }
 }
 
+/// The card of a line as a thumbnail when the platform has its image, the set symbol tinted by rarity
+/// otherwise (card not in the catalog yet, no network, image not loaded).
+private struct ScanBatchThumbnail: View {
+    let line: ScanBatchLine
+
+    var body: some View {
+        LazyImage(url: CardArtwork.url(forSet: line.set, number: line.number)) { state in
+            if let image = state.image {
+                image.resizable().scaledToFill()
+            } else {
+                SetSymbol(setCode: line.set, size: 22)
+                    .foregroundStyle(RarityColor.tint(forRarityCode: line.rarity))
+            }
+        }
+        .frame(width: 36, height: 50)
+        .clipShape(RoundedRectangle(cornerRadius: 4, style: .continuous))
+        .accessibilityHidden(true)
+    }
+}
+
 /// A line of the scan batch: its card, its finish, and the stepper of its quantity.
 private struct ScanBatchRow<Corrections: View>: View {
     let line: ScanBatchLine
     /// The catalog refused this card on the last validation.
     var isRejected = false
+    /// The trend price of the line, quantity included; nil when hidden or unknown.
+    let cents: Int?
     @Binding var quantity: Int
     @ViewBuilder let corrections: Corrections
 
     var body: some View {
         HStack(spacing: 12) {
-            SetSymbol(setCode: line.set, size: 22)
-                .foregroundStyle(RarityColor.tint(forRarityCode: line.rarity))
+            ScanBatchThumbnail(line: line)
             VStack(alignment: .leading, spacing: 2) {
                 Text(line.displayName)
                     .font(.subheadline.weight(.semibold))
@@ -142,6 +172,10 @@ private struct ScanBatchRow<Corrections: View>: View {
                         Label("Hors catalogue", systemImage: "exclamationmark.triangle.fill")
                             .font(.caption2.weight(.bold))
                             .foregroundStyle(.red)
+                    }
+                    if let cents {
+                        Text(Price.euros(cents: cents))
+                            .font(.caption.monospacedDigit().weight(.semibold))
                     }
                     if line.foil {
                         Text("Foil")

@@ -13,7 +13,11 @@ struct ScannerView: View {
 
     init(index: ScanIndexModel, api: any APIProtocol) {
         self.index = index
-        let scanner = ScannerViewModel(index: index, storage: DeviceScanBatchStorage())
+        let scanner = ScannerViewModel(
+            index: index,
+            storage: DeviceScanBatchStorage(),
+            prices: ScanBatchPrices(api: api)
+        )
         _scanner = State(initialValue: scanner)
         _validation = State(initialValue: ScanValidationViewModel(scanner: scanner, api: api))
     }
@@ -32,11 +36,20 @@ struct ScannerView: View {
             }
         }
         .onDisappear { scanner.stop() }
+        // On opening and whenever a card joins the batch (scanned, replaced or picked from the
+        // catalog), not on a quantity change; no network just hides the prices.
+        .task(id: scanner.batch.lines.map { "\($0.set)-\($0.number)" }) {
+            await scanner.refreshPrices()
+        }
         .sensoryFeedback(.success, trigger: scanner.recognitionCount)
         // Nothing is added while the list or the confirmation is open.
         .onChange(of: isDrawerOpen || isConfirmingClear || isValidating) { _, paused in scanner.isPaused = paused }
         .sheet(isPresented: $isValidating) {
-            ScanValidationSheet(model: validation, cardCount: scanner.batch.cardCount) {
+            ScanValidationSheet(
+                model: validation,
+                cardCount: scanner.batch.cardCount,
+                valueCents: scanner.batchValue?.cents
+            ) {
                 // Back to the camera.
                 withAnimation(.snappy) { isDrawerOpen = false }
             } onRefused: {
@@ -81,7 +94,36 @@ struct ScannerView: View {
         }
     }
 
-    @ViewBuilder private var content: some View {
+    /// The drawer is always there: whatever the camera does, the batch stays to correct, validate or empty.
+    private var content: some View {
+        ZStack(alignment: .bottom) {
+            background
+            if isDrawerOpen {
+                Color.black.opacity(0.4)
+                    .ignoresSafeArea()
+                    .onTapGesture { withAnimation(.snappy) { isDrawerOpen = false } }
+            }
+            ScannerDrawer(
+                scanner: scanner,
+                isOpen: $isDrawerOpen,
+                rejectedLineIDs: validation.rejectedLineIDs,
+                onClear: { isConfirmingClear = true },
+                onFinish: { isValidating = true }
+            )
+        }
+        .overlay(alignment: .top) {
+            if isCameraRunning {
+                topBar
+            }
+        }
+    }
+
+    private var isCameraRunning: Bool {
+        index.state == .ready && (scanner.cameraStatus == .starting || scanner.cameraStatus == .running)
+    }
+
+    /// What fills the screen behind the drawer: the camera, or why there is none.
+    @ViewBuilder private var background: some View {
         switch index.state {
         case .loading:
             ProgressView().tint(.white)
@@ -103,24 +145,11 @@ struct ScannerView: View {
     @ViewBuilder private var camera: some View {
         switch scanner.cameraStatus {
         case .starting, .running:
-            ZStack(alignment: .bottom) {
+            ZStack {
                 CameraPreview(session: scanner.camera.session)
                     .ignoresSafeArea()
                 CardOutline()
-                if isDrawerOpen {
-                    Color.black.opacity(0.4)
-                        .ignoresSafeArea()
-                        .onTapGesture { withAnimation(.snappy) { isDrawerOpen = false } }
-                }
-                ScannerDrawer(
-                    scanner: scanner,
-                    isOpen: $isDrawerOpen,
-                    rejectedLineIDs: validation.rejectedLineIDs,
-                    onClear: { isConfirmingClear = true },
-                    onFinish: { isValidating = true }
-                )
             }
-            .overlay(alignment: .top) { topBar }
         case .denied:
             ContentUnavailableView {
                 Label("Caméra refusée", systemImage: "camera.fill")

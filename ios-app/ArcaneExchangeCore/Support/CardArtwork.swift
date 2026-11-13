@@ -14,6 +14,18 @@ package enum CardArtwork {
         return URL(string: imagePath, relativeTo: apiBaseURL())?.absoluteURL
     }
 
+    /// The English front image of a printing, addressed by its set and number: the scan batch has
+    /// no `image_url`. The file is named `{SET}_{number}_EN.webp` (the image a card in fallback
+    /// shares), and only exists once the card is in the catalog: the caller keeps a fallback for the
+    /// failed load. The number is numeric, as in the scan index: nothing to escape.
+    package static func url(
+        forSet set: String,
+        number: String,
+        apiBaseURL: @autoclosure () -> URL = AppConfig.apiBaseURL()
+    ) -> URL? {
+        url(imagePath: "/card-images/\(set.uppercased())_\(number)_EN.webp", apiBaseURL: apiBaseURL())
+    }
+
     /// The front image URLs of a page of cards, in grid order — what the prefetcher warms.
     /// Cards still pending drop out; their cell shows the card back either way.
     package static func urls(
