@@ -1,7 +1,8 @@
 use super::dto::{
     AddCollectionEntryRequest, CardEntriesResponse, CardImportResponse, CardImportStartedResponse,
     CollectionCardResponse, CollectionParams, CollectionStatsResponse, MoveCollectionEntryRequest,
-    PaginatedCollectionResponse, UpdateCollectionEntryRequest,
+    PaginatedCollectionResponse, ScanBatchValidatedResponse, UpdateCollectionEntryRequest,
+    ValidateScanBatchRequest,
 };
 use crate::application::error::AppError;
 use crate::domain::card::CardId;
@@ -11,6 +12,7 @@ use crate::domain::error::FunctionalError;
 use crate::domain::language_code::LanguageCode;
 use crate::domain::pagination::PageRequest;
 use crate::domain::purchase::PurchaseAmount;
+use crate::domain::scan_batch::{ScanBatchId, ScanBatchLine};
 use crate::domain::set_name::SetCode;
 use crate::infrastructure::AppState;
 use crate::infrastructure::adapter_in::auth_extractor::AuthenticatedUser;
@@ -34,6 +36,7 @@ pub fn create_collection_router() -> axum::Router<AppState> {
             get(get_collection_entries),
         )
         .route("/entries", post(add_collection_entry))
+        .route("/scan-batches", post(validate_scan_batch))
         .route("/entries/{id}/move", post(move_collection_entry))
         .route(
             "/entries/{id}",
@@ -346,6 +349,74 @@ pub(crate) async fn add_collection_entry(
     Ok((
         StatusCode::CREATED,
         axum::Json(CardEntriesResponse::from(entries)),
+    ))
+}
+
+#[utoipa::path(
+    post,
+    path = "/collection/scan-batches",
+    request_body = ValidateScanBatchRequest,
+    responses(
+        (status = 201, description = "The batch was added to the collection, all or none, in one transaction. Each line adds its copies like `POST /collection/entries` without purchase price (the card is created when it does not exist yet, copies join the entry of the same card, finish and binder), and joins the content of the sealed product when there is one. No Purchase is recorded", body = ScanBatchValidatedResponse),
+        (status = 200, description = "The batch had been validated already: nothing is written, and the answer is the one of the first send", body = ScanBatchValidatedResponse),
+        (status = 400, description = "A batch without line or an identifier that is not a UUID (`invalid_request`); quantity out of 1 to 255 (`invalid_quantity`), also when a merge goes over 255; invalid set code, collector number or language code"),
+        (status = 401, description = "Missing or invalid token"),
+        (status = 404, description = "A line has no catalog card (`card_not_in_catalog`, with `lines` naming the cards concerned), the binder is not one of the caller's (`binder_not_found`), or the sealed product does not exist, is another player's or is a single card Purchase (`purchase_not_found`)"),
+    ),
+    security(("bearer_auth" = [])),
+    tag = "collection",
+)]
+pub(crate) async fn validate_scan_batch(
+    AuthenticatedUser(user): AuthenticatedUser,
+    State(state): State<AppState>,
+    axum::Json(payload): axum::Json<ValidateScanBatchRequest>,
+) -> Result<(StatusCode, axum::Json<ScanBatchValidatedResponse>), AppError> {
+    let batch_id = payload
+        .batch_id
+        .parse()
+        .map(ScanBatchId)
+        .map_err(|_| FunctionalError::InvalidRequest("batch_id is not a UUID".to_string()))?;
+    let binder_id = payload
+        .binder_id
+        .as_deref()
+        .map(parse_binder_id)
+        .transpose()?;
+    let sealed_product_id = payload
+        .sealed_product_id
+        .as_deref()
+        .map(parse_purchase_id)
+        .transpose()?;
+    let lines = payload
+        .lines
+        .into_iter()
+        .map(|line| {
+            Ok(ScanBatchLine {
+                card_id: CardId::try_new(
+                    SetCode::try_new(line.set_code)?,
+                    line.collector_number,
+                    LanguageCode::try_new(&line.language_code)?,
+                )?,
+                foil: line.foil,
+                quantity: line.quantity,
+            })
+        })
+        .collect::<Result<Vec<_>, AppError>>()?;
+
+    let outcome = state
+        .validate_scan_batch_use_case
+        .validate_scan_batch(&user.id, batch_id, binder_id, sealed_product_id, lines)
+        .await?;
+
+    let status = if outcome.already_validated {
+        StatusCode::OK
+    } else {
+        StatusCode::CREATED
+    };
+    Ok((
+        status,
+        axum::Json(ScanBatchValidatedResponse {
+            copies_added: outcome.copies_added,
+        }),
     ))
 }
 

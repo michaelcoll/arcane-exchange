@@ -1,0 +1,29 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT copies_added FROM scan_batch WHERE user_id = $1 AND id = $2",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "copies_added",
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "scan_batch",
+            "name": "copies_added"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "d3cdf03e6460c116cf26e88bfbb2889977a36e18775509341fa24357dd91d592"
+}

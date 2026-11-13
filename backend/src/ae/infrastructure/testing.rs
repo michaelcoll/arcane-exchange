@@ -19,6 +19,7 @@ use crate::application::caller::MockEdhRecCaller;
 use crate::application::service::showcase::get::ShowcaseService;
 use crate::application::service::stats::get::StatsService;
 use crate::application::token_validator::MockTokenValidator;
+use crate::application::use_case::MockValidateScanBatchUseCase;
 use crate::application::use_case::{
     MockAbandonTradeUseCase, MockAcceptTradeUseCase, MockAddCollectionEntryUseCase,
     MockAddTradeBinderUseCase, MockAddTradeCardUseCase, MockAutocompleteUsersUseCase,
@@ -228,6 +229,7 @@ impl AppState {
             set_collection_visibility_use_case: Arc::new(MockSetCollectionVisibilityUseCase::new()),
             get_collection_entries_use_case: Arc::new(MockGetCollectionEntriesUseCase::new()),
             add_collection_entry_use_case: Arc::new(MockAddCollectionEntryUseCase::new()),
+            validate_scan_batch_use_case: Arc::new(MockValidateScanBatchUseCase::new()),
             update_collection_entry_use_case: Arc::new(MockUpdateCollectionEntryUseCase::new()),
             move_collection_entry_use_case: Arc::new(MockMoveCollectionEntryUseCase::new()),
             remove_collection_entry_use_case: Arc::new(MockRemoveCollectionEntryUseCase::new()),

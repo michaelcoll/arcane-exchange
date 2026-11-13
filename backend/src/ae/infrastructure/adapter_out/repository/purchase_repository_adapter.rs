@@ -15,6 +15,9 @@ use crate::infrastructure::adapter_out::repository::collection_entry_repository_
 use crate::infrastructure::adapter_out::repository::entities::{
     card_id_from_db, card_image_from_db,
 };
+use crate::infrastructure::adapter_out::repository::sealed_product_content::{
+    add_content_line, lock_sealed_product,
+};
 use async_trait::async_trait;
 use chrono::NaiveDate;
 use sqlx::{Pool, Postgres};
@@ -292,42 +295,10 @@ impl PurchaseRepository for PurchaseRepositoryAdapter {
     ) -> Result<CardEntries, AppError> {
         let mut tx = self.pool.begin().await?;
 
-        // Locked so a deletion of the Purchase waits for the content line to be written.
-        let sealed_product = sqlx::query_scalar!(
-            r#"
-            SELECT id FROM purchase
-            WHERE id = $1 AND user_id = $2 AND kind = 'sealed_product'
-            FOR SHARE
-            "#,
-            id.0,
-            user_id.as_str()
-        )
-        .fetch_optional(&mut *tx)
-        .await?;
-        if sealed_product.is_none() {
-            return Err(FunctionalError::PurchaseNotFound.into());
-        }
-
+        lock_sealed_product(&mut tx, user_id, id).await?;
         let entries =
             add_copies(&mut tx, user_id, card_id, foil, quantity, binder_id, None).await?;
-
-        sqlx::query!(
-            r#"
-            INSERT INTO purchase_content
-                (purchase_id, set_code, collector_number, language_code, foil, quantity)
-            VALUES ($1, $2, $3, $4, $5, $6)
-            ON CONFLICT (purchase_id, set_code, collector_number, language_code, foil)
-                DO UPDATE SET quantity = purchase_content.quantity + EXCLUDED.quantity
-            "#,
-            id.0,
-            card_id.set_code.to_string(),
-            card_id.collector_number,
-            card_id.language_code.to_string(),
-            foil,
-            i32::from(quantity)
-        )
-        .execute(&mut *tx)
-        .await?;
+        add_content_line(&mut tx, id, card_id, foil, quantity).await?;
 
         tx.commit().await?;
         Ok(entries)

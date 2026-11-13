@@ -72,6 +72,9 @@ public protocol APIProtocol: Sendable {
     /// - Remark: HTTP `GET /collection/price-history`.
     /// - Remark: Generated from `#/paths//collection/price-history/get(get_collection_price_history)`.
     func get_collection_price_history(_ input: Operations.get_collection_price_history.Input) async throws -> Operations.get_collection_price_history.Output
+    /// - Remark: HTTP `POST /collection/scan-batches`.
+    /// - Remark: Generated from `#/paths//collection/scan-batches/post(validate_scan_batch)`.
+    func validate_scan_batch(_ input: Operations.validate_scan_batch.Input) async throws -> Operations.validate_scan_batch.Output
     /// - Remark: HTTP `GET /collection/stats`.
     /// - Remark: Generated from `#/paths//collection/stats/get(get_collection_stats)`.
     func get_collection_stats(_ input: Operations.get_collection_stats.Input) async throws -> Operations.get_collection_stats.Output
@@ -394,6 +397,17 @@ extension APIProtocol {
         try await get_collection_price_history(Operations.get_collection_price_history.Input(
             query: query,
             headers: headers
+        ))
+    }
+    /// - Remark: HTTP `POST /collection/scan-batches`.
+    /// - Remark: Generated from `#/paths//collection/scan-batches/post(validate_scan_batch)`.
+    public func validate_scan_batch(
+        headers: Operations.validate_scan_batch.Input.Headers = .init(),
+        body: Operations.validate_scan_batch.Input.Body
+    ) async throws -> Operations.validate_scan_batch.Output {
+        try await validate_scan_batch(Operations.validate_scan_batch.Input(
+            headers: headers,
+            body: body
         ))
     }
     /// - Remark: HTTP `GET /collection/stats`.

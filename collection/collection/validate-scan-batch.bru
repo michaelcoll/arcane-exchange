@@ -1,0 +1,38 @@
+meta {
+  name: validate scan batch
+  type: http
+  seq: 11
+}
+
+post {
+  url: {{baseUrl}}/collection/scan-batches
+  body: json
+  auth: inherit
+}
+
+body:json {
+  {
+    "batch_id": "0b6f5f0e-3c6d-4d1a-9a7a-1f4f3c7d2e10",
+    "binder_id": null,
+    "sealed_product_id": null,
+    "lines": [
+      {
+        "set_code": "ECL",
+        "collector_number": "166",
+        "language_code": "FR",
+        "foil": false,
+        "quantity": 2
+      }
+    ]
+  }
+}
+
+docs {
+  `201` at the first send, `200` when the same `batch_id` was already validated (nothing is written),
+  with the number of copies added. All the lines enter the collection, or none: no purchase price,
+  merged into the entry of the same card, finish and binder. Set `binder_id` to `{{binderId}}` to
+  store them in a binder, `sealed_product_id` to `{{purchaseId}}` to add them to the content of one
+  of your sealed products. `invalid_request` (400, empty batch), `invalid_quantity` (400),
+  `binder_not_found` (404), `purchase_not_found` (404, also for a single card purchase),
+  `card_not_in_catalog` (404, `lines` names the cards concerned).
+}

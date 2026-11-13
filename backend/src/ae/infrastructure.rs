@@ -28,6 +28,7 @@ use crate::application::service::collection::move_entry::MoveCollectionEntryServ
 use crate::application::service::collection::remove_entry::RemoveCollectionEntryService;
 use crate::application::service::collection::run_card_import::RunCardImportService;
 use crate::application::service::collection::update_entry::UpdateCollectionEntryService;
+use crate::application::service::collection::validate_scan_batch::ValidateScanBatchService;
 use crate::application::service::maintenance::card_collection_price_calculation::CardCollectionService;
 use crate::application::service::maintenance::enqueue_card_image::CardImageEnricher;
 use crate::application::service::maintenance::enqueue_cardmarket_id::CardMarketIdEnricher;
@@ -65,6 +66,7 @@ use crate::application::service::trade_settings::set_visibility::SetCollectionVi
 use crate::application::service::user::get_profile::GetUserProfileService;
 use crate::application::service::user::register::RegisterUserService;
 use crate::application::token_validator::TokenValidator;
+use crate::application::use_case::ValidateScanBatchUseCase;
 use crate::application::use_case::{
     AbandonTradeUseCase, AcceptTradeUseCase, AddCollectionEntryUseCase, AddTradeBinderUseCase,
     AddTradeCardUseCase, AutocompleteUsersUseCase, ConfirmTradeUseCase, CreateBinderUseCase,
@@ -174,6 +176,7 @@ pub struct AppState {
     pub set_collection_visibility_use_case: Arc<dyn SetCollectionVisibilityUseCase>,
     pub get_collection_entries_use_case: Arc<dyn GetCollectionEntriesUseCase>,
     pub add_collection_entry_use_case: Arc<dyn AddCollectionEntryUseCase>,
+    pub validate_scan_batch_use_case: Arc<dyn ValidateScanBatchUseCase>,
     pub update_collection_entry_use_case: Arc<dyn UpdateCollectionEntryUseCase>,
     pub move_collection_entry_use_case: Arc<dyn MoveCollectionEntryUseCase>,
     pub remove_collection_entry_use_case: Arc<dyn RemoveCollectionEntryUseCase>,
@@ -379,6 +382,12 @@ fn create_app_state(
             card_prices_refresh.clone(),
             attach_card_to_sealed_product_service,
         ));
+    let validate_scan_batch_service: Arc<dyn ValidateScanBatchUseCase> =
+        Arc::new(ValidateScanBatchService::new(
+            create_card_service.clone(),
+            repos.collection_entry.clone(),
+            card_prices_refresh.clone(),
+        ));
     let update_collection_entry_service: Arc<dyn UpdateCollectionEntryUseCase> =
         Arc::new(UpdateCollectionEntryService::new(
             repos.collection_entry.clone(),
@@ -504,6 +513,7 @@ fn create_app_state(
         set_collection_visibility_use_case: set_collection_visibility_service,
         get_collection_entries_use_case: get_collection_entries_service,
         add_collection_entry_use_case: add_collection_entry_service,
+        validate_scan_batch_use_case: validate_scan_batch_service,
         update_collection_entry_use_case: update_collection_entry_service,
         move_collection_entry_use_case: move_collection_entry_service,
         remove_collection_entry_use_case: remove_collection_entry_service,

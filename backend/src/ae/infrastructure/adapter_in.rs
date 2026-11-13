@@ -108,6 +108,21 @@ pub struct ErrorResponse {
     pub error: String,
     /// Stable snake_case identifier of the error (e.g. `binder_export`, `internal`).
     pub code: String,
+    /// Only for `card_not_in_catalog` on a scan batch: the cards of the batch the catalog does
+    /// not have.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[ts(optional)]
+    pub lines: Option<Vec<UnknownCardResponse>>,
+}
+
+/// A card of a scan batch the catalog does not have, as the batch named it.
+#[derive(Serialize, Debug, TS, ToSchema)]
+#[serde(rename = "UnknownCard")]
+#[ts(export)]
+pub struct UnknownCardResponse {
+    pub set_code: String,
+    pub collector_number: String,
+    pub language_code: String,
 }
 
 impl IntoResponse for AppError {
@@ -143,6 +158,7 @@ impl IntoResponse for AppError {
                 | FunctionalError::BinderNotFound
                 | FunctionalError::ImportNotFound
                 | FunctionalError::CardNotInCatalog
+                | FunctionalError::CardsNotInCatalog(_)
                 | FunctionalError::PurchaseNotFound
                 | FunctionalError::CollectionEntryNotFound => StatusCode::NOT_FOUND,
                 FunctionalError::TradeAccessDenied => StatusCode::FORBIDDEN,
@@ -172,9 +188,23 @@ impl IntoResponse for AppError {
             },
         };
 
+        let lines = match &self {
+            AppError::Functional(FunctionalError::CardsNotInCatalog(cards)) => Some(
+                cards
+                    .iter()
+                    .map(|card| UnknownCardResponse {
+                        set_code: card.set_code.to_string(),
+                        collector_number: card.collector_number.clone(),
+                        language_code: card.language_code.to_string(),
+                    })
+                    .collect(),
+            ),
+            _ => None,
+        };
         let body = Json(ErrorResponse {
             code: self.code().to_string(),
             error: String::from(self),
+            lines,
         });
 
         (status, body).into_response()
@@ -210,6 +240,7 @@ pub(crate) async fn with_error_body(response: Response) -> Response {
         Json(ErrorResponse {
             error,
             code: code.to_string(),
+            lines: None,
         }),
     )
         .into_response()
