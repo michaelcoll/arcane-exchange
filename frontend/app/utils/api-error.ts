@@ -63,6 +63,8 @@ const MESSAGES: Record<string, string> = {
   // Also what adding a card to a trade answers when its owner no longer offers it.
   card_not_found: "Cette carte est introuvable ou n'est plus disponible.",
   set_not_found: 'Ce set est introuvable.',
+  purchase_not_found: "Cet achat n'existe plus.",
+  invalid_purchase_price: "Le prix d'achat doit être supérieur à 0 €.",
   unauthorized: 'Ta session a expiré, reconnecte-toi.',
   internal: 'Erreur technique, réessaie plus tard.',
 };

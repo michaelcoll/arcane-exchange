@@ -11,6 +11,7 @@ pub mod error;
 pub mod language_code;
 pub mod pagination;
 pub mod price;
+pub mod purchase;
 pub mod rarity_code;
 pub mod rarity_trade_filter;
 pub mod set_name;

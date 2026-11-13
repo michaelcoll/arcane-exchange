@@ -77,18 +77,6 @@ pub struct EntryUpdate {
     pub purchase_price: Option<u32>,
 }
 
-/// Checks a requested purchase price, in cents per copy: strictly positive.
-///
-/// # Errors
-///
-/// [`FunctionalError::InvalidPurchasePrice`] when `price` is zero or negative.
-pub fn validate_purchase_price(price: i32) -> Result<u32, FunctionalError> {
-    u32::try_from(price)
-        .ok()
-        .filter(|price| *price >= 1)
-        .ok_or(FunctionalError::InvalidPurchasePrice)
-}
-
 /// Checks a requested quantity against the bounds of an entry, 1 to 255. A quantity of 0 is not
 /// an edit: the entry is removed instead.
 ///
@@ -118,7 +106,7 @@ impl EntryCopies {
     /// - the quantities add up;
     /// - the purchase price is the average of the prices present weighted by their quantities,
     ///   absent when neither has one. The average gives a price to the copies that had none: an
-    ///   assumed approximation, the exact spending lives in the Purchases;
+    ///   assumed approximation, the exact amounts live in the Purchases;
     /// - the added date is the earliest.
     ///
     /// # Errors

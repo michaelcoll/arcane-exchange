@@ -31,6 +31,11 @@ use crate::application::service::maintenance::enqueue_card_image::CardImageEnric
 use crate::application::service::maintenance::enqueue_cardmarket_id::CardMarketIdEnricher;
 use crate::application::service::maintenance::import_price::ImportPriceService;
 use crate::application::service::maintenance::update_catalog::UpdateCatalogService;
+use crate::application::service::purchase::create_sealed_product::CreateSealedProductService;
+use crate::application::service::purchase::delete::DeletePurchaseService;
+use crate::application::service::purchase::get::GetPurchaseService;
+use crate::application::service::purchase::list::ListPurchasesService;
+use crate::application::service::purchase::update::UpdatePurchaseService;
 use crate::application::service::search::search_cards::SearchCardsService;
 use crate::application::service::search::search_sets::SearchSetsService;
 use crate::application::service::sets::get::GetSetService;
@@ -75,12 +80,17 @@ use crate::application::use_case::{
     SetRarityTradeFilterUseCase, SetReceivingBinderUseCase, StatsUseCase, UpdateCatalogUseCase,
     UpdateCollectionEntryUseCase,
 };
+use crate::application::use_case::{
+    CreateSealedProductUseCase, DeletePurchaseUseCase, GetPurchaseUseCase, ListPurchasesUseCase,
+    UpdatePurchaseUseCase,
+};
 use crate::config::Config;
 use crate::infrastructure::adapter_in::autocomplete::controller::create_autocomplete_router;
 use crate::infrastructure::adapter_in::binder::controller::create_binder_router;
 use crate::infrastructure::adapter_in::card::controller::create_card_router;
 use crate::infrastructure::adapter_in::catalog::controller::create_catalog_router;
 use crate::infrastructure::adapter_in::collection::controller::create_collection_router;
+use crate::infrastructure::adapter_in::purchase::controller::create_purchase_router;
 use crate::infrastructure::adapter_in::search::controller::create_search_router;
 use crate::infrastructure::adapter_in::sets::controller::create_set_router;
 use crate::infrastructure::adapter_in::trade::controller::create_trade_router;
@@ -97,6 +107,7 @@ use crate::infrastructure::adapter_out::repository::collection_entry_repository_
 use crate::infrastructure::adapter_out::repository::collection_price_history_repository_adapter::CollectionPriceHistoryRepositoryAdapter;
 use crate::infrastructure::adapter_out::repository::collection_rarity_filters_repository_adapter::CollectionRarityFiltersRepositoryAdapter;
 use crate::infrastructure::adapter_out::repository::collection_stats_repository_adapter::CollectionStatsRepositoryAdapter;
+use crate::infrastructure::adapter_out::repository::purchase_repository_adapter::PurchaseRepositoryAdapter;
 use crate::infrastructure::adapter_out::repository::receiving_binder_repository_adapter::ReceivingBinderRepositoryAdapter;
 use crate::infrastructure::adapter_out::repository::showcase_repository_adapter::ShowcaseRepositoryAdapter;
 use crate::infrastructure::adapter_out::repository::stats_repository_adapter::StatsRepositoryAdapter;
@@ -168,6 +179,11 @@ pub struct AppState {
     pub create_binder_use_case: Arc<dyn CreateBinderUseCase>,
     pub rename_binder_use_case: Arc<dyn RenameBinderUseCase>,
     pub delete_binder_use_case: Arc<dyn DeleteBinderUseCase>,
+    pub list_purchases_use_case: Arc<dyn ListPurchasesUseCase>,
+    pub get_purchase_use_case: Arc<dyn GetPurchaseUseCase>,
+    pub create_sealed_product_use_case: Arc<dyn CreateSealedProductUseCase>,
+    pub update_purchase_use_case: Arc<dyn UpdatePurchaseUseCase>,
+    pub delete_purchase_use_case: Arc<dyn DeletePurchaseUseCase>,
     pub get_receiving_binder_use_case: Arc<dyn GetReceivingBinderUseCase>,
     pub set_receiving_binder_use_case: Arc<dyn SetReceivingBinderUseCase>,
     pub get_trade_binders_use_case: Arc<dyn GetTradeBindersUseCase>,
@@ -198,6 +214,7 @@ struct Repositories {
     trading_binders: Arc<TradingBindersRepositoryAdapter>,
     receiving_binder: Arc<ReceivingBinderRepositoryAdapter>,
     binder: Arc<BinderRepositoryAdapter>,
+    purchase: Arc<PurchaseRepositoryAdapter>,
     collection_entry: Arc<CollectionEntryRepositoryAdapter>,
     collection_rarity_filters: Arc<CollectionRarityFiltersRepositoryAdapter>,
     card_import: Arc<CardImportRepositoryAdapter>,
@@ -221,6 +238,7 @@ fn create_repositories(pool: &Pool<Postgres>) -> Repositories {
         trading_binders: Arc::new(TradingBindersRepositoryAdapter::new(pool.clone())),
         receiving_binder: Arc::new(ReceivingBinderRepositoryAdapter::new(pool.clone())),
         binder: Arc::new(BinderRepositoryAdapter::new(pool.clone())),
+        purchase: Arc::new(PurchaseRepositoryAdapter::new(pool.clone())),
         collection_entry: Arc::new(CollectionEntryRepositoryAdapter::new(pool.clone())),
         collection_rarity_filters: Arc::new(CollectionRarityFiltersRepositoryAdapter::new(
             pool.clone(),
@@ -374,6 +392,16 @@ fn create_app_state(
         Arc::new(RenameBinderService::new(repos.binder.clone()));
     let delete_binder_service: Arc<dyn DeleteBinderUseCase> =
         Arc::new(DeleteBinderService::new(repos.binder.clone()));
+    let list_purchases_service: Arc<dyn ListPurchasesUseCase> =
+        Arc::new(ListPurchasesService::new(repos.purchase.clone()));
+    let get_purchase_service: Arc<dyn GetPurchaseUseCase> =
+        Arc::new(GetPurchaseService::new(repos.purchase.clone()));
+    let create_sealed_product_service: Arc<dyn CreateSealedProductUseCase> =
+        Arc::new(CreateSealedProductService::new(repos.purchase.clone()));
+    let update_purchase_service: Arc<dyn UpdatePurchaseUseCase> =
+        Arc::new(UpdatePurchaseService::new(repos.purchase.clone()));
+    let delete_purchase_service: Arc<dyn DeletePurchaseUseCase> =
+        Arc::new(DeletePurchaseService::new(repos.purchase.clone()));
     let get_receiving_binder_service: Arc<dyn GetReceivingBinderUseCase> = Arc::new(
         GetReceivingBinderService::new(repos.receiving_binder.clone()),
     );
@@ -471,6 +499,11 @@ fn create_app_state(
         create_binder_use_case: create_binder_service,
         rename_binder_use_case: rename_binder_service,
         delete_binder_use_case: delete_binder_service,
+        list_purchases_use_case: list_purchases_service,
+        get_purchase_use_case: get_purchase_service,
+        create_sealed_product_use_case: create_sealed_product_service,
+        update_purchase_use_case: update_purchase_service,
+        delete_purchase_use_case: delete_purchase_service,
         get_receiving_binder_use_case: get_receiving_binder_service,
         set_receiving_binder_use_case: set_receiving_binder_service,
         get_trade_binders_use_case: get_trade_binders_service,
@@ -530,6 +563,7 @@ pub(crate) fn create_router(app_state: AppState) -> Router {
         .nest("/catalog", create_catalog_router())
         .nest("/collection", create_collection_router())
         .nest("/collection/binders", create_binder_router())
+        .nest("/purchases", create_purchase_router())
         .nest("/collection/trade-settings", create_trade_settings_router())
         .nest("/search", create_search_router())
         .nest("/sets", create_set_router())

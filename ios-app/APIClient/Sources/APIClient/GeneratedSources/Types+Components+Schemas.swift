@@ -6,15 +6,7 @@
 #if compiler(>=6.4)
 @diagnose(UnusedImportAccess, as: ignored)
 #endif
-public import struct Foundation.URL
-#if compiler(>=6.4)
-@diagnose(UnusedImportAccess, as: ignored)
-#endif
-public import struct Foundation.Data
-#if compiler(>=6.4)
-@diagnose(UnusedImportAccess, as: ignored)
-#endif
-public import struct Foundation.Date
+public import Foundation
 extension Components {
     /// Types generated from the `#/components/schemas` section of the OpenAPI document.
     public enum Schemas {
@@ -746,6 +738,58 @@ extension Components {
             case trade = "trade"
             case _private = "private"
         }
+        /// A sealed product to record.
+        ///
+        /// - Remark: Generated from `#/components/schemas/CreateSealedProductRequest`.
+        public struct CreateSealedProductRequest: Codable, Hashable, Sendable {
+            /// Amount spent, in cents. Signed so an amount that is not strictly positive fails with
+            /// `invalid_purchase_price` (400) instead of a JSON extractor rejection.
+            ///
+            /// - Remark: Generated from `#/components/schemas/CreateSealedProductRequest/amount_cents`.
+            public var amount_cents: Swift.Int32
+            /// Free-text label; a blank name is stored as absent.
+            ///
+            /// - Remark: Generated from `#/components/schemas/CreateSealedProductRequest/name`.
+            public var name: Swift.String?
+            /// - Remark: Generated from `#/components/schemas/CreateSealedProductRequest/product_type`.
+            public var product_type: Components.Schemas.SealedProductTypeParam
+            /// Day of the purchase, `YYYY-MM-DD`.
+            ///
+            /// - Remark: Generated from `#/components/schemas/CreateSealedProductRequest/purchased_on`.
+            public var purchased_on: Swift.String
+            /// Code of a known set.
+            ///
+            /// - Remark: Generated from `#/components/schemas/CreateSealedProductRequest/set_code`.
+            public var set_code: Swift.String
+            /// Creates a new `CreateSealedProductRequest`.
+            ///
+            /// - Parameters:
+            ///   - amount_cents: Amount spent, in cents. Signed so an amount that is not strictly positive fails with
+            ///   - name: Free-text label; a blank name is stored as absent.
+            ///   - product_type:
+            ///   - purchased_on: Day of the purchase, `YYYY-MM-DD`.
+            ///   - set_code: Code of a known set.
+            public init(
+                amount_cents: Swift.Int32,
+                name: Swift.String? = nil,
+                product_type: Components.Schemas.SealedProductTypeParam,
+                purchased_on: Swift.String,
+                set_code: Swift.String
+            ) {
+                self.amount_cents = amount_cents
+                self.name = name
+                self.product_type = product_type
+                self.purchased_on = purchased_on
+                self.set_code = set_code
+            }
+            public enum CodingKeys: String, CodingKey {
+                case amount_cents
+                case name
+                case product_type
+                case purchased_on
+                case set_code
+            }
+        }
         /// - Remark: Generated from `#/components/schemas/CreateTradeRequest`.
         public struct CreateTradeRequest: Codable, Hashable, Sendable {
             /// - Remark: Generated from `#/components/schemas/CreateTradeRequest/respondent_username`.
@@ -993,6 +1037,41 @@ extension Components {
                 case total
             }
         }
+        /// - Remark: Generated from `#/components/schemas/PaginatedPurchasesResponse`.
+        public struct PaginatedPurchasesResponse: Codable, Hashable, Sendable {
+            /// - Remark: Generated from `#/components/schemas/PaginatedPurchasesResponse/items`.
+            public var items: [Components.Schemas.PurchaseResponse]
+            /// - Remark: Generated from `#/components/schemas/PaginatedPurchasesResponse/page`.
+            public var page: Swift.Int32
+            /// - Remark: Generated from `#/components/schemas/PaginatedPurchasesResponse/page_size`.
+            public var page_size: Swift.Int32
+            /// - Remark: Generated from `#/components/schemas/PaginatedPurchasesResponse/total`.
+            public var total: Swift.Int64
+            /// Creates a new `PaginatedPurchasesResponse`.
+            ///
+            /// - Parameters:
+            ///   - items:
+            ///   - page:
+            ///   - page_size:
+            ///   - total:
+            public init(
+                items: [Components.Schemas.PurchaseResponse],
+                page: Swift.Int32,
+                page_size: Swift.Int32,
+                total: Swift.Int64
+            ) {
+                self.items = items
+                self.page = page
+                self.page_size = page_size
+                self.total = total
+            }
+            public enum CodingKeys: String, CodingKey {
+                case items
+                case page
+                case page_size
+                case total
+            }
+        }
         /// - Remark: Generated from `#/components/schemas/PaginatedTradesResponse`.
         public struct PaginatedTradesResponse: Codable, Hashable, Sendable {
             /// - Remark: Generated from `#/components/schemas/PaginatedTradesResponse/items`.
@@ -1092,6 +1171,75 @@ extension Components {
                 case date
                 case low
                 case trend
+            }
+        }
+        /// What a Purchase bought.
+        ///
+        /// - Remark: Generated from `#/components/schemas/PurchaseKindResponse`.
+        @frozen public enum PurchaseKindResponse: String, Codable, Hashable, Sendable, CaseIterable {
+            case sealed_product = "sealed_product"
+        }
+        /// - Remark: Generated from `#/components/schemas/PurchaseResponse`.
+        public struct PurchaseResponse: Codable, Hashable, Sendable {
+            /// Amount spent, in cents.
+            ///
+            /// - Remark: Generated from `#/components/schemas/PurchaseResponse/amount_cents`.
+            public var amount_cents: Swift.Int32
+            /// - Remark: Generated from `#/components/schemas/PurchaseResponse/id`.
+            public var id: Swift.String
+            /// - Remark: Generated from `#/components/schemas/PurchaseResponse/kind`.
+            public var kind: Components.Schemas.PurchaseKindResponse
+            /// Sealed product only: the optional name the player gave it.
+            ///
+            /// - Remark: Generated from `#/components/schemas/PurchaseResponse/name`.
+            public var name: Swift.String?
+            /// Sealed product only.
+            ///
+            /// - Remark: Generated from `#/components/schemas/PurchaseResponse/product_type`.
+            public var product_type: Components.Schemas.SealedProductTypeParam?
+            /// Day of the purchase, `YYYY-MM-DD`.
+            ///
+            /// - Remark: Generated from `#/components/schemas/PurchaseResponse/purchased_on`.
+            public var purchased_on: Swift.String
+            /// Sealed product only.
+            ///
+            /// - Remark: Generated from `#/components/schemas/PurchaseResponse/set`.
+            public var set: Components.Schemas.SetInfoResponse?
+            /// Creates a new `PurchaseResponse`.
+            ///
+            /// - Parameters:
+            ///   - amount_cents: Amount spent, in cents.
+            ///   - id:
+            ///   - kind:
+            ///   - name: Sealed product only: the optional name the player gave it.
+            ///   - product_type: Sealed product only.
+            ///   - purchased_on: Day of the purchase, `YYYY-MM-DD`.
+            ///   - set: Sealed product only.
+            public init(
+                amount_cents: Swift.Int32,
+                id: Swift.String,
+                kind: Components.Schemas.PurchaseKindResponse,
+                name: Swift.String? = nil,
+                product_type: Components.Schemas.SealedProductTypeParam? = nil,
+                purchased_on: Swift.String,
+                set: Components.Schemas.SetInfoResponse? = nil
+            ) {
+                self.amount_cents = amount_cents
+                self.id = id
+                self.kind = kind
+                self.name = name
+                self.product_type = product_type
+                self.purchased_on = purchased_on
+                self.set = set
+            }
+            public enum CodingKeys: String, CodingKey {
+                case amount_cents
+                case id
+                case kind
+                case name
+                case product_type
+                case purchased_on
+                case set
             }
         }
         /// - Remark: Generated from `#/components/schemas/RarityCodeParam`.
@@ -1339,6 +1487,14 @@ extension Components {
                 case rarity
                 case set_code
             }
+        }
+        /// - Remark: Generated from `#/components/schemas/SealedProductTypeParam`.
+        @frozen public enum SealedProductTypeParam: String, Codable, Hashable, Sendable, CaseIterable {
+            case BOOSTER = "BOOSTER"
+            case DISPLAY = "DISPLAY"
+            case BUNDLE = "BUNDLE"
+            case PRERELEASE_PACK = "PRERELEASE_PACK"
+            case PRECONSTRUCTED_DECK = "PRECONSTRUCTED_DECK"
         }
         /// A set, as several resources show it.
         ///
@@ -1778,6 +1934,57 @@ extension Components {
                 case foil
                 case purchase_price
                 case quantity
+            }
+        }
+        /// The fields of a Purchase to change; those left out are kept.
+        ///
+        /// - Remark: Generated from `#/components/schemas/UpdatePurchaseRequest`.
+        public struct UpdatePurchaseRequest: Codable, Hashable, Sendable {
+            /// Amount spent, in cents, strictly positive (`invalid_purchase_price`, 400).
+            ///
+            /// - Remark: Generated from `#/components/schemas/UpdatePurchaseRequest/amount_cents`.
+            public var amount_cents: Swift.Int32?
+            /// An empty name clears the stored one.
+            ///
+            /// - Remark: Generated from `#/components/schemas/UpdatePurchaseRequest/name`.
+            public var name: Swift.String?
+            /// - Remark: Generated from `#/components/schemas/UpdatePurchaseRequest/product_type`.
+            public var product_type: Components.Schemas.SealedProductTypeParam?
+            /// Day of the purchase, `YYYY-MM-DD`.
+            ///
+            /// - Remark: Generated from `#/components/schemas/UpdatePurchaseRequest/purchased_on`.
+            public var purchased_on: Swift.String?
+            /// Code of a known set.
+            ///
+            /// - Remark: Generated from `#/components/schemas/UpdatePurchaseRequest/set_code`.
+            public var set_code: Swift.String?
+            /// Creates a new `UpdatePurchaseRequest`.
+            ///
+            /// - Parameters:
+            ///   - amount_cents: Amount spent, in cents, strictly positive (`invalid_purchase_price`, 400).
+            ///   - name: An empty name clears the stored one.
+            ///   - product_type:
+            ///   - purchased_on: Day of the purchase, `YYYY-MM-DD`.
+            ///   - set_code: Code of a known set.
+            public init(
+                amount_cents: Swift.Int32? = nil,
+                name: Swift.String? = nil,
+                product_type: Components.Schemas.SealedProductTypeParam? = nil,
+                purchased_on: Swift.String? = nil,
+                set_code: Swift.String? = nil
+            ) {
+                self.amount_cents = amount_cents
+                self.name = name
+                self.product_type = product_type
+                self.purchased_on = purchased_on
+                self.set_code = set_code
+            }
+            public enum CodingKeys: String, CodingKey {
+                case amount_cents
+                case name
+                case product_type
+                case purchased_on
+                case set_code
             }
         }
         /// - Remark: Generated from `#/components/schemas/UserProfileResponse`.

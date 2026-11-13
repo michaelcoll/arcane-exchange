@@ -1373,7 +1373,7 @@ mod entries {
                 id.0.to_string() == ENTRY_ID
                     && *quantity == Some(3)
                     && *foil == Some(true)
-                    && *purchase_price == Some(250)
+                    && purchase_price.map(|price| price.cents()) == Some(250)
             })
             .returning(|_, _, _, _, _| Box::pin(async { Ok(card_entries()) }));
         let app = create_router(AppState {
@@ -1397,17 +1397,27 @@ mod entries {
     }
 
     #[tokio::test]
+    async fn patch_refuses_a_purchase_price_of_zero_or_less_with_its_code() {
+        for price in [-1, 0] {
+            let response = authed_json(
+                create_router(AppState::for_testing()),
+                Method::PATCH,
+                &format!("/collection/entries/{ENTRY_ID}"),
+                json!({ "purchase_price": price }),
+            )
+            .await;
+
+            assert_error(response, StatusCode::BAD_REQUEST, "invalid_purchase_price").await;
+        }
+    }
+
+    #[tokio::test]
     async fn patch_maps_each_refusal_to_its_status_and_code() {
         let cases = [
             (
                 FunctionalError::InvalidQuantity,
                 StatusCode::BAD_REQUEST,
                 "invalid_quantity",
-            ),
-            (
-                FunctionalError::InvalidPurchasePrice,
-                StatusCode::BAD_REQUEST,
-                "invalid_purchase_price",
             ),
             (
                 FunctionalError::CollectionEntryNotFound,

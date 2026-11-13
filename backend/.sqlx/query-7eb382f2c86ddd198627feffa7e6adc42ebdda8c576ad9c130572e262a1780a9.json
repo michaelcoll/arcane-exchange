@@ -1,0 +1,21 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            UPDATE purchase\n            SET amount_cents = COALESCE($3, amount_cents),\n                purchased_on = COALESCE($4, purchased_on),\n                product_type = COALESCE($5, product_type),\n                set_code     = COALESCE($6, set_code),\n                name         = CASE WHEN $7 THEN $8 ELSE name END\n            WHERE id = $1\n              AND user_id = $2\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Text",
+        "Int4",
+        "Date",
+        "Varchar",
+        "Varchar",
+        "Bool",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "7eb382f2c86ddd198627feffa7e6adc42ebdda8c576ad9c130572e262a1780a9"
+}

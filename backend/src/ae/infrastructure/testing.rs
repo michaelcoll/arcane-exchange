@@ -39,6 +39,10 @@ use crate::application::use_case::{
     MockSetReceivingBinderUseCase, MockStatsUseCase, MockUpdateCatalogUseCase,
     MockUpdateCollectionEntryUseCase,
 };
+use crate::application::use_case::{
+    MockCreateSealedProductUseCase, MockDeletePurchaseUseCase, MockGetPurchaseUseCase,
+    MockListPurchasesUseCase, MockUpdatePurchaseUseCase,
+};
 use crate::domain::card::CardInfo;
 use crate::domain::card_import::CardImportId;
 use crate::domain::user::User;
@@ -231,6 +235,11 @@ impl AppState {
             create_binder_use_case: Arc::new(MockCreateBinderUseCase::new()),
             rename_binder_use_case: Arc::new(MockRenameBinderUseCase::new()),
             delete_binder_use_case: Arc::new(MockDeleteBinderUseCase::new()),
+            list_purchases_use_case: Arc::new(MockListPurchasesUseCase::new()),
+            get_purchase_use_case: Arc::new(MockGetPurchaseUseCase::new()),
+            create_sealed_product_use_case: Arc::new(MockCreateSealedProductUseCase::new()),
+            update_purchase_use_case: Arc::new(MockUpdatePurchaseUseCase::new()),
+            delete_purchase_use_case: Arc::new(MockDeletePurchaseUseCase::new()),
             get_receiving_binder_use_case: Arc::new(MockGetReceivingBinderUseCase::new()),
             set_receiving_binder_use_case: Arc::new(MockSetReceivingBinderUseCase::new()),
             get_trade_binders_use_case: Arc::new(MockGetTradeBindersUseCase::new()),

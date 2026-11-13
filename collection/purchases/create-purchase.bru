@@ -1,0 +1,28 @@
+meta {
+  name: create purchase
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{baseUrl}}/purchases
+  body: json
+  auth: inherit
+}
+
+body:json {
+  {
+    "product_type": "PRECONSTRUCTED_DECK",
+    "set_code": "FDN",
+    "name": "Deck Bleu",
+    "amount_cents": 4999,
+    "purchased_on": "2026-11-13"
+  }
+}
+
+docs {
+  Records a sealed product: `BOOSTER`, `DISPLAY`, `BUNDLE`, `PRERELEASE_PACK` or
+  `PRECONSTRUCTED_DECK`. `name` is optional, a blank one is stored as absent. `201` with the
+  purchase. `invalid_purchase_price` (400) for an amount that is not strictly positive,
+  `set_not_found` (404) for an unknown set.
+}

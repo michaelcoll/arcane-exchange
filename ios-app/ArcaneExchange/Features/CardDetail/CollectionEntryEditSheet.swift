@@ -20,13 +20,8 @@ struct CollectionEntryEditSheet: View {
         self.model = model
         _quantity = State(initialValue: Int(entry.quantity))
         _foil = State(initialValue: entry.foil)
-        _purchasePrice = State(initialValue: entry.purchase_price.map { Self.euros(cents: Int($0)) } ?? "")
+        _purchasePrice = State(initialValue: entry.purchase_price.map { EuroInput.text(cents: Int($0)) } ?? "")
         _movedQuantity = State(initialValue: Int(entry.quantity))
-    }
-
-    /// The price as typed back into the field: "2,50", without the currency sign.
-    private static func euros(cents: Int) -> String {
-        String(format: "%d,%02d", cents / 100, cents % 100)
     }
 
     /// A move needs a target other than the binder the entry is already in.
@@ -95,12 +90,7 @@ struct CollectionEntryEditSheet: View {
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Enregistrer") {
                         Task {
-                            if await model.edit(
-                                entry,
-                                quantity: quantity,
-                                foil: foil,
-                                purchaseCents: Price.cents(fromEuros: purchasePrice)
-                            ) {
+                            if await model.edit(entry, quantity: quantity, foil: foil, priceText: purchasePrice) {
                                 dismiss()
                             }
                         }

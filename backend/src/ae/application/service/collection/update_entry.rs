@@ -2,8 +2,9 @@ use crate::application::error::AppError;
 use crate::application::repository::{CardPricesRefreshRequester, CollectionEntryRepository};
 use crate::application::use_case::UpdateCollectionEntryUseCase;
 use crate::domain::collection_entry::{
-    CardEntries, CollectionEntryId, EntryUpdate, validate_purchase_price, validate_quantity,
+    CardEntries, CollectionEntryId, EntryUpdate, validate_quantity,
 };
+use crate::domain::purchase::PurchaseAmount;
 use crate::domain::user::UserId;
 use async_trait::async_trait;
 use std::sync::Arc;
@@ -34,12 +35,12 @@ impl UpdateCollectionEntryUseCase for UpdateCollectionEntryService {
         id: CollectionEntryId,
         quantity: Option<i32>,
         foil: Option<bool>,
-        purchase_price: Option<i32>,
+        purchase_price: Option<PurchaseAmount>,
     ) -> Result<CardEntries, AppError> {
         let update = EntryUpdate {
             quantity: quantity.map(validate_quantity).transpose()?,
             foil,
-            purchase_price: purchase_price.map(validate_purchase_price).transpose()?,
+            purchase_price: purchase_price.map(PurchaseAmount::cents),
         };
 
         let entries = self.repository.update(user_id, id, update).await?;
@@ -90,7 +91,7 @@ mod tests {
                 entry_id(),
                 Some(3),
                 Some(true),
-                Some(250),
+                Some(PurchaseAmount::try_new(250).unwrap()),
             )
             .await;
 
@@ -114,26 +115,6 @@ mod tests {
                 .unwrap_err();
 
             assert_eq!(error.code(), "invalid_quantity");
-        }
-    }
-
-    #[tokio::test]
-    async fn refuses_a_purchase_price_of_zero_or_less_without_touching_anything() {
-        for price in [-100, -1, 0] {
-            let service = service(MockCollectionEntryRepository::new(), refresh(0));
-
-            let error = service
-                .update_collection_entry(
-                    &UserId::new("user_1"),
-                    entry_id(),
-                    None,
-                    None,
-                    Some(price),
-                )
-                .await
-                .unwrap_err();
-
-            assert_eq!(error.code(), "invalid_purchase_price");
         }
     }
 
