@@ -280,7 +280,9 @@ run = "xcodebuild -resolvePackageDependencies -project ArcaneExchange.xcodeproj 
 description = "Builds the iOS app"
 dir = "ios-app"
 depends = ["generate-ios"]
-run = "xcodebuild -scheme ArcaneExchange -configuration Debug -destination 'generic/platform=iOS Simulator' build"
+# arm64 only: a generic simulator destination also builds x86_64 (Intel Macs, none here), and
+# Xcode's own arm64-only builds in the same DerivedData then break its link.
+run = "xcodebuild -scheme ArcaneExchange -configuration Debug -destination 'generic/platform=iOS Simulator' ARCHS=arm64 build"
 alias = ["bi"]
 
 [tasks.check-ios-linking]
