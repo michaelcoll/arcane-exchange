@@ -14,13 +14,19 @@ private let card = CollectionCard(
     set_code: "TST"
 )
 
-private func entry(_ id: String, foil: Bool = false, quantity: Int32 = 2, binder: String? = nil) -> CollectionEntryDetail {
+private func entry(
+    _ id: String,
+    foil: Bool = false,
+    quantity: Int32 = 2,
+    binder: String? = nil,
+    purchase: Int32? = nil
+) -> CollectionEntryDetail {
     CollectionEntryDetail(
         added_at: "2026-01-05T10:00:00Z",
         binder: binder.map { .init(id: "b-\($0)", name: $0) },
         foil: foil,
         id: id,
-        purchase_price: nil,
+        purchase_price: purchase,
         quantity: quantity
     )
 }
@@ -104,6 +110,52 @@ struct CollectionEntriesViewModelTests {
 
         #expect(sent?.foil == true)
         #expect(sent?.quantity == nil)
+    }
+
+    @Test func editSendsANewPurchasePriceInCents() async {
+        let api = FakeAPI()
+        nonisolated(unsafe) var sent: Components.Schemas.UpdateCollectionEntryRequest?
+        api.onUpdateCollectionEntry = { input in
+            if case let .json(body) = input.body { sent = body }
+            return .ok(.init(body: .json(entries([entry("e-1", purchase: 250)]))))
+        }
+        let model = CollectionEntriesViewModel(card: card, api: api)
+
+        let accepted = await model.edit(entry("e-1", purchase: 800), quantity: 2, foil: false, purchaseCents: 250)
+
+        #expect(accepted)
+        #expect(sent?.purchase_price == 250)
+        #expect(sent?.quantity == nil)
+        #expect(model.entries.map(\.purchase_price) == [250])
+    }
+
+    @Test func editLeavesAnUnchangedOrAbsentPurchasePriceOut() async {
+        let api = FakeAPI()
+        nonisolated(unsafe) var sent: [Components.Schemas.UpdateCollectionEntryRequest] = []
+        api.onUpdateCollectionEntry = { input in
+            if case let .json(body) = input.body { sent.append(body) }
+            return .ok(.init(body: .json(entries([entry("e-1")]))))
+        }
+        let model = CollectionEntriesViewModel(card: card, api: api)
+
+        _ = await model.edit(entry("e-1", purchase: 800), quantity: 3, foil: false, purchaseCents: 800)
+        _ = await model.edit(entry("e-1"), quantity: 3, foil: false, purchaseCents: nil)
+
+        #expect(sent.map(\.purchase_price) == [nil, nil])
+    }
+
+    @Test func translatesARefusedPurchasePriceAndKeepsTheList() async {
+        let api = FakeAPI()
+        api.onGetCollectionEntries = { _ in .ok(.init(body: .json(entries([entry("e-1")])))) }
+        api.onUpdateCollectionEntry = { _ in throw APIError(code: "invalid_purchase_price", status: 400) }
+        let model = CollectionEntriesViewModel(card: card, api: api)
+        await model.load()
+
+        let accepted = await model.edit(entry("e-1"), quantity: 2, foil: false, purchaseCents: 0)
+
+        #expect(!accepted)
+        #expect(model.writeError == "Le prix d'achat doit être supérieur à 0 €.")
+        #expect(model.entries.map(\.quantity) == [2])
     }
 
     @Test func translatesAReservedQuantityRefusalAndKeepsTheList() async {

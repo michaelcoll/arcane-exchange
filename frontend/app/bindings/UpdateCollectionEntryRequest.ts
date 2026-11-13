@@ -10,4 +10,10 @@ export type UpdateCollectionEntryRequest = {
    * New finish. A change onto an existing entry merges the two.
    */
   foil: boolean | null;
+  /**
+   * New purchase price per copy, in cents, strictly positive: it replaces the entry's and
+   * creates or changes no purchase. Signed so a value of 0 or less fails with
+   * `invalid_purchase_price` (400) instead of a JSON extractor rejection.
+   */
+  purchase_price?: number;
 };

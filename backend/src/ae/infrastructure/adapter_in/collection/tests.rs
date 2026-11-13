@@ -1369,10 +1369,13 @@ mod entries {
         let mut mock = MockUpdateCollectionEntryUseCase::new();
         mock.expect_update_collection_entry()
             .times(1)
-            .withf(|_, id, quantity, foil| {
-                id.0.to_string() == ENTRY_ID && *quantity == Some(3) && *foil == Some(true)
+            .withf(|_, id, quantity, foil, purchase_price| {
+                id.0.to_string() == ENTRY_ID
+                    && *quantity == Some(3)
+                    && *foil == Some(true)
+                    && *purchase_price == Some(250)
             })
-            .returning(|_, _, _, _| Box::pin(async { Ok(card_entries()) }));
+            .returning(|_, _, _, _, _| Box::pin(async { Ok(card_entries()) }));
         let app = create_router(AppState {
             update_collection_entry_use_case: Arc::new(mock),
             ..AppState::for_testing()
@@ -1382,7 +1385,7 @@ mod entries {
             app,
             Method::PATCH,
             &format!("/collection/entries/{ENTRY_ID}"),
-            json!({ "quantity": 3, "foil": true }),
+            json!({ "quantity": 3, "foil": true, "purchase_price": 250 }),
         )
         .await;
 
@@ -1402,6 +1405,11 @@ mod entries {
                 "invalid_quantity",
             ),
             (
+                FunctionalError::InvalidPurchasePrice,
+                StatusCode::BAD_REQUEST,
+                "invalid_purchase_price",
+            ),
+            (
                 FunctionalError::CollectionEntryNotFound,
                 StatusCode::NOT_FOUND,
                 "collection_entry_not_found",
@@ -1415,7 +1423,7 @@ mod entries {
         for (error, status, code) in cases {
             let mut mock = MockUpdateCollectionEntryUseCase::new();
             mock.expect_update_collection_entry()
-                .returning(move |_, _, _, _| {
+                .returning(move |_, _, _, _, _| {
                     let error = error.clone();
                     Box::pin(async move { Err(error.into()) })
                 });

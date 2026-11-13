@@ -660,7 +660,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/CardEntriesResponse'
         '400':
-          description: Quantity out of 1 to 255 (`invalid_quantity`), also when a merge goes over 255
+          description: Quantity out of 1 to 255 (`invalid_quantity`), also when a merge goes over 255; purchase price of 0 or less (`invalid_purchase_price`)
           content:
             application/json:
               schema:
@@ -2836,6 +2836,15 @@ components:
           - boolean
           - 'null'
           description: New finish. A change onto an existing entry merges the two.
+        purchase_price:
+          type:
+          - integer
+          - 'null'
+          format: int32
+          description: |-
+            New purchase price per copy, in cents, strictly positive: it replaces the entry's and
+            creates or changes no purchase. Signed so a value of 0 or less fails with
+            `invalid_purchase_price` (400) instead of a JSON extractor rejection.
         quantity:
           type:
           - integer

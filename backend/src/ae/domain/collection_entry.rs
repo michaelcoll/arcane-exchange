@@ -68,11 +68,25 @@ impl ReservedQuantities {
     }
 }
 
-/// An update of a Collection entry: a new quantity, a new finish, or both.
+/// An update of a Collection entry: a new quantity, a new finish, a new purchase price in cents
+/// per copy, or any of them.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Default)]
 pub struct EntryUpdate {
     pub quantity: Option<u8>,
     pub foil: Option<bool>,
+    pub purchase_price: Option<u32>,
+}
+
+/// Checks a requested purchase price, in cents per copy: strictly positive.
+///
+/// # Errors
+///
+/// [`FunctionalError::InvalidPurchasePrice`] when `price` is zero or negative.
+pub fn validate_purchase_price(price: i32) -> Result<u32, FunctionalError> {
+    u32::try_from(price)
+        .ok()
+        .filter(|price| *price >= 1)
+        .ok_or(FunctionalError::InvalidPurchasePrice)
 }
 
 /// Checks a requested quantity against the bounds of an entry, 1 to 255. A quantity of 0 is not

@@ -3433,7 +3433,7 @@ public enum Operations {
                     self.body = body
                 }
             }
-            /// Quantity out of 1 to 255 (`invalid_quantity`), also when a merge goes over 255
+            /// Quantity out of 1 to 255 (`invalid_quantity`), also when a merge goes over 255; purchase price of 0 or less (`invalid_purchase_price`)
             ///
             /// - Remark: Generated from `#/paths//collection/entries/{id}/patch(update_collection_entry)/responses/400`.
             ///
