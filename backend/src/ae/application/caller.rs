@@ -56,6 +56,8 @@ pub struct ScryfallBulkCard {
     pub language: String,
     pub layout: String,
     pub rarity: String,
+    /// The date this object was released.
+    pub released_at: NaiveDate,
     /// The English name.
     pub name: String,
     /// The name as printed, only on a card not printed in English. Empty on a multi-face card:

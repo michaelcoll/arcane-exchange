@@ -5,7 +5,9 @@ use crate::domain::card::{Card, CardId, CollectionEntry, CopyId};
 use crate::domain::card_image::{CardImageSource, CardImages, EnglishImage};
 use crate::domain::card_import::{CardImport, CardImportId, CardImportStatus};
 use crate::domain::card_offer::CardOfferSortField;
-use crate::domain::catalog::{CatalogCard, CatalogSearchItem, ScanIndexEntry, TrendPrices};
+use crate::domain::catalog::{
+    CatalogCard, CatalogSearchItem, CatalogSet, ScanIndexEntry, TrendPrices,
+};
 use crate::domain::collection::{CollectionQuery, SearchQuery, SearchScope};
 use crate::domain::collection_entry::{CardEntries, CollectionEntryId, EntryUpdate};
 use crate::domain::collection_stats::CollectionStats;
@@ -110,10 +112,11 @@ pub trait SetNameRepository: Send + Sync {
 #[async_trait]
 #[cfg_attr(test, automock)]
 pub trait CatalogRepository: Send + Sync {
-    /// Replaces the whole catalog with `cards` and writes `sets` (`ON CONFLICT DO NOTHING`, like
-    /// `SetNameRepository::save_all`) in one transaction: a failure leaves the previous catalog
-    /// untouched. No `Card` is ever read or written.
-    async fn replace_all(&self, sets: &[SetName], cards: &[CatalogCard]) -> Result<(), AppError>;
+    /// Replaces the whole catalog with `cards` and writes `sets` in one transaction: a failure
+    /// leaves the previous catalog untouched. A known set gets its release date updated, never its
+    /// name. No `Card` is ever read or written.
+    async fn replace_all(&self, sets: &[CatalogSet], cards: &[CatalogCard])
+    -> Result<(), AppError>;
     /// The catalog card with this set and collector number (as the catalog stores it, without
     /// leading zeros), if any.
     async fn find(

@@ -3,9 +3,9 @@ use crate::application::error::{AppError, InfraError};
 use crate::application::repository::CatalogRepository;
 use crate::application::use_case::{ScanIndexUseCase, UpdateCatalogUseCase};
 use crate::domain::card::MAX_COLLECTOR_NUMBER_LENGTH;
-use crate::domain::catalog::CatalogCard;
+use crate::domain::catalog::{CatalogCard, CatalogSet};
 use crate::domain::rarity_code::RarityCode;
-use crate::domain::set_name::{SetCode, SetName};
+use crate::domain::set_name::SetCode;
 use async_trait::async_trait;
 use futures::StreamExt;
 use std::collections::{BTreeMap, HashMap};
@@ -76,7 +76,7 @@ impl UpdateCatalogUseCase for UpdateCatalogService {
 }
 
 struct Catalog {
-    sets: Vec<SetName>,
+    sets: Vec<CatalogSet>,
     cards: Vec<CatalogCard>,
 }
 
@@ -147,12 +147,15 @@ impl CatalogBuilder {
 
     fn build(mut self) -> (Catalog, LoadReport) {
         let mut cards = Vec::with_capacity(self.entries.len());
-        let mut sets = BTreeMap::new();
+        let mut sets: BTreeMap<String, CatalogSet> = BTreeMap::new();
         for entry in self.entries.into_values() {
             match to_catalog_card(entry) {
-                Ok((card, set_name)) => {
-                    sets.entry(card.set_code.to_string())
-                        .or_insert_with(|| SetName::new(card.set_code.clone(), set_name));
+                Ok((card, set)) => {
+                    sets.entry(set.code.to_string())
+                        .and_modify(|known| {
+                            known.released_at = known.released_at.min(set.released_at)
+                        })
+                        .or_insert(set);
                     cards.push(card);
                 }
                 Err(reason) => {
@@ -181,8 +184,9 @@ fn is_token(object: &ScryfallBulkCard) -> bool {
     ) || object.set_type == "token"
 }
 
-/// The entry as the catalog keeps it, and its set's name; the reason when it cannot be kept.
-fn to_catalog_card(entry: Entry) -> Result<(CatalogCard, String), String> {
+/// The entry as the catalog keeps it, with its set as this entry knows it; the reason when it
+/// cannot be kept.
+fn to_catalog_card(entry: Entry) -> Result<(CatalogCard, CatalogSet), String> {
     let Entry {
         reference,
         reference_is_english,
@@ -209,6 +213,11 @@ fn to_catalog_card(entry: Entry) -> Result<(CatalogCard, String), String> {
         printed_name(&reference).unwrap_or(reference.name)
     };
 
+    let set = CatalogSet {
+        code: set_code.clone(),
+        name: reference.set_name,
+        released_at: reference.released_at,
+    };
     let card = CatalogCard {
         set_code,
         collector_number: reference.collector_number,
@@ -219,7 +228,7 @@ fn to_catalog_card(entry: Entry) -> Result<(CatalogCard, String), String> {
         cardmarket_id: reference.cardmarket_id,
         image_url: reference.image_url,
     };
-    Ok((card, reference.set_name))
+    Ok((card, set))
 }
 
 /// The name of a non-English object as printed: its own, or on a multi-face object (Scryfall leaves
@@ -247,7 +256,7 @@ mod tests {
     use crate::application::use_case::MockScanIndexUseCase;
     use crate::domain::catalog::CatalogCard;
     use crate::domain::rarity_code::RarityCode;
-    use crate::domain::set_name::SetName;
+    use chrono::NaiveDate;
     use mockall::Sequence;
     use std::sync::Mutex;
     use uuid::Uuid;
@@ -262,6 +271,7 @@ mod tests {
             language: language.to_string(),
             layout: "normal".to_string(),
             rarity: "common".to_string(),
+            released_at: NaiveDate::from_ymd_opt(2024, 2, 9).unwrap(),
             name: format!("Card {set}/{number}"),
             printed_name: None,
             faces: vec![],
@@ -311,7 +321,7 @@ mod tests {
     /// What the service handed to `CatalogRepository::replace_all`.
     #[derive(Debug, Default)]
     struct Loaded {
-        sets: Vec<SetName>,
+        sets: Vec<CatalogSet>,
         cards: Vec<CatalogCard>,
     }
 
@@ -663,6 +673,41 @@ mod tests {
                 ("MKM".to_string(), "Set mkm".to_string()),
                 ("TSP".to_string(), "Set tsp".to_string())
             ]
+        );
+    }
+
+    #[tokio::test]
+    async fn the_release_date_of_a_set_is_the_oldest_of_its_kept_cards() {
+        let mut oldest = object("mkm", "2", "en");
+        oldest.released_at = NaiveDate::from_ymd_opt(2024, 2, 9).unwrap();
+        let mut newer = object("mkm", "1", "en");
+        newer.released_at = NaiveDate::from_ymd_opt(2024, 3, 1).unwrap();
+        let mut digital = object("mkm", "3", "en");
+        digital.released_at = NaiveDate::from_ymd_opt(2020, 1, 1).unwrap();
+        digital.digital = true;
+        let mut other = object("tsp", "1", "en");
+        other.released_at = NaiveDate::from_ymd_opt(2007, 10, 5).unwrap();
+
+        let loaded = load(vec![newer, oldest, digital, other]).await.unwrap();
+
+        let dates: Vec<(String, NaiveDate)> = loaded
+            .sets
+            .iter()
+            .map(|set| (set.code.to_string(), set.released_at))
+            .collect();
+        assert_eq!(
+            dates,
+            vec![
+                (
+                    "MKM".to_string(),
+                    NaiveDate::from_ymd_opt(2024, 2, 9).unwrap()
+                ),
+                (
+                    "TSP".to_string(),
+                    NaiveDate::from_ymd_opt(2007, 10, 5).unwrap()
+                ),
+            ],
+            "a card left out of the catalog does not date its set"
         );
     }
 

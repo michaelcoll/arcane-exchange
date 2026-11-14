@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT sn.set_code, sn.name\n               FROM set_name sn\n               WHERE EXISTS (SELECT 1 FROM collection_entry ce WHERE ce.set_code = sn.set_code)\n               ORDER BY sn.name",
+  "query": "SELECT set_code, name\n               FROM set_name\n               ORDER BY released_at DESC NULLS LAST, name",
   "describe": {
     "columns": [
       {
@@ -34,5 +34,5 @@
       false
     ]
   },
-  "hash": "702ae920c7c5fc2b11237bfea07089e38840482347fdb932c5bcc4d773fa79fe"
+  "hash": "82f8aa47f43ae2659ba0dd0d12d7c32656341c2c8eec2029c6848f9a74c2de94"
 }
