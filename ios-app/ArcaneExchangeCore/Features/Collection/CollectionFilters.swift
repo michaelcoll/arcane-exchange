@@ -163,7 +163,7 @@ package enum CollectionCopy {
     }
 }
 
-/// The sets drawer's search field. Purely on-device: `GET /collection/stats` already returned
+/// The sets drawer's search field. Purely on-device: `GET /sets?owned=true` already returned
 /// every set the collection holds, so narrowing that list needs no request.
 package enum SetSearch {
     /// Keeps the sets whose name or code matches, ignoring case and accents. A blank query

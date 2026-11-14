@@ -2,7 +2,7 @@ import APIClient
 import Foundation
 
 /// Backs the Collection tab: one page-by-page `GET /collection` feed, plus the set list from
-/// `GET /collection/stats` that the filter sheet needs.
+/// `GET /sets?owned=true` that the filter sheet needs.
 @MainActor
 @Observable
 package final class CollectionViewModel {
@@ -79,13 +79,14 @@ package final class CollectionViewModel {
         setsLoad = nil
     }
 
-    /// Only a list that actually came back prunes the set filter: a failed request says nothing
-    /// about what the collection holds.
+    /// Keeps the API order: most recent set first, sets without a date last. Only a list that
+    /// actually came back prunes the set filter: a failed request says nothing about what the
+    /// collection holds.
     private func fetchSets() async {
-        guard let stats = try? await api.get_collection_stats().ok.body.json else {
+        guard let owned = try? await api.list_sets(query: .init(owned: true)).ok.body.json else {
             return
         }
-        sets = stats.sets.sorted { $0.name.localizedStandardCompare($1.name) == .orderedAscending }
+        sets = owned
         filters.dropSets(notIn: sets)
     }
 

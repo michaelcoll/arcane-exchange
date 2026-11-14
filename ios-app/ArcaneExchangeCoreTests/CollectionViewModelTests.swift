@@ -8,13 +8,8 @@ private func page(_ items: [CollectionCard], total: Int64) -> Operations.get_col
     .ok(.init(body: .json(.init(items: items, page: 0, page_size: 20, total: total))))
 }
 
-private func stats(sets: [SetInfo]) -> Operations.get_collection_stats.Output {
-    .ok(.init(body: .json(.init(
-        binders: [],
-        sets: sets,
-        total_cards: 0,
-        unique_cards: 0
-    ))))
+private func ownedSets(_ sets: [SetInfo]) -> Operations.list_sets.Output {
+    .ok(.init(body: .json(sets)))
 }
 
 @MainActor
@@ -102,16 +97,19 @@ struct CollectionViewModelTests {
         #expect(searchQuery?.sets == collectionQuery?.sets)
     }
 
-    @Test func loadsTheSetsSortedByName() async {
+    @Test func loadsTheOwnedSetsInTheAPIOrderMostRecentFirst() async {
         let api = FakeAPI()
-        api.onGetCollectionStats = { _ in
-            stats(sets: [.init(code: "MH3", name: "Modern Horizons 3"), .init(code: "FDN", name: "Foundations")])
+        nonisolated(unsafe) var owned: Bool?
+        api.onListSets = { input in
+            owned = input.query.owned
+            return ownedSets([.init(code: "FDN", name: "Foundations"), .init(code: "DSK", name: "Duskmourn")])
         }
         let model = makeModel(api)
 
         await model.loadSetsIfNeeded()
 
-        #expect(model.sets.map(\.code) == ["FDN", "MH3"])
+        #expect(owned == true)
+        #expect(model.sets.map(\.code) == ["FDN", "DSK"])
     }
 
     @Test func aRestoredSetFilterWaitsForTheSetListAndDropsASetNoLongerOwned() async {
@@ -122,10 +120,10 @@ struct CollectionViewModelTests {
         var waitingDuringSets: Bool?
         var callsDuringSets: [String] = []
         nonisolated(unsafe) var collectionQuery: Operations.get_collection.Input.Query?
-        api.onGetCollectionStats = { _ in
+        api.onListSets = { _ in
             waitingDuringSets = model?.isWaitingForSets
             callsDuringSets = api.calls
-            return stats(sets: [.init(code: "FDN", name: "Foundations")])
+            return ownedSets([.init(code: "FDN", name: "Foundations")])
         }
         api.onGetCollection = { input in
             collectionQuery = input.query
@@ -136,7 +134,7 @@ struct CollectionViewModelTests {
         await model?.loadInitiallyIfNeeded()
 
         #expect(waitingDuringSets == true)
-        #expect(callsDuringSets == ["get_collection_stats"])
+        #expect(callsDuringSets == ["list_sets"])
         #expect(model?.isWaitingForSets == false)
         #expect(collectionQuery?.sets == "FDN")
         #expect(model?.filters.sets == ["FDN"])
@@ -145,24 +143,24 @@ struct CollectionViewModelTests {
 
     @Test func reloadsTheSetsThenTheGridAfterAnImport() async {
         let api = FakeAPI()
-        api.onGetCollectionStats = { _ in stats(sets: [.init(code: "FDN", name: "Foundations")]) }
+        api.onListSets = { _ in ownedSets([.init(code: "FDN", name: "Foundations")]) }
         api.onGetCollection = { _ in page([card("a")], total: 1) }
         let model = makeModel(api)
         await model.loadSetsIfNeeded()
-        api.onGetCollectionStats = { _ in
-            stats(sets: [.init(code: "FDN", name: "Foundations"), .init(code: "MH3", name: "Modern Horizons 3")])
+        api.onListSets = { _ in
+            ownedSets([.init(code: "FDN", name: "Foundations"), .init(code: "MH3", name: "Modern Horizons 3")])
         }
 
         await model.reloadAfterImport()
 
         #expect(model.sets.map(\.code) == ["FDN", "MH3"])
         #expect(model.paginator.items.map(\.scryfall_id) == ["a"])
-        #expect(api.calls == ["get_collection_stats", "get_collection_stats", "get_collection"])
+        #expect(api.calls == ["list_sets", "list_sets", "get_collection"])
     }
 
     @Test func aFailedSetListDoesNotBlankTheGrid() async {
         let api = FakeAPI()
-        api.onGetCollectionStats = { _ in throw APIError(code: "internal", status: 500) }
+        api.onListSets = { _ in throw APIError(code: "internal", status: 500) }
         let model = makeModel(api)
 
         await model.loadSetsIfNeeded()
