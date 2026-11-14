@@ -2,7 +2,6 @@ use crate::application::error::AppError;
 use crate::application::repository::CollectionStatsRepository;
 use crate::domain::collection_stats::{BinderInfo, CollectionStats};
 use crate::domain::price::Price;
-use crate::domain::set_name::{SetCode, SetName};
 use crate::domain::user::UserId;
 use async_trait::async_trait;
 use sqlx::{Pool, Postgres};
@@ -53,23 +52,6 @@ impl CollectionStatsRepository for CollectionStatsRepositoryAdapter {
         .fetch_one(&self.pool)
         .await?;
 
-        let sets = sqlx::query!(
-            r#"
-            SELECT DISTINCT sn.set_code, sn.name
-            FROM collection_entry ce
-            JOIN card c
-                ON  c.set_code         = ce.set_code
-                AND c.collector_number = ce.collector_number
-                AND c.language_code    = ce.language_code
-            JOIN set_name sn ON sn.set_code = c.set_code
-            WHERE ce.user_id = $1
-            ORDER BY sn.name
-            "#,
-            user_id.as_str()
-        )
-        .fetch_all(&self.pool)
-        .await?;
-
         let binders = sqlx::query!(
             r#"
             SELECT b.name AS "binder_name!", SUM(ce.quantity)::BIGINT AS "card_count!"
@@ -95,10 +77,6 @@ impl CollectionStatsRepository for CollectionStatsRepositoryAdapter {
                 .price_trend_max
                 .map(|v| Price::from_cents(v as u32))
                 .unwrap_or_else(Price::empty),
-            sets: sets
-                .into_iter()
-                .map(|r| SetName::new(SetCode::new(r.set_code), r.name))
-                .collect(),
             binders: binders
                 .into_iter()
                 .map(|r| BinderInfo {
@@ -133,7 +111,6 @@ mod tests {
         assert_eq!(stats.unique_cards, 0);
         assert!(stats.price_trend_min.value.is_none());
         assert!(stats.price_trend_max.value.is_none());
-        assert!(stats.sets.is_empty());
         assert!(stats.binders.is_empty());
     }
 
@@ -152,9 +129,6 @@ mod tests {
         let stats = result.unwrap();
         assert_eq!(stats.total_cards, 5);
         assert_eq!(stats.unique_cards, 2);
-        assert_eq!(stats.sets.len(), 1);
-        assert_eq!(stats.sets[0].name, "Set TST");
-        assert_eq!(stats.sets[0].code.to_string(), "TST");
     }
 
     #[sqlx::test]
@@ -177,7 +151,6 @@ mod tests {
         assert_eq!(stats.total_cards, 1);
         assert_eq!(stats.unique_cards, 1);
         assert_eq!(stats.price_trend_max.value, Some(100));
-        assert_eq!(stats.sets.len(), 1);
     }
 
     #[sqlx::test]
