@@ -14,6 +14,7 @@ const {
   listCardImports,
   getPriceHistory,
 } = useCollectionService();
+const { getOwnedSets } = useSetsService();
 
 // The text filter is read back from the URL (reload, bookmark), like the criteria of the list.
 const restoredQ = useRoute().query.q;
@@ -32,7 +33,12 @@ const { data: statsData, refresh: refreshStats } = await useAsyncData(
   { lazy: true },
 );
 
-const setList = computed(() => statsData.value?.sets ?? []);
+// The sets of the set filter: the ones the player owns a card of.
+const { data: setList, refresh: refreshSets } = await useAsyncData(
+  'collection-owned-sets',
+  () => getOwnedSets(),
+  { lazy: true, default: () => [] },
+);
 
 const priceMin = computed(() =>
   statsData.value?.price_trend_min != null ? Math.floor(statsData.value.price_trend_min / 100) : 0,
@@ -98,6 +104,7 @@ const {
     onCompleted: () => {
       void list.reload();
       void refreshStats();
+      void refreshSets();
     },
     // Unknown stats count as a non-empty collection: better one confirmation too many than a
     // silent overwrite.

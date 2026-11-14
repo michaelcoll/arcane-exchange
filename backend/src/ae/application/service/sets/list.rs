@@ -2,6 +2,7 @@ use crate::application::error::AppError;
 use crate::application::repository::SetNameRepository;
 use crate::application::use_case::ListSetsUseCase;
 use crate::domain::set_name::SetName;
+use crate::domain::user::UserId;
 use async_trait::async_trait;
 use std::sync::Arc;
 
@@ -17,8 +18,8 @@ impl ListSetsService {
 
 #[async_trait]
 impl ListSetsUseCase for ListSetsService {
-    async fn list_sets(&self) -> Result<Vec<SetName>, AppError> {
-        self.repository.find_all().await
+    async fn list_sets(&self, owner: Option<UserId>) -> Result<Vec<SetName>, AppError> {
+        self.repository.find_all(owner).await
     }
 }
 
@@ -32,7 +33,7 @@ mod tests {
     #[tokio::test]
     async fn list_sets_returns_repository_sets() {
         let mut mock = MockSetNameRepository::new();
-        mock.expect_find_all().times(1).returning(|| {
+        mock.expect_find_all().times(1).returning(|_| {
             Box::pin(async {
                 Ok(vec![SetName {
                     code: SetCode::new("ECL"),
@@ -42,7 +43,7 @@ mod tests {
         });
 
         let service = ListSetsService::new(Arc::new(mock));
-        let result = service.list_sets().await.unwrap();
+        let result = service.list_sets(None).await.unwrap();
 
         assert_eq!(result.len(), 1);
         assert_eq!(result[0].name, "Eclipsed");
@@ -51,7 +52,7 @@ mod tests {
     #[tokio::test]
     async fn list_sets_propagates_repository_error() {
         let mut mock = MockSetNameRepository::new();
-        mock.expect_find_all().returning(|| {
+        mock.expect_find_all().returning(|_| {
             Box::pin(async {
                 Err(AppError::Infra(InfraError::RepositoryError(
                     "db error".to_string(),
@@ -60,7 +61,7 @@ mod tests {
         });
 
         let service = ListSetsService::new(Arc::new(mock));
-        let result = service.list_sets().await;
+        let result = service.list_sets(None).await;
 
         assert!(result.is_err());
     }

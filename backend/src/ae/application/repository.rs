@@ -104,8 +104,9 @@ pub trait SetNameRepository: Send + Sync {
     /// Writes `sets` in bulk, `ON CONFLICT DO NOTHING`: an already-known set's name is never
     /// overwritten.
     async fn save_all(&self, sets: &[SetName]) -> Result<(), AppError>;
-    /// All known sets, ordered by name.
-    async fn find_all(&self) -> Result<Vec<SetName>, AppError>;
+    /// The whole catalog of sets, the most recent first; with an `owner`, only the sets they own
+    /// a card of.
+    async fn find_all(&self, owner: Option<UserId>) -> Result<Vec<SetName>, AppError>;
     async fn find_by_code(&self, code: SetCode) -> Result<Option<SetName>, AppError>;
 }
 

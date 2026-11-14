@@ -2,8 +2,11 @@ use crate::application::error::AppError;
 use crate::domain::set_name::SetCode;
 use crate::infrastructure::AppState;
 use crate::infrastructure::adapter_in::SetInfoResponse;
-use axum::extract::{Path, State};
+use crate::infrastructure::adapter_in::auth_extractor::AuthenticatedUser;
+use axum::extract::{FromRequestParts, Path, Query, State};
+use axum::http::request::Parts;
 use axum::routing::get;
+use serde::Deserialize;
 
 pub fn create_set_router() -> axum::Router<AppState> {
     axum::Router::new()
@@ -11,18 +14,38 @@ pub fn create_set_router() -> axum::Router<AppState> {
         .route("/{set_code}", get(get_set))
 }
 
+#[derive(Deserialize, Default)]
+pub(crate) struct ListSetsParams {
+    #[serde(default)]
+    owned: bool,
+}
+
 #[utoipa::path(
     get,
     path = "/sets",
+    params(
+        ("owned" = Option<bool>, Query, description = "`true` restricts the list to the sets the calling player owns at least one card of, and requires authentication"),
+    ),
     responses(
         (status = 200, description = "The whole catalog of sets, the most recent first (by name within a release date); sets without a release date come last", body = Vec<SetInfoResponse>),
+        (status = 401, description = "`owned=true` without a valid token"),
     ),
     tag = "sets",
 )]
 pub(crate) async fn list_sets(
     State(state): State<AppState>,
+    Query(params): Query<ListSetsParams>,
+    mut parts: Parts,
 ) -> Result<axum::Json<Vec<SetInfoResponse>>, AppError> {
-    let sets = state.list_sets_use_case.list_sets().await?;
+    // The route stays public: the caller is only required, and resolved, for `owned=true`.
+    let owner = if params.owned {
+        let AuthenticatedUser(user) =
+            AuthenticatedUser::from_request_parts(&mut parts, &state).await?;
+        Some(user.id)
+    } else {
+        None
+    };
+    let sets = state.list_sets_use_case.list_sets(owner).await?;
 
     Ok(axum::Json(sets.into_iter().map(Into::into).collect()))
 }

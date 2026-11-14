@@ -1,0 +1,19 @@
+meta {
+  name: list-owned-sets
+  type: http
+  seq: 3
+}
+
+get {
+  url: {{baseUrl}}/sets?owned=true
+  body: none
+  auth: inherit
+}
+
+params:query {
+  owned: true
+}
+
+docs {
+  Only the sets the authenticated player owns a card of. Without a valid token: 401.
+}
