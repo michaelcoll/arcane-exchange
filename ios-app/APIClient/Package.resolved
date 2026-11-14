@@ -1,13 +1,13 @@
 {
-  "originHash" : "a9c3f426bfcc9429523f3aca18ff88301bd2a33cfbd2c91cc9217d653ae25af2",
+  "originHash" : "2e3d02b76ba4f1c22105c9a71db352e3a29436523dab25c0314b9fd592e77807",
   "pins" : [
     {
       "identity" : "clerk-ios",
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/clerk/clerk-ios",
       "state" : {
-        "revision" : "f1b7b749d988bfcfd9bf0b9b106a704ead972d9f",
-        "version" : "1.7.1"
+        "revision" : "c82ae3a6dfb8130cdf753ce496aec83856a47b7d",
+        "version" : "1.7.2"
       }
     },
     {
@@ -60,8 +60,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/apple/swift-collections",
       "state" : {
-        "revision" : "f96b909e1a9e469620bc5037c1e24e00153f376f",
-        "version" : "1.7.5"
+        "revision" : "88754449ab766a739610b660e117762115fabc9c",
+        "version" : "1.7.6"
       }
     },
     {
