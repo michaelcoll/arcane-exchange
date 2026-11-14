@@ -160,7 +160,7 @@ struct ImportViewModelTests {
     private func apiWithCollection(totalCards: Int64) -> FakeAPI {
         let api = FakeAPI()
         api.onGetCollectionStats = { _ in
-            .ok(.init(body: .json(.init(binders: [], sets: [], total_cards: totalCards, unique_cards: totalCards))))
+            .ok(.init(body: .json(.init(binders: [], total_cards: totalCards, unique_cards: totalCards))))
         }
         return api
     }

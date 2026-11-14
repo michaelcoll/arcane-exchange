@@ -223,7 +223,7 @@ struct HomeWidgetFetchTests {
         let entry = PriceHistoryEntry(avg: 90, date: "2026-10-01", low: 80, trend: 100)
         api.onGetCollectionPriceHistory = { _ in .ok(.init(body: .json([entry]))) }
         api.onGetCollectionStats = { _ in
-            .ok(.init(body: .json(.init(binders: [], sets: [], total_cards: 12, unique_cards: 9))))
+            .ok(.init(body: .json(.init(binders: [], total_cards: 12, unique_cards: 9))))
         }
 
         let snapshot = try await HomeWidgetFetch.collection(api: api)

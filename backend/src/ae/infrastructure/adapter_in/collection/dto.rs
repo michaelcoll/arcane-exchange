@@ -6,7 +6,7 @@ use crate::domain::collection_entry::{CardEntries, CollectionEntryDetail, EntryB
 use crate::domain::collection_stats::{BinderInfo, CollectionStats};
 use crate::domain::price::PriceGuide;
 use crate::domain::rarity_code::RarityCode;
-use crate::infrastructure::adapter_in::{SetInfoResponse, default_page_size};
+use crate::infrastructure::adapter_in::default_page_size;
 use serde::{Deserialize, Serialize};
 use ts_rs::TS;
 use utoipa::ToSchema;
@@ -119,7 +119,6 @@ pub struct CollectionStatsResponse {
     pub unique_cards: u64,
     pub price_trend_min: Option<u32>,
     pub price_trend_max: Option<u32>,
-    pub sets: Vec<SetInfoResponse>,
     pub binders: Vec<BinderInfoResponse>,
 }
 
@@ -130,7 +129,6 @@ impl From<CollectionStats> for CollectionStatsResponse {
             unique_cards: s.unique_cards,
             price_trend_min: s.price_trend_min.value,
             price_trend_max: s.price_trend_max.value,
-            sets: s.sets.into_iter().map(SetInfoResponse::from).collect(),
             binders: s
                 .binders
                 .into_iter()

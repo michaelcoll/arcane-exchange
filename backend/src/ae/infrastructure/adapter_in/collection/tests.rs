@@ -13,7 +13,6 @@ use crate::domain::language_code::LanguageCode;
 use crate::domain::pagination::{PageRequest, Paginated, Pagination};
 use crate::domain::price::{Price, PriceGuide, PriceHistoryEntry};
 use crate::domain::rarity_code::RarityCode;
-use crate::domain::set_name::{SetCode, SetName};
 use crate::domain::user::User;
 use crate::infrastructure::adapter_in::default_page_size;
 use crate::infrastructure::testing::{
@@ -877,7 +876,6 @@ async fn get_collection_stats_returns_stats_from_use_case() {
                     unique_cards: 10,
                     price_trend_min: Price::from_cents(100),
                     price_trend_max: Price::from_cents(5000),
-                    sets: vec![SetName::new(SetCode::new("FDN"), "Foundations")],
                     binders: vec![BinderInfo {
                         name: "Trade Binder".to_string(),
                         card_count: 12,
@@ -896,7 +894,6 @@ async fn get_collection_stats_returns_stats_from_use_case() {
             "unique_cards": 10,
             "price_trend_min": 100,
             "price_trend_max": 5000,
-            "sets": [{ "code": "FDN", "name": "Foundations" }],
             "binders": [{ "name": "Trade Binder", "card_count": 12 }],
         })
     );
@@ -912,7 +909,6 @@ async fn get_collection_stats_returns_empty_for_empty_collection() {
                 unique_cards: 0,
                 price_trend_min: Price::empty(),
                 price_trend_max: Price::empty(),
-                sets: vec![],
                 binders: vec![],
             })
         })
@@ -928,7 +924,6 @@ async fn get_collection_stats_returns_empty_for_empty_collection() {
             "unique_cards": 0,
             "price_trend_min": null,
             "price_trend_max": null,
-            "sets": [],
             "binders": [],
         })
     );

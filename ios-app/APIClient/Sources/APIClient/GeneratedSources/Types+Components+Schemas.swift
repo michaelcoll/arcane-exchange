@@ -715,8 +715,6 @@ extension Components {
             public var price_trend_max: Swift.Int32?
             /// - Remark: Generated from `#/components/schemas/CollectionStatsResponse/price_trend_min`.
             public var price_trend_min: Swift.Int32?
-            /// - Remark: Generated from `#/components/schemas/CollectionStatsResponse/sets`.
-            public var sets: [Components.Schemas.SetInfoResponse]
             /// - Remark: Generated from `#/components/schemas/CollectionStatsResponse/total_cards`.
             public var total_cards: Swift.Int64
             /// - Remark: Generated from `#/components/schemas/CollectionStatsResponse/unique_cards`.
@@ -727,21 +725,18 @@ extension Components {
             ///   - binders:
             ///   - price_trend_max:
             ///   - price_trend_min:
-            ///   - sets:
             ///   - total_cards:
             ///   - unique_cards:
             public init(
                 binders: [Components.Schemas.BinderInfoResponse],
                 price_trend_max: Swift.Int32? = nil,
                 price_trend_min: Swift.Int32? = nil,
-                sets: [Components.Schemas.SetInfoResponse],
                 total_cards: Swift.Int64,
                 unique_cards: Swift.Int64
             ) {
                 self.binders = binders
                 self.price_trend_max = price_trend_max
                 self.price_trend_min = price_trend_min
-                self.sets = sets
                 self.total_cards = total_cards
                 self.unique_cards = unique_cards
             }
@@ -749,7 +744,6 @@ extension Components {
                 case binders
                 case price_trend_max
                 case price_trend_min
-                case sets
                 case total_cards
                 case unique_cards
             }
