@@ -2,7 +2,8 @@ use crate::application::error::{AppError, InfraError};
 use crate::application::use_case::{MockGetSetUseCase, MockListSetsUseCase};
 use crate::domain::error::FunctionalError;
 use crate::domain::set_name::{SetCode, SetName};
-use crate::infrastructure::testing::{anonymous, assert_error, json_of};
+use crate::domain::user::UserId;
+use crate::infrastructure::testing::{anonymous, assert_error, authed, json_of};
 use crate::infrastructure::{AppState, create_router};
 use axum::http::{Method, StatusCode};
 use serde_json::json;
@@ -22,7 +23,7 @@ fn app_with(
 #[tokio::test]
 async fn list_sets_delegates_to_use_case() {
     let mut mock_list = MockListSetsUseCase::new();
-    mock_list.expect_list_sets().returning(|| {
+    mock_list.expect_list_sets().returning(|_| {
         Box::pin(async {
             Ok(vec![SetName {
                 code: SetCode::new("ECL"),
@@ -42,9 +43,47 @@ async fn list_sets_delegates_to_use_case() {
 }
 
 #[tokio::test]
+async fn list_sets_without_owned_asks_for_the_whole_catalog() {
+    let mut mock_list = MockListSetsUseCase::new();
+    mock_list
+        .expect_list_sets()
+        .withf(|owner| owner.is_none())
+        .times(1)
+        .returning(|_| Box::pin(async { Ok(vec![]) }));
+
+    let app = app_with(mock_list, MockGetSetUseCase::new());
+    let response = anonymous(app, Method::GET, "/sets?owned=false").await;
+
+    assert_eq!(response.status(), StatusCode::OK);
+}
+
+#[tokio::test]
+async fn list_sets_owned_passes_the_caller_to_the_use_case() {
+    let mut mock_list = MockListSetsUseCase::new();
+    mock_list
+        .expect_list_sets()
+        .withf(|owner| owner == &Some(UserId::new("test-user-id")))
+        .times(1)
+        .returning(|_| Box::pin(async { Ok(vec![]) }));
+
+    let app = app_with(mock_list, MockGetSetUseCase::new());
+    let response = authed(app, Method::GET, "/sets?owned=true").await;
+
+    assert_eq!(response.status(), StatusCode::OK);
+}
+
+#[tokio::test]
+async fn list_sets_owned_requires_authentication() {
+    let app = app_with(MockListSetsUseCase::new(), MockGetSetUseCase::new());
+    let response = anonymous(app, Method::GET, "/sets?owned=true").await;
+
+    assert_eq!(response.status(), StatusCode::UNAUTHORIZED);
+}
+
+#[tokio::test]
 async fn list_sets_propagates_use_case_error() {
     let mut mock_list = MockListSetsUseCase::new();
-    mock_list.expect_list_sets().returning(|| {
+    mock_list.expect_list_sets().returning(|_| {
         Box::pin(async {
             Err(AppError::Infra(InfraError::RepositoryError(
                 "db error".to_string(),

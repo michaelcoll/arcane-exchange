@@ -1,6 +1,7 @@
 use crate::application::error::AppError;
 use crate::application::repository::SetNameRepository;
 use crate::domain::set_name::{SetCode, SetName};
+use crate::domain::user::UserId;
 use crate::infrastructure::adapter_out::repository::entities::SetNameEntity;
 use async_trait::async_trait;
 use sqlx::{Pool, Postgres, QueryBuilder};
@@ -38,14 +39,18 @@ impl SetNameRepository for SetNameRepositoryAdapter {
     }
 
     /// The whole catalog of sets, the most recent first; a set without a release date comes after
-    /// the dated ones. The name breaks ties.
+    /// the dated ones. The name breaks ties. With an `owner`, only the sets they own a card of.
     #[tracing::instrument(name = "set_names_repo.find_all", skip_all, fields(sentry.op = "db"))]
-    async fn find_all(&self) -> Result<Vec<SetName>, AppError> {
+    async fn find_all(&self, owner: Option<UserId>) -> Result<Vec<SetName>, AppError> {
         Ok(sqlx::query_as!(
             SetNameEntity,
-            r#"SELECT set_code, name
-               FROM set_name
-               ORDER BY released_at DESC NULLS LAST, name"#
+            r#"SELECT sn.set_code, sn.name
+               FROM set_name sn
+               WHERE $1::text IS NULL
+                  OR EXISTS (SELECT 1 FROM collection_entry ce
+                             WHERE ce.set_code = sn.set_code AND ce.user_id = $1)
+               ORDER BY sn.released_at DESC NULLS LAST, sn.name"#,
+            owner.as_ref().map(UserId::as_str)
         )
         .fetch_all(&self.pool)
         .await?
@@ -76,6 +81,7 @@ impl SetNameRepository for SetNameRepositoryAdapter {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::domain::user::UserId;
     use crate::infrastructure::adapter_out::repository::common_repository_tests::{
         insert_card_without_cardmarket_id, insert_collection_entry, insert_set, insert_user,
     };
@@ -92,9 +98,12 @@ mod tests {
             .unwrap();
     }
 
-    async fn listed_codes(adapter: &SetNameRepositoryAdapter) -> Vec<String> {
+    async fn listed_codes(
+        adapter: &SetNameRepositoryAdapter,
+        owner: Option<UserId>,
+    ) -> Vec<String> {
         adapter
-            .find_all()
+            .find_all(owner)
             .await
             .unwrap()
             .into_iter()
@@ -111,10 +120,48 @@ mod tests {
         insert_user(&pool, "user-1", "User1").await;
         insert_collection_entry(&pool, "OWN", "1", "en", false, "user-1", 1, 100, Utc::now()).await;
 
-        let codes = listed_codes(&adapter).await;
+        let codes = listed_codes(&adapter, None).await;
 
         assert!(codes.contains(&"EMP".to_string()), "{codes:?}");
         assert!(codes.contains(&"OWN".to_string()), "{codes:?}");
+    }
+
+    #[sqlx::test]
+    async fn find_all_owned_lists_only_the_sets_the_caller_owns_a_card_of(pool: PgPool) {
+        let adapter = SetNameRepositoryAdapter::new(pool.clone());
+        for code in ["MIN", "OTH", "NON"] {
+            insert_set(&pool, code).await;
+            insert_card_without_cardmarket_id(&pool, code, "1", "en", "Card").await;
+        }
+        insert_user(&pool, "user-1", "User1").await;
+        insert_user(&pool, "user-2", "User2").await;
+        insert_collection_entry(&pool, "MIN", "1", "en", false, "user-1", 1, 100, Utc::now()).await;
+        insert_collection_entry(&pool, "OTH", "1", "en", false, "user-2", 1, 100, Utc::now()).await;
+
+        let codes = listed_codes(&adapter, Some(UserId::new("user-1"))).await;
+
+        assert_eq!(codes, vec!["MIN"]);
+    }
+
+    #[sqlx::test]
+    async fn find_all_owned_keeps_the_catalog_order(pool: PgPool) {
+        let adapter = SetNameRepositoryAdapter::new(pool.clone());
+        for code in ["OLD", "NEW", "UND"] {
+            insert_set(&pool, code).await;
+            insert_card_without_cardmarket_id(&pool, code, "1", "en", "Card").await;
+        }
+        rename_and_date_set(&pool, "OLD", "Old", Some("2001-01-01")).await;
+        rename_and_date_set(&pool, "NEW", "New", Some("2024-02-09")).await;
+        rename_and_date_set(&pool, "UND", "Undated", None).await;
+        insert_user(&pool, "user-1", "User1").await;
+        for code in ["OLD", "UND", "NEW"] {
+            insert_collection_entry(&pool, code, "1", "en", false, "user-1", 1, 100, Utc::now())
+                .await;
+        }
+
+        let codes = listed_codes(&adapter, Some(UserId::new("user-1"))).await;
+
+        assert_eq!(codes, vec!["NEW", "OLD", "UND"]);
     }
 
     #[sqlx::test]
@@ -134,7 +181,7 @@ mod tests {
         rename_and_date_set(&pool, "UNDA", "A undated", None).await;
 
         assert_eq!(
-            listed_codes(&adapter).await,
+            listed_codes(&adapter, None).await,
             vec!["NEWA", "NEWB", "OLD", "UNDA", "UNDB"]
         );
     }

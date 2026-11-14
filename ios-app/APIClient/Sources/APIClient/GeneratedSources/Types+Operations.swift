@@ -9519,6 +9519,21 @@ public enum Operations {
     public enum list_sets {
         public static let id: Swift.String = "list_sets"
         public struct Input: Sendable, Hashable {
+            /// - Remark: Generated from `#/paths/sets/GET/query`.
+            public struct Query: Sendable, Hashable {
+                /// `true` restricts the list to the sets the calling player owns at least one card of, and requires authentication
+                ///
+                /// - Remark: Generated from `#/paths/sets/GET/query/owned`.
+                public var owned: Swift.Bool?
+                /// Creates a new `Query`.
+                ///
+                /// - Parameters:
+                ///   - owned: `true` restricts the list to the sets the calling player owns at least one card of, and requires authentication
+                public init(owned: Swift.Bool? = nil) {
+                    self.owned = owned
+                }
+            }
+            public var query: Operations.list_sets.Input.Query
             /// - Remark: Generated from `#/paths/sets/GET/header`.
             public struct Headers: Sendable, Hashable {
                 public var accept: [OpenAPIRuntime.AcceptHeaderContentType<Operations.list_sets.AcceptableContentType>]
@@ -9534,8 +9549,13 @@ public enum Operations {
             /// Creates a new `Input`.
             ///
             /// - Parameters:
+            ///   - query:
             ///   - headers:
-            public init(headers: Operations.list_sets.Input.Headers = .init()) {
+            public init(
+                query: Operations.list_sets.Input.Query = .init(),
+                headers: Operations.list_sets.Input.Headers = .init()
+            ) {
+                self.query = query
                 self.headers = headers
             }
         }
@@ -9586,6 +9606,57 @@ public enum Operations {
                     default:
                         try throwUnexpectedResponseStatus(
                             expectedStatus: "ok",
+                            response: self
+                        )
+                    }
+                }
+            }
+            public struct Unauthorized: Sendable, Hashable {
+                /// - Remark: Generated from `#/paths/sets/GET/responses/401/content`.
+                @frozen public enum Body: Sendable, Hashable {
+                    /// - Remark: Generated from `#/paths/sets/GET/responses/401/content/application\/json`.
+                    case json(Components.Schemas.ErrorResponse)
+                    /// The associated value of the enum case if `self` is `.json`.
+                    ///
+                    /// - Throws: An error if `self` is not `.json`.
+                    /// - SeeAlso: `.json`.
+                    public var json: Components.Schemas.ErrorResponse {
+                        get throws {
+                            switch self {
+                            case let .json(body):
+                                return body
+                            }
+                        }
+                    }
+                }
+                /// Received HTTP response body
+                public var body: Operations.list_sets.Output.Unauthorized.Body
+                /// Creates a new `Unauthorized`.
+                ///
+                /// - Parameters:
+                ///   - body: Received HTTP response body
+                public init(body: Operations.list_sets.Output.Unauthorized.Body) {
+                    self.body = body
+                }
+            }
+            /// `owned=true` without a valid token
+            ///
+            /// - Remark: Generated from `#/paths//sets/get(list_sets)/responses/401`.
+            ///
+            /// HTTP response code: `401 unauthorized`.
+            case unauthorized(Operations.list_sets.Output.Unauthorized)
+            /// The associated value of the enum case if `self` is `.unauthorized`.
+            ///
+            /// - Throws: An error if `self` is not `.unauthorized`.
+            /// - SeeAlso: `.unauthorized`.
+            public var unauthorized: Operations.list_sets.Output.Unauthorized {
+                get throws {
+                    switch self {
+                    case let .unauthorized(response):
+                        return response
+                    default:
+                        try throwUnexpectedResponseStatus(
+                            expectedStatus: "unauthorized",
                             response: self
                         )
                     }

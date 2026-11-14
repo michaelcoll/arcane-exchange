@@ -586,8 +586,14 @@ extension APIProtocol {
     }
     /// - Remark: HTTP `GET /sets`.
     /// - Remark: Generated from `#/paths//sets/get(list_sets)`.
-    public func list_sets(headers: Operations.list_sets.Input.Headers = .init()) async throws -> Operations.list_sets.Output {
-        try await list_sets(Operations.list_sets.Input(headers: headers))
+    public func list_sets(
+        query: Operations.list_sets.Input.Query = .init(),
+        headers: Operations.list_sets.Input.Headers = .init()
+    ) async throws -> Operations.list_sets.Output {
+        try await list_sets(Operations.list_sets.Input(
+            query: query,
+            headers: headers
+        ))
     }
     /// - Remark: HTTP `GET /sets/{set_code}`.
     /// - Remark: Generated from `#/paths//sets/{set_code}/get(get_set)`.

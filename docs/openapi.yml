@@ -1546,6 +1546,13 @@ paths:
       tags:
       - sets
       operationId: list_sets
+      parameters:
+      - name: owned
+        in: query
+        description: '`true` restricts the list to the sets the calling player owns at least one card of, and requires authentication'
+        required: false
+        schema:
+          type: boolean
       responses:
         '200':
           description: The whole catalog of sets, the most recent first (by name within a release date); sets without a release date come last
@@ -1555,6 +1562,12 @@ paths:
                 type: array
                 items:
                   $ref: '#/components/schemas/SetInfoResponse'
+        '401':
+          description: '`owned=true` without a valid token'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
   /sets/{set_code}:
     get:
       tags:

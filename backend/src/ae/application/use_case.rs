@@ -523,7 +523,8 @@ pub trait ListTradesUseCase: Send + Sync {
 #[async_trait]
 #[cfg_attr(test, automock)]
 pub trait ListSetsUseCase: Send + Sync {
-    async fn list_sets(&self) -> Result<Vec<SetName>, AppError>;
+    /// The whole catalog of sets; with an `owner`, only the sets they own a card of.
+    async fn list_sets(&self, owner: Option<UserId>) -> Result<Vec<SetName>, AppError>;
 }
 
 #[async_trait]

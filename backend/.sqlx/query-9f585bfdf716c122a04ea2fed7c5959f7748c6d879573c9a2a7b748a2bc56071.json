@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT set_code, name\n               FROM set_name\n               ORDER BY released_at DESC NULLS LAST, name",
+  "query": "SELECT sn.set_code, sn.name\n               FROM set_name sn\n               WHERE $1::text IS NULL\n                  OR EXISTS (SELECT 1 FROM collection_entry ce\n                             WHERE ce.set_code = sn.set_code AND ce.user_id = $1)\n               ORDER BY sn.released_at DESC NULLS LAST, sn.name",
   "describe": {
     "columns": [
       {
@@ -27,12 +27,14 @@
       }
     ],
     "parameters": {
-      "Left": []
+      "Left": [
+        "Text"
+      ]
     },
     "nullable": [
       false,
       false
     ]
   },
-  "hash": "82f8aa47f43ae2659ba0dd0d12d7c32656341c2c8eec2029c6848f9a74c2de94"
+  "hash": "9f585bfdf716c122a04ea2fed7c5959f7748c6d879573c9a2a7b748a2bc56071"
 }
