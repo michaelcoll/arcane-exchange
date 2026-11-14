@@ -129,6 +129,7 @@ erDiagram
     set_name {
         character_varying(6) set_code PK
         character_varying(255) name "not null"
+        date released_at
     }
     trade {
         uuid id PK

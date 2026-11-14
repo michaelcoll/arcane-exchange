@@ -1548,7 +1548,7 @@ paths:
       operationId: list_sets
       responses:
         '200':
-          description: All known sets, ordered by name
+          description: The whole catalog of sets, the most recent first (by name within a release date); sets without a release date come last
           content:
             application/json:
               schema:

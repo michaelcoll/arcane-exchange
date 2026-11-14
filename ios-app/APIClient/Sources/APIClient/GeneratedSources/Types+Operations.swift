@@ -9568,7 +9568,7 @@ public enum Operations {
                     self.body = body
                 }
             }
-            /// All known sets, ordered by name
+            /// The whole catalog of sets, the most recent first (by name within a release date); sets without a release date come last
             ///
             /// - Remark: Generated from `#/paths//sets/get(list_sets)/responses/200`.
             ///

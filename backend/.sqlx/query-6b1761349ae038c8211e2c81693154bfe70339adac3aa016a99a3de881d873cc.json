@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT * FROM set_name WHERE set_code = $1",
+  "query": "SELECT set_code, name FROM set_name WHERE set_code = $1",
   "describe": {
     "columns": [
       {
@@ -36,5 +36,5 @@
       false
     ]
   },
-  "hash": "444e7c2ca52e323e616619b23e2cbdeddbc5561b35643c629d79ba68569463e4"
+  "hash": "6b1761349ae038c8211e2c81693154bfe70339adac3aa016a99a3de881d873cc"
 }

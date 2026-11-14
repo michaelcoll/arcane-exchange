@@ -15,7 +15,7 @@ pub fn create_set_router() -> axum::Router<AppState> {
     get,
     path = "/sets",
     responses(
-        (status = 200, description = "All known sets, ordered by name", body = Vec<SetInfoResponse>),
+        (status = 200, description = "The whole catalog of sets, the most recent first (by name within a release date); sets without a release date come last", body = Vec<SetInfoResponse>),
     ),
     tag = "sets",
 )]

@@ -1,7 +1,17 @@
 use crate::domain::rarity_code::RarityCode;
 use crate::domain::set_name::{SetCode, SetName};
+use chrono::NaiveDate;
 use serde::Serialize;
 use uuid::Uuid;
+
+/// A set as the catalog update writes it.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct CatalogSet {
+    pub code: SetCode,
+    pub name: String,
+    /// The `released_at` of the oldest card of the set kept in the catalog.
+    pub released_at: NaiveDate,
+}
 
 /// One card of the catalog, keyed by set and collector number: no language, no finish.
 #[derive(Clone, Debug, PartialEq, Eq)]

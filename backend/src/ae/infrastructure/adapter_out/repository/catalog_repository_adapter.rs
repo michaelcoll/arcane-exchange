@@ -1,6 +1,8 @@
 use crate::application::error::AppError;
 use crate::application::repository::CatalogRepository;
-use crate::domain::catalog::{CatalogCard, CatalogSearchItem, ScanIndexEntry, TrendPrices};
+use crate::domain::catalog::{
+    CatalogCard, CatalogSearchItem, CatalogSet, ScanIndexEntry, TrendPrices,
+};
 use crate::domain::pagination::{Paginated, Pagination};
 use crate::domain::set_name::{SetCode, SetName};
 use crate::infrastructure::adapter_out::repository::entities::{
@@ -25,18 +27,24 @@ impl CatalogRepositoryAdapter {
 #[async_trait]
 impl CatalogRepository for CatalogRepositoryAdapter {
     #[tracing::instrument(name = "catalog_repo.replace_all", skip_all, fields(sentry.op = "db"))]
-    async fn replace_all(&self, sets: &[SetName], cards: &[CatalogCard]) -> Result<(), AppError> {
+    async fn replace_all(
+        &self,
+        sets: &[CatalogSet],
+        cards: &[CatalogCard],
+    ) -> Result<(), AppError> {
         let mut tx = self.pool.begin().await?;
 
         for chunk in sets.chunks(INSERT_CHUNK_SIZE) {
             let mut qb: QueryBuilder<Postgres> =
-                QueryBuilder::new("INSERT INTO set_name (set_code, name) ");
+                QueryBuilder::new("INSERT INTO set_name (set_code, name, released_at) ");
             qb.push_values(chunk, |mut b, set| {
                 b.push_bind(set.code.to_string())
-                    .push_bind(set.name.clone());
+                    .push_bind(set.name.clone())
+                    .push_bind(set.released_at);
             });
-            // DO NOTHING, like `SetNameRepository::save_all`: a known set's name is never overwritten.
-            qb.push(" ON CONFLICT (set_code) DO NOTHING");
+            // Only the date is updated: a known set's name is never overwritten, like
+            // `SetNameRepository::save_all`.
+            qb.push(" ON CONFLICT (set_code) DO UPDATE SET released_at = EXCLUDED.released_at");
             qb.build().execute(&mut *tx).await?;
         }
 
@@ -253,12 +261,16 @@ mod tests {
     use crate::infrastructure::adapter_out::repository::common_repository_tests::{
         insert_card, insert_collection_entry, insert_set, insert_user,
     };
-    use chrono::Utc;
+    use chrono::{NaiveDate, Utc};
     use sqlx::PgPool;
     use uuid::Uuid;
 
-    fn set(code: &str) -> SetName {
-        SetName::new(code, format!("Catalog {code}"))
+    fn set(code: &str) -> CatalogSet {
+        CatalogSet {
+            code: SetCode::new(code),
+            name: format!("Catalog {code}"),
+            released_at: NaiveDate::from_ymd_opt(2024, 2, 9).unwrap(),
+        }
     }
 
     fn catalog_card(set_code: &str, number: &str) -> CatalogCard {
@@ -364,6 +376,30 @@ mod tests {
                 .await
                 .unwrap();
         assert_eq!(set_name, "Catalog MKM");
+    }
+
+    #[sqlx::test]
+    async fn a_known_set_gets_its_release_date_but_keeps_its_name(pool: PgPool) {
+        let adapter = CatalogRepositoryAdapter::new(pool.clone());
+        insert_set(&pool, "OLD").await;
+
+        adapter
+            .replace_all(&[set("OLD")], &[catalog_card("OLD", "1")])
+            .await
+            .unwrap();
+
+        let row: (String, Option<NaiveDate>) =
+            sqlx::query_as("SELECT name, released_at FROM set_name WHERE set_code = 'OLD'")
+                .fetch_one(&pool)
+                .await
+                .unwrap();
+        assert_eq!(
+            row,
+            (
+                "Set OLD".to_string(),
+                Some(NaiveDate::from_ymd_opt(2024, 2, 9).unwrap())
+            )
+        );
     }
 
     #[sqlx::test]
@@ -567,7 +603,8 @@ mod tests {
 
     async fn catalog_with(pool: &PgPool, cards: &[CatalogCard]) -> CatalogRepositoryAdapter {
         let adapter = CatalogRepositoryAdapter::new(pool.clone());
-        let mut sets: Vec<SetName> = cards.iter().map(|c| set(&c.set_code.to_string())).collect();
+        let mut sets: Vec<CatalogSet> =
+            cards.iter().map(|c| set(&c.set_code.to_string())).collect();
         sets.sort_by_key(|s| s.code.to_string());
         sets.dedup_by_key(|s| s.code.to_string());
         adapter.replace_all(&sets, cards).await.unwrap();

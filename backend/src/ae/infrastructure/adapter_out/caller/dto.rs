@@ -1,6 +1,6 @@
 use crate::application::caller::{ScryfallBulkCard, ScryfallBulkCardFace};
 use crate::domain::price::{FullPriceGuide, Price, PriceGuide};
-use chrono::{DateTime, Utc};
+use chrono::{DateTime, NaiveDate, Utc};
 
 #[derive(Debug, serde::Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -102,6 +102,7 @@ pub struct ScryfallBulkCardLine {
     pub language: String,
     pub layout: String,
     pub rarity: String,
+    pub released_at: NaiveDate,
     pub name: String,
     pub printed_name: Option<String>,
     /// Only on a multi-face card.
@@ -144,6 +145,7 @@ impl From<ScryfallBulkCardLine> for ScryfallBulkCard {
             language: line.language,
             layout: line.layout,
             rarity: line.rarity,
+            released_at: line.released_at,
             name: line.name,
             printed_name: line.printed_name,
             faces: line

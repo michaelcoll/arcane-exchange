@@ -196,6 +196,7 @@ fn read_bulk(
 mod tests {
     use super::*;
     use crate::application::caller::{ScryfallBulkCard, ScryfallBulkCardFace};
+    use chrono::NaiveDate;
     use uuid::Uuid;
     use wiremock::matchers::path;
     use wiremock::{Mock, MockServer, ResponseTemplate};
@@ -482,6 +483,7 @@ mod tests {
                     language: "fr".to_string(),
                     layout: "normal".to_string(),
                     rarity: "mythic".to_string(),
+                    released_at: NaiveDate::from_ymd_opt(2024, 2, 9).unwrap(),
                     name: "Delney, Streetwise Lookout".to_string(),
                     printed_name: Some("Delney, vigie débrouillarde".to_string()),
                     faces: vec![],
@@ -498,6 +500,7 @@ mod tests {
                     language: "en".to_string(),
                     layout: "transform".to_string(),
                     rarity: "uncommon".to_string(),
+                    released_at: NaiveDate::from_ymd_opt(2021, 9, 24).unwrap(),
                     name: "Ambitious Farmhand // Seasoned Cathar".to_string(),
                     printed_name: None,
                     faces: vec![
@@ -518,6 +521,7 @@ mod tests {
                     language: "fr".to_string(),
                     layout: "transform".to_string(),
                     rarity: "uncommon".to_string(),
+                    released_at: NaiveDate::from_ymd_opt(2021, 9, 24).unwrap(),
                     name: "Ambitious Farmhand // Seasoned Cathar".to_string(),
                     // Scryfall leaves it null on a multi-face object: it is on the faces.
                     printed_name: None,
@@ -538,6 +542,7 @@ mod tests {
                     language: "en".to_string(),
                     layout: "token".to_string(),
                     rarity: "common".to_string(),
+                    released_at: NaiveDate::from_ymd_opt(2024, 2, 9).unwrap(),
                     name: "Spirit".to_string(),
                     printed_name: None,
                     faces: vec![],

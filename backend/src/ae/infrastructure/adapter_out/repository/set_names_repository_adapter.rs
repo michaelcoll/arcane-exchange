@@ -37,15 +37,15 @@ impl SetNameRepository for SetNameRepositoryAdapter {
         Ok(())
     }
 
-    /// Only the sets of which a card is owned: `set_name` also holds sets nobody owns a card of.
+    /// The whole catalog of sets, the most recent first; a set without a release date comes after
+    /// the dated ones. The name breaks ties.
     #[tracing::instrument(name = "set_names_repo.find_all", skip_all, fields(sentry.op = "db"))]
     async fn find_all(&self) -> Result<Vec<SetName>, AppError> {
         Ok(sqlx::query_as!(
             SetNameEntity,
-            r#"SELECT sn.set_code, sn.name
-               FROM set_name sn
-               WHERE EXISTS (SELECT 1 FROM collection_entry ce WHERE ce.set_code = sn.set_code)
-               ORDER BY sn.name"#
+            r#"SELECT set_code, name
+               FROM set_name
+               ORDER BY released_at DESC NULLS LAST, name"#
         )
         .fetch_all(&self.pool)
         .await?
@@ -61,7 +61,7 @@ impl SetNameRepository for SetNameRepositoryAdapter {
     async fn find_by_code(&self, code: SetCode) -> Result<Option<SetName>, AppError> {
         Ok(sqlx::query_as!(
             SetNameEntity,
-            "SELECT * FROM set_name WHERE set_code = $1",
+            "SELECT set_code, name FROM set_name WHERE set_code = $1",
             code.to_string()
         )
         .fetch_optional(&self.pool)
@@ -82,29 +82,60 @@ mod tests {
     use chrono::Utc;
     use sqlx::PgPool;
 
-    #[sqlx::test]
-    async fn find_all_only_lists_sets_with_an_owned_card(pool: PgPool) {
-        let adapter = SetNameRepositoryAdapter::new(pool.clone());
-        insert_set(&pool, "OWN").await;
-        insert_set(&pool, "ORP").await;
-        insert_set(&pool, "EMP").await;
-        insert_card_without_cardmarket_id(&pool, "OWN", "1", "en", "Owned Card").await;
-        insert_card_without_cardmarket_id(&pool, "ORP", "1", "en", "Orphan Card").await;
-        insert_user(&pool, "user-1", "User1").await;
-        insert_collection_entry(&pool, "OWN", "1", "en", false, "user-1", 1, 100, Utc::now()).await;
+    async fn rename_and_date_set(pool: &PgPool, set_code: &str, name: &str, date: Option<&str>) {
+        sqlx::query("UPDATE set_name SET name = $2, released_at = $3::date WHERE set_code = $1")
+            .bind(set_code)
+            .bind(name)
+            .bind(date)
+            .execute(pool)
+            .await
+            .unwrap();
+    }
 
-        let codes: Vec<String> = adapter
+    async fn listed_codes(adapter: &SetNameRepositoryAdapter) -> Vec<String> {
+        adapter
             .find_all()
             .await
             .unwrap()
             .into_iter()
             .map(|set| set.code.to_string())
-            .collect();
+            .collect()
+    }
+
+    #[sqlx::test]
+    async fn find_all_lists_a_set_nobody_owns_a_card_of(pool: PgPool) {
+        let adapter = SetNameRepositoryAdapter::new(pool.clone());
+        insert_set(&pool, "OWN").await;
+        insert_set(&pool, "EMP").await;
+        insert_card_without_cardmarket_id(&pool, "OWN", "1", "en", "Owned Card").await;
+        insert_user(&pool, "user-1", "User1").await;
+        insert_collection_entry(&pool, "OWN", "1", "en", false, "user-1", 1, 100, Utc::now()).await;
+
+        let codes = listed_codes(&adapter).await;
+
+        assert!(codes.contains(&"EMP".to_string()), "{codes:?}");
+        assert!(codes.contains(&"OWN".to_string()), "{codes:?}");
+    }
+
+    #[sqlx::test]
+    async fn find_all_lists_the_most_recent_first_then_by_name_and_undated_last(pool: PgPool) {
+        let adapter = SetNameRepositoryAdapter::new(pool.clone());
+        sqlx::query("DELETE FROM set_name")
+            .execute(&pool)
+            .await
+            .unwrap();
+        for code in ["OLD", "NEWB", "NEWA", "UNDB", "UNDA"] {
+            insert_set(&pool, code).await;
+        }
+        rename_and_date_set(&pool, "OLD", "Old", Some("2001-01-01")).await;
+        rename_and_date_set(&pool, "NEWB", "B new", Some("2024-02-09")).await;
+        rename_and_date_set(&pool, "NEWA", "A new", Some("2024-02-09")).await;
+        rename_and_date_set(&pool, "UNDB", "B undated", None).await;
+        rename_and_date_set(&pool, "UNDA", "A undated", None).await;
 
         assert_eq!(
-            codes,
-            vec!["OWN"],
-            "a set whose cards are all unowned, or without card, is not listed"
+            listed_codes(&adapter).await,
+            vec!["NEWA", "NEWB", "OLD", "UNDA", "UNDB"]
         );
     }
 
