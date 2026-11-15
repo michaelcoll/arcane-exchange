@@ -168,17 +168,10 @@ struct ScannerDrawer: View {
     }
 }
 
-/// The glass capsule of the toolbar buttons where the system has it, a grey capsule before.
+/// The glass capsule of the toolbar buttons.
 private struct NeutralCapsuleButtonStyle: ViewModifier {
     func body(content: Content) -> some View {
-        if #available(iOS 26, *) {
-            content.buttonStyle(.glass)
-        } else {
-            content
-                .buttonStyle(.bordered)
-                .buttonBorderShape(.capsule)
-                .tint(.primary)
-        }
+        content.buttonStyle(.glass)
     }
 }
 
@@ -201,14 +194,7 @@ private struct FoilButtonStyle: ViewModifier {
 
     func body(content: Content) -> some View {
         if isOn {
-            if #available(iOS 26, *) {
-                content.buttonStyle(.glassProminent).tint(Palette.secondary)
-            } else {
-                content
-                    .buttonStyle(.borderedProminent)
-                    .buttonBorderShape(.capsule)
-                    .tint(Palette.secondary)
-            }
+            content.buttonStyle(.glassProminent).tint(Palette.secondary)
         } else {
             content
                 .foregroundStyle(.primary)

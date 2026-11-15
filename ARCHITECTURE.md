@@ -31,7 +31,7 @@ on les lance.
   et **proxifie `/api/v1/**` vers le backend** — le navigateur ne parle jamais au backend en direct.
   Il sert aussi les images de cartes sous `/card-images/**`, lues dans le dossier que le backend
   alimente.
-- **iOS** : `ios-app/`, SwiftUI, iOS 18+, Swift 6 strict concurrency, iPhone seulement.
+- **iOS** : `ios-app/`, SwiftUI, iOS 26+, Swift 6 strict concurrency, iPhone seulement.
 - **Base** : un seul schéma Postgres, migrations SQLx dans `backend/migrations/`, appliquées au démarrage du
   backend (pas d'étape de déploiement séparée).
 
