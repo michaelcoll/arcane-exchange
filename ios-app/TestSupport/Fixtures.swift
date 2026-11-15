@@ -27,6 +27,7 @@ func searchCard(_ id: String) -> SearchCard {
         image_url: nil,
         name: "Card \(id)",
         offered_languages: [],
+        owned_quantity: 0,
         owner_count: 1,
         rarity_code: "C",
         scryfall_id: id,

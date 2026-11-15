@@ -8,8 +8,9 @@ use crate::domain::language_code::LanguageCode;
 use crate::domain::pagination::{PageRequest, Paginated, Pagination};
 use crate::domain::price::PriceGuide;
 use crate::domain::rarity_code::RarityCode;
-use crate::domain::search::{Offer, SearchCard, SearchImage, SearchQuery, SearchScope};
+use crate::domain::search::{Offer, Possession, SearchCard, SearchImage, SearchQuery, SearchScope};
 use crate::domain::set_name::{SetCode, SetName};
+use crate::domain::user::User;
 use crate::infrastructure::testing::{
     assert_error, assert_routes_refuse_anonymous, authed, json_of,
 };
@@ -45,6 +46,7 @@ fn make_card(set_code: &str, collector_number: &str) -> SearchCard {
         price_guide: None,
         foil_price_guide: None,
         owner_count: 1,
+        owned_quantity: 0,
         offered_languages: vec![],
         reserved: None,
     }
@@ -53,7 +55,7 @@ fn make_card(set_code: &str, collector_number: &str) -> SearchCard {
 /// A search mock that answers `card` as the only result.
 fn answering(card: SearchCard) -> MockSearchCardsUseCase {
     let mut mock = MockSearchCardsUseCase::new();
-    mock.expect_search_cards().times(1).returning(move |_| {
+    mock.expect_search_cards().times(1).returning(move |_, _| {
         let c = card.clone();
         Box::pin(async move { Ok(make_paginated(vec![c], 0, 20)) })
     });
@@ -76,9 +78,9 @@ fn expecting_search(
 ) -> MockSearchCardsUseCase {
     let mut mock = MockSearchCardsUseCase::new();
     mock.expect_search_cards()
-        .withf(move |q| matcher(q))
+        .withf(move |_, q| matcher(q))
         .times(1)
-        .returning(|_| Box::pin(async { Ok(make_paginated(vec![], 0, 20)) }));
+        .returning(|_, _| Box::pin(async { Ok(make_paginated(vec![], 0, 20)) }));
     mock
 }
 
@@ -99,7 +101,7 @@ async fn search_cards_returns_empty_response_when_search_is_empty() {
     let mut mock = MockSearchCardsUseCase::new();
     mock.expect_search_cards()
         .times(1)
-        .returning(|_| Box::pin(async { Ok(make_paginated(vec![], 0, 20)) }));
+        .returning(|_, _| Box::pin(async { Ok(make_paginated(vec![], 0, 20)) }));
 
     let response = authed(search_app(mock), Method::GET, "/search/card").await;
 
@@ -113,7 +115,7 @@ async fn search_cards_returns_empty_response_when_search_is_empty() {
 #[tokio::test]
 async fn search_cards_returns_cards_from_use_case() {
     let mut mock = MockSearchCardsUseCase::new();
-    mock.expect_search_cards().times(1).returning(|_| {
+    mock.expect_search_cards().times(1).returning(|_, _| {
         Box::pin(async {
             Ok(make_paginated(
                 vec![make_card("FDN", "1"), make_card("GPT", "32")],
@@ -134,7 +136,7 @@ async fn search_cards_returns_cards_from_use_case() {
 #[tokio::test]
 async fn search_cards_returns_empty_items_with_nonzero_total_for_page_beyond_last_result() {
     let mut mock = MockSearchCardsUseCase::new();
-    mock.expect_search_cards().times(1).returning(|_| {
+    mock.expect_search_cards().times(1).returning(|_, _| {
         Box::pin(async {
             Ok(Paginated {
                 items: vec![],
@@ -155,7 +157,7 @@ async fn search_cards_returns_empty_items_with_nonzero_total_for_page_beyond_las
 #[tokio::test]
 async fn search_cards_propagates_error_from_use_case() {
     let mut mock = MockSearchCardsUseCase::new();
-    mock.expect_search_cards().times(1).returning(|_| {
+    mock.expect_search_cards().times(1).returning(|_, _| {
         Box::pin(async {
             Err(AppError::Infra(InfraError::RepositoryError(
                 "db failure".to_string(),
@@ -174,7 +176,7 @@ async fn search_cards_passes_the_requested_page_to_the_use_case_unvalidated() {
     // controller forwards whatever the client asked for, even a page the use case will reject.
     let mut mock = MockSearchCardsUseCase::new();
     mock.expect_search_cards()
-        .withf(|q| {
+        .withf(|_, q| {
             q.pagination
                 == PageRequest {
                     page: 1000,
@@ -182,7 +184,7 @@ async fn search_cards_passes_the_requested_page_to_the_use_case_unvalidated() {
                 }
         })
         .times(1)
-        .returning(|_| {
+        .returning(|_, _| {
             Box::pin(async {
                 Err(AppError::Functional(FunctionalError::InvalidPageSize {
                     requested: 9999,
@@ -205,7 +207,7 @@ async fn search_cards_passes_the_requested_page_to_the_use_case_unvalidated() {
 async fn search_cards_passes_pagination_params_to_use_case() {
     let mut mock = MockSearchCardsUseCase::new();
     mock.expect_search_cards()
-        .withf(|q| {
+        .withf(|_, q| {
             q.pagination
                 == PageRequest {
                     page: 3,
@@ -213,7 +215,7 @@ async fn search_cards_passes_pagination_params_to_use_case() {
                 }
         })
         .times(1)
-        .returning(|q| {
+        .returning(|_, q| {
             let PageRequest { page, page_size } = q.pagination;
             Box::pin(async move { Ok(make_paginated(vec![], page, page_size)) })
         });
@@ -234,9 +236,9 @@ async fn search_cards_passes_pagination_params_to_use_case() {
 #[tokio::test]
 async fn search_cards_maps_card_fields_correctly() {
     let mut mock = MockSearchCardsUseCase::new();
-    mock.expect_search_cards()
-        .times(1)
-        .returning(|_| Box::pin(async { Ok(make_paginated(vec![make_card("FDN", "42")], 0, 20)) }));
+    mock.expect_search_cards().times(1).returning(|_, _| {
+        Box::pin(async { Ok(make_paginated(vec![make_card("FDN", "42")], 0, 20)) })
+    });
 
     let response = authed(search_app(mock), Method::GET, "/search/card").await;
 
@@ -271,6 +273,17 @@ async fn search_cards_exposes_the_owner_count_and_no_private_data() {
 }
 
 #[tokio::test]
+async fn search_cards_exposes_the_owned_quantity() {
+    let mut card = make_card("FDN", "42");
+    card.owned_quantity = 5;
+
+    let response = authed(search_app(answering(card)), Method::GET, "/search/card").await;
+
+    assert_eq!(response.status(), StatusCode::OK);
+    assert_eq!(json_of(response).await["items"][0]["owned_quantity"], 5);
+}
+
+#[tokio::test]
 async fn search_cards_exposes_the_offered_languages() {
     let mut card = make_card("FDN", "42");
     card.offered_languages = vec![LanguageCode::EN, LanguageCode::FR];
@@ -282,6 +295,61 @@ async fn search_cards_exposes_the_offered_languages() {
         json_of(response).await["items"][0]["offered_languages"],
         json!(["EN", "FR"])
     );
+}
+
+#[tokio::test]
+async fn search_cards_searches_as_the_authenticated_user() {
+    let mut mock = MockSearchCardsUseCase::new();
+    mock.expect_search_cards()
+        .withf(|user_id, _| *user_id == User::for_testing().id)
+        .times(1)
+        .returning(|_, _| Box::pin(async { Ok(make_paginated(vec![], 0, 20)) }));
+
+    let response = authed(search_app(mock), Method::GET, "/search/card").await;
+
+    assert_eq!(response.status(), StatusCode::OK);
+}
+
+#[tokio::test]
+async fn search_cards_covers_every_impression_by_default() {
+    let mock = expecting_search(|q| q.possession == Possession::Any);
+
+    let response = authed(search_app(mock), Method::GET, "/search/card").await;
+
+    assert_eq!(response.status(), StatusCode::OK);
+}
+
+#[tokio::test]
+async fn search_cards_passes_owned_true_to_use_case() {
+    let mock = expecting_search(|q| q.possession == Possession::Owned);
+
+    let response = authed(search_app(mock), Method::GET, "/search/card?owned=true").await;
+
+    assert_eq!(response.status(), StatusCode::OK);
+}
+
+#[tokio::test]
+async fn search_cards_passes_owned_false_to_use_case() {
+    let mock = expecting_search(|q| q.possession == Possession::NotOwned);
+
+    let response = authed(search_app(mock), Method::GET, "/search/card?owned=false").await;
+
+    assert_eq!(response.status(), StatusCode::OK);
+}
+
+#[tokio::test]
+async fn search_cards_combines_the_possession_and_the_offer_axes() {
+    let mock =
+        expecting_search(|q| q.possession == Possession::NotOwned && q.offer == Offer::Offered);
+
+    let response = authed(
+        search_app(mock),
+        Method::GET,
+        "/search/card?owned=false&offered=true",
+    )
+    .await;
+
+    assert_eq!(response.status(), StatusCode::OK);
 }
 
 #[tokio::test]

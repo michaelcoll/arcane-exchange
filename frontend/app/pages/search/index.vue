@@ -38,6 +38,29 @@ const focusSearchField = () => {
   el?.focus({ preventScroll: true });
 };
 
+/* ---------- AXES: POSSESSION ET OFFRE ---------- */
+const possessionOptions = [
+  { value: 'any', label: 'Toutes', tone: 'primary' },
+  { value: 'owned', label: 'Que je possède', tone: 'primary' },
+  { value: 'notOwned', label: 'Qui me manquent', tone: 'primary' },
+];
+const possession = computed(() =>
+  search.owned === undefined ? 'any' : search.owned ? 'owned' : 'notOwned',
+);
+const setPossession = (value: string) => {
+  search.owned = value === 'any' ? undefined : value === 'owned';
+};
+
+// The Offre axis of the search by name; in the player mode it is the player.
+const offerOptions = [
+  { value: 'offered', label: 'Proposées', tone: 'primary' },
+  { value: 'all', label: 'Tout le catalogue', tone: 'primary' },
+];
+const offer = computed(() => (search.offered === false ? 'all' : 'offered'));
+const setOffer = (value: string) => {
+  search.offered = value === 'all' ? false : undefined;
+};
+
 const size = usePreference(CARD_SIZE_PREF);
 const isDesktop = useMediaQuery('(min-width: 768px)');
 const pageSize = useCardPageSize(size, isDesktop);
@@ -241,6 +264,22 @@ const goToPlayerCollection = (username: string) => openPlayer(username.replace(/
         </div>
       </div>
 
+      <div class="mb-5 flex flex-wrap items-center gap-3">
+        <SegToggle
+          :model-value="possession"
+          :options="possessionOptions"
+          size="sm"
+          @update:model-value="setPossession"
+        />
+        <SegToggle
+          v-if="search.mode === 'name'"
+          :model-value="offer"
+          :options="offerOptions"
+          size="sm"
+          @update:model-value="setOffer"
+        />
+      </div>
+
       <CardListShell
         :list="list"
         :set-list="setList"
@@ -298,6 +337,7 @@ const goToPlayerCollection = (username: string) => openPlayer(username.replace(/
             :price="searchCardPrice(card) ?? 0"
             :foil="isFoilOnly(card)"
             :size="size"
+            :qty="card.owned_quantity > 0 ? card.owned_quantity : undefined"
             :owner-count="card.owner_count"
             :reserved="card.reserved ?? false"
             @click="detail = card"

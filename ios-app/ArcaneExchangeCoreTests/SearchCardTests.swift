@@ -18,6 +18,7 @@ struct SearchCardTests {
             french_name: french,
             name: "Sol Ring",
             offered_languages: offeredLanguages,
+            owned_quantity: 0,
             owner_count: 2,
             price_guide: normal.map { .init(trend: $0) },
             rarity_code: "R",

@@ -15,6 +15,10 @@ package final class SearchResultsViewModel {
         didSet { sortStore.save(filters, for: target) }
     }
 
+    /// The Possession and Offre axes picked on this screen. Reload the paginator whenever it
+    /// changes, like `filters`. Not remembered: a search starts on the default axes.
+    package var axes = SearchAxes()
+
     private let api: any APIProtocol
     private let sortStore: SearchResultsSortStore
 
@@ -27,6 +31,8 @@ package final class SearchResultsViewModel {
     /// filters. Empty until loaded, which disables the drawer's Sets row.
     package private(set) var sets: [SetInfo] = []
     private var isLoadingSets = false
+    /// The Offre axis `sets` was loaded for: the facet follows it.
+    private var loadedSetsOffer: OfferAxis?
 
     package init(target: SearchResultsRoute.Target, api: any APIProtocol, defaults: UserDefaults = .standard) {
         self.target = target
@@ -46,18 +52,22 @@ package final class SearchResultsViewModel {
         await paginator.reload()
     }
 
-    /// Loads the set list once per screen, since the filters never change it. A failure is
-    /// silent: the grid stays usable, and the next appearance tries again.
+    /// Loads the set list once per Offre axis, since the filters and the Possession axis never
+    /// change it. A failure is silent: the grid stays usable, and the next appearance tries again.
     package func loadSetsIfNeeded() async {
-        guard sets.isEmpty, !isLoadingSets, let query = target.setsQuery else { return }
+        let offer = axes.offer
+        guard sets.isEmpty || loadedSetsOffer != offer, !isLoadingSets,
+              let query = target.setsQuery(offer: offer)
+        else { return }
         isLoadingSets = true
         defer { isLoadingSets = false }
         guard let sets = try? await api.search_card_sets(query: query).ok.body.json else { return }
         self.sets = sets
+        loadedSetsOffer = offer
     }
 
     private func fetchPage(_ page: Int32, pageSize: Int32) async throws -> PaginatorPage<SearchCard> {
-        guard let query = target.query(filters: filters, page: page, pageSize: pageSize) else {
+        guard let query = target.query(filters: filters, axes: axes, page: page, pageSize: pageSize) else {
             // The view never instantiates this model for a decklist target.
             return PaginatorPage(items: [], total: 0)
         }

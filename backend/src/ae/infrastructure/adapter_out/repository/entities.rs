@@ -557,6 +557,8 @@ pub struct SearchCardEntity {
     pub image_has_back: Option<bool>,
     /// Number of distinct users offering this impression.
     pub owner_count: i64,
+    /// Copies of the impression the searching user owns.
+    pub owned_quantity: i64,
     /// Only set when the search is scoped to a single player.
     pub reserved: Option<bool>,
     /// The languages offered within the Offre scope of the search.
@@ -646,6 +648,7 @@ impl TryFrom<SearchCardEntity> for SearchCard {
             price_guide: price_guide_of(e.low, e.avg, e.trend),
             foil_price_guide: price_guide_of(e.low_foil, e.avg_foil, e.trend_foil),
             owner_count: e.owner_count as u64,
+            owned_quantity: e.owned_quantity as u64,
             reserved: e.reserved,
             offered_languages: e
                 .offered_languages
@@ -1165,6 +1168,7 @@ mod tests {
             image_source: None,
             image_has_back: None,
             owner_count: 5,
+            owned_quantity: 2,
             reserved: Some(true),
             offered_languages: vec!["EN".to_string(), "FR".to_string()],
             low: Some(300),
@@ -1183,6 +1187,7 @@ mod tests {
         assert_eq!(card.name, "Sol Ring");
         assert_eq!(card.french_name, Some("Anneau solaire".to_string()));
         assert_eq!(card.owner_count, 5);
+        assert_eq!(card.owned_quantity, 2);
         assert_eq!(card.reserved, Some(true));
         assert_eq!(
             card.offered_languages,

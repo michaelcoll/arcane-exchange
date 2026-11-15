@@ -1,5 +1,6 @@
 use super::dto::{
     PaginatedSearchResponse, SearchCardResponse, SearchParams, SearchSetsParams, offer_of,
+    possession_of,
 };
 use crate::application::error::AppError;
 use crate::domain::pagination::PageRequest;
@@ -28,6 +29,7 @@ pub fn create_search_router() -> axum::Router<AppState> {
         ("page_size" = Option<u32>, Query, description = "Items per page, 1 to 100 (default 20)"),
         ("sort_dir" = Option<super::dto::SortDirParam>, Query, description = "Sort direction of the reference price (the normal trend price, or the foil one when there is no normal price). With `q`, the best name match comes first"),
         ("q" = Option<String>, Query, description = "English or French card name, by substring or similarity. Does not match the set"),
+        ("owned" = Option<bool>, Query, description = "Possession axis: `true` keeps the impressions the authenticated player owns (any language or finish), `false` those they do not own. Absent: all of them"),
         ("offered" = Option<bool>, Query, description = "Only the impressions offered for trade by any player, the authenticated one included"),
         ("offered_by" = Option<String>, Query, description = "Only the impressions offered by this player: exact username, case-insensitive, no partial match. Wins over `offered`; adds `reserved` to the results"),
         ("rarity" = Option<Vec<super::dto::RarityCodeParam>>, Query, description = "Rarity codes, repeated for multiple values (e.g. rarity=C&rarity=U)"),
@@ -44,7 +46,7 @@ pub fn create_search_router() -> axum::Router<AppState> {
     tag = "search",
 )]
 pub(crate) async fn search_cards(
-    AuthenticatedUser(_user): AuthenticatedUser,
+    AuthenticatedUser(user): AuthenticatedUser,
     State(state): State<AppState>,
     Query(params): Query<SearchParams>,
 ) -> Result<axum::Json<PaginatedSearchResponse>, AppError> {
@@ -70,6 +72,7 @@ pub(crate) async fn search_cards(
         sort_dir: params.sort_dir.into(),
         // A blank text is no text, like in the facet.
         search_query: params.q.filter(|q| !q.trim().is_empty()),
+        possession: possession_of(params.owned),
         offer: offer_of(params.offered, params.offered_by.as_deref()),
         rarity,
         sets,
@@ -77,7 +80,10 @@ pub(crate) async fn search_cards(
         price_max: params.price_max,
     };
 
-    let result = state.search_cards_use_case.search_cards(query).await?;
+    let result = state
+        .search_cards_use_case
+        .search_cards(&user.id, query)
+        .await?;
 
     Ok(axum::Json(PaginatedSearchResponse {
         items: result

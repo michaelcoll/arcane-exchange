@@ -20,7 +20,19 @@ pub enum Offer {
     OfferedBy(String),
 }
 
-/// A search of the Catalogue: text, Offre axis, rarity, sets and price range, sorted by
+/// The Possession axis of a search: which impressions count by what the authenticated player owns.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum Possession {
+    /// Every impression of the Catalogue, owned or not.
+    #[default]
+    Any,
+    /// Impressions the authenticated player owns, in any language or finish.
+    Owned,
+    /// Impressions the authenticated player owns in no language or finish.
+    NotOwned,
+}
+
+/// A search of the Catalogue: text, Possession and Offre axes, rarity, sets and price range, sorted by
 /// reference price (the normal trend price, or the foil one when there is no normal price) and
 /// paged. With a text, the best name match comes first.
 ///
@@ -32,6 +44,7 @@ pub struct SearchQuery<P = Pagination> {
     pub pagination: P,
     pub sort_dir: SortDirection,
     pub search_query: Option<String>,
+    pub possession: Possession,
     pub offer: Offer,
     pub rarity: Vec<RarityCode>,
     pub sets: Vec<String>,
@@ -50,6 +63,7 @@ impl SearchQuery<PageRequest> {
             pagination: self.pagination.paginate(max_offset)?,
             sort_dir: self.sort_dir,
             search_query: self.search_query,
+            possession: self.possession,
             offer: self.offer,
             rarity: self.rarity,
             sets: self.sets,
@@ -96,6 +110,9 @@ pub struct SearchCard {
     /// Number of distinct players offering this impression for trade, the authenticated one
     /// included.
     pub owner_count: u64,
+    /// Copies of the impression the authenticated player owns, every language and finish
+    /// together; `0` when they own none. The only private data of a search.
+    pub owned_quantity: u64,
     /// The languages offered for trade for the impression within the Offre scope of the search:
     /// by the searched player with [`Offer::OfferedBy`], by any player otherwise. Empty when
     /// nobody offers it.
@@ -117,6 +134,7 @@ mod tests {
         assert_eq!(q.pagination.page_size(), 20);
         assert_eq!(q.sort_dir, SortDirection::Desc);
         assert_eq!(q.search_query, None);
+        assert_eq!(q.possession, Possession::Any);
         assert_eq!(q.offer, Offer::Any);
     }
 
@@ -129,6 +147,7 @@ mod tests {
             },
             sets: vec!["FDN".to_string()],
             price_min: Some(100),
+            possession: Possession::NotOwned,
             offer: Offer::OfferedBy("alice".to_string()),
             ..Default::default()
         };
@@ -141,6 +160,7 @@ mod tests {
         );
         assert_eq!(paginated.sets, vec!["FDN".to_string()]);
         assert_eq!(paginated.price_min, Some(100));
+        assert_eq!(paginated.possession, Possession::NotOwned);
         assert_eq!(paginated.offer, Offer::OfferedBy("alice".to_string()));
     }
 
