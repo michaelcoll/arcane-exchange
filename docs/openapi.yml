@@ -1524,6 +1524,12 @@ paths:
         required: false
         schema:
           type: string
+      - name: owned
+        in: query
+        description: Possession axis, as in GET /search/card
+        required: false
+        schema:
+          type: boolean
       - name: offered
         in: query
         description: Only the impressions offered by any player, as in GET /search/card

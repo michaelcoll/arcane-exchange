@@ -34,15 +34,16 @@ package extension SearchResultsRoute.Target {
         }
     }
 
-    /// What the search is scoped to, which is also all the set facet is asked for: the filters
-    /// and the Possession axis never reach it, so the drawer's list stays put while the user
+    /// What the search is scoped to, which is also all the set facet is asked for: the text and
+    /// the two axes. The filters never reach it, so the drawer's list stays put while the user
     /// filters. A text search asks for the cards any player offers, or for the whole Catalogue
     /// (the Offre axis), a player's collection for the cards that player offers. `nil` for a
     /// target the endpoints do not serve.
-    func setsQuery(offer: OfferAxis = .offered) -> Operations.search_card_sets.Input.Query? {
-        switch self {
-        case let .card(text): .init(q: text, offered: offer == .offered ? true : nil)
-        case let .player(username): .init(offered_by: username)
+    func setsQuery(axes: SearchAxes = SearchAxes()) -> Operations.search_card_sets.Input.Query? {
+        let owned = axes.possession.ownedQuery
+        return switch self {
+        case let .card(text): .init(q: text, owned: owned, offered: axes.offer == .offered ? true : nil)
+        case let .player(username): .init(owned: owned, offered_by: username)
         case .decklist: nil
         }
     }
@@ -55,13 +56,13 @@ package extension SearchResultsRoute.Target {
         page: Int32,
         pageSize: Int32
     ) -> Operations.search_cards.Input.Query? {
-        guard let scope = setsQuery(offer: axes.offer) else { return nil }
+        guard let scope = setsQuery(axes: axes) else { return nil }
         return .init(
             page: page,
             page_size: pageSize,
             sort_dir: filters.sortDir,
             q: scope.q,
-            owned: axes.possession.ownedQuery,
+            owned: scope.owned,
             offered: scope.offered,
             offered_by: scope.offered_by,
             rarity: filters.rarityQuery,

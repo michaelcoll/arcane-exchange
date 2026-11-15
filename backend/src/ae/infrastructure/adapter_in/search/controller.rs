@@ -102,6 +102,7 @@ pub(crate) async fn search_cards(
     path = "/search/card/sets",
     params(
         ("q" = Option<String>, Query, description = "Card name, as in GET /search/card"),
+        ("owned" = Option<bool>, Query, description = "Possession axis, as in GET /search/card"),
         ("offered" = Option<bool>, Query, description = "Only the impressions offered by any player, as in GET /search/card"),
         ("offered_by" = Option<String>, Query, description = "Only the impressions offered by this player, as in GET /search/card"),
     ),
@@ -113,7 +114,7 @@ pub(crate) async fn search_cards(
     tag = "search",
 )]
 pub(crate) async fn search_card_sets(
-    AuthenticatedUser(_user): AuthenticatedUser,
+    AuthenticatedUser(user): AuthenticatedUser,
     State(state): State<AppState>,
     Query(params): Query<SearchSetsParams>,
 ) -> Result<axum::Json<Vec<SetInfoResponse>>, AppError> {
@@ -121,10 +122,14 @@ pub(crate) async fn search_card_sets(
         // Blank means "no text scope". A non-blank `q` is kept as is, so the facet matches
         // exactly what `GET /search/card` does with it.
         search_query: params.q.filter(|q| !q.trim().is_empty()),
+        possession: possession_of(params.owned),
         offer: offer_of(params.offered, params.offered_by.as_deref()),
     };
 
-    let sets = state.search_sets_use_case.search_sets(scope).await?;
+    let sets = state
+        .search_sets_use_case
+        .search_sets(&user.id, scope)
+        .await?;
 
     Ok(axum::Json(
         sets.into_iter().map(SetInfoResponse::from).collect(),

@@ -3,6 +3,7 @@ use crate::application::repository::SearchRepository;
 use crate::application::use_case::SearchSetsUseCase;
 use crate::domain::search::SearchScope;
 use crate::domain::set_name::SetName;
+use crate::domain::user::UserId;
 use async_trait::async_trait;
 use std::sync::Arc;
 
@@ -18,8 +19,12 @@ impl SearchSetsService {
 
 #[async_trait]
 impl SearchSetsUseCase for SearchSetsService {
-    async fn search_sets(&self, scope: SearchScope) -> Result<Vec<SetName>, AppError> {
-        self.repository.search_sets(&scope).await
+    async fn search_sets(
+        &self,
+        user_id: &UserId,
+        scope: SearchScope,
+    ) -> Result<Vec<SetName>, AppError> {
+        self.repository.search_sets(user_id, &scope).await
     }
 }
 
@@ -28,7 +33,7 @@ mod tests {
     use super::*;
     use crate::application::error::InfraError;
     use crate::application::repository::MockSearchRepository;
-    use crate::domain::search::Offer;
+    use crate::domain::search::{Offer, Possession};
     use crate::domain::set_name::SetCode;
 
     #[tokio::test]
@@ -36,12 +41,14 @@ mod tests {
         let mut mock_repo = MockSearchRepository::new();
         mock_repo
             .expect_search_sets()
-            .withf(|scope| {
-                scope.search_query == Some("bolt".to_string())
+            .withf(|user_id, scope| {
+                *user_id == UserId::new("me")
+                    && scope.search_query == Some("bolt".to_string())
+                    && scope.possession == Possession::NotOwned
                     && scope.offer == Offer::OfferedBy("alice".to_string())
             })
             .times(1)
-            .returning(|_| {
+            .returning(|_, _| {
                 Box::pin(async {
                     Ok(vec![SetName {
                         code: SetCode::new("ECL"),
@@ -52,10 +59,14 @@ mod tests {
 
         let service = SearchSetsService::new(Arc::new(mock_repo));
         let result = service
-            .search_sets(SearchScope {
-                search_query: Some("bolt".to_string()),
-                offer: Offer::OfferedBy("alice".to_string()),
-            })
+            .search_sets(
+                &UserId::new("me"),
+                SearchScope {
+                    search_query: Some("bolt".to_string()),
+                    possession: Possession::NotOwned,
+                    offer: Offer::OfferedBy("alice".to_string()),
+                },
+            )
             .await
             .unwrap();
 
@@ -71,7 +82,7 @@ mod tests {
     #[tokio::test]
     async fn search_sets_propagates_repository_error() {
         let mut mock_repo = MockSearchRepository::new();
-        mock_repo.expect_search_sets().returning(|_| {
+        mock_repo.expect_search_sets().returning(|_, _| {
             Box::pin(async {
                 Err(AppError::Infra(InfraError::RepositoryError(
                     "db error".to_string(),
@@ -80,7 +91,9 @@ mod tests {
         });
 
         let service = SearchSetsService::new(Arc::new(mock_repo));
-        let result = service.search_sets(SearchScope::default()).await;
+        let result = service
+            .search_sets(&UserId::new("me"), SearchScope::default())
+            .await;
 
         assert!(matches!(
             result,

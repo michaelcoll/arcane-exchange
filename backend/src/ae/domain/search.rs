@@ -73,11 +73,13 @@ impl SearchQuery<PageRequest> {
     }
 }
 
-/// What a search covers, without its filters: a text query and the Offre axis. The search facets
-/// are computed over this scope alone, so they stay stable while filters change.
+/// What a search covers, without its filters: a text query and the two axes (Possession and
+/// Offre). The search facets are computed over this scope alone, so they stay stable while
+/// filters change.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct SearchScope {
     pub search_query: Option<String>,
+    pub possession: Possession,
     pub offer: Offer,
 }
 

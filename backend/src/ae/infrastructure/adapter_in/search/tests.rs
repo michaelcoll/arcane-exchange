@@ -90,9 +90,9 @@ fn expecting_sets(
 ) -> MockSearchSetsUseCase {
     let mut mock = MockSearchSetsUseCase::new();
     mock.expect_search_sets()
-        .withf(move |scope| matcher(scope))
+        .withf(move |_, scope| matcher(scope))
         .times(1)
-        .returning(|_| Box::pin(async { Ok(vec![]) }));
+        .returning(|_, _| Box::pin(async { Ok(vec![]) }));
     mock
 }
 
@@ -610,6 +610,7 @@ async fn search_card_sets_passes_the_scope_with_a_trimmed_player() {
         *scope
             == SearchScope {
                 search_query: Some("gob".to_string()),
+                possession: Possession::Any,
                 offer: Offer::OfferedBy("Bob".to_string()),
             }
     });
@@ -618,6 +619,51 @@ async fn search_card_sets_passes_the_scope_with_a_trimmed_player() {
         sets_app(mock),
         Method::GET,
         "/search/card/sets?q=gob&offered_by=%20%20Bob%20",
+    )
+    .await;
+
+    assert_eq!(response.status(), StatusCode::OK);
+}
+
+#[tokio::test]
+async fn search_card_sets_passes_both_axes_and_the_authenticated_player() {
+    let mut mock = MockSearchSetsUseCase::new();
+    mock.expect_search_sets()
+        .withf(|user_id, scope| {
+            *user_id == User::for_testing().id
+                && scope.possession == Possession::NotOwned
+                && scope.offer == Offer::Offered
+        })
+        .times(1)
+        .returning(|_, _| Box::pin(async { Ok(vec![]) }));
+
+    let response = authed(
+        sets_app(mock),
+        Method::GET,
+        "/search/card/sets?owned=false&offered=true",
+    )
+    .await;
+
+    assert_eq!(response.status(), StatusCode::OK);
+}
+
+#[tokio::test]
+async fn search_card_sets_ignores_the_rarity_set_and_price_filters_of_the_list() {
+    // The clients send the list's request to the facet: the same scope must come out of it.
+    let scope = SearchScope {
+        search_query: Some("Sol Ring".to_string()),
+        possession: Possession::Owned,
+        offer: Offer::OfferedBy("urza".to_string()),
+    };
+    let mock = expecting_sets({
+        let scope = scope.clone();
+        move |received| *received == scope
+    });
+
+    let response = authed(
+        sets_app(mock),
+        Method::GET,
+        "/search/card/sets?q=Sol%20Ring&owned=true&offered_by=urza&sets=FDN&rarity=R&price_min=100&price_max=900",
     )
     .await;
 
@@ -669,7 +715,7 @@ async fn search_card_sets_treats_a_blank_q_as_absent() {
 #[tokio::test]
 async fn search_card_sets_returns_the_sets_in_the_use_case_order() {
     let mut mock = MockSearchSetsUseCase::new();
-    mock.expect_search_sets().times(1).returning(|_| {
+    mock.expect_search_sets().times(1).returning(|_, _| {
         Box::pin(async {
             Ok(vec![
                 SetName::new("ZZZ", "Alpha"),
@@ -693,7 +739,7 @@ async fn search_card_sets_returns_the_sets_in_the_use_case_order() {
 #[tokio::test]
 async fn search_card_sets_propagates_use_case_errors() {
     let mut mock = MockSearchSetsUseCase::new();
-    mock.expect_search_sets().times(1).returning(|_| {
+    mock.expect_search_sets().times(1).returning(|_, _| {
         Box::pin(async {
             Err(AppError::Infra(InfraError::RepositoryError(
                 "db down".to_string(),

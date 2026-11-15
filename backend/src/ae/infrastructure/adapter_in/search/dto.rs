@@ -153,13 +153,17 @@ pub(crate) struct SearchParams {
     pub(crate) price_max: Option<u32>,
 }
 
-/// Scope of the search whose set facet is requested: the same `q` / `offered` / `offered_by` as
-/// `GET /search/card`, without its filters.
+/// Scope of the search whose set facet is requested: the same `q` / `owned` / `offered` /
+/// `offered_by` as `GET /search/card`, without its filters.
 #[derive(Deserialize, TS, Default)]
 #[ts(export)]
 pub(crate) struct SearchSetsParams {
     #[ts(optional)]
     pub(crate) q: Option<String>,
+    /// Possession axis: `true` for the impressions the authenticated player owns, `false` for
+    /// those they do not own, absent for all of them
+    #[ts(optional)]
+    pub(crate) owned: Option<bool>,
     /// Only the impressions offered by any player
     #[ts(optional)]
     pub(crate) offered: Option<bool>,

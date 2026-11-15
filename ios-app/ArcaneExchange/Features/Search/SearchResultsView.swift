@@ -50,7 +50,7 @@ private struct SearchResultsGrid: View {
     var body: some View {
         content
             .task { await model.loadInitiallyIfNeeded() }
-            .task(id: model.axes.offer) { await model.loadSetsIfNeeded() }
+            .task(id: model.axes) { await model.loadSetsIfNeeded() }
             .onChange(of: model.filters) {
                 Task { await model.paginator.reload() }
             }

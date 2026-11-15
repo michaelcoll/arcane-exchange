@@ -390,7 +390,11 @@ pub trait SearchCardsUseCase: Send + Sync {
 pub trait SearchSetsUseCase: Send + Sync {
     /// The sets a search over `scope` can return impressions from, sorted by name, whatever its
     /// rarity, set or price filters.
-    async fn search_sets(&self, scope: SearchScope) -> Result<Vec<SetName>, AppError>;
+    async fn search_sets(
+        &self,
+        user_id: &UserId,
+        scope: SearchScope,
+    ) -> Result<Vec<SetName>, AppError>;
 }
 
 #[async_trait]

@@ -9344,6 +9344,10 @@ public enum Operations {
                 ///
                 /// - Remark: Generated from `#/paths/search/card/sets/GET/query/q`.
                 public var q: Swift.String?
+                /// Possession axis, as in GET /search/card
+                ///
+                /// - Remark: Generated from `#/paths/search/card/sets/GET/query/owned`.
+                public var owned: Swift.Bool?
                 /// Only the impressions offered by any player, as in GET /search/card
                 ///
                 /// - Remark: Generated from `#/paths/search/card/sets/GET/query/offered`.
@@ -9356,14 +9360,17 @@ public enum Operations {
                 ///
                 /// - Parameters:
                 ///   - q: Card name, as in GET /search/card
+                ///   - owned: Possession axis, as in GET /search/card
                 ///   - offered: Only the impressions offered by any player, as in GET /search/card
                 ///   - offered_by: Only the impressions offered by this player, as in GET /search/card
                 public init(
                     q: Swift.String? = nil,
+                    owned: Swift.Bool? = nil,
                     offered: Swift.Bool? = nil,
                     offered_by: Swift.String? = nil
                 ) {
                     self.q = q
+                    self.owned = owned
                     self.offered = offered
                     self.offered_by = offered_by
                 }

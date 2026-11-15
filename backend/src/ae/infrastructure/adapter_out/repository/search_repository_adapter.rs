@@ -83,8 +83,8 @@ fn owned_join(user_idx: usize) -> String {
 /// over `catalog_card cc`.
 struct Filters<'a> {
     search_query: Option<&'a str>,
-    /// The searching player: `None` for a scope, which has no Possession axis.
-    user_id: Option<&'a UserId>,
+    /// The searching player, for the Possession axis and the owned quantity.
+    user_id: &'a UserId,
     possession: Possession,
     offer: &'a Offer,
     rarity: &'a [RarityCode],
@@ -107,7 +107,7 @@ impl<'a> Filters<'a> {
     fn of(user_id: &'a UserId, query: &'a SearchQuery) -> Self {
         Self {
             search_query: query.search_query.as_deref(),
-            user_id: Some(user_id),
+            user_id,
             possession: query.possession,
             offer: &query.offer,
             rarity: &query.rarity,
@@ -118,11 +118,11 @@ impl<'a> Filters<'a> {
     }
 
     /// The scope alone: a facet must not shrink as the user filters.
-    fn scope(scope: &'a SearchScope) -> Self {
+    fn scope(user_id: &'a UserId, scope: &'a SearchScope) -> Self {
         Self {
             search_query: scope.search_query.as_deref(),
-            user_id: None,
-            possession: Possession::Any,
+            user_id,
+            possession: scope.possession,
             offer: &scope.offer,
             rarity: &[],
             sets: &[],
@@ -153,10 +153,8 @@ impl<'a> Filters<'a> {
             );
         }
 
-        if let Some(user_id) = self.user_id
-            && (with_result || self.possession != Possession::Any)
-        {
-            let idx = add(args, user_id.as_str())?;
+        if with_result || self.possession != Possession::Any {
+            let idx = add(args, self.user_id.as_str())?;
             joins.push(owned_join(idx));
             match self.possession {
                 Possession::Any => {}
@@ -320,13 +318,17 @@ impl SearchRepository for SearchRepositoryAdapter {
     }
 
     #[tracing::instrument(name = "search_repo.search_sets", skip_all, fields(sentry.op = "db"))]
-    async fn search_sets(&self, scope: &SearchScope) -> Result<Vec<SetName>, AppError> {
+    async fn search_sets(
+        &self,
+        user_id: &UserId,
+        scope: &SearchScope,
+    ) -> Result<Vec<SetName>, AppError> {
         let mut args = PgArguments::default();
         let Clauses {
             joins, conditions, ..
-        } = Filters::scope(scope).bind(&mut args, false)?;
+        } = Filters::scope(user_id, scope).bind(&mut args, false)?;
 
-        // Same base as the search (the Catalogue, the same text and Offre axis), so a set is
+        // Same base as the search (the Catalogue, the same text and both axes), so a set is
         // listed exactly when the search can return one of its impressions.
         let sql = format!(
             r#"SELECT DISTINCT sn.set_code, sn.name
@@ -1299,8 +1301,12 @@ mod tests {
     // --- Sets facet ---
 
     async fn sets(pool: &PgPool, scope: SearchScope) -> Vec<String> {
+        sets_as(pool, "nobody", scope).await
+    }
+
+    async fn sets_as(pool: &PgPool, user_id: &str, scope: SearchScope) -> Vec<String> {
         SearchRepositoryAdapter::new(pool.clone())
-            .search_sets(&scope)
+            .search_sets(&UserId::new(user_id), &scope)
             .await
             .unwrap()
             .into_iter()
@@ -1374,5 +1380,37 @@ mod tests {
 
         assert_eq!(offered, vec!["AAA", "ZZZ"]);
         assert_eq!(by_alice, vec!["ZZZ"]);
+    }
+
+    #[sqlx::test]
+    async fn the_facet_follows_the_possession_axis_combined_with_the_offre_axis(pool: PgPool) {
+        // TST: owned by me and offered by Bob; AAA: offered by Bob; MMM: neither.
+        catalog(&pool, "TST", "1", "Sol Ring").await;
+        catalog(&pool, "AAA", "1", "Counterspell").await;
+        catalog(&pool, "MMM", "1", "Island").await;
+        public_user(&pool, "userB", "Bob").await;
+        offers(&pool, "userB", "TST", "1", "EN").await;
+        offers(&pool, "userB", "AAA", "1", "EN").await;
+        private_user(&pool, "me", "Me").await;
+        owns(&pool, "me", "1", "EN", false, 1).await;
+
+        let scope = |possession, offer| SearchScope {
+            possession,
+            offer,
+            ..SearchScope::default()
+        };
+
+        assert_eq!(
+            sets_as(&pool, "me", scope(Possession::Owned, Offer::Any)).await,
+            vec!["TST"]
+        );
+        assert_eq!(
+            sets_as(&pool, "me", scope(Possession::NotOwned, Offer::Any)).await,
+            vec!["AAA", "MMM"]
+        );
+        assert_eq!(
+            sets_as(&pool, "me", scope(Possession::NotOwned, Offer::Offered)).await,
+            vec!["AAA"]
+        );
     }
 }
