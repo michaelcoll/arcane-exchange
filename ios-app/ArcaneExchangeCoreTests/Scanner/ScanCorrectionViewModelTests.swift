@@ -12,14 +12,19 @@ struct ScanCorrectionViewModelTests {
         func save(_ batch: ScanBatch) { stored = batch }
     }
 
-    private func catalogCard(_ number: String, set: String = "LEA") -> CatalogCard {
-        CatalogCard(
+    private func catalogCard(_ number: String, set: String = "LEA") -> SearchCard {
+        SearchCard(
             collector_number: number,
             french_name: "Foudre",
             image_url: nil,
             name: "Lightning Bolt",
+            offered_languages: [],
+            owned_quantity: 0,
+            owner_count: 0,
             rarity_code: "C",
-            set: .init(code: set, name: "Limited Edition Alpha")
+            scryfall_id: "id-\(number)",
+            set_code: set,
+            set_name: "Limited Edition Alpha"
         )
     }
 
@@ -41,9 +46,9 @@ struct ScanCorrectionViewModelTests {
         return scanner
     }
 
-    private func searchApi(returning cards: [CatalogCard]) -> FakeAPI {
+    private func searchApi(returning cards: [SearchCard]) -> FakeAPI {
         let api = FakeAPI()
-        api.onSearchCatalog = { _ in
+        api.onSearchCards = { _ in
             .ok(.init(body: .json(.init(items: cards, page: 0, page_size: 20, total: Int64(cards.count)))))
         }
         return api

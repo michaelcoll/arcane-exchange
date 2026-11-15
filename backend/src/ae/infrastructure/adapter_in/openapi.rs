@@ -5,8 +5,7 @@ use super::card::dto::{
     PriceHistoryEntryResponse,
 };
 use super::catalog::dto::{
-    CatalogCardResponse, PaginatedCatalogResponse, TrendPriceCardRequest, TrendPriceResponse,
-    TrendPricesRequest, TrendPricesResponse,
+    TrendPriceCardRequest, TrendPriceResponse, TrendPricesRequest, TrendPricesResponse,
 };
 use super::collection::dto::{
     AddCollectionEntryRequest, BinderInfoResponse, CardEntriesResponse,
@@ -79,7 +78,6 @@ use utoipa::OpenApi;
         super::card::controller::get_card_info,
         super::card::controller::get_card_price_history,
         super::card::controller::get_card_offers,
-        super::catalog::controller::search_catalog,
         super::catalog::controller::get_scan_index,
         super::catalog::controller::get_trend_prices,
         super::stats::controller::get_stats,
@@ -128,8 +126,6 @@ use utoipa::OpenApi;
         ScanBatchLineRequest,
         ScanBatchValidatedResponse,
         UpdateCollectionEntryRequest,
-        CatalogCardResponse,
-        PaginatedCatalogResponse,
         TrendPriceCardRequest,
         TrendPricesRequest,
         TrendPriceResponse,

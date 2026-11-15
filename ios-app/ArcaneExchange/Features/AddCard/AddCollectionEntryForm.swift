@@ -8,7 +8,7 @@ struct AddCollectionEntryForm: View {
     @State private var model: AddCollectionEntryViewModel
     private let onAdded: () -> Void
 
-    init(card: CatalogCard, api: any APIProtocol, onAdded: @escaping () -> Void) {
+    init(card: SearchCard, api: any APIProtocol, onAdded: @escaping () -> Void) {
         _model = State(initialValue: AddCollectionEntryViewModel(card: card, api: api))
         self.onAdded = onAdded
     }
@@ -20,7 +20,7 @@ struct AddCollectionEntryForm: View {
                     CatalogCardImage(card: model.card)
                         .frame(width: 72)
                     VStack(alignment: .leading, spacing: 4) {
-                        Text(model.card.french_name ?? model.card.name)
+                        Text(model.card.displayName)
                             .font(.headline)
                         CatalogCardSetLine(card: model.card)
                     }
@@ -108,6 +108,6 @@ struct AddCollectionEntryForm: View {
 
 #Preview {
     NavigationStack {
-        AddCollectionEntryForm(card: CatalogCard.previewCatalog[0], api: APIClientFactory.preview, onAdded: {})
+        AddCollectionEntryForm(card: SearchCard.previewCatalog[0], api: APIClientFactory.preview, onAdded: {})
     }
 }

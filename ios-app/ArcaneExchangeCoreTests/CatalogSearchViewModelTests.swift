@@ -3,18 +3,23 @@ import Testing
 
 @testable import ArcaneExchangeCore
 
-private func catalogCard(_ number: String, name: String = "Lightning Bolt") -> CatalogCard {
-    CatalogCard(
+private func catalogCard(_ number: String, name: String = "Lightning Bolt", owned: Int64 = 0) -> SearchCard {
+    SearchCard(
         collector_number: number,
         french_name: "Foudre",
         image_url: "https://cards.scryfall.io/normal/front/\(number).jpg",
         name: name,
+        offered_languages: [],
+        owned_quantity: owned,
+        owner_count: 0,
         rarity_code: "C",
-        set: .init(code: "LEA", name: "Limited Edition Alpha")
+        scryfall_id: "id-\(number)",
+        set_code: "LEA",
+        set_name: "Limited Edition Alpha"
     )
 }
 
-private func page(_ items: [CatalogCard], total: Int64? = nil) -> Operations.search_catalog.Output {
+private func page(_ items: [SearchCard], total: Int64? = nil) -> Operations.search_cards.Output {
     .ok(.init(body: .json(.init(
         items: items,
         page: 0,
@@ -27,8 +32,8 @@ private func page(_ items: [CatalogCard], total: Int64? = nil) -> Operations.sea
 struct CatalogSearchViewModelTests {
     @Test func searchesTheTrimmedQueryAndListsTheImpressions() async {
         let api = FakeAPI()
-        nonisolated(unsafe) var asked: Operations.search_catalog.Input.Query?
-        api.onSearchCatalog = { input in
+        nonisolated(unsafe) var asked: Operations.search_cards.Input.Query?
+        api.onSearchCards = { input in
             asked = input.query
             return page([catalogCard("161"), catalogCard("162")])
         }
@@ -41,13 +46,41 @@ struct CatalogSearchViewModelTests {
         #expect(model.paginator.total == 2)
         #expect(asked?.q == "foudre")
         #expect(asked?.page == 0)
-        #expect(asked?.set_code == nil)
+        #expect(asked?.sets == nil)
+    }
+
+    @Test func asksForTheWholeCatalogueWithNoOfferNorPossessionFilter() async {
+        let api = FakeAPI()
+        nonisolated(unsafe) var asked: Operations.search_cards.Input.Query?
+        api.onSearchCards = { input in
+            asked = input.query
+            return page([catalogCard("161")])
+        }
+        let model = CatalogSearchViewModel(api: api)
+
+        model.query = "foudre"
+        await model.paginator.reload()
+
+        #expect(asked?.offered == nil)
+        #expect(asked?.offered_by == nil)
+        #expect(asked?.owned == nil)
+    }
+
+    @Test func listsTheQuantityAlreadyOwnedOfEachImpression() async {
+        let api = FakeAPI()
+        api.onSearchCards = { _ in page([catalogCard("161", owned: 3), catalogCard("162")]) }
+        let model = CatalogSearchViewModel(api: api)
+
+        model.query = "foudre"
+        await model.paginator.reload()
+
+        #expect(model.paginator.items.map(\.owned_quantity) == [3, 0])
     }
 
     @Test func restrictsTheSearchToTheSetTyped() async {
         let api = FakeAPI()
-        nonisolated(unsafe) var asked: Operations.search_catalog.Input.Query?
-        api.onSearchCatalog = { input in
+        nonisolated(unsafe) var asked: Operations.search_cards.Input.Query?
+        api.onSearchCards = { input in
             asked = input.query
             return page([catalogCard("161")])
         }
@@ -58,24 +91,24 @@ struct CatalogSearchViewModelTests {
         await model.paginator.reload()
 
         #expect(asked?.q == "foudre")
-        #expect(asked?.set_code == "FDN")
+        #expect(asked?.sets == "FDN")
     }
 
     @Test func doesNotSendASetCodeTooShortToBeOne() async {
         let api = FakeAPI()
-        nonisolated(unsafe) var asked: Operations.search_catalog.Input.Query?
-        api.onSearchCatalog = { input in
+        nonisolated(unsafe) var asked: Operations.search_cards.Input.Query?
+        api.onSearchCards = { input in
             asked = input.query
             return page([catalogCard("161")])
         }
         let model = CatalogSearchViewModel(api: api)
 
         model.query = "foudre"
-        // The server refuses a code under three characters: it is still being typed.
+        // A code under three characters is still being typed.
         model.setCode = "FD"
         await model.paginator.reload()
 
-        #expect(asked?.set_code == nil)
+        #expect(asked?.sets == nil)
     }
 
     @Test func aSetAloneIsNotASearch() async {
@@ -104,7 +137,7 @@ struct CatalogSearchViewModelTests {
     @Test func loadsTheNextPageWhenTheListNearsItsEnd() async {
         let api = FakeAPI()
         nonisolated(unsafe) var pages: [Int32] = []
-        api.onSearchCatalog = { input in
+        api.onSearchCards = { input in
             pages.append(input.query.page ?? -1)
             return page([catalogCard("\(pages.count)")], total: 2)
         }
@@ -121,7 +154,7 @@ struct CatalogSearchViewModelTests {
 
     @Test func aFailedSearchShowsItsTranslatedMessage() async {
         let api = FakeAPI()
-        api.onSearchCatalog = { _ in throw APIError(code: "internal", status: 500) }
+        api.onSearchCards = { _ in throw APIError(code: "internal", status: 500) }
         let model = CatalogSearchViewModel(api: api)
         model.query = "bolt"
 

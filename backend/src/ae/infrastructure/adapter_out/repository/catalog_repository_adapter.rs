@@ -1,10 +1,7 @@
 use crate::application::error::AppError;
 use crate::application::repository::CatalogRepository;
-use crate::domain::catalog::{
-    CatalogCard, CatalogSearchItem, CatalogSet, ScanIndexEntry, TrendPrices,
-};
-use crate::domain::pagination::{Paginated, Pagination};
-use crate::domain::set_name::{SetCode, SetName};
+use crate::domain::catalog::{CatalogCard, CatalogSet, ScanIndexEntry, TrendPrices};
+use crate::domain::set_name::SetCode;
 use crate::infrastructure::adapter_out::repository::entities::{
     cardmarket_id_from_db, cardmarket_id_to_db, from_db_rarity, invalid_db_value,
 };
@@ -151,75 +148,6 @@ impl CatalogRepository for CatalogRepositoryAdapter {
             .collect()
     }
 
-    #[tracing::instrument(name = "catalog_repo.search", skip_all, fields(sentry.op = "db"))]
-    async fn search(
-        &self,
-        name: Option<&str>,
-        set_code: Option<&SetCode>,
-        pagination: Pagination,
-    ) -> Result<Paginated<CatalogSearchItem>, AppError> {
-        let set_code = set_code.map(ToString::to_string);
-
-        // A name matches by substring or by trigram similarity, in English or in French: the
-        // same rule as the search of the collection.
-        let total = sqlx::query_scalar!(
-            r#"SELECT COUNT(*) AS "total!"
-               FROM catalog_card cc
-               WHERE ($2::TEXT IS NULL OR cc.set_code = $2)
-                 AND ($1::TEXT IS NULL
-                      OR cc.name ILIKE '%' || $1 || '%' OR $1 <% cc.name
-                      OR cc.french_name ILIKE '%' || $1 || '%' OR $1 <% cc.french_name)"#,
-            name,
-            set_code,
-        )
-        .fetch_one(&self.pool)
-        .await?;
-
-        let rows = sqlx::query!(
-            r#"SELECT cc.set_code, sn.name AS set_name, cc.collector_number, cc.rarity, cc.name,
-                      cc.french_name, cc.image_url
-               FROM catalog_card cc
-                        JOIN set_name sn ON sn.set_code = cc.set_code
-               WHERE ($2::TEXT IS NULL OR cc.set_code = $2)
-                 AND ($1::TEXT IS NULL
-                      OR cc.name ILIKE '%' || $1 || '%' OR $1 <% cc.name
-                      OR cc.french_name ILIKE '%' || $1 || '%' OR $1 <% cc.french_name)
-               ORDER BY GREATEST(COALESCE(word_similarity($1, cc.name), 0),
-                                 COALESCE(word_similarity($1, cc.french_name), 0)) DESC,
-                        cc.set_code,
-                        SUBSTRING(cc.collector_number FROM '^[0-9]+')::BIGINT NULLS LAST,
-                        cc.collector_number
-               LIMIT $3 OFFSET $4"#,
-            name,
-            set_code,
-            i64::from(pagination.limit()),
-            i64::from(pagination.offset()),
-        )
-        .fetch_all(&self.pool)
-        .await?;
-
-        let items = rows
-            .into_iter()
-            .map(|row| {
-                Ok(CatalogSearchItem {
-                    set: SetName::new(SetCode::try_new(row.set_code)?, row.set_name),
-                    collector_number: row.collector_number,
-                    rarity: from_db_rarity(&row.rarity)?,
-                    name: row.name,
-                    french_name: row.french_name,
-                    image_url: row.image_url,
-                })
-            })
-            .collect::<Result<Vec<_>, AppError>>()?;
-
-        Ok(Paginated {
-            items,
-            total: u64::try_from(total)
-                .map_err(|_| invalid_db_value("catalog total", &total.to_string()))?,
-            pagination,
-        })
-    }
-
     #[tracing::instrument(
         name = "catalog_repo.scan_index_entries",
         skip_all,
@@ -286,24 +214,14 @@ mod tests {
         }
     }
 
-    /// A card with the names given, to search by.
-    fn named(set_code: &str, number: &str, name: &str, french_name: Option<&str>) -> CatalogCard {
-        CatalogCard {
-            name: name.to_string(),
-            french_name: french_name.map(str::to_string),
-            ..catalog_card(set_code, number)
-        }
-    }
-
-    fn keys(page: &Paginated<CatalogSearchItem>) -> Vec<String> {
-        page.items
-            .iter()
-            .map(|item| format!("{}/{}", item.set.code, item.collector_number))
-            .collect()
-    }
-
-    fn first_page() -> Pagination {
-        Pagination::try_new(0, 20, 1_000).unwrap()
+    async fn catalog_with(pool: &PgPool, cards: &[CatalogCard]) -> CatalogRepositoryAdapter {
+        let adapter = CatalogRepositoryAdapter::new(pool.clone());
+        let mut sets: Vec<CatalogSet> =
+            cards.iter().map(|c| set(&c.set_code.to_string())).collect();
+        sets.sort_by_key(|s| s.code.to_string());
+        sets.dedup_by_key(|s| s.code.to_string());
+        adapter.replace_all(&sets, cards).await.unwrap();
+        adapter
     }
 
     async fn catalog_keys(pool: &PgPool) -> Vec<String> {
@@ -597,197 +515,6 @@ mod tests {
         let adapter = CatalogRepositoryAdapter::new(pool);
 
         assert!(adapter.scan_index_entries().await.unwrap().is_empty());
-    }
-
-    // ---- search ----
-
-    async fn catalog_with(pool: &PgPool, cards: &[CatalogCard]) -> CatalogRepositoryAdapter {
-        let adapter = CatalogRepositoryAdapter::new(pool.clone());
-        let mut sets: Vec<CatalogSet> =
-            cards.iter().map(|c| set(&c.set_code.to_string())).collect();
-        sets.sort_by_key(|s| s.code.to_string());
-        sets.dedup_by_key(|s| s.code.to_string());
-        adapter.replace_all(&sets, cards).await.unwrap();
-        adapter
-    }
-
-    #[sqlx::test]
-    async fn search_finds_a_card_by_its_english_name(pool: PgPool) {
-        let adapter = catalog_with(
-            &pool,
-            &[
-                named("LEA", "161", "Lightning Bolt", Some("Foudre")),
-                named("LEA", "162", "Serra Angel", Some("Ange de Serra")),
-            ],
-        )
-        .await;
-
-        let page = adapter
-            .search(Some("lightning"), None, first_page())
-            .await
-            .unwrap();
-
-        assert_eq!(keys(&page), vec!["LEA/161"]);
-        assert_eq!(page.total, 1);
-        let item = &page.items[0];
-        assert_eq!(item.set, SetName::new("LEA", "Catalog LEA"));
-        assert_eq!(item.rarity, RarityCode::R);
-        assert_eq!(item.name, "Lightning Bolt");
-        assert_eq!(item.french_name.as_deref(), Some("Foudre"));
-        assert_eq!(
-            item.image_url.as_deref(),
-            Some("https://img.example/LEA/161.jpg")
-        );
-    }
-
-    #[sqlx::test]
-    async fn search_finds_a_card_by_its_french_name(pool: PgPool) {
-        let adapter = catalog_with(
-            &pool,
-            &[
-                named("LEA", "161", "Lightning Bolt", Some("Foudre")),
-                named("LEA", "162", "Serra Angel", Some("Ange de Serra")),
-                named("LEA", "163", "No French Card", None),
-            ],
-        )
-        .await;
-
-        let page = adapter
-            .search(Some("ange de"), None, first_page())
-            .await
-            .unwrap();
-
-        assert_eq!(keys(&page), vec!["LEA/162"]);
-    }
-
-    #[sqlx::test]
-    async fn search_tolerates_a_typo_through_trigram_similarity(pool: PgPool) {
-        let adapter = catalog_with(
-            &pool,
-            &[
-                named("LEA", "161", "Lightning Bolt", Some("Foudre")),
-                named("LEA", "162", "Serra Angel", Some("Ange de Serra")),
-            ],
-        )
-        .await;
-
-        let page = adapter
-            .search(Some("lightnig bolt"), None, first_page())
-            .await
-            .unwrap();
-
-        assert_eq!(keys(&page), vec!["LEA/161"]);
-    }
-
-    #[sqlx::test]
-    async fn search_lists_the_impressions_of_a_name_by_set_then_number(pool: PgPool) {
-        let adapter = catalog_with(
-            &pool,
-            &[
-                named("MKM", "9", "Lightning Bolt", None),
-                named("LEA", "161", "Lightning Bolt", None),
-                named("LEA", "20", "Lightning Bolt", None),
-                named("LEA", "H3", "Lightning Bolt", None),
-            ],
-        )
-        .await;
-
-        let page = adapter
-            .search(Some("Lightning Bolt"), None, first_page())
-            .await
-            .unwrap();
-
-        // The numeric order of the numbers, not the alphabetical one; a non-numeric one last.
-        assert_eq!(keys(&page), vec!["LEA/20", "LEA/161", "LEA/H3", "MKM/9"]);
-    }
-
-    #[sqlx::test]
-    async fn search_ranks_the_closest_name_before_the_set_and_the_number(pool: PgPool) {
-        let adapter = catalog_with(
-            &pool,
-            &[
-                named("LEA", "1", "Mangeur de rêves", None),
-                named("MKM", "9", "Serra Angel", Some("Ange de Serra")),
-            ],
-        )
-        .await;
-
-        let page = adapter
-            .search(Some("ange"), None, first_page())
-            .await
-            .unwrap();
-
-        // Both match ("ange" is inside "Mangeur" and is a word of "Ange de Serra"): the word wins
-        // over the set order.
-        assert_eq!(keys(&page), vec!["MKM/9", "LEA/1"]);
-    }
-
-    #[sqlx::test]
-    async fn search_filters_on_a_set(pool: PgPool) {
-        let adapter = catalog_with(
-            &pool,
-            &[
-                named("MKM", "9", "Lightning Bolt", None),
-                named("LEA", "161", "Lightning Bolt", None),
-                named("LEA", "162", "Serra Angel", None),
-            ],
-        )
-        .await;
-
-        let by_name = adapter
-            .search(Some("lightning"), Some(&SetCode::new("LEA")), first_page())
-            .await
-            .unwrap();
-        let whole_set = adapter
-            .search(None, Some(&SetCode::new("LEA")), first_page())
-            .await
-            .unwrap();
-
-        assert_eq!(keys(&by_name), vec!["LEA/161"]);
-        assert_eq!(keys(&whole_set), vec!["LEA/161", "LEA/162"]);
-    }
-
-    #[sqlx::test]
-    async fn search_is_paginated_with_the_total_of_every_page(pool: PgPool) {
-        let cards: Vec<CatalogCard> = (1..=5)
-            .map(|n| named("LEA", &n.to_string(), "Lightning Bolt", None))
-            .collect();
-        let adapter = catalog_with(&pool, &cards).await;
-
-        let second = adapter
-            .search(
-                Some("lightning"),
-                None,
-                Pagination::try_new(1, 2, 1_000).unwrap(),
-            )
-            .await
-            .unwrap();
-        let beyond = adapter
-            .search(
-                Some("lightning"),
-                None,
-                Pagination::try_new(9, 2, 1_000).unwrap(),
-            )
-            .await
-            .unwrap();
-
-        assert_eq!(keys(&second), vec!["LEA/3", "LEA/4"]);
-        assert_eq!(second.total, 5);
-        assert_eq!(second.pagination.page(), 1);
-        assert!(beyond.items.is_empty());
-    }
-
-    #[sqlx::test]
-    async fn search_finds_nothing_for_an_unknown_name(pool: PgPool) {
-        let adapter = catalog_with(&pool, &[named("LEA", "161", "Lightning Bolt", None)]).await;
-
-        let page = adapter
-            .search(Some("zzzzzz"), None, first_page())
-            .await
-            .unwrap();
-
-        assert!(page.items.is_empty());
-        assert_eq!(page.total, 0);
     }
 
     #[sqlx::test]

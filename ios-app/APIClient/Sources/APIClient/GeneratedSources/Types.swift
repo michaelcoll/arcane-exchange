@@ -21,9 +21,6 @@ public protocol APIProtocol: Sendable {
     /// - Remark: HTTP `GET /card/{scryfall_id}/price-history`.
     /// - Remark: Generated from `#/paths//card/{scryfall_id}/price-history/get(get_card_price_history)`.
     func get_card_price_history(_ input: Operations.get_card_price_history.Input) async throws -> Operations.get_card_price_history.Output
-    /// - Remark: HTTP `GET /catalog/cards`.
-    /// - Remark: Generated from `#/paths//catalog/cards/get(search_catalog)`.
-    func search_catalog(_ input: Operations.search_catalog.Input) async throws -> Operations.search_catalog.Output
     /// - Remark: HTTP `GET /catalog/scan-index`.
     /// - Remark: Generated from `#/paths//catalog/scan-index/get(get_scan_index)`.
     func get_scan_index(_ input: Operations.get_scan_index.Input) async throws -> Operations.get_scan_index.Output
@@ -220,17 +217,6 @@ extension APIProtocol {
     ) async throws -> Operations.get_card_price_history.Output {
         try await get_card_price_history(Operations.get_card_price_history.Input(
             path: path,
-            query: query,
-            headers: headers
-        ))
-    }
-    /// - Remark: HTTP `GET /catalog/cards`.
-    /// - Remark: Generated from `#/paths//catalog/cards/get(search_catalog)`.
-    public func search_catalog(
-        query: Operations.search_catalog.Input.Query = .init(),
-        headers: Operations.search_catalog.Input.Headers = .init()
-    ) async throws -> Operations.search_catalog.Output {
-        try await search_catalog(Operations.search_catalog.Input(
             query: query,
             headers: headers
         ))

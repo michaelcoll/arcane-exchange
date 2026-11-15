@@ -38,9 +38,9 @@ package final class ScanCorrectionViewModel {
 
     /// Applies the impression the player picked. An addition is in the language the manual addition
     /// used last (French at first) and in the finish of the Foil switch.
-    package func choose(_ catalogCard: CatalogCard) {
+    package func choose(_ catalogCard: SearchCard) {
         let card = RecognisedCard(
-            set: catalogCard.set.code.uppercased(),
+            set: catalogCard.set_code.uppercased(),
             number: catalogCard.collector_number,
             language: .default,
             rarity: catalogCard.rarity_code,

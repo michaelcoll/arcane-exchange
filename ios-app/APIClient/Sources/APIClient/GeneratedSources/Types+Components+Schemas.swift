@@ -454,64 +454,6 @@ extension Components {
         @frozen public enum CardOffersSortByParam: String, Codable, Hashable, Sendable, CaseIterable {
             case selling_price = "selling_price"
         }
-        /// One impression of the catalog: a set and a collector number, without language or finish.
-        ///
-        /// - Remark: Generated from `#/components/schemas/CatalogCardResponse`.
-        public struct CatalogCardResponse: Codable, Hashable, Sendable {
-            /// - Remark: Generated from `#/components/schemas/CatalogCardResponse/collector_number`.
-            public var collector_number: Swift.String
-            /// French name; absent when Scryfall has none.
-            ///
-            /// - Remark: Generated from `#/components/schemas/CatalogCardResponse/french_name`.
-            public var french_name: Swift.String?
-            /// Scryfall image of the impression (its front face for a double-faced card), to load from
-            /// Scryfall's CDN as is; `null` when Scryfall has none. It is not the image of a Card.
-            ///
-            /// - Remark: Generated from `#/components/schemas/CatalogCardResponse/image_url`.
-            public var image_url: Swift.String?
-            /// English name.
-            ///
-            /// - Remark: Generated from `#/components/schemas/CatalogCardResponse/name`.
-            public var name: Swift.String
-            /// Rarity code: `C`, `U`, `R`, `M` or `S`.
-            ///
-            /// - Remark: Generated from `#/components/schemas/CatalogCardResponse/rarity_code`.
-            public var rarity_code: Swift.String
-            /// - Remark: Generated from `#/components/schemas/CatalogCardResponse/set`.
-            public var set: Components.Schemas.SetInfoResponse
-            /// Creates a new `CatalogCardResponse`.
-            ///
-            /// - Parameters:
-            ///   - collector_number:
-            ///   - french_name: French name; absent when Scryfall has none.
-            ///   - image_url: Scryfall image of the impression (its front face for a double-faced card), to load from
-            ///   - name: English name.
-            ///   - rarity_code: Rarity code: `C`, `U`, `R`, `M` or `S`.
-            ///   - set:
-            public init(
-                collector_number: Swift.String,
-                french_name: Swift.String? = nil,
-                image_url: Swift.String? = nil,
-                name: Swift.String,
-                rarity_code: Swift.String,
-                set: Components.Schemas.SetInfoResponse
-            ) {
-                self.collector_number = collector_number
-                self.french_name = french_name
-                self.image_url = image_url
-                self.name = name
-                self.rarity_code = rarity_code
-                self.set = set
-            }
-            public enum CodingKeys: String, CodingKey {
-                case collector_number
-                case french_name
-                case image_url
-                case name
-                case rarity_code
-                case set
-            }
-        }
         /// - Remark: Generated from `#/components/schemas/CollectionCardResponse`.
         public struct CollectionCardResponse: Codable, Hashable, Sendable {
             /// Present only when the card is owned by the authenticated user.
@@ -964,41 +906,6 @@ extension Components {
             ///   - total:
             public init(
                 items: [Components.Schemas.CardOfferResponse],
-                page: Swift.Int32,
-                page_size: Swift.Int32,
-                total: Swift.Int64
-            ) {
-                self.items = items
-                self.page = page
-                self.page_size = page_size
-                self.total = total
-            }
-            public enum CodingKeys: String, CodingKey {
-                case items
-                case page
-                case page_size
-                case total
-            }
-        }
-        /// - Remark: Generated from `#/components/schemas/PaginatedCatalogResponse`.
-        public struct PaginatedCatalogResponse: Codable, Hashable, Sendable {
-            /// - Remark: Generated from `#/components/schemas/PaginatedCatalogResponse/items`.
-            public var items: [Components.Schemas.CatalogCardResponse]
-            /// - Remark: Generated from `#/components/schemas/PaginatedCatalogResponse/page`.
-            public var page: Swift.Int32
-            /// - Remark: Generated from `#/components/schemas/PaginatedCatalogResponse/page_size`.
-            public var page_size: Swift.Int32
-            /// - Remark: Generated from `#/components/schemas/PaginatedCatalogResponse/total`.
-            public var total: Swift.Int64
-            /// Creates a new `PaginatedCatalogResponse`.
-            ///
-            /// - Parameters:
-            ///   - items:
-            ///   - page:
-            ///   - page_size:
-            ///   - total:
-            public init(
-                items: [Components.Schemas.CatalogCardResponse],
                 page: Swift.Int32,
                 page_size: Swift.Int32,
                 total: Swift.Int64

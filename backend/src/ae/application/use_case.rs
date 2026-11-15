@@ -6,7 +6,7 @@ use crate::domain::binder::{Binder, BinderId, ReceivingBinder};
 use crate::domain::card::{Card, CardId, CollectionEntry, CopyId};
 use crate::domain::card_import::{CardImport, CardImportId};
 use crate::domain::card_offer::CardOfferSortField;
-use crate::domain::catalog::{CatalogSearchItem, ScanIndex, TrendPrices};
+use crate::domain::catalog::{ScanIndex, TrendPrices};
 use crate::domain::collection::CollectionQuery;
 use crate::domain::collection_entry::{CardEntries, CollectionEntryId};
 use crate::domain::collection_stats::CollectionStats;
@@ -304,22 +304,6 @@ pub trait CreateCardUseCase: Send + Sync {
     /// images). `FunctionalError::CardNotInCatalog` when the card does not exist and no catalog
     /// card has this set and number.
     async fn create_card(&self, card_id: CardId) -> Result<CardId, AppError>;
-}
-
-#[async_trait]
-#[cfg_attr(test, automock)]
-pub trait SearchCatalogUseCase: Send + Sync {
-    /// Searches the catalog by English or French name (`query`, trimmed; a blank one matches
-    /// every card) and, when given, by set. Paginated up to an offset of 1000. Tokens are not in
-    /// the catalog, so they are never listed.
-    ///
-    /// Refused with `InvalidPageSize` / `PaginationTooDeep` (`400`) for a page out of bounds.
-    async fn search_catalog(
-        &self,
-        query: Option<String>,
-        set_code: Option<SetCode>,
-        page: PageRequest,
-    ) -> Result<Paginated<CatalogSearchItem>, AppError>;
 }
 
 #[async_trait]

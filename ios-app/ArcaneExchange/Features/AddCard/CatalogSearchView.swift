@@ -10,7 +10,7 @@ struct CatalogSearchView: View {
     /// batch corrections).
     private enum Use {
         case addForm(api: any APIProtocol, onAdded: () -> Void)
-        case pick(title: String, onPick: (CatalogCard) -> Void)
+        case pick(title: String, onPick: (SearchCard) -> Void)
     }
 
     private let use: Use
@@ -23,7 +23,7 @@ struct CatalogSearchView: View {
     }
 
     /// Hands the impression picked to `onPick` and closes, with no form.
-    init(search: CatalogSearchViewModel, title: String, onPick: @escaping (CatalogCard) -> Void) {
+    init(search: CatalogSearchViewModel, title: String, onPick: @escaping (SearchCard) -> Void) {
         use = .pick(title: title, onPick: onPick)
         _model = State(initialValue: search)
     }
@@ -50,7 +50,7 @@ struct CatalogSearchView: View {
                 prompt: "Nom en français ou en anglais"
             )
             .task(id: model.searchKey) { await model.search() }
-            .navigationDestination(for: CatalogCard.self) { card in
+            .navigationDestination(for: SearchCard.self) { card in
                 if case let .addForm(api, onAdded) = use {
                     AddCollectionEntryForm(card: card, api: api) {
                         onAdded()
@@ -118,7 +118,7 @@ struct CatalogSearchView: View {
         .listStyle(.plain)
     }
 
-    @ViewBuilder private func row(for card: CatalogCard) -> some View {
+    @ViewBuilder private func row(for card: SearchCard) -> some View {
         switch use {
         case .addForm:
             NavigationLink(value: card) {

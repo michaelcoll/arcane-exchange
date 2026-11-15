@@ -1,10 +1,10 @@
 import APIClient
 import Foundation
 
-package typealias CatalogCard = Components.Schemas.CatalogCardResponse
-
 /// Backs the search of the catalog, the first step of adding a card by hand: the impressions
-/// (set and collector number) whose English or French name matches the query, page by page.
+/// (set and collector number) whose English or French name matches the query, page by page, with
+/// the quantity the player already owns. It asks `GET /search/card` for the whole Catalogue: no
+/// Offre and no Possession filter.
 @MainActor
 @Observable
 package final class CatalogSearchViewModel {
@@ -17,7 +17,7 @@ package final class CatalogSearchViewModel {
 
     /// The impressions found. Implicitly unwrapped on purpose: its `fetch` reads `query`, so it
     /// is built in `init` once `self` is usable.
-    package private(set) var paginator: Paginator<CatalogCard>!
+    package private(set) var paginator: Paginator<SearchCard>!
 
     private let api: any APIProtocol
 
@@ -62,14 +62,14 @@ package final class CatalogSearchViewModel {
         return (3 ... 6).contains(code.count) ? code : nil
     }
 
-    private func fetchPage(_ page: Int32, pageSize: Int32) async throws -> PaginatorPage<CatalogCard> {
+    private func fetchPage(_ page: Int32, pageSize: Int32) async throws -> PaginatorPage<SearchCard> {
         guard hasQuery else { return PaginatorPage(items: [], total: 0) }
 
-        let output = try await api.search_catalog(query: .init(
-            q: trimmedQuery,
-            set_code: setCodeFilter,
+        let output = try await api.search_cards(query: .init(
             page: page,
-            page_size: pageSize
+            page_size: pageSize,
+            q: trimmedQuery,
+            sets: setCodeFilter
         ))
         let body = try output.ok.body.json
         return PaginatorPage(items: body.items, total: Int(body.total))
