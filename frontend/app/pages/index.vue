@@ -64,8 +64,7 @@ const activeTradesTotal = computed(
 
 const searchOptions = [
   { value: 'name', label: 'Nom de carte', tone: 'primary', kbd: '1' },
-  { value: 'decklist', label: 'Decklist', tone: 'primary', kbd: '2' },
-  { value: 'player', label: 'Joueur', tone: 'secondary', kbd: '3' },
+  { value: 'player', label: 'Joueur', tone: 'secondary', kbd: '2' },
 ];
 
 const goToPlayer = (p: Player) => {
@@ -76,19 +75,11 @@ const selectRecent = (name: string) => {
   navigateToSearch(name, 'name');
 };
 
-const decklistContent = ref('');
-
 const navigateToSearch = (searchQ: string, searchMode: SearchMode) => {
   if (searchMode === 'name' && searchQ.trim()) {
     addRecentSearch(searchQ);
   }
   navigateTo(searchRoute({ mode: searchMode, q: searchQ.trim() }));
-};
-
-const handleDecklistSearch = () => {
-  // Une decklist vide efface la précédente : `mode=decklist` ne doit pas la réafficher.
-  saveDecklist(decklistContent.value);
-  navigateTo(searchRoute({ mode: 'decklist' }));
 };
 </script>
 
@@ -144,8 +135,8 @@ const handleDecklistSearch = () => {
       <p
         class="-mt-2 mb-4 max-w-[460px] text-base leading-relaxed text-slate-600 dark:text-slate-300"
       >
-        Recherche une carte, colle une decklist, ou trouve un joueur pour parcourir sa collection.
-        On te montre qui possède quoi, à quel prix, et tu composes l'échange.
+        Recherche une carte, ou trouve un joueur pour parcourir sa collection. On te montre qui
+        possède quoi, à quel prix, et tu composes l'échange.
       </p>
 
       <div ref="searchAreaRef" class="flex w-full max-w-[540px] flex-col items-center gap-3.5">
@@ -183,36 +174,7 @@ const handleDecklistSearch = () => {
             </button>
           </div>
 
-          <PlayerPicker v-else-if="mode === 'player'" v-model="player" @submit="goToPlayer" />
-
-          <!-- Decklist search -->
-          <div
-            v-else
-            class="focus-within:border-primary/40 focus-within:ring-primary/10 flex flex-col items-start gap-3 rounded-2xl border border-slate-300 bg-black/20 py-2 pr-2 pl-4 transition-all duration-200 focus-within:bg-black/10 focus-within:ring-4 dark:border-white/15"
-          >
-            <div class="flex w-full items-center gap-2.5">
-              <Icon
-                name="lucide:layers"
-                size="20"
-                class="flex-none text-slate-400 dark:text-slate-500"
-              />
-              <span class="text-sm text-slate-400 dark:text-slate-500"
-                >Colle ta decklist (Moxfield · Archidekt · texte)</span
-              >
-            </div>
-            <textarea
-              v-model="decklistContent"
-              :rows="4"
-              class="w-full resize-y font-mono text-sm text-slate-800 dark:text-slate-100"
-              placeholder="1x Vampiric Tutor&#10;1x Black Market Connections&#10;1x The Soul Stone…"
-            />
-            <button
-              class="bg-primary hover:bg-primary-soft inline-flex items-center justify-center gap-2 self-end rounded-lg border border-transparent px-3 py-1.5 text-xs leading-none font-bold whitespace-nowrap text-[var(--on-primary)] shadow-lg transition-all duration-150 hover:-translate-y-px active:translate-y-0"
-              @click="handleDecklistSearch"
-            >
-              Trouver les joueurs
-            </button>
-          </div>
+          <PlayerPicker v-else v-model="player" @submit="goToPlayer" />
         </div>
 
         <p

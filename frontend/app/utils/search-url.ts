@@ -2,7 +2,7 @@ import type { LocationQuery } from 'vue-router';
 import type { SearchParams } from '~/bindings/SearchParams';
 import type { SearchSetsParams } from '~/bindings/SearchSetsParams';
 
-export const SEARCH_MODES = ['name', 'decklist', 'player'] as const;
+export const SEARCH_MODES = ['name', 'player'] as const;
 export type SearchMode = (typeof SEARCH_MODES)[number];
 
 export const isSearchMode = (v: unknown): v is SearchMode => SEARCH_MODES.includes(v as SearchMode);
@@ -19,9 +19,6 @@ export const isSearchMode = (v: unknown): v is SearchMode => SEARCH_MODES.includ
  * - `offered`: the Offre axis of the name search, `false` for the whole Catalogue, absent (the
  *   default) for the impressions some player offers. A browsed player is the Offre axis of the
  *   player mode.
- *
- * The decklist text is too long for the URL: `mode=decklist` only says to read it back from
- * sessionStorage (see `loadDecklist`).
  */
 export interface SearchUrlState {
   mode: SearchMode;
@@ -66,7 +63,7 @@ export const parseSearchQuery = (query: LocationQuery): SearchUrlState => {
       ...(booleanOf(query.offered) === false && { offered: false }),
     };
   }
-  return { mode };
+  return { mode: 'player' };
 };
 
 /** Builds the URL query of a search, the inverse of `parseSearchQuery`. */
@@ -98,7 +95,7 @@ export type SearchListParams = Pick<SearchParams, 'q' | 'owned' | 'offered' | 'o
 
 /**
  * The request of the card list of a search (`GET /search/card`): the scope of its set facet.
- * `null` where the search shows no list (decklist mode, player mode before a player is chosen).
+ * `null` where the search shows no list (player mode before a player is chosen).
  */
 export const searchListParams = (state: SearchUrlState): SearchListParams | null =>
   searchSetsScope(state);
@@ -120,31 +117,4 @@ export const searchSetsScope = (state: SearchUrlState): SearchSetsParams | null 
     return { ...owned, offered_by: state.player, ...(q && { q }) };
   }
   return null;
-};
-
-const DECKLIST_STORAGE_KEY = 'tae_decklist_pending';
-
-/**
- * Keeps the decklist for the search page, a blank one included: it clears the stored text, so
- * that `mode=decklist` never replays an older decklist.
- */
-export const saveDecklist = (text: string) => {
-  try {
-    if (text.trim()) {
-      sessionStorage.setItem(DECKLIST_STORAGE_KEY, text);
-    } else {
-      sessionStorage.removeItem(DECKLIST_STORAGE_KEY);
-    }
-  } catch {
-    // sessionStorage full or unavailable: the decklist won't survive a reload.
-  }
-};
-
-/** The decklist kept by `saveDecklist`, `null` if there is none. Left in place for a reload. */
-export const loadDecklist = (): string | null => {
-  try {
-    return sessionStorage.getItem(DECKLIST_STORAGE_KEY);
-  } catch {
-    return null;
-  }
 };
