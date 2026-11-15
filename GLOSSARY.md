@@ -8,9 +8,14 @@ carte. L'échange physique et le règlement d'un éventuel écart de valeur se f
 
 ### Cartes et catalogue
 
+**Impression** :
+Une carte telle qu'imprimée dans un set, identifiée par son set et son numéro de collection, toutes
+langues confondues. C'est l'unité du Catalogue et le résultat de la Recherche.
+_Avoid_ : printing, édition
+
 **Card** :
-La définition d'une impression de carte — un set, un numéro de collection, une langue. Une donnée de
-jeu, sans notion de possession ni de finition.
+La définition d'une impression dans une langue — un set, un numéro de collection, une langue. Une
+donnée de jeu, sans notion de possession ni de finition.
 _Avoid_ : printing, édition, « carte foil » comme entité distincte
 
 **CardId** :
@@ -23,8 +28,23 @@ L'ensemble des impressions de cartes connues de la plateforme, chargé depuis Sc
 tokens et indépendant de la possession : une impression peut y figurer sans que personne ne la
 possède. Une entrée est clé par set et numéro, sans langue ; elle ne crée aucune Card. Elle garde
 l'URL de l'image Scryfall de l'impression, que le client charge telle quelle : ce n'est pas
-l'image d'une Card. Le joueur y cherche par nom, anglais ou français, pour ajouter une carte à sa collection.
+l'image d'une Card. C'est ce que parcourt la Recherche, par nom anglais ou français.
 _Avoid_ : base de cartes, référentiel
+
+**Recherche** :
+La consultation du Catalogue par un joueur, impression par impression : chaque résultat dit combien
+d'exemplaires il en possède et combien de joueurs la proposent. À distinguer de la Collection,
+qui liste ses exemplaires et n'est pas une recherche.
+_Avoid_ : recherche catalogue, recherche de collection
+
+**Possession** (axe de la Recherche) :
+Ce que le joueur connecté possède de l'impression, toutes langues et finitions confondues : toutes
+les impressions, celles qu'il possède, ou celles qu'il ne possède pas.
+
+**Offre** (axe de la Recherche) :
+Ce que les joueurs proposent de l'impression : toutes les impressions du Catalogue, celles
+qu'un joueur quelconque propose, ou celles que propose un joueur donné. À distinguer de l'Offre
+d'un joueur pour une carte, définie plus bas.
 
 **Finition** :
 Le fait qu'un exemplaire soit foil ou normal. Propriété de l'exemplaire possédé ou échangé, jamais de
@@ -201,8 +221,9 @@ réglages.
 _Avoid_ : annonce, listing, mise en vente
 
 **Owner count** :
-Le nombre de joueurs distincts qui proposent une carte donnée. C'est la seule information d'audience
-exposée par la recherche — jamais la liste nominative des possesseurs.
+Le nombre de joueurs distincts, le joueur connecté compris, qui proposent une impression, toutes
+langues et finitions confondues. C'est la seule information d'audience exposée par la recherche —
+jamais la liste nominative des possesseurs.
 _Avoid_ : nombre de possesseurs, popularité
 
 ### Échange
