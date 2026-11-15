@@ -104,10 +104,8 @@ impl Display for CopyId {
     }
 }
 
-/// A card's presence in a collection: fully visible to its owner (`Mine`),
-/// reduced to just the seller's name for an individual sale listing (`Owned`,
-/// used by `/card/offers`), or reduced to an aggregate owner count for public
-/// search results (`Public`, used by `/search/card`).
+/// A card's presence in a collection: fully visible to its owner (`Mine`), or reduced to just
+/// the seller's name for an individual sale listing (`Owned`, used by `/card/offers`).
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum CollectionEntry {
     Mine {
@@ -126,15 +124,6 @@ pub enum CollectionEntry {
         selling_price: Option<u32>,
         /// `true` if this exact copy is engaged in one of the owner's trades in
         /// `ONE_ACCEPTED` or `FULLY_ACCEPTED` status — it cannot be traded away right now.
-        reserved: bool,
-    },
-    Public {
-        /// Number of distinct users owning this card.
-        owner_count: u64,
-        /// `true` if this card is engaged in one of its owner's trades in `ONE_ACCEPTED` or
-        /// `FULLY_ACCEPTED` status. Only meaningful when the search is scoped to a single real
-        /// owner (`player_username` filter, hence `owner_count == 1`); `false` in the
-        /// unscoped multi-owner aggregate, where no single owner can be attributed.
         reserved: bool,
     },
 }

@@ -4,7 +4,7 @@ import Testing
 
 @testable import ArcaneExchangeCore
 
-private func page(_ items: [CollectionCard], total: Int64) -> Operations.search_cards.Output {
+private func page(_ items: [SearchCard], total: Int64) -> Operations.search_cards.Output {
     .ok(.init(body: .json(.init(items: items, page: 0, page_size: 20, total: total))))
 }
 
@@ -16,7 +16,7 @@ struct SearchResultsViewModelTests {
 
     @Test func loadsTheFirstPage() async {
         let api = FakeAPI()
-        api.onSearchCards = { _ in page([card("a"), card("b")], total: 2) }
+        api.onSearchCards = { _ in page([searchCard("a"), searchCard("b")], total: 2) }
         let model = makeModel(api)
 
         await model.loadInitiallyIfNeeded()
@@ -29,7 +29,7 @@ struct SearchResultsViewModelTests {
 
     @Test func carriesTheSearchAndTheFiltersToTheNextPage() async {
         let api = FakeAPI()
-        let first = (1 ... 20).map { card("\($0)") }
+        let first = (1 ... 20).map { searchCard("\($0)") }
         nonisolated(unsafe) var queries: [Operations.search_cards.Input.Query] = []
         api.onSearchCards = { input in
             queries.append(input.query)
@@ -49,7 +49,7 @@ struct SearchResultsViewModelTests {
 
     @Test func doesNotReloadOnceLoaded() async {
         let api = FakeAPI()
-        api.onSearchCards = { _ in page([card("a")], total: 1) }
+        api.onSearchCards = { _ in page([searchCard("a")], total: 1) }
         let model = makeModel(api)
 
         await model.loadInitiallyIfNeeded()

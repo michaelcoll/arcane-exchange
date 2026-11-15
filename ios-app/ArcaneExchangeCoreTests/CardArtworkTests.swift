@@ -43,7 +43,7 @@ struct CardArtworkTests {
     }
 
     @Test func mapsAnEmptyPageToNoWork() {
-        #expect(CardArtwork.urls(for: [], apiBaseURL: apiBaseURL).isEmpty)
+        #expect(CardArtwork.urls(for: [CollectionCard](), apiBaseURL: apiBaseURL).isEmpty)
     }
 
     private func card(imageURL: String?) -> CollectionCard {

@@ -535,20 +535,12 @@ extension Components {
             public var language_code: Swift.String
             /// - Remark: Generated from `#/components/schemas/CollectionCardResponse/name`.
             public var name: Swift.String
-            /// Number of distinct users actually offering this card to trade (search mode only) —
-            /// after applying each owner's visibility, trade binder selection and rarity filters. A
-            /// card no one offers anymore never appears in search results at all.
-            ///
-            /// - Remark: Generated from `#/components/schemas/CollectionCardResponse/owner_count`.
-            public var owner_count: Swift.Int64?
             /// - Remark: Generated from `#/components/schemas/CollectionCardResponse/price_guide`.
             public var price_guide: Components.Schemas.PriceGuideResponse?
             /// - Remark: Generated from `#/components/schemas/CollectionCardResponse/rarity_code`.
             public var rarity_code: Swift.String
-            /// `true` if this card is engaged in an `ONE_ACCEPTED` or `FULLY_ACCEPTED` trade of its
-            /// owner (the authenticated user in collection mode, or the `player_username`-filtered
-            /// owner in search mode). Always `false` in the unscoped multi-owner search, where no
-            /// single owner can be attributed.
+            /// `true` if this card is engaged in an `ONE_ACCEPTED` or `FULLY_ACCEPTED` trade of the
+            /// authenticated user.
             ///
             /// - Remark: Generated from `#/components/schemas/CollectionCardResponse/reserved`.
             public var reserved: Swift.Bool
@@ -566,10 +558,9 @@ extension Components {
             ///   - image_url: Front image, relative to the frontend (e.g. `/card-images/FDN_1_EN.webp?v=gatherer`);
             ///   - language_code:
             ///   - name:
-            ///   - owner_count: Number of distinct users actually offering this card to trade (search mode only) —
             ///   - price_guide:
             ///   - rarity_code:
-            ///   - reserved: `true` if this card is engaged in an `ONE_ACCEPTED` or `FULLY_ACCEPTED` trade of its
+            ///   - reserved: `true` if this card is engaged in an `ONE_ACCEPTED` or `FULLY_ACCEPTED` trade of the
             ///   - scryfall_id:
             ///   - set_code:
             public init(
@@ -580,7 +571,6 @@ extension Components {
                 image_url: Swift.String? = nil,
                 language_code: Swift.String,
                 name: Swift.String,
-                owner_count: Swift.Int64? = nil,
                 price_guide: Components.Schemas.PriceGuideResponse? = nil,
                 rarity_code: Swift.String,
                 reserved: Swift.Bool,
@@ -594,7 +584,6 @@ extension Components {
                 self.image_url = image_url
                 self.language_code = language_code
                 self.name = name
-                self.owner_count = owner_count
                 self.price_guide = price_guide
                 self.rarity_code = rarity_code
                 self.reserved = reserved
@@ -609,7 +598,6 @@ extension Components {
                 case image_url
                 case language_code
                 case name
-                case owner_count
                 case price_guide
                 case rarity_code
                 case reserved
@@ -1081,6 +1069,41 @@ extension Components {
             ///   - total:
             public init(
                 items: [Components.Schemas.PurchaseResponse],
+                page: Swift.Int32,
+                page_size: Swift.Int32,
+                total: Swift.Int64
+            ) {
+                self.items = items
+                self.page = page
+                self.page_size = page_size
+                self.total = total
+            }
+            public enum CodingKeys: String, CodingKey {
+                case items
+                case page
+                case page_size
+                case total
+            }
+        }
+        /// - Remark: Generated from `#/components/schemas/PaginatedSearchResponse`.
+        public struct PaginatedSearchResponse: Codable, Hashable, Sendable {
+            /// - Remark: Generated from `#/components/schemas/PaginatedSearchResponse/items`.
+            public var items: [Components.Schemas.SearchCardResponse]
+            /// - Remark: Generated from `#/components/schemas/PaginatedSearchResponse/page`.
+            public var page: Swift.Int32
+            /// - Remark: Generated from `#/components/schemas/PaginatedSearchResponse/page_size`.
+            public var page_size: Swift.Int32
+            /// - Remark: Generated from `#/components/schemas/PaginatedSearchResponse/total`.
+            public var total: Swift.Int64
+            /// Creates a new `PaginatedSearchResponse`.
+            ///
+            /// - Parameters:
+            ///   - items:
+            ///   - page:
+            ///   - page_size:
+            ///   - total:
+            public init(
+                items: [Components.Schemas.SearchCardResponse],
                 page: Swift.Int32,
                 page_size: Swift.Int32,
                 total: Swift.Int64
@@ -1794,6 +1817,104 @@ extension Components {
             case BUNDLE = "BUNDLE"
             case PRERELEASE_PACK = "PRERELEASE_PACK"
             case PRECONSTRUCTED_DECK = "PRECONSTRUCTED_DECK"
+        }
+        /// A card a search found, reduced to what is public: no purchase price, no date of addition.
+        ///
+        /// - Remark: Generated from `#/components/schemas/SearchCardResponse`.
+        public struct SearchCardResponse: Codable, Hashable, Sendable {
+            /// - Remark: Generated from `#/components/schemas/SearchCardResponse/collector_number`.
+            public var collector_number: Swift.String
+            /// - Remark: Generated from `#/components/schemas/SearchCardResponse/foil`.
+            public var foil: Swift.Bool
+            /// Back image of a double-faced card, like `image_url`; `null` for a single-faced card.
+            ///
+            /// - Remark: Generated from `#/components/schemas/SearchCardResponse/image_back_url`.
+            public var image_back_url: Swift.String?
+            /// Front image, relative to the frontend (e.g. `/card-images/FDN_1_EN.webp?v=gatherer`);
+            /// `null` while the card's image is pending.
+            ///
+            /// - Remark: Generated from `#/components/schemas/SearchCardResponse/image_url`.
+            public var image_url: Swift.String?
+            /// - Remark: Generated from `#/components/schemas/SearchCardResponse/language_code`.
+            public var language_code: Swift.String
+            /// - Remark: Generated from `#/components/schemas/SearchCardResponse/name`.
+            public var name: Swift.String
+            /// Number of distinct users actually offering this card to trade — after applying each
+            /// owner's visibility, trade binder selection and rarity filters. A card no one offers
+            /// anymore never appears in search results at all.
+            ///
+            /// - Remark: Generated from `#/components/schemas/SearchCardResponse/owner_count`.
+            public var owner_count: Swift.Int64
+            /// - Remark: Generated from `#/components/schemas/SearchCardResponse/price_guide`.
+            public var price_guide: Components.Schemas.PriceGuideResponse?
+            /// - Remark: Generated from `#/components/schemas/SearchCardResponse/rarity_code`.
+            public var rarity_code: Swift.String
+            /// `true` if this card is engaged in an `ONE_ACCEPTED` or `FULLY_ACCEPTED` trade of the
+            /// `player_username`-filtered owner. Always `false` in the unscoped multi-owner search,
+            /// where no single owner can be attributed.
+            ///
+            /// - Remark: Generated from `#/components/schemas/SearchCardResponse/reserved`.
+            public var reserved: Swift.Bool
+            /// - Remark: Generated from `#/components/schemas/SearchCardResponse/scryfall_id`.
+            public var scryfall_id: Swift.String
+            /// - Remark: Generated from `#/components/schemas/SearchCardResponse/set_code`.
+            public var set_code: Swift.String
+            /// Creates a new `SearchCardResponse`.
+            ///
+            /// - Parameters:
+            ///   - collector_number:
+            ///   - foil:
+            ///   - image_back_url: Back image of a double-faced card, like `image_url`; `null` for a single-faced card.
+            ///   - image_url: Front image, relative to the frontend (e.g. `/card-images/FDN_1_EN.webp?v=gatherer`);
+            ///   - language_code:
+            ///   - name:
+            ///   - owner_count: Number of distinct users actually offering this card to trade — after applying each
+            ///   - price_guide:
+            ///   - rarity_code:
+            ///   - reserved: `true` if this card is engaged in an `ONE_ACCEPTED` or `FULLY_ACCEPTED` trade of the
+            ///   - scryfall_id:
+            ///   - set_code:
+            public init(
+                collector_number: Swift.String,
+                foil: Swift.Bool,
+                image_back_url: Swift.String? = nil,
+                image_url: Swift.String? = nil,
+                language_code: Swift.String,
+                name: Swift.String,
+                owner_count: Swift.Int64,
+                price_guide: Components.Schemas.PriceGuideResponse? = nil,
+                rarity_code: Swift.String,
+                reserved: Swift.Bool,
+                scryfall_id: Swift.String,
+                set_code: Swift.String
+            ) {
+                self.collector_number = collector_number
+                self.foil = foil
+                self.image_back_url = image_back_url
+                self.image_url = image_url
+                self.language_code = language_code
+                self.name = name
+                self.owner_count = owner_count
+                self.price_guide = price_guide
+                self.rarity_code = rarity_code
+                self.reserved = reserved
+                self.scryfall_id = scryfall_id
+                self.set_code = set_code
+            }
+            public enum CodingKeys: String, CodingKey {
+                case collector_number
+                case foil
+                case image_back_url
+                case image_url
+                case language_code
+                case name
+                case owner_count
+                case price_guide
+                case rarity_code
+                case reserved
+                case scryfall_id
+                case set_code
+            }
         }
         /// A set, as several resources show it.
         ///

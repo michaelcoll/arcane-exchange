@@ -142,7 +142,7 @@ struct SearchView: View {
                 .foregroundStyle(.secondary)
         } else {
             ForEach(model.cardPreview, id: \.self) { card in
-                NavigationLink(value: CardDetailRoute(card: card)) {
+                NavigationLink(value: CardDetailRoute(card: card.asCollectionCard)) {
                     CardPreviewRow(card: card)
                 }
             }
@@ -278,7 +278,7 @@ struct SearchView: View {
 
 /// Compact card row for the as-you-type preview list — thumbnail, name, set, trend price.
 private struct CardPreviewRow: View {
-    let card: CollectionCard
+    let card: SearchCard
 
     var body: some View {
         HStack(spacing: 12) {

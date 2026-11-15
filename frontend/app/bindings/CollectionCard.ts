@@ -24,16 +24,8 @@ export type CollectionCard = {
    */
   collection_entry: CollectionEntry | null;
   /**
-   * Number of distinct users actually offering this card to trade (search mode only) —
-   * after applying each owner's visibility, trade binder selection and rarity filters. A
-   * card no one offers anymore never appears in search results at all.
-   */
-  owner_count: number | null;
-  /**
-   * `true` if this card is engaged in an `ONE_ACCEPTED` or `FULLY_ACCEPTED` trade of its
-   * owner (the authenticated user in collection mode, or the `player_username`-filtered
-   * owner in search mode). Always `false` in the unscoped multi-owner search, where no
-   * single owner can be attributed.
+   * `true` if this card is engaged in an `ONE_ACCEPTED` or `FULLY_ACCEPTED` trade of the
+   * authenticated user.
    */
   reserved: boolean;
   price_guide: PriceGuide | null;

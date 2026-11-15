@@ -113,6 +113,7 @@ use crate::infrastructure::adapter_out::repository::collection_rarity_filters_re
 use crate::infrastructure::adapter_out::repository::collection_stats_repository_adapter::CollectionStatsRepositoryAdapter;
 use crate::infrastructure::adapter_out::repository::purchase_repository_adapter::PurchaseRepositoryAdapter;
 use crate::infrastructure::adapter_out::repository::receiving_binder_repository_adapter::ReceivingBinderRepositoryAdapter;
+use crate::infrastructure::adapter_out::repository::search_repository_adapter::SearchRepositoryAdapter;
 use crate::infrastructure::adapter_out::repository::showcase_repository_adapter::ShowcaseRepositoryAdapter;
 use crate::infrastructure::adapter_out::repository::stats_repository_adapter::StatsRepositoryAdapter;
 use crate::infrastructure::adapter_out::repository::trade_repository_adapter::TradeRepositoryAdapter;
@@ -211,6 +212,7 @@ struct Repositories {
     set_name: Arc<SetNameRepositoryAdapter>,
     card_market: Arc<CardMarketPriceRepositoryAdapter>,
     card_prices_view: Arc<CardPricesViewRepositoryAdapter>,
+    search: Arc<SearchRepositoryAdapter>,
     stats: Arc<StatsRepositoryAdapter>,
     showcase: Arc<ShowcaseRepositoryAdapter>,
     user: Arc<UserRepositoryAdapter>,
@@ -233,6 +235,7 @@ fn create_repositories(pool: &Pool<Postgres>) -> Repositories {
         set_name: Arc::new(SetNameRepositoryAdapter::new(pool.clone())),
         card_market: Arc::new(CardMarketPriceRepositoryAdapter::new(pool.clone())),
         card_prices_view: Arc::new(CardPricesViewRepositoryAdapter::new(pool.clone())),
+        search: Arc::new(SearchRepositoryAdapter::new(pool.clone())),
         stats: Arc::new(StatsRepositoryAdapter::new(pool.clone())),
         showcase: Arc::new(ShowcaseRepositoryAdapter::new(pool.clone())),
         user: Arc::new(UserRepositoryAdapter::new(pool.clone())),
@@ -341,8 +344,8 @@ fn create_app_state(
     let stats_service = Arc::new(StatsService::new(repos.stats));
     let showcase_service = Arc::new(ShowcaseService::new(repos.showcase));
     let collection_service = Arc::new(CollectionService::new(repos.card_prices_view.clone()));
-    let search_cards_service = Arc::new(SearchCardsService::new(repos.card_prices_view.clone()));
-    let search_sets_service = Arc::new(SearchSetsService::new(repos.card_prices_view.clone()));
+    let search_cards_service = Arc::new(SearchCardsService::new(repos.search.clone()));
+    let search_sets_service = Arc::new(SearchSetsService::new(repos.search.clone()));
     let collection_price_history_service: Arc<dyn GetCollectionPriceHistoryUseCase> = Arc::new(
         CollectionPriceHistoryService::new(repos.collection_price_history.clone()),
     );

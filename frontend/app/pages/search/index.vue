@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { CollectionCard } from '~/bindings/CollectionCard';
+import type { SearchCard } from '~/bindings/SearchCard';
 import type { UserSuggestion } from '~/bindings/UserSuggestion';
 import type { CardListScope } from '~/composables/useCardList';
 import type { SearchListParams, SearchMode } from '~/utils/search-url';
@@ -104,7 +104,7 @@ const priceMax = computed(() =>
 );
 
 const list = reactive(
-  useCardList<CollectionCard, SearchListParams>({
+  useCardList<SearchCard, SearchListParams>({
     context: () => searchCriteriaContext(search),
     fetchPage: getSearch,
     scope: (): CardListScope<SearchListParams> => ({
@@ -132,7 +132,7 @@ onMounted(() => {
   }
 });
 
-const detail = ref<CollectionCard | null>(null);
+const detail = ref<SearchCard | null>(null);
 
 const sizeOptions = [
   { value: 'sm', label: '', icon: 'lucide:grid-3x3', title: 'Petites cartes', tone: 'primary' },
@@ -295,7 +295,7 @@ const goToPlayerCollection = (username: string) => openPlayer(username.replace(/
             :price="card.price_guide?.trend ?? 0"
             :foil="card.foil"
             :size="size"
-            :owner-count="card.owner_count ?? undefined"
+            :owner-count="card.owner_count"
             :reserved="card.reserved"
             @click="detail = card"
           />

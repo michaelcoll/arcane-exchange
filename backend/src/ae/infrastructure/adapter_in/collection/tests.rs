@@ -322,7 +322,7 @@ async fn get_collection_maps_card_fields_correctly() {
     assert_eq!(item["name"], "Test Card");
     assert_eq!(item["collection_entry"]["quantity"], 1);
     assert_eq!(item["collection_entry"]["purchase_price"], 100);
-    assert_eq!(item["owner_count"], json!(null));
+    assert!(item.get("owner_count").is_none());
     assert_eq!(item["price_guide"], json!(null));
 }
 
@@ -381,31 +381,6 @@ async fn get_collection_serialises_an_absent_purchase_price_as_null() {
     let entry = &body["items"][0]["collection_entry"];
     assert_eq!(entry["quantity"], 1);
     assert_eq!(entry["purchase_price"], json!(null));
-}
-
-#[tokio::test]
-async fn get_collection_masks_collection_entry_for_search_style_entries() {
-    let mut card = make_card("FDN", "42");
-    card.collection_entry = CollectionEntry::Public {
-        owner_count: 1,
-        reserved: false,
-    };
-
-    let mut mock = MockGetCollectionUseCase::new();
-    mock.expect_get_collection()
-        .times(1)
-        .returning(move |_, _| {
-            let c = card.clone();
-            Box::pin(async move { Ok(make_paginated(vec![c], 0, 20)) })
-        });
-
-    let response = authed(collection_app(mock), Method::GET, "/collection").await;
-
-    assert_eq!(response.status(), StatusCode::OK);
-    let body = json_of(response).await;
-    let item = &body["items"][0];
-    assert_eq!(item["collection_entry"], json!(null));
-    assert_eq!(item["owner_count"], 1);
 }
 
 #[tokio::test]

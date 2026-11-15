@@ -20,7 +20,7 @@ package final class SearchViewModel {
         return !Task.isCancelled
     }
 
-    package private(set) var cardPreview: [CollectionCard] = []
+    package private(set) var cardPreview: [SearchCard] = []
     package private(set) var isLoadingCardPreview = false
     package private(set) var cardPreviewFailed = false
 

@@ -21,7 +21,7 @@ package final class SearchResultsViewModel {
     /// The loaded cards and their loading state. Reload it whenever `filters` changes. Implicitly
     /// unwrapped on purpose: its `fetch` reads `filters`, so it is built in `init` once `self` is
     /// usable, and `@Observable` rules out `lazy` and a `let` assigned last.
-    package private(set) var paginator: Paginator<CollectionCard>!
+    package private(set) var paginator: Paginator<SearchCard>!
 
     /// What the set drawer lists: the sets of every card this search can return, whatever the
     /// filters. Empty until loaded, which disables the drawer's Sets row.
@@ -56,7 +56,7 @@ package final class SearchResultsViewModel {
         self.sets = sets
     }
 
-    private func fetchPage(_ page: Int32, pageSize: Int32) async throws -> PaginatorPage<CollectionCard> {
+    private func fetchPage(_ page: Int32, pageSize: Int32) async throws -> PaginatorPage<SearchCard> {
         guard let query = target.query(filters: filters, page: page, pageSize: pageSize) else {
             // The view never instantiates this model for a decklist target.
             return PaginatorPage(items: [], total: 0)

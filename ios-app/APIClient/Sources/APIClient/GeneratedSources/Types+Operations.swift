@@ -9146,12 +9146,12 @@ public enum Operations {
                 /// - Remark: Generated from `#/paths/search/card/GET/responses/200/content`.
                 @frozen public enum Body: Sendable, Hashable {
                     /// - Remark: Generated from `#/paths/search/card/GET/responses/200/content/application\/json`.
-                    case json(Components.Schemas.PaginatedCollectionResponse)
+                    case json(Components.Schemas.PaginatedSearchResponse)
                     /// The associated value of the enum case if `self` is `.json`.
                     ///
                     /// - Throws: An error if `self` is not `.json`.
                     /// - SeeAlso: `.json`.
-                    public var json: Components.Schemas.PaginatedCollectionResponse {
+                    public var json: Components.Schemas.PaginatedSearchResponse {
                         get throws {
                             switch self {
                             case let .json(body):

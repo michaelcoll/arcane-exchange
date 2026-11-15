@@ -1,17 +1,17 @@
 use crate::application::error::AppError;
-use crate::application::repository::CardPricesViewRepository;
+use crate::application::repository::SearchRepository;
 use crate::application::use_case::SearchSetsUseCase;
-use crate::domain::collection::SearchScope;
+use crate::domain::search::SearchScope;
 use crate::domain::set_name::SetName;
 use async_trait::async_trait;
 use std::sync::Arc;
 
 pub struct SearchSetsService {
-    repository: Arc<dyn CardPricesViewRepository>,
+    repository: Arc<dyn SearchRepository>,
 }
 
 impl SearchSetsService {
-    pub fn new(repository: Arc<dyn CardPricesViewRepository>) -> Self {
+    pub fn new(repository: Arc<dyn SearchRepository>) -> Self {
         Self { repository }
     }
 }
@@ -27,12 +27,12 @@ impl SearchSetsUseCase for SearchSetsService {
 mod tests {
     use super::*;
     use crate::application::error::InfraError;
-    use crate::application::repository::MockCardPricesViewRepository;
+    use crate::application::repository::MockSearchRepository;
     use crate::domain::set_name::SetCode;
 
     #[tokio::test]
     async fn search_sets_passes_the_scope_to_the_repository_and_returns_its_sets() {
-        let mut mock_repo = MockCardPricesViewRepository::new();
+        let mut mock_repo = MockSearchRepository::new();
         mock_repo
             .expect_search_sets()
             .withf(|scope| {
@@ -69,7 +69,7 @@ mod tests {
 
     #[tokio::test]
     async fn search_sets_propagates_repository_error() {
-        let mut mock_repo = MockCardPricesViewRepository::new();
+        let mut mock_repo = MockSearchRepository::new();
         mock_repo.expect_search_sets().returning(|_| {
             Box::pin(async {
                 Err(AppError::Infra(InfraError::RepositoryError(

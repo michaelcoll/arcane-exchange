@@ -7,7 +7,7 @@ use crate::domain::card::{Card, CardId, CollectionEntry, CopyId};
 use crate::domain::card_import::{CardImport, CardImportId};
 use crate::domain::card_offer::CardOfferSortField;
 use crate::domain::catalog::{CatalogSearchItem, ScanIndex, TrendPrices};
-use crate::domain::collection::{CollectionQuery, SearchQuery, SearchScope};
+use crate::domain::collection::CollectionQuery;
 use crate::domain::collection_entry::{CardEntries, CollectionEntryId};
 use crate::domain::collection_stats::CollectionStats;
 use crate::domain::pagination::{PageRequest, Paginated};
@@ -17,6 +17,7 @@ use crate::domain::purchase::{
 };
 use crate::domain::rarity_trade_filter::{RarityTradeFilter, RarityTradeFilterRule};
 use crate::domain::scan_batch::{ScanBatchId, ScanBatchLine, ScanBatchOutcome};
+use crate::domain::search::{SearchCard, SearchQuery, SearchScope};
 use crate::domain::set_name::{SetCode, SetName};
 use crate::domain::showcase::ShowcaseCard;
 use crate::domain::stats::Stats;
@@ -380,7 +381,7 @@ pub trait SearchCardsUseCase: Send + Sync {
     async fn search_cards(
         &self,
         query: SearchQuery<PageRequest>,
-    ) -> Result<Paginated<Card>, AppError>;
+    ) -> Result<Paginated<SearchCard>, AppError>;
 }
 
 #[async_trait]

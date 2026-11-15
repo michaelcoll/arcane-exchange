@@ -8,7 +8,7 @@ use crate::domain::card_offer::CardOfferSortField;
 use crate::domain::catalog::{
     CatalogCard, CatalogSearchItem, CatalogSet, ScanIndexEntry, TrendPrices,
 };
-use crate::domain::collection::{CollectionQuery, SearchQuery, SearchScope};
+use crate::domain::collection::CollectionQuery;
 use crate::domain::collection_entry::{CardEntries, CollectionEntryId, EntryUpdate};
 use crate::domain::collection_stats::CollectionStats;
 use crate::domain::pagination::{Paginated, Pagination};
@@ -19,6 +19,7 @@ use crate::domain::purchase::{
 };
 use crate::domain::rarity_trade_filter::{RarityTradeFilter, RarityTradeFilterRule};
 use crate::domain::scan_batch::{ScanBatchCopies, ScanBatchId, ScanBatchOutcome};
+use crate::domain::search::{SearchCard, SearchQuery, SearchScope};
 use crate::domain::set_name::{SetCode, SetName};
 use crate::domain::showcase::ShowcaseCard;
 use crate::domain::trade::{
@@ -198,16 +199,6 @@ pub trait CardPricesViewRepository: Send + Sync {
         user_id: &UserId,
         query: CollectionQuery,
     ) -> Result<Paginated<Card>, AppError>;
-    /// Public search across every user's cards. No `user_id` filter — rows are
-    /// grouped by card, each returned as `CollectionEntry::Public { owner_count }`
-    /// where `owner_count` is the number of distinct users owning that card. When
-    /// `query.player_username` is set, results are restricted to that player's cards
-    /// (exact match, case-insensitive) and `owner_count` is always `1`.
-    async fn search_paginated(&self, query: SearchQuery) -> Result<Paginated<Card>, AppError>;
-    /// The sets of the cards [`Self::search_paginated`] can return for `scope`, whatever the
-    /// rarity, set or price filters: the same exposure rules (`v_tradable_entry`), sorted by
-    /// set name.
-    async fn search_sets(&self, scope: &SearchScope) -> Result<Vec<SetName>, AppError>;
     /// Whether `card_id` exists in the catalog (table `card`), regardless of who owns it, or
     /// whether anyone owns it at all.
     async fn exists(&self, card_id: &CardId) -> Result<bool, AppError>;
@@ -219,6 +210,22 @@ pub trait CardPricesViewRepository: Send + Sync {
         sort_by: CardOfferSortField,
         pagination: Pagination,
     ) -> Result<Paginated<CollectionEntry>, AppError>;
+}
+
+#[async_trait]
+#[cfg_attr(test, automock)]
+pub trait SearchRepository: Send + Sync {
+    /// Public search across every user's cards. No `user_id` filter — rows are
+    /// grouped by card, each returned as a [`SearchCard`] whose `owner_count` is the number of
+    /// distinct users owning that card. When `query.player_username` is set, results are
+    /// restricted to that player's cards (exact match, case-insensitive) and `owner_count` is
+    /// always `1`.
+    async fn search_paginated(&self, query: SearchQuery)
+    -> Result<Paginated<SearchCard>, AppError>;
+    /// The sets of the cards [`Self::search_paginated`] can return for `scope`, whatever the
+    /// rarity, set or price filters: the same exposure rules (`v_tradable_entry`), sorted by
+    /// set name.
+    async fn search_sets(&self, scope: &SearchScope) -> Result<Vec<SetName>, AppError>;
 }
 
 /// The request side of the card prices views refresh, run in the background by
