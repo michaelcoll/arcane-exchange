@@ -31,8 +31,8 @@ package final class SearchResultsViewModel {
     /// filters. Empty until loaded, which disables the drawer's Sets row.
     package private(set) var sets: [SetInfo] = []
     private var isLoadingSets = false
-    /// The Offre axis `sets` was loaded for: the facet follows it.
-    private var loadedSetsOffer: OfferAxis?
+    /// The axes `sets` was loaded for: the facet follows them.
+    private var loadedSetsAxes: SearchAxes?
 
     package init(target: SearchResultsRoute.Target, api: any APIProtocol, defaults: UserDefaults = .standard) {
         self.target = target
@@ -52,18 +52,18 @@ package final class SearchResultsViewModel {
         await paginator.reload()
     }
 
-    /// Loads the set list once per Offre axis, since the filters and the Possession axis never
-    /// change it. A failure is silent: the grid stays usable, and the next appearance tries again.
+    /// Loads the set list once per combination of axes, since the filters never change it. A
+    /// failure is silent: the grid stays usable, and the next appearance tries again.
     package func loadSetsIfNeeded() async {
-        let offer = axes.offer
-        guard sets.isEmpty || loadedSetsOffer != offer, !isLoadingSets,
-              let query = target.setsQuery(offer: offer)
+        let axes = axes
+        guard sets.isEmpty || loadedSetsAxes != axes, !isLoadingSets,
+              let query = target.setsQuery(axes: axes)
         else { return }
         isLoadingSets = true
         defer { isLoadingSets = false }
         guard let sets = try? await api.search_card_sets(query: query).ok.body.json else { return }
         self.sets = sets
-        loadedSetsOffer = offer
+        loadedSetsAxes = axes
     }
 
     private func fetchPage(_ page: Int32, pageSize: Int32) async throws -> PaginatorPage<SearchCard> {

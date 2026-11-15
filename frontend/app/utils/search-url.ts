@@ -97,34 +97,28 @@ export const searchRoute = (state: SearchUrlState) => ({
 export type SearchListParams = Pick<SearchParams, 'q' | 'owned' | 'offered' | 'offered_by'>;
 
 /**
- * The request of the card list of a search (`GET /search/card`): the scope of its set facet, which
- * the text filter on a browsed player's collection narrows further, and the Possession axis (which
- * the set facet does not follow yet) completes. `null` where the search shows no list (decklist
- * mode, player mode before a player is chosen).
+ * The request of the card list of a search (`GET /search/card`): the scope of its set facet.
+ * `null` where the search shows no list (decklist mode, player mode before a player is chosen).
  */
-export const searchListParams = (state: SearchUrlState): SearchListParams | null => {
-  const scope = searchSetsScope(state);
-  if (!scope) return null;
-  const filter = state.mode === 'player' ? nonBlankString(state.filter) : undefined;
-  return {
-    ...scope,
-    ...(filter && { q: filter }),
-    ...(state.owned !== undefined && { owned: state.owned }),
-  };
-};
+export const searchListParams = (state: SearchUrlState): SearchListParams | null =>
+  searchSetsScope(state);
 
 /**
- * The scope of the set facet (`GET /search/card/sets`) for a search: the Offre axis (the cards
- * offered by any player for a name, unless the whole Catalogue is asked; those of the browsed
- * player in player mode) and the submitted name (the text filter on a player's collection does
- * not narrow the sets). `null` where the search shows no list, so no facet.
+ * The scope of the set facet (`GET /search/card/sets`) for a search: the Possession axis, the
+ * Offre axis (the cards offered by any player for a name, unless the whole Catalogue is asked;
+ * those of the browsed player in player mode) and the text (the submitted name, or the text
+ * filter on a browsed player's collection). `null` where the search shows no list, so no facet.
  */
 export const searchSetsScope = (state: SearchUrlState): SearchSetsParams | null => {
+  const owned = state.owned !== undefined ? { owned: state.owned } : {};
   if (state.mode === 'name') {
     const q = nonBlankString(state.q);
-    return { ...(state.offered !== false && { offered: true }), ...(q && { q }) };
+    return { ...owned, ...(state.offered !== false && { offered: true }), ...(q && { q }) };
   }
-  if (state.mode === 'player' && state.player) return { offered_by: state.player };
+  if (state.mode === 'player' && state.player) {
+    const q = nonBlankString(state.filter);
+    return { ...owned, offered_by: state.player, ...(q && { q }) };
+  }
   return null;
 };
 

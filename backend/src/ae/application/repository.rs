@@ -226,8 +226,13 @@ pub trait SearchRepository: Send + Sync {
         query: SearchQuery,
     ) -> Result<Paginated<SearchCard>, AppError>;
     /// The sets of the impressions [`Self::search_paginated`] can return for `scope`, whatever
-    /// the rarity, set or price filters, sorted by set name.
-    async fn search_sets(&self, scope: &SearchScope) -> Result<Vec<SetName>, AppError>;
+    /// the rarity, set or price filters, sorted by set name. `user_id` is the searching player,
+    /// for `scope.possession`.
+    async fn search_sets(
+        &self,
+        user_id: &UserId,
+        scope: &SearchScope,
+    ) -> Result<Vec<SetName>, AppError>;
 }
 
 /// The request side of the card prices views refresh, run in the background by

@@ -182,12 +182,17 @@ describe('searchSetsScope', () => {
     ['a blank name', { mode: 'name', q: '  ' }, { offered: true }],
     ['a player', { mode: 'player', player: 'urza' }, { offered_by: 'urza' }],
     [
-      'a player with a text filter, ignored',
+      'a player with a text filter',
       { mode: 'player', player: 'urza', filter: 'tutor' },
-      { offered_by: 'urza' },
+      { offered_by: 'urza', q: 'tutor' },
     ],
     ['the whole Catalogue', { mode: 'name', q: 'Sol Ring', offered: false }, { q: 'Sol Ring' }],
-    ['a possession, ignored for now', { mode: 'name', owned: false }, { offered: true }],
+    ['a possession', { mode: 'name', owned: false }, { offered: true, owned: false }],
+    [
+      'a possession on a player',
+      { mode: 'player', player: 'urza', owned: true },
+      { offered_by: 'urza', owned: true },
+    ],
     ['the player mode without player', { mode: 'player' }, null],
     ['the decklist mode', { mode: 'decklist' }, null],
   ])('scopes %s', (_label, state, expected) => {

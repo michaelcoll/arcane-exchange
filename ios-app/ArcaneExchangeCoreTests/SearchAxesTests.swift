@@ -58,10 +58,13 @@ struct SearchAxesTests {
         #expect(query == Query(page: 0, page_size: 20, sort_dir: .desc, owned: false, offered_by: "jace"))
     }
 
-    @Test func theSetFacetFollowsTheOfferAxisOnly() {
-        #expect(text.setsQuery(offer: .all) == SetsQuery(q: "Sol Ring"))
-        #expect(text.setsQuery(offer: .offered) == SetsQuery(q: "Sol Ring", offered: true))
-        #expect(player.setsQuery(offer: .all) == SetsQuery(offered_by: "jace"))
+    @Test func theSetFacetFollowsTheTextAndBothAxes() {
+        let notOwned = SearchAxes(possession: .notOwned, offer: .offered)
+        #expect(text.setsQuery(axes: SearchAxes(offer: .all)) == SetsQuery(q: "Sol Ring"))
+        #expect(text.setsQuery(axes: SearchAxes()) == SetsQuery(q: "Sol Ring", offered: true))
+        #expect(text.setsQuery(axes: notOwned) == SetsQuery(q: "Sol Ring", owned: false, offered: true))
+        #expect(player.setsQuery(axes: SearchAxes(possession: .owned, offer: .all))
+            == SetsQuery(owned: true, offered_by: "jace"))
     }
 
     @Test func onlyAPlayerFreeSearchOffersTheOfferAxis() {
@@ -71,7 +74,7 @@ struct SearchAxesTests {
     }
 
     @MainActor
-    @Test func changingAnAxisReloadsWithItAndTheSetsFollowTheOffer() async {
+    @Test func changingAnAxisReloadsWithItAndTheSetsFollowBothAxes() async {
         let api = FakeAPI()
         nonisolated(unsafe) var queries: [Query] = []
         nonisolated(unsafe) var setsQueries: [SetsQuery] = []
@@ -94,6 +97,9 @@ struct SearchAxesTests {
 
         #expect(queries.map(\.owned) == [nil, false])
         #expect(queries.map(\.offered) == [true, nil])
-        #expect(setsQueries == [SetsQuery(q: "Sol Ring", offered: true), SetsQuery(q: "Sol Ring")])
+        #expect(setsQueries == [
+            SetsQuery(q: "Sol Ring", offered: true),
+            SetsQuery(q: "Sol Ring", owned: false),
+        ])
     }
 }
