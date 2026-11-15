@@ -2,16 +2,14 @@ import APIClient
 import ArcaneExchangeCore
 import SwiftUI
 
-/// Rechercher tab (`ScrSearch` in the iOS mockup): a mode switch — carte / decklist / joueur —
-/// over the system search field. Card and player search hit the real API; decklist has no
-/// endpoint yet and lands on a placeholder. Recent card queries and players are kept on the
-/// device only, as the mockup notes.
+/// Rechercher tab (`ScrSearch` in the iOS mockup): a mode switch — carte / joueur —
+/// over the system search field. Recent card queries and players are kept on the device only,
+/// as the mockup notes.
 struct SearchView: View {
     @Binding var searchText: String
 
     @State private var model: SearchViewModel
     @State private var mode: SearchMode = .card
-    @State private var deckList = ""
     @Namespace private var modeThumb
 
     init(searchText: Binding<String>, api: any APIProtocol) {
@@ -49,7 +47,6 @@ struct SearchView: View {
             switch mode {
             case .card: await model.previewCards(matching: searchText)
             case .player: await model.lookUpPlayers(matching: searchText)
-            case .decklist: break
             }
         }
     }
@@ -74,7 +71,6 @@ struct SearchView: View {
     @ViewBuilder private var content: some View {
         switch mode {
         case .card: cardMode
-        case .decklist: decklistMode
         case .player: playerMode
         }
     }
@@ -157,39 +153,6 @@ struct SearchView: View {
         return query.isEmpty ? model.recentQueries : model.recentQueries.filter { $0.lowercased().contains(query) }
     }
 
-    // MARK: Decklist
-
-    private var decklistMode: some View {
-        Form {
-            Section {
-                TextEditor(text: $deckList)
-                    .font(.callout.monospaced())
-                    .frame(minHeight: 160)
-                    .overlay(alignment: .topLeading) {
-                        if deckList.isEmpty {
-                            Text("1x Vampiric Tutor\n1x Black Market Connections\n1x The Soul Stone…")
-                                .font(.callout.monospaced())
-                                .foregroundStyle(.tertiary)
-                                .padding(.top, 8)
-                                .allowsHitTesting(false)
-                        }
-                    }
-            } header: {
-                Text("Coller une decklist")
-            } footer: {
-                Text("Moxfield, Archidekt ou texte brut, une carte par ligne.")
-            }
-
-            Section {
-                Button("Trouver les joueurs") {
-                    path.append(SearchResultsRoute(target: .decklist))
-                }
-                .frame(maxWidth: .infinity)
-                .disabled(deckList.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-            }
-        }
-    }
-
     // MARK: Joueur
 
     @ViewBuilder private var playerMode: some View {
@@ -263,7 +226,7 @@ struct SearchView: View {
         let query = searchText.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !query.isEmpty else { return }
         switch mode {
-        case .card, .decklist:
+        case .card:
             model.rememberQuery(query)
             path.append(SearchResultsRoute(target: .card(query: query)))
         case .player:

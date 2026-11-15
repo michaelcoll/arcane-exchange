@@ -93,8 +93,8 @@ struct CollectionViewModelTests {
         #expect(collectionQuery?.sets == "FDN,MH3")
         #expect(collectionQuery?.sort_by == .added_at)
         #expect(collectionQuery?.sort_dir == .asc)
-        #expect(searchQuery?.rarity == collectionQuery?.rarity)
-        #expect(searchQuery?.sets == collectionQuery?.sets)
+        #expect(searchQuery.rarity == collectionQuery?.rarity)
+        #expect(searchQuery.sets == collectionQuery?.sets)
     }
 
     @Test func loadsTheOwnedSetsInTheAPIOrderMostRecentFirst() async {

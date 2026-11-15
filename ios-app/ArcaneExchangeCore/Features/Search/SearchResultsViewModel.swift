@@ -56,9 +56,8 @@ package final class SearchResultsViewModel {
     /// failure is silent: the grid stays usable, and the next appearance tries again.
     package func loadSetsIfNeeded() async {
         let axes = axes
-        guard sets.isEmpty || loadedSetsAxes != axes, !isLoadingSets,
-              let query = target.setsQuery(axes: axes)
-        else { return }
+        guard sets.isEmpty || loadedSetsAxes != axes, !isLoadingSets else { return }
+        let query = target.setsQuery(axes: axes)
         isLoadingSets = true
         defer { isLoadingSets = false }
         guard let sets = try? await api.search_card_sets(query: query).ok.body.json else { return }
@@ -67,11 +66,7 @@ package final class SearchResultsViewModel {
     }
 
     private func fetchPage(_ page: Int32, pageSize: Int32) async throws -> PaginatorPage<SearchCard> {
-        guard let query = target.query(filters: filters, axes: axes, page: page, pageSize: pageSize) else {
-            // The view never instantiates this model for a decklist target.
-            return PaginatorPage(items: [], total: 0)
-        }
-
+        let query = target.query(filters: filters, axes: axes, page: page, pageSize: pageSize)
         let response = try await api.search_cards(query: query).ok.body.json
         return PaginatorPage(items: response.items, total: Int(response.total))
     }

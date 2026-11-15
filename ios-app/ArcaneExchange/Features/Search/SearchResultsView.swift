@@ -3,33 +3,15 @@ import ArcaneExchangeCore
 import SwiftUI
 
 /// Where a submitted search lands (`ScrResults` in the mockup): a paginated card grid for a
-/// name or player search, or a placeholder for the not-yet-wired decklist mode.
+/// name or player search.
 struct SearchResultsView: View {
     let route: SearchResultsRoute
     let api: any APIProtocol
 
     var body: some View {
-        Group {
-            switch route.target {
-            case .decklist:
-                decklistPlaceholder
-            case .card, .player:
-                SearchResultsGrid(target: route.target, api: api)
-            }
-        }
-        .navigationTitle(route.title)
-        .navigationBarTitleDisplayMode(.inline)
-    }
-
-    private var decklistPlaceholder: some View {
-        ContentUnavailableView {
-            Label("Recherche par decklist à venir", systemImage: "list.bullet.rectangle")
-        } description: {
-            Text("""
-            L'API cherche carte par carte : il faut un endroit côté backend pour grouper la \
-            liste avant de brancher ce mode.
-            """)
-        }
+        SearchResultsGrid(target: route.target, api: api)
+            .navigationTitle(route.title)
+            .navigationBarTitleDisplayMode(.inline)
     }
 }
 

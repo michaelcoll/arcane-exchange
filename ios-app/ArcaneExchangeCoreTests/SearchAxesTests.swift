@@ -24,20 +24,20 @@ struct SearchAxesTests {
     @Test func theOwnedImpressionsSendOwnedTrue() {
         let axes = SearchAxes(possession: .owned)
         let query = text.query(filters: CollectionFilters(), axes: axes, page: 0, pageSize: 20)
-        #expect(query?.owned == true)
-        #expect(query?.offered == true)
+        #expect(query.owned == true)
+        #expect(query.offered == true)
     }
 
     @Test func theImpressionsNotOwnedSendOwnedFalseAndStayOffered() {
         let axes = SearchAxes(possession: .notOwned)
         let query = text.query(filters: CollectionFilters(), axes: axes, page: 0, pageSize: 20)
-        #expect(query?.owned == false)
-        #expect(query?.offered == true)
+        #expect(query.owned == false)
+        #expect(query.offered == true)
     }
 
     @Test func everyPossessionSendsNoOwnedParameter() {
         let query = text.query(filters: CollectionFilters(), axes: SearchAxes(), page: 0, pageSize: 20)
-        #expect(query?.owned == nil)
+        #expect(query.owned == nil)
     }
 
     @Test func theWholeCatalogueSendsNoOfferedParameter() {
@@ -70,7 +70,6 @@ struct SearchAxesTests {
     @Test func onlyAPlayerFreeSearchOffersTheOfferAxis() {
         #expect(text.offersOfferAxis)
         #expect(!player.offersOfferAxis)
-        #expect(!SearchResultsRoute.Target.decklist.offersOfferAxis)
     }
 
     @MainActor

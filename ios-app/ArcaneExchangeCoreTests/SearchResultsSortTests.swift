@@ -44,11 +44,6 @@ struct SearchResultsSortTests {
         #expect(SearchResultsRoute.Target.player(username: "jace").sortOptions == [.trend])
     }
 
-    @Test func decklistIsNotSentToTheEndpoint() {
-        let query = SearchResultsRoute.Target.decklist.query(filters: CollectionFilters(), page: 0, pageSize: 20)
-        #expect(query == nil)
-    }
-
     @Test func summaryStatesCountAndSort() {
         #expect(CollectionCopy.sortedSummary(total: 42, sortBy: .trend) == "42 cartes · triées par valeur")
         #expect(CollectionCopy.sortedSummary(total: 1, sortBy: .added_at) == "1 carte · triées par ajout")

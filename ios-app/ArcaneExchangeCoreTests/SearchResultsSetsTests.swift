@@ -19,10 +19,6 @@ struct SearchResultsSetsTests {
         #expect(target.setsQuery() == SetsQuery(offered_by: "jace"))
     }
 
-    @Test func decklistHasNoSetFacet() {
-        #expect(SearchResultsRoute.Target.decklist.setsQuery() == nil)
-    }
-
     @Test func textSearchSendsTheSelectedSetsSortedAndCommaSeparated() {
         let target = SearchResultsRoute.Target.card(query: "Sol Ring")
         let filters = CollectionFilters(sets: ["TST", "ABC"])
@@ -41,14 +37,14 @@ struct SearchResultsSetsTests {
         let target = SearchResultsRoute.Target.player(username: "jace")
         let filters = CollectionFilters(sets: ["MH3"])
         let query = target.query(filters: filters, page: 0, pageSize: 20)
-        #expect(query?.sets == "MH3")
-        #expect(query?.offered_by == "jace")
+        #expect(query.sets == "MH3")
+        #expect(query.offered_by == "jace")
     }
 
     @Test func noSetSelectedSendsNoSetsParameter() {
         let target = SearchResultsRoute.Target.card(query: "Sol Ring")
         let query = target.query(filters: CollectionFilters(rarities: [.M]), page: 0, pageSize: 20)
-        #expect(query?.sets == nil)
+        #expect(query.sets == nil)
     }
 
     @Test func selectedSetsCountInTheFilterChip() {

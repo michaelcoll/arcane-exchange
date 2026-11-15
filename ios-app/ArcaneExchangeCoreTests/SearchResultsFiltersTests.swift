@@ -38,7 +38,7 @@ struct SearchResultsFiltersTests {
     @Test func noRaritySelectedSendsNoRarityParameter() {
         let target = SearchResultsRoute.Target.card(query: "Sol Ring")
         let query = target.query(filters: CollectionFilters(), page: 0, pageSize: 20)
-        #expect(query?.rarity == nil)
+        #expect(query.rarity == nil)
     }
 
     @MainActor @Test func aNewSearchStartsWithoutFilters() {
