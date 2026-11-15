@@ -1,5 +1,6 @@
 ---
 date: 2026-07-29
+status: amended by ADR-0026
 ---
 
 # La collection privée et la recherche publique sont deux endpoints distincts

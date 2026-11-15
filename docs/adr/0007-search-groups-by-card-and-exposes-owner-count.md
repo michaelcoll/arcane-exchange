@@ -1,5 +1,6 @@
 ---
 date: 2026-07-31
+status: superseded by ADR-0026
 ---
 
 # La recherche regroupe par carte et n'expose qu'un nombre de possesseurs
