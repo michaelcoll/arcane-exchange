@@ -6,8 +6,11 @@ import type { SetInfo } from '~/bindings/SetInfo';
 export const useSearchService = () => {
   const { apiCall } = useApi();
 
-  /** One page of a search: the page adapter of its card list (see `useCardList`). */
-  const getSearch = (params: SearchParams) =>
+  /**
+   * One page of a search: the page adapter of its card list (see `useCardList`). The list always
+   * names a sort field; the search only sorts by price, in the requested direction, and takes none.
+   */
+  const getSearch = ({ sort_by: _sortBy, ...params }: SearchParams & { sort_by?: string }) =>
     apiCall<PaginatedSearch>('/search/card', { query: params });
 
   /** The sets of the cards a search scope can return (see `useSearchSets`). */

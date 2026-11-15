@@ -1818,102 +1818,128 @@ extension Components {
             case PRERELEASE_PACK = "PRERELEASE_PACK"
             case PRECONSTRUCTED_DECK = "PRECONSTRUCTED_DECK"
         }
-        /// A card a search found, reduced to what is public: no purchase price, no date of addition.
+        /// An impression a search found (set and number, every language and finish together), reduced to
+        /// what is public: no purchase price, no date of addition, nothing of another player.
         ///
         /// - Remark: Generated from `#/components/schemas/SearchCardResponse`.
         public struct SearchCardResponse: Codable, Hashable, Sendable {
             /// - Remark: Generated from `#/components/schemas/SearchCardResponse/collector_number`.
             public var collector_number: Swift.String
-            /// - Remark: Generated from `#/components/schemas/SearchCardResponse/foil`.
-            public var foil: Swift.Bool
-            /// Back image of a double-faced card, like `image_url`; `null` for a single-faced card.
+            /// The foil Cardmarket price guide; `null` when there is no foil price.
+            ///
+            /// - Remark: Generated from `#/components/schemas/SearchCardResponse/foil_price_guide`.
+            public var foil_price_guide: Components.Schemas.PriceGuideResponse?
+            /// The French name, absent when unknown. The client chooses which name to show.
+            ///
+            /// - Remark: Generated from `#/components/schemas/SearchCardResponse/french_name`.
+            public var french_name: Swift.String?
+            /// Back image of a double-faced card, like `image_url` for a downloaded image; `null` for a
+            /// single-faced card, or with a Scryfall image.
             ///
             /// - Remark: Generated from `#/components/schemas/SearchCardResponse/image_back_url`.
             public var image_back_url: Swift.String?
-            /// Front image, relative to the frontend (e.g. `/card-images/FDN_1_EN.webp?v=gatherer`);
-            /// `null` while the card's image is pending.
+            /// Front image: relative to the frontend (e.g. `/card-images/FDN_1_EN.webp?v=gatherer`) when
+            /// a Card of the impression has a downloaded one (French first, then English), the Scryfall
+            /// URL of the Catalogue otherwise; `null` when there is none.
             ///
             /// - Remark: Generated from `#/components/schemas/SearchCardResponse/image_url`.
             public var image_url: Swift.String?
-            /// - Remark: Generated from `#/components/schemas/SearchCardResponse/language_code`.
-            public var language_code: Swift.String
+            /// The English name.
+            ///
             /// - Remark: Generated from `#/components/schemas/SearchCardResponse/name`.
             public var name: Swift.String
-            /// Number of distinct users actually offering this card to trade — after applying each
-            /// owner's visibility, trade binder selection and rarity filters. A card no one offers
-            /// anymore never appears in search results at all.
+            /// Language codes (`EN`, `FR`...) in which this impression is offered for trade: by the
+            /// `offered_by` player when there is one, by any player otherwise. Empty when nobody offers
+            /// it.
+            ///
+            /// - Remark: Generated from `#/components/schemas/SearchCardResponse/offered_languages`.
+            public var offered_languages: [Swift.String]
+            /// Number of distinct players offering this impression to trade — after applying each
+            /// player's visibility, trade binder selection and rarity filters — the authenticated one
+            /// included. `0` when nobody does.
             ///
             /// - Remark: Generated from `#/components/schemas/SearchCardResponse/owner_count`.
             public var owner_count: Swift.Int64
+            /// The normal Cardmarket price guide; `null` when there is no normal price.
+            ///
             /// - Remark: Generated from `#/components/schemas/SearchCardResponse/price_guide`.
             public var price_guide: Components.Schemas.PriceGuideResponse?
             /// - Remark: Generated from `#/components/schemas/SearchCardResponse/rarity_code`.
             public var rarity_code: Swift.String
-            /// `true` if this card is engaged in an `ONE_ACCEPTED` or `FULLY_ACCEPTED` trade of the
-            /// `player_username`-filtered owner. Always `false` in the unscoped multi-owner search,
-            /// where no single owner can be attributed.
+            /// With `offered_by` only: `true` if one of the Cards of this impression of that player is
+            /// engaged in an `ONE_ACCEPTED` or `FULLY_ACCEPTED` trade. Absent otherwise.
             ///
             /// - Remark: Generated from `#/components/schemas/SearchCardResponse/reserved`.
-            public var reserved: Swift.Bool
+            public var reserved: Swift.Bool?
             /// - Remark: Generated from `#/components/schemas/SearchCardResponse/scryfall_id`.
             public var scryfall_id: Swift.String
             /// - Remark: Generated from `#/components/schemas/SearchCardResponse/set_code`.
             public var set_code: Swift.String
+            /// - Remark: Generated from `#/components/schemas/SearchCardResponse/set_name`.
+            public var set_name: Swift.String
             /// Creates a new `SearchCardResponse`.
             ///
             /// - Parameters:
             ///   - collector_number:
-            ///   - foil:
-            ///   - image_back_url: Back image of a double-faced card, like `image_url`; `null` for a single-faced card.
-            ///   - image_url: Front image, relative to the frontend (e.g. `/card-images/FDN_1_EN.webp?v=gatherer`);
-            ///   - language_code:
-            ///   - name:
-            ///   - owner_count: Number of distinct users actually offering this card to trade — after applying each
-            ///   - price_guide:
+            ///   - foil_price_guide: The foil Cardmarket price guide; `null` when there is no foil price.
+            ///   - french_name: The French name, absent when unknown. The client chooses which name to show.
+            ///   - image_back_url: Back image of a double-faced card, like `image_url` for a downloaded image; `null` for a
+            ///   - image_url: Front image: relative to the frontend (e.g. `/card-images/FDN_1_EN.webp?v=gatherer`) when
+            ///   - name: The English name.
+            ///   - offered_languages: Language codes (`EN`, `FR`...) in which this impression is offered for trade: by the
+            ///   - owner_count: Number of distinct players offering this impression to trade — after applying each
+            ///   - price_guide: The normal Cardmarket price guide; `null` when there is no normal price.
             ///   - rarity_code:
-            ///   - reserved: `true` if this card is engaged in an `ONE_ACCEPTED` or `FULLY_ACCEPTED` trade of the
+            ///   - reserved: With `offered_by` only: `true` if one of the Cards of this impression of that player is
             ///   - scryfall_id:
             ///   - set_code:
+            ///   - set_name:
             public init(
                 collector_number: Swift.String,
-                foil: Swift.Bool,
+                foil_price_guide: Components.Schemas.PriceGuideResponse? = nil,
+                french_name: Swift.String? = nil,
                 image_back_url: Swift.String? = nil,
                 image_url: Swift.String? = nil,
-                language_code: Swift.String,
                 name: Swift.String,
+                offered_languages: [Swift.String],
                 owner_count: Swift.Int64,
                 price_guide: Components.Schemas.PriceGuideResponse? = nil,
                 rarity_code: Swift.String,
-                reserved: Swift.Bool,
+                reserved: Swift.Bool? = nil,
                 scryfall_id: Swift.String,
-                set_code: Swift.String
+                set_code: Swift.String,
+                set_name: Swift.String
             ) {
                 self.collector_number = collector_number
-                self.foil = foil
+                self.foil_price_guide = foil_price_guide
+                self.french_name = french_name
                 self.image_back_url = image_back_url
                 self.image_url = image_url
-                self.language_code = language_code
                 self.name = name
+                self.offered_languages = offered_languages
                 self.owner_count = owner_count
                 self.price_guide = price_guide
                 self.rarity_code = rarity_code
                 self.reserved = reserved
                 self.scryfall_id = scryfall_id
                 self.set_code = set_code
+                self.set_name = set_name
             }
             public enum CodingKeys: String, CodingKey {
                 case collector_number
-                case foil
+                case foil_price_guide
+                case french_name
                 case image_back_url
                 case image_url
-                case language_code
                 case name
+                case offered_languages
                 case owner_count
                 case price_guide
                 case rarity_code
                 case reserved
                 case scryfall_id
                 case set_code
+                case set_name
             }
         }
         /// A set, as several resources show it.

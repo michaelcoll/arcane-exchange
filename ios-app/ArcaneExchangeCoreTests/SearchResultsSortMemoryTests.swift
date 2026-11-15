@@ -47,7 +47,7 @@ struct SearchResultsSortMemoryTests {
         #expect(SearchResultsViewModel(target: .card(query: "Sol Ring"), api: FakeAPI(), defaults: defaults).filters
             == CollectionFilters(sortBy: .trend, sortDir: .desc))
         #expect(SearchResultsViewModel(target: .player(username: "jace"), api: FakeAPI(), defaults: defaults).filters
-            == CollectionFilters(sortBy: .added_at, sortDir: .desc))
+            == CollectionFilters(sortBy: .trend, sortDir: .desc))
     }
 
     /// Only the sort is remembered: the filters start empty on each new search.
@@ -79,7 +79,7 @@ struct SearchResultsSortMemoryTests {
         #expect(SearchResultsViewModel(target: .card(query: "Sol Ring"), api: FakeAPI(), defaults: defaults).filters
             == CollectionFilters(sortBy: .trend, sortDir: .desc))
         #expect(SearchResultsViewModel(target: .player(username: "jace"), api: FakeAPI(), defaults: defaults).filters
-            == CollectionFilters(sortBy: .added_at, sortDir: .desc))
+            == CollectionFilters(sortBy: .trend, sortDir: .desc))
     }
 
     @Test func keepsBothSettingsWhileLoadingOrSignedIn() {
@@ -114,7 +114,7 @@ struct SearchResultsSortMemoryTests {
         SignOutCleanup.run(isLoaded: true, isSignedIn: false, defaults: defaults, widgetDefaults: defaults)
 
         #expect(SearchResultsViewModel(target: .player(username: "jace"), api: FakeAPI(), defaults: defaults).filters
-            == CollectionFilters(sortBy: .added_at, sortDir: .desc))
+            == CollectionFilters(sortBy: .trend, sortDir: .desc))
         #expect(SearchResultsViewModel(target: .card(query: "Sol Ring"), api: FakeAPI(), defaults: defaults).filters
             == CollectionFilters(sortBy: .trend, sortDir: .desc))
     }

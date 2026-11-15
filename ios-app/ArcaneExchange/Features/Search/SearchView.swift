@@ -287,7 +287,7 @@ private struct CardPreviewRow: View {
                 .clipShape(RoundedRectangle(cornerRadius: 4, style: .continuous))
 
             VStack(alignment: .leading, spacing: 2) {
-                Text(card.name)
+                Text(card.displayName)
                     .fontWeight(.medium)
                     .lineLimit(1)
                 Text("\(card.set_code.uppercased()) · \(card.collector_number)")
@@ -297,8 +297,8 @@ private struct CardPreviewRow: View {
 
             Spacer(minLength: 8)
 
-            if let trend = card.price_guide?.trend {
-                Text(Price.euros(cents: Int(trend)))
+            if let priceCents = card.referencePriceCents {
+                Text(Price.euros(cents: priceCents))
                     .font(.callout.weight(.semibold))
                     .monospacedDigit()
             }

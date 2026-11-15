@@ -57,17 +57,10 @@ export const COLLECTION_CRITERIA: CriteriaContext = {
   maxOffset: COLLECTION_MAX_OFFSET,
 };
 
-/** The search by name, across every player: only the price sort. */
-export const NAME_SEARCH_CRITERIA: CriteriaContext = {
+/** The search of the Catalogue: only the price sort, the date added belongs to the collection. */
+export const SEARCH_CRITERIA: CriteriaContext = {
   sorts: [PRICE_SORT],
   defaultSort: { sort_by: 'trend', sort_dir: 'desc' },
-  maxOffset: SEARCH_MAX_OFFSET,
-};
-
-/** The collection of one player: `added_at` only makes sense scoped to a single player. */
-export const PLAYER_SEARCH_CRITERIA: CriteriaContext = {
-  sorts: [PRICE_SORT, ADDED_AT_SORT],
-  defaultSort: { sort_by: 'added_at', sort_dir: 'desc' },
   maxOffset: SEARCH_MAX_OFFSET,
 };
 

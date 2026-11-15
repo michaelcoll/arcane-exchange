@@ -9,14 +9,14 @@ struct SearchResultsSetsTests {
     typealias Query = Operations.search_cards.Input.Query
     typealias SetsQuery = Operations.search_card_sets.Input.Query
 
-    @Test func textSearchAsksForTheSetsOfItsQuery() {
+    @Test func textSearchAsksForTheSetsOfTheOfferedCardsMatchingItsQuery() {
         let target = SearchResultsRoute.Target.card(query: "Sol Ring")
-        #expect(target.setsQuery == SetsQuery(q: "Sol Ring"))
+        #expect(target.setsQuery == SetsQuery(q: "Sol Ring", offered: true))
     }
 
-    @Test func playerCollectionAsksForThePlayersSets() {
+    @Test func playerCollectionAsksForTheSetsThePlayerOffers() {
         let target = SearchResultsRoute.Target.player(username: "jace")
-        #expect(target.setsQuery == SetsQuery(player_username: "jace"))
+        #expect(target.setsQuery == SetsQuery(offered_by: "jace"))
     }
 
     @Test func decklistHasNoSetFacet() {
@@ -30,19 +30,19 @@ struct SearchResultsSetsTests {
         #expect(query == Query(
             page: 0,
             page_size: 20,
-            sort_by: .trend,
             sort_dir: .desc,
             q: "Sol Ring",
+            offered: true,
             sets: "ABC,TST"
         ))
     }
 
     @Test func playerCollectionSendsTheSelectedSets() {
         let target = SearchResultsRoute.Target.player(username: "jace")
-        let filters = CollectionFilters(sets: ["MH3"], sortBy: .added_at)
+        let filters = CollectionFilters(sets: ["MH3"])
         let query = target.query(filters: filters, page: 0, pageSize: 20)
         #expect(query?.sets == "MH3")
-        #expect(query?.player_username == "jace")
+        #expect(query?.offered_by == "jace")
     }
 
     @Test func noSetSelectedSendsNoSetsParameter() {

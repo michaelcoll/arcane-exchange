@@ -1,11 +1,6 @@
 import type { LocationQuery } from 'vue-router';
 import type { SearchParams } from '~/bindings/SearchParams';
 import type { SearchSetsParams } from '~/bindings/SearchSetsParams';
-import {
-  NAME_SEARCH_CRITERIA,
-  PLAYER_SEARCH_CRITERIA,
-  type CriteriaContext,
-} from './card-criteria-url';
 
 export const SEARCH_MODES = ['name', 'decklist', 'player'] as const;
 export type SearchMode = (typeof SEARCH_MODES)[number];
@@ -73,15 +68,8 @@ export const searchRoute = (state: SearchUrlState) => ({
   query: toSearchQuery(state),
 });
 
-/**
- * The criteria context of a search: a player's collection also sorts by date added (the default
- * there); the name search across players only by price.
- */
-export const searchCriteriaContext = (state: SearchUrlState): CriteriaContext =>
-  state.mode === 'player' && state.player ? PLAYER_SEARCH_CRITERIA : NAME_SEARCH_CRITERIA;
-
 /** What a search adds to the request of its card list, next to the criteria. */
-export type SearchListParams = Pick<SearchParams, 'q' | 'player_username'>;
+export type SearchListParams = Pick<SearchParams, 'q' | 'offered' | 'offered_by'>;
 
 /**
  * The request of the card list of a search (`GET /search/card`): the scope of its set facet, which
@@ -95,16 +83,17 @@ export const searchListParams = (state: SearchUrlState): SearchListParams | null
 };
 
 /**
- * The scope of the set facet (`GET /search/card/sets`) for a search: the submitted name, or the
- * browsed player alone (their text filter does not narrow the sets). `null` where the search shows
- * no list, so no facet.
+ * The scope of the set facet (`GET /search/card/sets`) for a search: the Offre axis (the cards
+ * offered by any player for a name, those of the browsed player in player mode) and the submitted
+ * name (the text filter on a player's collection does not narrow the sets). `null` where the
+ * search shows no list, so no facet.
  */
 export const searchSetsScope = (state: SearchUrlState): SearchSetsParams | null => {
   if (state.mode === 'name') {
     const q = nonBlankString(state.q);
-    return q ? { q } : {};
+    return { offered: true, ...(q && { q }) };
   }
-  if (state.mode === 'player' && state.player) return { player_username: state.player };
+  if (state.mode === 'player' && state.player) return { offered_by: state.player };
   return null;
 };
 

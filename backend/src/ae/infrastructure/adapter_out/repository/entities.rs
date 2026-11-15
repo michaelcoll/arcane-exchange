@@ -5,7 +5,7 @@ use crate::domain::card_image::{CardImage, CardImageSource};
 use crate::domain::language_code::LanguageCode;
 use crate::domain::price::{FullPriceGuide, Price, PriceGuide, PriceHistoryEntry};
 use crate::domain::rarity_code::RarityCode;
-use crate::domain::search::SearchCard;
+use crate::domain::search::{SearchCard, SearchImage};
 use crate::domain::set_name::{SetCode, SetName};
 use crate::domain::showcase::ShowcaseCard;
 use crate::domain::trade::{Trade, TradeCard, TradeCardDetail, TradeId, TradeStatus, TradeSummary};
@@ -538,27 +538,35 @@ pub struct CardWithPriceEntity {
     pub price: PriceGuideEntity,
 }
 
-/// A row of the public search: one card, aggregated over the players who offer it.
+/// A row of the search: one impression of the Catalogue, with what the players offer of it. The
+/// price columns are flat, as the normal and foil guides come from the same row.
 #[derive(sqlx::FromRow)]
 pub struct SearchCardEntity {
     pub set_code: String,
     pub set_name: String,
     pub collector_number: String,
-    pub language_code: String,
-    pub foil: bool,
     pub name: String,
+    pub french_name: Option<String>,
     pub rarity: String,
     pub scryfall_id: Uuid,
+    /// The Scryfall image of the Catalogue.
+    pub image_url: Option<String>,
+    /// The language and image of the Card of the impression whose image is used, if any.
+    pub image_language: Option<String>,
     pub image_source: Option<String>,
-    pub image_has_back: bool,
-    /// Number of distinct users offering this card.
+    pub image_has_back: Option<bool>,
+    /// Number of distinct users offering this impression.
     pub owner_count: i64,
-    /// `true` if this card is engaged in one of its owner's trades in `ONE_ACCEPTED` or
-    /// `FULLY_ACCEPTED` status. Only accurate when scoped to a single real owner
-    /// (`player_username`); `false` in the unscoped multi-owner aggregate.
-    pub reserved: bool,
-    #[sqlx(flatten)]
-    pub price: PriceGuideEntity,
+    /// Only set when the search is scoped to a single player.
+    pub reserved: Option<bool>,
+    /// The languages offered within the Offre scope of the search.
+    pub offered_languages: Vec<String>,
+    pub low: Option<i32>,
+    pub avg: Option<i32>,
+    pub trend: Option<i32>,
+    pub low_foil: Option<i32>,
+    pub avg_foil: Option<i32>,
+    pub trend_foil: Option<i32>,
 }
 
 impl From<i32> for Price {
@@ -615,28 +623,43 @@ impl TryFrom<SearchCardEntity> for SearchCard {
     type Error = InfraError;
 
     fn try_from(e: SearchCardEntity) -> Result<Self, Self::Error> {
-        let price_guide = if e.price.avg.is_some() || e.price.low.is_some() {
-            Some(PriceGuide::from(e.price))
-        } else {
-            None
+        let set_code =
+            SetCode::try_new(&e.set_code).map_err(|_| invalid_db_value("set code", &e.set_code))?;
+
+        // A downloaded image of one of the Cards wins over the Scryfall one of the Catalogue.
+        let local_image = match (e.image_language.as_deref(), e.image_source.as_deref()) {
+            (Some(language), Some(source)) => Some(SearchImage::Local {
+                card_id: card_id_from_db(&e.set_code, e.collector_number.clone(), language)?,
+                image: downloaded_card_image_from_db(source, e.image_has_back.unwrap_or(false))?,
+            }),
+            _ => None,
         };
 
-        let card_id = card_id_from_db(&e.set_code, e.collector_number, &e.language_code)?;
         Ok(SearchCard {
-            set_name: SetName::new(card_id.set_code.clone(), e.set_name),
-            id: CopyId {
-                card_id,
-                foil: e.foil,
-            },
+            set_name: SetName::new(set_code, e.set_name),
+            collector_number: e.collector_number,
             name: e.name,
+            french_name: e.french_name,
             rarity_code: from_db_rarity(&e.rarity)?,
             scryfall_id: e.scryfall_id,
-            image: card_image_from_db(e.image_source.as_deref(), e.image_has_back)?,
-            price_guide,
+            image: local_image.or(e.image_url.map(SearchImage::Scryfall)),
+            price_guide: price_guide_of(e.low, e.avg, e.trend),
+            foil_price_guide: price_guide_of(e.low_foil, e.avg_foil, e.trend_foil),
             owner_count: e.owner_count as u64,
             reserved: e.reserved,
+            offered_languages: e
+                .offered_languages
+                .iter()
+                .map(|l| LanguageCode::try_new(l).map_err(|_| invalid_db_value("language code", l)))
+                .collect::<Result<_, _>>()?,
         })
     }
+}
+
+/// The price guide of the three prices, `None` when Cardmarket has none of them.
+fn price_guide_of(low: Option<i32>, avg: Option<i32>, trend: Option<i32>) -> Option<PriceGuide> {
+    (low.is_some() || avg.is_some() || trend.is_some())
+        .then(|| PriceGuide::from(PriceGuideEntity { low, avg, trend }))
 }
 
 #[derive(sqlx::FromRow)]
@@ -1128,59 +1151,107 @@ mod tests {
 
     // --- SearchCardEntity ---
 
-    #[test]
-    fn search_card_entity_converts_to_a_search_card_with_its_owner_count() {
-        let entity = SearchCardEntity {
+    fn search_card_entity() -> SearchCardEntity {
+        SearchCardEntity {
             set_code: "FDN".to_string(),
             set_name: "Foundations".to_string(),
             collector_number: "1".to_string(),
-            language_code: "EN".to_string(),
-            foil: false,
             name: "Sol Ring".to_string(),
+            french_name: Some("Anneau solaire".to_string()),
             rarity: "C".to_string(),
             scryfall_id: Uuid::new_v4(),
+            image_url: Some("https://img.example/1.jpg".to_string()),
+            image_language: None,
             image_source: None,
-            image_has_back: false,
+            image_has_back: None,
             owner_count: 5,
-            reserved: true,
-            price: PriceGuideEntity {
-                low: Some(300),
-                avg: Some(350),
-                trend: None,
-            },
+            reserved: Some(true),
+            offered_languages: vec!["EN".to_string(), "FR".to_string()],
+            low: Some(300),
+            avg: Some(350),
+            trend: None,
+            low_foil: None,
+            avg_foil: None,
+            trend_foil: None,
+        }
+    }
+
+    #[test]
+    fn search_card_entity_converts_to_a_search_card_with_its_owner_count() {
+        let card = SearchCard::try_from(search_card_entity()).unwrap();
+
+        assert_eq!(card.name, "Sol Ring");
+        assert_eq!(card.french_name, Some("Anneau solaire".to_string()));
+        assert_eq!(card.owner_count, 5);
+        assert_eq!(card.reserved, Some(true));
+        assert_eq!(
+            card.offered_languages,
+            vec![LanguageCode::EN, LanguageCode::FR]
+        );
+        assert!(card.price_guide.is_some());
+        assert!(card.foil_price_guide.is_none());
+    }
+
+    #[test]
+    fn search_card_entity_with_an_unknown_offered_language_is_a_repository_error() {
+        let entity = SearchCardEntity {
+            offered_languages: vec!["XX".to_string()],
+            ..search_card_entity()
+        };
+
+        assert!(matches!(
+            SearchCard::try_from(entity),
+            Err(InfraError::RepositoryError(_))
+        ));
+    }
+
+    #[test]
+    fn search_card_entity_with_no_price_returns_none_price_guides() {
+        let entity = SearchCardEntity {
+            low: None,
+            avg: None,
+            ..search_card_entity()
         };
 
         let card = SearchCard::try_from(entity).unwrap();
 
-        assert_eq!(card.name, "Sol Ring");
-        assert_eq!(card.owner_count, 5);
-        assert!(card.reserved);
-        assert!(card.price_guide.is_some());
+        assert!(card.price_guide.is_none());
+        assert!(card.foil_price_guide.is_none());
     }
 
     #[test]
-    fn search_card_entity_with_no_price_returns_none_price_guide() {
+    fn search_card_entity_without_a_downloaded_image_uses_the_scryfall_one() {
+        let card = SearchCard::try_from(search_card_entity()).unwrap();
+
+        assert_eq!(
+            card.image,
+            Some(SearchImage::Scryfall(
+                "https://img.example/1.jpg".to_string()
+            ))
+        );
+    }
+
+    #[test]
+    fn search_card_entity_with_a_downloaded_image_uses_it() {
         let entity = SearchCardEntity {
-            set_code: "FDN".to_string(),
-            set_name: "Foundations".to_string(),
-            collector_number: "1".to_string(),
-            language_code: "EN".to_string(),
-            foil: false,
-            name: "Sol Ring".to_string(),
-            rarity: "C".to_string(),
-            scryfall_id: Uuid::new_v4(),
-            image_source: None,
-            image_has_back: false,
-            owner_count: 1,
-            reserved: false,
-            price: PriceGuideEntity {
-                low: None,
-                avg: None,
-                trend: None,
-            },
+            image_language: Some("FR".to_string()),
+            image_source: Some("gatherer_localized".to_string()),
+            image_has_back: Some(true),
+            ..search_card_entity()
         };
 
-        assert!(SearchCard::try_from(entity).unwrap().price_guide.is_none());
+        let card = SearchCard::try_from(entity).unwrap();
+
+        assert_eq!(
+            card.image,
+            Some(SearchImage::Local {
+                card_id: card_id_from_db("FDN", "1".to_string(), "FR").unwrap(),
+                image: CardImage {
+                    source: CardImageSource::GathererLocalized,
+                    has_back: true,
+                },
+            })
+        );
     }
 
     #[test]

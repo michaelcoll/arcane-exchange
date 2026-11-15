@@ -33,7 +33,6 @@ pub enum FunctionalError {
         requested_offset: u64,
         max: u32,
     },
-    AddedAtSortRequiresPlayerUsername,
     PriceNotFound,
     CardNotFound,
     SetNotFound,
@@ -104,9 +103,6 @@ impl FunctionalError {
             FunctionalError::NoValidLine => "no_valid_line",
             FunctionalError::InvalidPageSize { .. } => "invalid_page_size",
             FunctionalError::PaginationTooDeep { .. } => "pagination_too_deep",
-            FunctionalError::AddedAtSortRequiresPlayerUsername => {
-                "added_at_sort_requires_player_username"
-            }
             FunctionalError::PriceNotFound => "price_not_found",
             FunctionalError::CardNotFound => "card_not_found",
             FunctionalError::SetNotFound => "set_not_found",
@@ -183,10 +179,6 @@ impl From<FunctionalError> for String {
             } => format!(
                 "Pagination too deep: requested offset '{requested_offset}' exceeds the maximum of {max} for this endpoint"
             ),
-            FunctionalError::AddedAtSortRequiresPlayerUsername => {
-                "Sorting by 'added_at' on /search/card requires player_username to be set"
-                    .to_string()
-            }
             FunctionalError::PriceNotFound => "Price not found".to_string(),
             FunctionalError::CardNotFound => "Card not found".to_string(),
             FunctionalError::SetNotFound => "Set not found".to_string(),
@@ -391,15 +383,6 @@ mod tests {
         assert_eq!(
             msg,
             "Pagination too deep: requested offset '20000' exceeds the maximum of 60 for this endpoint"
-        );
-    }
-
-    #[test]
-    fn string_from_added_at_sort_requires_player_username_is_descriptive() {
-        let msg: String = FunctionalError::AddedAtSortRequiresPlayerUsername.into();
-        assert_eq!(
-            msg,
-            "Sorting by 'added_at' on /search/card requires player_username to be set"
         );
     }
 }

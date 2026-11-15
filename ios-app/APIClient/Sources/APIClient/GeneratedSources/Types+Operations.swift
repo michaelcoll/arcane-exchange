@@ -9046,18 +9046,22 @@ public enum Operations {
                 ///
                 /// - Remark: Generated from `#/paths/search/card/GET/query/page_size`.
                 public var page_size: Swift.Int32?
-                /// Sort field
-                ///
-                /// - Remark: Generated from `#/paths/search/card/GET/query/sort_by`.
-                public var sort_by: Components.Schemas.SortByParam?
-                /// Sort direction
+                /// Sort direction of the reference price (the normal trend price, or the foil one when there is no normal price). With `q`, the best name match comes first
                 ///
                 /// - Remark: Generated from `#/paths/search/card/GET/query/sort_dir`.
                 public var sort_dir: Components.Schemas.SortDirParam?
-                /// Fuzzy search on card name or set
+                /// English or French card name, by substring or similarity. Does not match the set
                 ///
                 /// - Remark: Generated from `#/paths/search/card/GET/query/q`.
                 public var q: Swift.String?
+                /// Only the impressions offered for trade by any player, the authenticated one included
+                ///
+                /// - Remark: Generated from `#/paths/search/card/GET/query/offered`.
+                public var offered: Swift.Bool?
+                /// Only the impressions offered by this player: exact username, case-insensitive, no partial match. Wins over `offered`; adds `reserved` to the results
+                ///
+                /// - Remark: Generated from `#/paths/search/card/GET/query/offered_by`.
+                public var offered_by: Swift.String?
                 /// Rarity codes, repeated for multiple values (e.g. rarity=C&rarity=U)
                 ///
                 /// - Remark: Generated from `#/paths/search/card/GET/query/rarity`.
@@ -9066,53 +9070,49 @@ public enum Operations {
                 ///
                 /// - Remark: Generated from `#/paths/search/card/GET/query/sets`.
                 public var sets: Swift.String?
-                /// Minimum trend price in cents
+                /// Minimum reference price in cents
                 ///
                 /// - Remark: Generated from `#/paths/search/card/GET/query/price_min`.
                 public var price_min: Swift.Int32?
-                /// Maximum trend price in cents
+                /// Maximum reference price in cents
                 ///
                 /// - Remark: Generated from `#/paths/search/card/GET/query/price_max`.
                 public var price_max: Swift.Int32?
-                /// Exact username of the owner to filter by (case-insensitive, no partial match)
-                ///
-                /// - Remark: Generated from `#/paths/search/card/GET/query/player_username`.
-                public var player_username: Swift.String?
                 /// Creates a new `Query`.
                 ///
                 /// - Parameters:
                 ///   - page: Page number, 0-based (default 0). `page * page_size` must not exceed 10000
                 ///   - page_size: Items per page, 1 to 100 (default 20)
-                ///   - sort_by: Sort field
-                ///   - sort_dir: Sort direction
-                ///   - q: Fuzzy search on card name or set
+                ///   - sort_dir: Sort direction of the reference price (the normal trend price, or the foil one when there is no normal price). With `q`, the best name match comes first
+                ///   - q: English or French card name, by substring or similarity. Does not match the set
+                ///   - offered: Only the impressions offered for trade by any player, the authenticated one included
+                ///   - offered_by: Only the impressions offered by this player: exact username, case-insensitive, no partial match. Wins over `offered`; adds `reserved` to the results
                 ///   - rarity: Rarity codes, repeated for multiple values (e.g. rarity=C&rarity=U)
                 ///   - sets: Comma-separated set codes
-                ///   - price_min: Minimum trend price in cents
-                ///   - price_max: Maximum trend price in cents
-                ///   - player_username: Exact username of the owner to filter by (case-insensitive, no partial match)
+                ///   - price_min: Minimum reference price in cents
+                ///   - price_max: Maximum reference price in cents
                 public init(
                     page: Swift.Int32? = nil,
                     page_size: Swift.Int32? = nil,
-                    sort_by: Components.Schemas.SortByParam? = nil,
                     sort_dir: Components.Schemas.SortDirParam? = nil,
                     q: Swift.String? = nil,
+                    offered: Swift.Bool? = nil,
+                    offered_by: Swift.String? = nil,
                     rarity: [Components.Schemas.RarityCodeParam]? = nil,
                     sets: Swift.String? = nil,
                     price_min: Swift.Int32? = nil,
-                    price_max: Swift.Int32? = nil,
-                    player_username: Swift.String? = nil
+                    price_max: Swift.Int32? = nil
                 ) {
                     self.page = page
                     self.page_size = page_size
-                    self.sort_by = sort_by
                     self.sort_dir = sort_dir
                     self.q = q
+                    self.offered = offered
+                    self.offered_by = offered_by
                     self.rarity = rarity
                     self.sets = sets
                     self.price_min = price_min
                     self.price_max = price_max
-                    self.player_username = player_username
                 }
             }
             public var query: Operations.search_cards.Input.Query
@@ -9170,7 +9170,7 @@ public enum Operations {
                     self.body = body
                 }
             }
-            /// Paginated card search results
+            /// Paginated impressions of the Catalogue
             ///
             /// - Remark: Generated from `#/paths//search/card/get(search_cards)/responses/200`.
             ///
@@ -9221,7 +9221,7 @@ public enum Operations {
                     self.body = body
                 }
             }
-            /// Pagination out of bounds, or sort_by=added_at without player_username
+            /// Pagination out of bounds
             ///
             /// - Remark: Generated from `#/paths//search/card/get(search_cards)/responses/400`.
             ///
@@ -9333,25 +9333,32 @@ public enum Operations {
         public struct Input: Sendable, Hashable {
             /// - Remark: Generated from `#/paths/search/card/sets/GET/query`.
             public struct Query: Sendable, Hashable {
-                /// Fuzzy search on card name, as in GET /search/card
+                /// Card name, as in GET /search/card
                 ///
                 /// - Remark: Generated from `#/paths/search/card/sets/GET/query/q`.
                 public var q: Swift.String?
-                /// Exact username of the owner to scope to (case-insensitive, no partial match)
+                /// Only the impressions offered by any player, as in GET /search/card
                 ///
-                /// - Remark: Generated from `#/paths/search/card/sets/GET/query/player_username`.
-                public var player_username: Swift.String?
+                /// - Remark: Generated from `#/paths/search/card/sets/GET/query/offered`.
+                public var offered: Swift.Bool?
+                /// Only the impressions offered by this player, as in GET /search/card
+                ///
+                /// - Remark: Generated from `#/paths/search/card/sets/GET/query/offered_by`.
+                public var offered_by: Swift.String?
                 /// Creates a new `Query`.
                 ///
                 /// - Parameters:
-                ///   - q: Fuzzy search on card name, as in GET /search/card
-                ///   - player_username: Exact username of the owner to scope to (case-insensitive, no partial match)
+                ///   - q: Card name, as in GET /search/card
+                ///   - offered: Only the impressions offered by any player, as in GET /search/card
+                ///   - offered_by: Only the impressions offered by this player, as in GET /search/card
                 public init(
                     q: Swift.String? = nil,
-                    player_username: Swift.String? = nil
+                    offered: Swift.Bool? = nil,
+                    offered_by: Swift.String? = nil
                 ) {
                     self.q = q
-                    self.player_username = player_username
+                    self.offered = offered
+                    self.offered_by = offered_by
                 }
             }
             public var query: Operations.search_card_sets.Input.Query
@@ -9409,7 +9416,7 @@ public enum Operations {
                     self.body = body
                 }
             }
-            /// Sets of the cards GET /search/card can return for this scope, sorted by name. Rarity, set and price filters are ignored, so the list stays stable while filtering
+            /// Sets of the impressions GET /search/card can return for this scope, sorted by name. Rarity, set and price filters are ignored, so the list stays stable while filtering
             ///
             /// - Remark: Generated from `#/paths//search/card/sets/get(search_card_sets)/responses/200`.
             ///

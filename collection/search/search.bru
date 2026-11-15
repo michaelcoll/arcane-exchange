@@ -5,7 +5,7 @@ meta {
 }
 
 get {
-  url: {{baseUrl}}/search/card?page=0&page_size=20&sort_by=trend&sort_dir=desc&rarity=M&q=&sets=ECL&price_min=0&price_max=20000&player_username=
+  url: {{baseUrl}}/search/card?page=0&page_size=20&sort_dir=desc&rarity=M&q=&offered=true&sets=ECL&price_min=0&price_max=20000&offered_by=
   body: none
   auth: inherit
 }
@@ -13,12 +13,12 @@ get {
 params:query {
   page: 0
   page_size: 20
-  sort_by: trend
   sort_dir: desc
   rarity: M
   q:
+  offered: true
   sets: ECL
   price_min: 0
   price_max: 20000
-  player_username:
+  offered_by:
 }

@@ -16,6 +16,33 @@ pub async fn insert_set(pool: &PgPool, set_code: &str) {
     .unwrap();
 }
 
+/// An impression of the Catalogue of rarity `rarity`, with its Scryfall image
+/// `https://img.example/{set_code}/{collector_number}.jpg`.
+pub async fn insert_catalog_card(
+    pool: &PgPool,
+    set_code: &str,
+    collector_number: &str,
+    name: &str,
+    french_name: Option<&str>,
+    cardmarket_id: Option<i32>,
+    rarity: &str,
+) {
+    sqlx::query(
+        r#"INSERT INTO catalog_card (set_code, collector_number, rarity, name, french_name, scryfall_id, cardmarket_id, image_url)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8)"#)
+        .bind(set_code)
+        .bind(collector_number)
+        .bind(rarity)
+        .bind(name)
+        .bind(french_name)
+        .bind(Uuid::new_v4())
+        .bind(cardmarket_id)
+        .bind(format!("https://img.example/{set_code}/{collector_number}.jpg"))
+    .execute(pool)
+    .await
+    .unwrap();
+}
+
 pub async fn insert_card(
     pool: &PgPool,
     set_code: &str,

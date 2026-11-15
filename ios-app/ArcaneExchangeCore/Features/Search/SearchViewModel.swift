@@ -61,9 +61,9 @@ package final class SearchViewModel {
             let output = try await api.search_cards(query: .init(
                 page: 0,
                 page_size: Self.previewPageSize,
-                sort_by: .trend,
                 sort_dir: .desc,
-                q: query
+                q: query,
+                offered: true
             ))
             cardPreview = try output.ok.body.json.items
         } catch {

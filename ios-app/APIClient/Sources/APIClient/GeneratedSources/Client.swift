@@ -4349,13 +4349,6 @@ public struct Client: APIProtocol {
                     in: &request,
                     style: .form,
                     explode: true,
-                    name: "sort_by",
-                    value: input.query.sort_by
-                )
-                try converter.setQueryItemAsURI(
-                    in: &request,
-                    style: .form,
-                    explode: true,
                     name: "sort_dir",
                     value: input.query.sort_dir
                 )
@@ -4365,6 +4358,20 @@ public struct Client: APIProtocol {
                     explode: true,
                     name: "q",
                     value: input.query.q
+                )
+                try converter.setQueryItemAsURI(
+                    in: &request,
+                    style: .form,
+                    explode: true,
+                    name: "offered",
+                    value: input.query.offered
+                )
+                try converter.setQueryItemAsURI(
+                    in: &request,
+                    style: .form,
+                    explode: true,
+                    name: "offered_by",
+                    value: input.query.offered_by
                 )
                 try converter.setQueryItemAsURI(
                     in: &request,
@@ -4393,13 +4400,6 @@ public struct Client: APIProtocol {
                     explode: true,
                     name: "price_max",
                     value: input.query.price_max
-                )
-                try converter.setQueryItemAsURI(
-                    in: &request,
-                    style: .form,
-                    explode: true,
-                    name: "player_username",
-                    value: input.query.player_username
                 )
                 converter.setAcceptHeader(
                     in: &request.headerFields,
@@ -4514,8 +4514,15 @@ public struct Client: APIProtocol {
                     in: &request,
                     style: .form,
                     explode: true,
-                    name: "player_username",
-                    value: input.query.player_username
+                    name: "offered",
+                    value: input.query.offered
+                )
+                try converter.setQueryItemAsURI(
+                    in: &request,
+                    style: .form,
+                    explode: true,
+                    name: "offered_by",
+                    value: input.query.offered_by
                 )
                 converter.setAcceptHeader(
                     in: &request.headerFields,

@@ -42,9 +42,10 @@ package enum SearchMode: String, CaseIterable, Identifiable {
 /// A submitted search, pushed onto the Rechercher tab's stack.
 package struct SearchResultsRoute: Hashable {
     package enum Target: Hashable {
-        /// Free-text search on card name or set (`GET /search/card?q=`).
+        /// Free-text search on the English or French card name, among the cards offered by any
+        /// player (`GET /search/card?q=&offered=true`).
         case card(query: String)
-        /// One player's tradable collection (`GET /search/card?player_username=`).
+        /// The cards one player offers (`GET /search/card?offered_by=`).
         ///
         /// Just the handle: it is all `/search/card` is given, and it lets the trade screen
         /// open a partner's collection without inventing a `UserSuggestion` it never had.

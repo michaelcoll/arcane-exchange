@@ -56,19 +56,19 @@ describe('useSearchSets', () => {
 
     await searchSets(scope);
     await flushPromises();
-    scope.value = { player_username: 'urza' };
+    scope.value = { offered_by: 'urza' };
     await flushPromises();
 
     expect(getSearchSetsMock).toHaveBeenCalledTimes(2);
-    expect(getSearchSetsMock).toHaveBeenLastCalledWith({ player_username: 'urza' });
+    expect(getSearchSetsMock).toHaveBeenLastCalledWith({ offered_by: 'urza' });
   });
 
   it('does not refetch when the scope is rebuilt identical', async () => {
-    const scope = ref<SearchSetsParams | null>({ player_username: 'urza' });
+    const scope = ref<SearchSetsParams | null>({ offered_by: 'urza' });
 
     await searchSets(scope);
     await flushPromises();
-    scope.value = { player_username: 'urza' };
+    scope.value = { offered_by: 'urza' };
     await flushPromises();
 
     expect(getSearchSetsMock).toHaveBeenCalledTimes(1);

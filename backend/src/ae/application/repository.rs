@@ -215,16 +215,14 @@ pub trait CardPricesViewRepository: Send + Sync {
 #[async_trait]
 #[cfg_attr(test, automock)]
 pub trait SearchRepository: Send + Sync {
-    /// Public search across every user's cards. No `user_id` filter — rows are
-    /// grouped by card, each returned as a [`SearchCard`] whose `owner_count` is the number of
-    /// distinct users owning that card. When `query.player_username` is set, results are
-    /// restricted to that player's cards (exact match, case-insensitive) and `owner_count` is
-    /// always `1`.
+    /// Searches the Catalogue: one [`SearchCard`] per impression, whether anybody owns it or not.
+    /// Its `owner_count` is the number of distinct players offering it (`v_tradable_entry`), and
+    /// `query.offer` restricts the impressions to the offered ones, or to those a given player
+    /// offers (exact username, case-insensitive), in which case `reserved` is set.
     async fn search_paginated(&self, query: SearchQuery)
     -> Result<Paginated<SearchCard>, AppError>;
-    /// The sets of the cards [`Self::search_paginated`] can return for `scope`, whatever the
-    /// rarity, set or price filters: the same exposure rules (`v_tradable_entry`), sorted by
-    /// set name.
+    /// The sets of the impressions [`Self::search_paginated`] can return for `scope`, whatever
+    /// the rarity, set or price filters, sorted by set name.
     async fn search_sets(&self, scope: &SearchScope) -> Result<Vec<SetName>, AppError>;
 }
 

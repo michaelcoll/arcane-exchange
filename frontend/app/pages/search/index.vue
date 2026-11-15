@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { SearchCard } from '~/bindings/SearchCard';
 import type { UserSuggestion } from '~/bindings/UserSuggestion';
+import type { DeepReadonly } from 'vue';
 import type { CardListScope } from '~/composables/useCardList';
 import type { SearchListParams, SearchMode } from '~/utils/search-url';
 
@@ -105,7 +106,7 @@ const priceMax = computed(() =>
 
 const list = reactive(
   useCardList<SearchCard, SearchListParams>({
-    context: () => searchCriteriaContext(search),
+    context: () => SEARCH_CRITERIA,
     fetchPage: getSearch,
     scope: (): CardListScope<SearchListParams> => ({
       params: searchListParams(search),
@@ -132,7 +133,9 @@ onMounted(() => {
   }
 });
 
-const detail = ref<SearchCard | null>(null);
+const detail = ref<DeepReadonly<SearchCard> | null>(null);
+// Stable until another card is picked: the detail refetches whenever its card changes.
+const detailCard = computed(() => (detail.value ? searchCardToDetail(detail.value) : null));
 
 const sizeOptions = [
   { value: 'sm', label: '', icon: 'lucide:grid-3x3', title: 'Petites cartes', tone: 'primary' },
@@ -291,12 +294,12 @@ const goToPlayerCollection = (username: string) => openPlayer(username.replace(/
         <template #cell="{ card }">
           <CardCell
             :image-url="card.image_url"
-            :name="card.name"
-            :price="card.price_guide?.trend ?? 0"
-            :foil="card.foil"
+            :name="searchCardName(card)"
+            :price="searchCardPrice(card) ?? 0"
+            :foil="isFoilOnly(card)"
             :size="size"
             :owner-count="card.owner_count"
-            :reserved="card.reserved"
+            :reserved="card.reserved ?? false"
             @click="detail = card"
           />
         </template>
@@ -307,7 +310,7 @@ const goToPlayerCollection = (username: string) => openPlayer(username.replace(/
         </template>
       </CardListShell>
 
-      <CardDetailModal v-if="detail" :card="detail" @close="detail = null" />
+      <CardDetailModal v-if="detailCard" :card="detailCard" @close="detail = null" />
     </div>
 
     <!-- MODE: PAR JOUEUR (pas encore de joueur choisi) -->
