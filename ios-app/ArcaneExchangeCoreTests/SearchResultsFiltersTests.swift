@@ -15,24 +15,23 @@ struct SearchResultsFiltersTests {
         #expect(query == Query(
             page: 0,
             page_size: 20,
-            sort_by: .trend,
             sort_dir: .desc,
             q: "Sol Ring",
+            offered: true,
             rarity: [.C, .R, .M]
         ))
     }
 
     @Test func playerCollectionSendsTheSelectedRarities() {
         let target = SearchResultsRoute.Target.player(username: "jace")
-        let filters = CollectionFilters(rarities: [.S], sortBy: .added_at)
+        let filters = CollectionFilters(rarities: [.S])
         let query = target.query(filters: filters, page: 1, pageSize: 20)
         #expect(query == Query(
             page: 1,
             page_size: 20,
-            sort_by: .added_at,
             sort_dir: .desc,
-            rarity: [.S],
-            player_username: "jace"
+            offered_by: "jace",
+            rarity: [.S]
         ))
     }
 

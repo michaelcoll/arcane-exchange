@@ -1,0 +1,18 @@
+meta {
+  name: search-offered-by
+  type: http
+  seq: 2
+}
+
+get {
+  url: {{baseUrl}}/search/card?page=0&page_size=20&sort_dir=desc&offered_by=some-player
+  body: none
+  auth: inherit
+}
+
+params:query {
+  page: 0
+  page_size: 20
+  sort_dir: desc
+  offered_by: some-player
+}

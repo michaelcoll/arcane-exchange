@@ -10,49 +10,38 @@ struct SearchResultsSortTests {
     @Test func textSearchDefaultsToValueDescending() {
         let target = SearchResultsRoute.Target.card(query: "Sol Ring")
         let query = target.query(filters: target.defaultFilters, page: 0, pageSize: 20)
-        #expect(query == Query(page: 0, page_size: 20, sort_by: .trend, sort_dir: .desc, q: "Sol Ring"))
+        #expect(query == Query(page: 0, page_size: 20, sort_dir: .desc, q: "Sol Ring", offered: true))
     }
 
-    @Test func playerCollectionDefaultsToAddedDescending() {
+    @Test func playerCollectionDefaultsToValueDescendingToo() {
         let target = SearchResultsRoute.Target.player(username: "jace")
         let query = target.query(filters: target.defaultFilters, page: 0, pageSize: 20)
-        #expect(query == Query(
-            page: 0,
-            page_size: 20,
-            sort_by: .added_at,
-            sort_dir: .desc,
-            player_username: "jace"
-        ))
+        #expect(query == Query(page: 0, page_size: 20, sort_dir: .desc, offered_by: "jace"))
     }
 
-    @Test func playerCollectionSendsTheChosenSort() {
+    @Test func playerCollectionSendsTheChosenDirection() {
         let target = SearchResultsRoute.Target.player(username: "jace")
         let filters = CollectionFilters(sortBy: .trend, sortDir: .asc)
         let query = target.query(filters: filters, page: 2, pageSize: 20)
-        #expect(query == Query(page: 2, page_size: 20, sort_by: .trend, sort_dir: .asc, player_username: "jace"))
+        #expect(query == Query(page: 2, page_size: 20, sort_dir: .asc, offered_by: "jace"))
     }
 
     @Test func textSearchSendsTheChosenDirection() {
         let target = SearchResultsRoute.Target.card(query: "Sol Ring")
         let filters = CollectionFilters(sortBy: .trend, sortDir: .asc)
         let query = target.query(filters: filters, page: 0, pageSize: 20)
-        #expect(query == Query(page: 0, page_size: 20, sort_by: .trend, sort_dir: .asc, q: "Sol Ring"))
+        #expect(query == Query(page: 0, page_size: 20, sort_dir: .asc, q: "Sol Ring", offered: true))
     }
 
-    @Test func textSearchNeverSendsAddedAt() {
-        // The API rejects `sort_by=added_at` without `player_username` (400).
-        let target = SearchResultsRoute.Target.card(query: "Sol Ring")
-        let filters = CollectionFilters(sortBy: .added_at, sortDir: .asc)
-        let query = target.query(filters: filters, page: 0, pageSize: 20)
-        #expect(query == Query(page: 0, page_size: 20, sort_by: .trend, sort_dir: .asc, q: "Sol Ring"))
+    @Test func aSearchNeverOffersTheDateAdded() {
+        // The date added belongs to the Collection: a remembered one falls back to the value.
+        let target = SearchResultsRoute.Target.player(username: "jace")
+        #expect(target.offeredSort(.added_at) == .trend)
     }
 
-    @Test func textSearchOffersValueOnly() {
+    @Test func everySearchOffersValueOnly() {
         #expect(SearchResultsRoute.Target.card(query: "Sol Ring").sortOptions == [.trend])
-    }
-
-    @Test func playerCollectionOffersValueAndAdded() {
-        #expect(SearchResultsRoute.Target.player(username: "jace").sortOptions == [.trend, .added_at])
+        #expect(SearchResultsRoute.Target.player(username: "jace").sortOptions == [.trend])
     }
 
     @Test func decklistIsNotSentToTheEndpoint() {

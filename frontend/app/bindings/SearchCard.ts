@@ -2,36 +2,57 @@
 import type { PriceGuide } from './PriceGuide';
 
 /**
- * A card a search found, reduced to what is public: no purchase price, no date of addition.
+ * An impression a search found (set and number, every language and finish together), reduced to
+ * what is public: no purchase price, no date of addition, nothing of another player.
  */
 export type SearchCard = {
   set_code: string;
+  set_name: string;
   collector_number: string;
-  language_code: string;
-  foil: boolean;
-  name: string;
   rarity_code: string;
   scryfall_id: string;
   /**
-   * Front image, relative to the frontend (e.g. `/card-images/FDN_1_EN.webp?v=gatherer`);
-   * `null` while the card's image is pending.
+   * The English name.
+   */
+  name: string;
+  /**
+   * The French name, absent when unknown. The client chooses which name to show.
+   */
+  french_name?: string;
+  /**
+   * Front image: relative to the frontend (e.g. `/card-images/FDN_1_EN.webp?v=gatherer`) when
+   * a Card of the impression has a downloaded one (French first, then English), the Scryfall
+   * URL of the Catalogue otherwise; `null` when there is none.
    */
   image_url: string | null;
   /**
-   * Back image of a double-faced card, like `image_url`; `null` for a single-faced card.
+   * Back image of a double-faced card, like `image_url` for a downloaded image; `null` for a
+   * single-faced card, or with a Scryfall image.
    */
   image_back_url: string | null;
   /**
-   * Number of distinct users actually offering this card to trade — after applying each
-   * owner's visibility, trade binder selection and rarity filters. A card no one offers
-   * anymore never appears in search results at all.
+   * Number of distinct players offering this impression to trade — after applying each
+   * player's visibility, trade binder selection and rarity filters — the authenticated one
+   * included. `0` when nobody does.
    */
   owner_count: number;
   /**
-   * `true` if this card is engaged in an `ONE_ACCEPTED` or `FULLY_ACCEPTED` trade of the
-   * `player_username`-filtered owner. Always `false` in the unscoped multi-owner search,
-   * where no single owner can be attributed.
+   * Language codes (`EN`, `FR`...) in which this impression is offered for trade: by the
+   * `offered_by` player when there is one, by any player otherwise. Empty when nobody offers
+   * it.
    */
-  reserved: boolean;
+  offered_languages: Array<string>;
+  /**
+   * With `offered_by` only: `true` if one of the Cards of this impression of that player is
+   * engaged in an `ONE_ACCEPTED` or `FULLY_ACCEPTED` trade. Absent otherwise.
+   */
+  reserved?: boolean;
+  /**
+   * The normal Cardmarket price guide; `null` when there is no normal price.
+   */
   price_guide: PriceGuide | null;
+  /**
+   * The foil Cardmarket price guide; `null` when there is no foil price.
+   */
+  foil_price_guide: PriceGuide | null;
 };

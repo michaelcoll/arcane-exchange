@@ -1,11 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import type { SearchSetsParams } from '~/bindings/SearchSetsParams';
-import { NAME_SEARCH_CRITERIA, PLAYER_SEARCH_CRITERIA } from './card-criteria-url';
 import {
   loadDecklist,
   parseSearchQuery,
   saveDecklist,
-  searchCriteriaContext,
   searchListParams,
   searchRoute,
   searchSetsScope,
@@ -91,32 +89,23 @@ describe('searchRoute', () => {
   });
 });
 
-describe('searchCriteriaContext', () => {
-  it.each<[string, SearchUrlState, typeof NAME_SEARCH_CRITERIA]>([
-    ['a search by name', { mode: 'name', q: 'Sol Ring' }, NAME_SEARCH_CRITERIA],
-    ["a player's collection", { mode: 'player', player: 'urza' }, PLAYER_SEARCH_CRITERIA],
-    ['the player mode without player', { mode: 'player' }, NAME_SEARCH_CRITERIA],
-    ['the decklist mode', { mode: 'decklist' }, NAME_SEARCH_CRITERIA],
-  ])('gives %s its sorts', (_label, state, expected) => {
-    expect(searchCriteriaContext(state)).toBe(expected);
-  });
-});
-
 describe('searchListParams', () => {
+  // The name search asks for the cards offered by any player (the Offre axis), a player's
+  // collection for the cards that player offers.
   it.each<[string, SearchUrlState, SearchListParams | null]>([
-    ['a submitted name', { mode: 'name', q: 'Sol Ring' }, { q: 'Sol Ring' }],
-    ['the name mode before any search', { mode: 'name' }, {}],
-    ['a blank name', { mode: 'name', q: '  ' }, {}],
-    ['a player', { mode: 'player', player: 'urza' }, { player_username: 'urza' }],
+    ['a submitted name', { mode: 'name', q: 'Sol Ring' }, { offered: true, q: 'Sol Ring' }],
+    ['the name mode before any search', { mode: 'name' }, { offered: true }],
+    ['a blank name', { mode: 'name', q: '  ' }, { offered: true }],
+    ['a player', { mode: 'player', player: 'urza' }, { offered_by: 'urza' }],
     [
       'a player with a text filter',
       { mode: 'player', player: 'urza', filter: 'tutor' },
-      { player_username: 'urza', q: 'tutor' },
+      { offered_by: 'urza', q: 'tutor' },
     ],
     [
       'a player, without the name searched before',
       { mode: 'player', player: 'urza', q: 'Sol Ring' },
-      { player_username: 'urza' },
+      { offered_by: 'urza' },
     ],
     ['the player mode without player: no list', { mode: 'player', filter: 'tutor' }, null],
     ['the decklist mode: no list', { mode: 'decklist', q: 'Sol Ring', player: 'urza' }, null],
@@ -127,14 +116,14 @@ describe('searchListParams', () => {
 
 describe('searchSetsScope', () => {
   it.each<[string, SearchUrlState, SearchSetsParams | null]>([
-    ['a submitted name', { mode: 'name', q: 'Sol Ring' }, { q: 'Sol Ring' }],
-    ['the name mode before any search', { mode: 'name' }, {}],
-    ['a blank name', { mode: 'name', q: '  ' }, {}],
-    ['a player', { mode: 'player', player: 'urza' }, { player_username: 'urza' }],
+    ['a submitted name', { mode: 'name', q: 'Sol Ring' }, { offered: true, q: 'Sol Ring' }],
+    ['the name mode before any search', { mode: 'name' }, { offered: true }],
+    ['a blank name', { mode: 'name', q: '  ' }, { offered: true }],
+    ['a player', { mode: 'player', player: 'urza' }, { offered_by: 'urza' }],
     [
       'a player with a text filter, ignored',
       { mode: 'player', player: 'urza', filter: 'tutor' },
-      { player_username: 'urza' },
+      { offered_by: 'urza' },
     ],
     ['the player mode without player', { mode: 'player' }, null],
     ['the decklist mode', { mode: 'decklist' }, null],

@@ -1431,21 +1431,27 @@ paths:
           type: integer
           format: int32
           minimum: 0
-      - name: sort_by
-        in: query
-        description: Sort field
-        required: false
-        schema:
-          $ref: '#/components/schemas/SortByParam'
       - name: sort_dir
         in: query
-        description: Sort direction
+        description: Sort direction of the reference price (the normal trend price, or the foil one when there is no normal price). With `q`, the best name match comes first
         required: false
         schema:
           $ref: '#/components/schemas/SortDirParam'
       - name: q
         in: query
-        description: Fuzzy search on card name or set
+        description: English or French card name, by substring or similarity. Does not match the set
+        required: false
+        schema:
+          type: string
+      - name: offered
+        in: query
+        description: Only the impressions offered for trade by any player, the authenticated one included
+        required: false
+        schema:
+          type: boolean
+      - name: offered_by
+        in: query
+        description: 'Only the impressions offered by this player: exact username, case-insensitive, no partial match. Wins over `offered`; adds `reserved` to the results'
         required: false
         schema:
           type: string
@@ -1465,7 +1471,7 @@ paths:
           type: string
       - name: price_min
         in: query
-        description: Minimum trend price in cents
+        description: Minimum reference price in cents
         required: false
         schema:
           type: integer
@@ -1473,27 +1479,21 @@ paths:
           minimum: 0
       - name: price_max
         in: query
-        description: Maximum trend price in cents
+        description: Maximum reference price in cents
         required: false
         schema:
           type: integer
           format: int32
           minimum: 0
-      - name: player_username
-        in: query
-        description: Exact username of the owner to filter by (case-insensitive, no partial match)
-        required: false
-        schema:
-          type: string
       responses:
         '200':
-          description: Paginated card search results
+          description: Paginated impressions of the Catalogue
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/PaginatedSearchResponse'
         '400':
-          description: Pagination out of bounds, or sort_by=added_at without player_username
+          description: Pagination out of bounds
           content:
             application/json:
               schema:
@@ -1514,19 +1514,25 @@ paths:
       parameters:
       - name: q
         in: query
-        description: Fuzzy search on card name, as in GET /search/card
+        description: Card name, as in GET /search/card
         required: false
         schema:
           type: string
-      - name: player_username
+      - name: offered
         in: query
-        description: Exact username of the owner to scope to (case-insensitive, no partial match)
+        description: Only the impressions offered by any player, as in GET /search/card
+        required: false
+        schema:
+          type: boolean
+      - name: offered_by
+        in: query
+        description: Only the impressions offered by this player, as in GET /search/card
         required: false
         schema:
           type: string
       responses:
         '200':
-          description: Sets of the cards GET /search/card can return for this scope, sorted by name. Rarity, set and price filters are ignored, so the list stays stable while filtering
+          description: Sets of the impressions GET /search/card can return for this scope, sorted by name. Rarity, set and price filters are ignored, so the list stays stable while filtering
           content:
             application/json:
               schema:
@@ -3164,59 +3170,80 @@ components:
       - PRECONSTRUCTED_DECK
     SearchCardResponse:
       type: object
-      description: 'A card a search found, reduced to what is public: no purchase price, no date of addition.'
+      description: |-
+        An impression a search found (set and number, every language and finish together), reduced to
+        what is public: no purchase price, no date of addition, nothing of another player.
       required:
       - set_code
+      - set_name
       - collector_number
-      - language_code
-      - foil
-      - name
       - rarity_code
       - scryfall_id
+      - name
       - owner_count
-      - reserved
+      - offered_languages
       properties:
         collector_number:
           type: string
-        foil:
-          type: boolean
+        foil_price_guide:
+          $ref: '#/components/schemas/PriceGuideResponse'
+          description: The foil Cardmarket price guide; `null` when there is no foil price.
+        french_name:
+          type:
+          - string
+          - 'null'
+          description: The French name, absent when unknown. The client chooses which name to show.
         image_back_url:
           type:
           - string
           - 'null'
-          description: Back image of a double-faced card, like `image_url`; `null` for a single-faced card.
+          description: |-
+            Back image of a double-faced card, like `image_url` for a downloaded image; `null` for a
+            single-faced card, or with a Scryfall image.
         image_url:
           type:
           - string
           - 'null'
           description: |-
-            Front image, relative to the frontend (e.g. `/card-images/FDN_1_EN.webp?v=gatherer`);
-            `null` while the card's image is pending.
-        language_code:
-          type: string
+            Front image: relative to the frontend (e.g. `/card-images/FDN_1_EN.webp?v=gatherer`) when
+            a Card of the impression has a downloaded one (French first, then English), the Scryfall
+            URL of the Catalogue otherwise; `null` when there is none.
         name:
           type: string
+          description: The English name.
+        offered_languages:
+          type: array
+          items:
+            type: string
+          description: |-
+            Language codes (`EN`, `FR`...) in which this impression is offered for trade: by the
+            `offered_by` player when there is one, by any player otherwise. Empty when nobody offers
+            it.
         owner_count:
           type: integer
           format: int64
           description: |-
-            Number of distinct users actually offering this card to trade — after applying each
-            owner's visibility, trade binder selection and rarity filters. A card no one offers
-            anymore never appears in search results at all.
+            Number of distinct players offering this impression to trade — after applying each
+            player's visibility, trade binder selection and rarity filters — the authenticated one
+            included. `0` when nobody does.
           minimum: 0
         price_guide:
           $ref: '#/components/schemas/PriceGuideResponse'
+          description: The normal Cardmarket price guide; `null` when there is no normal price.
         rarity_code:
           type: string
         reserved:
-          type: boolean
+          type:
+          - boolean
+          - 'null'
           description: |-
-            `true` if this card is engaged in an `ONE_ACCEPTED` or `FULLY_ACCEPTED` trade of the
-            `player_username`-filtered owner. Always `false` in the unscoped multi-owner search,
-            where no single owner can be attributed.
+            With `offered_by` only: `true` if one of the Cards of this impression of that player is
+            engaged in an `ONE_ACCEPTED` or `FULLY_ACCEPTED` trade. Absent otherwise.
         scryfall_id:
           type: string
         set_code:
+          type: string
+        set_name:
           type: string
     SetInfoResponse:
       type: object

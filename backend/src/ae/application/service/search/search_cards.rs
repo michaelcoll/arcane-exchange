@@ -38,7 +38,7 @@ mod tests {
     use crate::application::repository::MockSearchRepository;
     use crate::domain::collection::SortDirection;
     use crate::domain::error::FunctionalError;
-    use crate::domain::search::SearchSortField;
+    use crate::domain::search::Offer;
 
     fn query_for(page: u32, page_size: u32) -> SearchQuery<PageRequest> {
         SearchQuery {
@@ -104,16 +104,15 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn search_cards_passes_filters_and_player_username_to_the_repository() {
+    async fn search_cards_passes_the_filters_and_the_offer_to_the_repository() {
         let mut mock_repo = MockSearchRepository::new();
         mock_repo
             .expect_search_paginated()
             .withf(|q| {
                 q.pagination.page() == 1
                     && q.pagination.page_size() == 10
-                    && q.sort_by == SearchSortField::SetCode
                     && q.sort_dir == SortDirection::Asc
-                    && q.player_username == Some("alice".to_string())
+                    && q.offer == Offer::OfferedBy("alice".to_string())
             })
             .returning(|q| {
                 Box::pin(async move {
@@ -131,9 +130,8 @@ mod tests {
                 page: 1,
                 page_size: 10,
             },
-            sort_by: SearchSortField::SetCode,
             sort_dir: SortDirection::Asc,
-            player_username: Some("alice".to_string()),
+            offer: Offer::OfferedBy("alice".to_string()),
             ..Default::default()
         };
 

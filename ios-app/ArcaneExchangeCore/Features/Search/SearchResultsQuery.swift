@@ -6,38 +6,32 @@ import APIClient
 /// Kept off the views on purpose: a `View` is `@MainActor`, and pure logic hung on one crashes
 /// the non-isolated tests calling it.
 package extension SearchResultsRoute.Target {
-    /// The criteria the sort menu offers. A text search sorts by value only, because the API
-    /// rejects `sort_by=added_at` without `player_username`; a player's collection is a
-    /// collection, so it gets the Collection tab's two.
+    /// The criteria the sort menu offers: the search sorts by reference price only. The date
+    /// added belongs to the Collection, which is not a search.
     var sortOptions: [SortField] {
-        switch self {
-        case .player: SortField.collectionOptions
-        case .card, .decklist: [.trend]
-        }
+        [.trend]
     }
 
-    /// The sort a screen opens with: the most valuable cards first for a text search, the
-    /// latest additions first for a player's collection.
+    /// The sort a screen opens with: the most valuable cards first. The API sorts by price in
+    /// the direction asked for (and, with a text, by name match first): it takes no sort field.
     var defaultFilters: CollectionFilters {
-        switch self {
-        case .player: CollectionFilters(sortBy: .added_at, sortDir: .desc)
-        case .card, .decklist: CollectionFilters(sortBy: .trend, sortDir: .desc)
-        }
+        CollectionFilters(sortBy: .trend, sortDir: .desc)
     }
 
-    /// `sortBy` if the screen offers it, the screen's default otherwise — so a criterion the
-    /// screen does not offer never reaches the API, where it could be a 400.
+    /// `sortBy` if the screen offers it, the screen's default otherwise: a sort remembered from
+    /// an earlier version (the date added) falls back to the price.
     func offeredSort(_ sortBy: SortField) -> SortField {
         sortOptions.contains(sortBy) ? sortBy : defaultFilters.sortBy
     }
 
     /// What the search is scoped to, which is also all the set facet is asked for: the filters
-    /// never reach it, so the drawer's list stays put while the user filters. `nil` for a
-    /// target the endpoints do not serve.
+    /// never reach it, so the drawer's list stays put while the user filters. A text search asks
+    /// for the cards any player offers (the Offre axis), a player's collection for the cards
+    /// that player offers. `nil` for a target the endpoints do not serve.
     var setsQuery: Operations.search_card_sets.Input.Query? {
         switch self {
-        case let .card(text): .init(q: text)
-        case let .player(username): .init(player_username: username)
+        case let .card(text): .init(q: text, offered: true)
+        case let .player(username): .init(offered_by: username)
         case .decklist: nil
         }
     }
@@ -53,12 +47,12 @@ package extension SearchResultsRoute.Target {
         return .init(
             page: page,
             page_size: pageSize,
-            sort_by: offeredSort(filters.sortBy),
             sort_dir: filters.sortDir,
             q: scope.q,
+            offered: scope.offered,
+            offered_by: scope.offered_by,
             rarity: filters.rarityQuery,
-            sets: filters.setsQuery,
-            player_username: scope.player_username
+            sets: filters.setsQuery
         )
     }
 }

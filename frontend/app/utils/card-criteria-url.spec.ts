@@ -1,8 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   COLLECTION_CRITERIA,
-  PLAYER_SEARCH_CRITERIA,
-  NAME_SEARCH_CRITERIA,
+  SEARCH_CRITERIA,
   centsToEuros,
   defaultCardCriteria,
   parseCardCriteria,
@@ -24,23 +23,19 @@ describe('criteria contexts', () => {
     descLabel: 'Plus récent d’abord',
   };
 
-  it.each([
-    ['the collection', COLLECTION_CRITERIA],
-    ["a player's collection", PLAYER_SEARCH_CRITERIA],
-  ])('offers the price and date added sorts in %s, date added first by default', (_l, context) => {
-    expect(context.sorts).toEqual([price, addedAt]);
-    expect(context.defaultSort).toEqual({ sort_by: 'added_at', sort_dir: 'desc' });
+  it('offers the price and date added sorts in the collection, date added first by default', () => {
+    expect(COLLECTION_CRITERIA.sorts).toEqual([price, addedAt]);
+    expect(COLLECTION_CRITERIA.defaultSort).toEqual({ sort_by: 'added_at', sort_dir: 'desc' });
   });
 
-  it('offers only the price sort in the search by name', () => {
-    expect(NAME_SEARCH_CRITERIA.sorts).toEqual([price]);
-    expect(NAME_SEARCH_CRITERIA.defaultSort).toEqual({ sort_by: 'trend', sort_dir: 'desc' });
+  it('offers only the price sort in the search', () => {
+    expect(SEARCH_CRITERIA.sorts).toEqual([price]);
+    expect(SEARCH_CRITERIA.defaultSort).toEqual({ sort_by: 'trend', sort_dir: 'desc' });
   });
 
   it.each([
     ['the collection', COLLECTION_CRITERIA],
-    ['the search by name', NAME_SEARCH_CRITERIA],
-    ["a player's collection", PLAYER_SEARCH_CRITERIA],
+    ['the search', SEARCH_CRITERIA],
   ])('carries the offset depth of the endpoint behind %s', (_label, context) => {
     expect(context.maxOffset).toBe(10_000);
   });
@@ -98,18 +93,18 @@ describe('parseCardCriteria', () => {
       { price_max: 900 },
     ],
   ])('ignores %s', (_label, query, expected) => {
-    expect(parseCardCriteria(query, NAME_SEARCH_CRITERIA)).toEqual({
-      ...defaultCardCriteria(NAME_SEARCH_CRITERIA),
+    expect(parseCardCriteria(query, SEARCH_CRITERIA)).toEqual({
+      ...defaultCardCriteria(SEARCH_CRITERIA),
       ...expected,
     });
   });
 
   it('uses the defaults of its context', () => {
-    expect(parseCardCriteria({}, PLAYER_SEARCH_CRITERIA)).toMatchObject({
+    expect(parseCardCriteria({}, COLLECTION_CRITERIA)).toMatchObject({
       sort_by: 'added_at',
       sort_dir: 'desc',
     });
-    expect(parseCardCriteria({}, NAME_SEARCH_CRITERIA)).toMatchObject({
+    expect(parseCardCriteria({}, SEARCH_CRITERIA)).toMatchObject({
       sort_by: 'trend',
       sort_dir: 'desc',
     });

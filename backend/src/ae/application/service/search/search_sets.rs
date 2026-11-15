@@ -28,6 +28,7 @@ mod tests {
     use super::*;
     use crate::application::error::InfraError;
     use crate::application::repository::MockSearchRepository;
+    use crate::domain::search::Offer;
     use crate::domain::set_name::SetCode;
 
     #[tokio::test]
@@ -37,7 +38,7 @@ mod tests {
             .expect_search_sets()
             .withf(|scope| {
                 scope.search_query == Some("bolt".to_string())
-                    && scope.player_username == Some("alice".to_string())
+                    && scope.offer == Offer::OfferedBy("alice".to_string())
             })
             .times(1)
             .returning(|_| {
@@ -53,7 +54,7 @@ mod tests {
         let result = service
             .search_sets(SearchScope {
                 search_query: Some("bolt".to_string()),
-                player_username: Some("alice".to_string()),
+                offer: Offer::OfferedBy("alice".to_string()),
             })
             .await
             .unwrap();

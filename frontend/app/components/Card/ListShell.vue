@@ -2,7 +2,7 @@
   setup
   lang="ts"
   generic="
-    T extends { set_code: string; collector_number: string; language_code: string; foil: boolean }
+    T extends { set_code: string; collector_number: string; language_code?: string; foil?: boolean }
   "
 >
 import type { RarityCode } from '~/bindings/RarityCode';
@@ -39,8 +39,10 @@ defineSlots<{
   limit(): unknown;
 }>();
 
-// The CardId and the finish: the foil and the normal copies of a card share their CardId.
-const cardKey = (c: T) => `${c.set_code}-${c.collector_number}-${c.language_code}-${c.foil}`;
+// The CardId and the finish: the foil and the normal copies of a card share their CardId. An
+// impression of the search has neither language nor finish: set and number are its key.
+const cardKey = (c: T) =>
+  `${c.set_code}-${c.collector_number}-${c.language_code ?? ''}-${c.foil ?? ''}`;
 
 const sheet = ref(false);
 

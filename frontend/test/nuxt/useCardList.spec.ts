@@ -9,8 +9,7 @@ import {
 } from '~/composables/useCardList';
 import {
   COLLECTION_CRITERIA,
-  NAME_SEARCH_CRITERIA,
-  PLAYER_SEARCH_CRITERIA,
+  SEARCH_CRITERIA,
   type CriteriaContext,
 } from '~/utils/card-criteria-url';
 
@@ -153,7 +152,7 @@ describe('useCardList', () => {
     });
 
     it('offers the sorts of its context', async () => {
-      const { list } = await openList(3, { context: NAME_SEARCH_CRITERIA });
+      const { list } = await openList(3, { context: SEARCH_CRITERIA });
 
       expect(list.sorts.value.map((s) => s.value)).toEqual(['trend']);
     });
@@ -466,7 +465,7 @@ describe('useCardList', () => {
       );
 
       // The page leaves a player's collection: context and scope change together.
-      context.value = NAME_SEARCH_CRITERIA;
+      context.value = SEARCH_CRITERIA;
       scope.value = { params: { q: 'sol' }, query: { q: 'sol' } };
       await flushPromises();
 
@@ -480,13 +479,13 @@ describe('useCardList', () => {
 
     it('opens a new context on its default sort, even when it offers the current one', async () => {
       // A search by name, then a player is picked: their collection opens on date added.
-      const context = ref(NAME_SEARCH_CRITERIA);
+      const context = ref(SEARCH_CRITERIA);
       const scope = ref<CardListScope<Scope>>({ params: {}, query: {} });
       const { list, fetchPage } = await openList(3, { context, scope });
       list.setSort({ sort_by: 'trend', sort_dir: 'asc' });
       await flushPromises();
 
-      context.value = PLAYER_SEARCH_CRITERIA;
+      context.value = COLLECTION_CRITERIA;
       scope.value = { params: { q: 'urza' }, query: { player: 'urza' } };
       await flushPromises();
 
@@ -502,7 +501,7 @@ describe('useCardList', () => {
       await openAt({ player: 'urza', sort_by: 'trend', sort_dir: 'asc' });
 
       const { fetchPage } = await openList(3, {
-        context: PLAYER_SEARCH_CRITERIA,
+        context: COLLECTION_CRITERIA,
         scope: { params: { q: 'urza' }, query: { player: 'urza' } },
       });
 
@@ -514,11 +513,11 @@ describe('useCardList', () => {
 
     it('goes back to the default sort while no list is shown, without a request', async () => {
       // "Change player": the player's collection is left for the player picker.
-      const context = ref(PLAYER_SEARCH_CRITERIA);
+      const context = ref(COLLECTION_CRITERIA);
       const scope = ref<CardListScope<Scope>>({ params: {}, query: {} });
       const { list, fetchPage } = await openList(3, { context, scope });
 
-      context.value = NAME_SEARCH_CRITERIA;
+      context.value = SEARCH_CRITERIA;
       scope.value = { params: null, query: { mode: 'player' } };
       await flushPromises();
 

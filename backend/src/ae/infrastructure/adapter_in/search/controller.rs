@@ -1,4 +1,6 @@
-use super::dto::{PaginatedSearchResponse, SearchCardResponse, SearchParams, SearchSetsParams};
+use super::dto::{
+    PaginatedSearchResponse, SearchCardResponse, SearchParams, SearchSetsParams, offer_of,
+};
 use crate::application::error::AppError;
 use crate::domain::pagination::PageRequest;
 use crate::domain::search::{SearchQuery, SearchScope};
@@ -18,32 +20,24 @@ pub fn create_search_router() -> axum::Router<AppState> {
     )
 }
 
-/// Empty or blank usernames mean "no player scope".
-fn normalize_player_username(player_username: Option<&str>) -> Option<String> {
-    player_username
-        .map(str::trim)
-        .filter(|s| !s.is_empty())
-        .map(str::to_string)
-}
-
 #[utoipa::path(
     get,
     path = "/search/card",
     params(
         ("page" = Option<u32>, Query, description = "Page number, 0-based (default 0). `page * page_size` must not exceed 10000"),
         ("page_size" = Option<u32>, Query, description = "Items per page, 1 to 100 (default 20)"),
-        ("sort_by" = Option<super::dto::SortByParam>, Query, description = "Sort field"),
-        ("sort_dir" = Option<super::dto::SortDirParam>, Query, description = "Sort direction"),
-        ("q" = Option<String>, Query, description = "Fuzzy search on card name or set"),
+        ("sort_dir" = Option<super::dto::SortDirParam>, Query, description = "Sort direction of the reference price (the normal trend price, or the foil one when there is no normal price). With `q`, the best name match comes first"),
+        ("q" = Option<String>, Query, description = "English or French card name, by substring or similarity. Does not match the set"),
+        ("offered" = Option<bool>, Query, description = "Only the impressions offered for trade by any player, the authenticated one included"),
+        ("offered_by" = Option<String>, Query, description = "Only the impressions offered by this player: exact username, case-insensitive, no partial match. Wins over `offered`; adds `reserved` to the results"),
         ("rarity" = Option<Vec<super::dto::RarityCodeParam>>, Query, description = "Rarity codes, repeated for multiple values (e.g. rarity=C&rarity=U)"),
         ("sets" = Option<String>, Query, description = "Comma-separated set codes"),
-        ("price_min" = Option<u32>, Query, description = "Minimum trend price in cents"),
-        ("price_max" = Option<u32>, Query, description = "Maximum trend price in cents"),
-        ("player_username" = Option<String>, Query, description = "Exact username of the owner to filter by (case-insensitive, no partial match)"),
+        ("price_min" = Option<u32>, Query, description = "Minimum reference price in cents"),
+        ("price_max" = Option<u32>, Query, description = "Maximum reference price in cents"),
     ),
     responses(
-        (status = 200, description = "Paginated card search results", body = PaginatedSearchResponse),
-        (status = 400, description = "Pagination out of bounds, or sort_by=added_at without player_username"),
+        (status = 200, description = "Paginated impressions of the Catalogue", body = PaginatedSearchResponse),
+        (status = 400, description = "Pagination out of bounds"),
         (status = 401, description = "Missing or invalid token"),
     ),
     security(("bearer_auth" = [])),
@@ -71,20 +65,17 @@ pub(crate) async fn search_cards(
         .map(str::to_uppercase)
         .collect::<Vec<_>>();
 
-    let player_username = normalize_player_username(params.player_username.as_deref());
-
     let query = SearchQuery {
         pagination,
-        sort_by: params.sort_by.into(),
         sort_dir: params.sort_dir.into(),
-        search_query: params.q,
+        // A blank text is no text, like in the facet.
+        search_query: params.q.filter(|q| !q.trim().is_empty()),
+        offer: offer_of(params.offered, params.offered_by.as_deref()),
         rarity,
         sets,
         price_min: params.price_min,
         price_max: params.price_max,
-        player_username,
-    }
-    .validate()?;
+    };
 
     let result = state.search_cards_use_case.search_cards(query).await?;
 
@@ -104,11 +95,12 @@ pub(crate) async fn search_cards(
     get,
     path = "/search/card/sets",
     params(
-        ("q" = Option<String>, Query, description = "Fuzzy search on card name, as in GET /search/card"),
-        ("player_username" = Option<String>, Query, description = "Exact username of the owner to scope to (case-insensitive, no partial match)"),
+        ("q" = Option<String>, Query, description = "Card name, as in GET /search/card"),
+        ("offered" = Option<bool>, Query, description = "Only the impressions offered by any player, as in GET /search/card"),
+        ("offered_by" = Option<String>, Query, description = "Only the impressions offered by this player, as in GET /search/card"),
     ),
     responses(
-        (status = 200, description = "Sets of the cards GET /search/card can return for this scope, sorted by name. Rarity, set and price filters are ignored, so the list stays stable while filtering", body = Vec<SetInfoResponse>),
+        (status = 200, description = "Sets of the impressions GET /search/card can return for this scope, sorted by name. Rarity, set and price filters are ignored, so the list stays stable while filtering", body = Vec<SetInfoResponse>),
         (status = 401, description = "Missing or invalid token"),
     ),
     security(("bearer_auth" = [])),
@@ -120,10 +112,10 @@ pub(crate) async fn search_card_sets(
     Query(params): Query<SearchSetsParams>,
 ) -> Result<axum::Json<Vec<SetInfoResponse>>, AppError> {
     let scope = SearchScope {
-        // Blank means "no text scope", like the username. A non-blank `q` is kept as is, so
-        // the facet matches exactly what `GET /search/card` does with it.
+        // Blank means "no text scope". A non-blank `q` is kept as is, so the facet matches
+        // exactly what `GET /search/card` does with it.
         search_query: params.q.filter(|q| !q.trim().is_empty()),
-        player_username: normalize_player_username(params.player_username.as_deref()),
+        offer: offer_of(params.offered, params.offered_by.as_deref()),
     };
 
     let sets = state.search_sets_use_case.search_sets(scope).await?;
