@@ -10,7 +10,7 @@ struct SearchResultsSortTests {
     @Test func textSearchDefaultsToValueDescending() {
         let target = SearchResultsRoute.Target.card(query: "Sol Ring")
         let query = target.query(filters: target.defaultFilters, page: 0, pageSize: 20)
-        #expect(query == Query(page: 0, page_size: 20, sort_dir: .desc, q: "Sol Ring", offered: true))
+        #expect(query == Query(page: 0, page_size: 20, sort_dir: .desc, q: "Sol Ring"))
     }
 
     @Test func playerCollectionDefaultsToValueDescendingToo() {
@@ -30,7 +30,7 @@ struct SearchResultsSortTests {
         let target = SearchResultsRoute.Target.card(query: "Sol Ring")
         let filters = CollectionFilters(sortBy: .trend, sortDir: .asc)
         let query = target.query(filters: filters, page: 0, pageSize: 20)
-        #expect(query == Query(page: 0, page_size: 20, sort_dir: .asc, q: "Sol Ring", offered: true))
+        #expect(query == Query(page: 0, page_size: 20, sort_dir: .asc, q: "Sol Ring"))
     }
 
     @Test func aSearchNeverOffersTheDateAdded() {

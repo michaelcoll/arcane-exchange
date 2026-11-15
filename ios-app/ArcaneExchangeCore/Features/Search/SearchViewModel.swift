@@ -1,16 +1,12 @@
 import APIClient
 import Foundation
 
-/// Backs the Rechercher tab: a debounced live preview for card and player search, plus the
-/// two device-only recents lists. The full paginated card grid is `SearchResultsViewModel`,
-/// one per pushed results screen.
+/// Backs the Rechercher tab: a debounced player autocomplete, plus the two device-only recents
+/// lists. The live card grid is `SearchResultsViewModel`, which follows the field as it is typed.
 @MainActor
 @Observable
 package final class SearchViewModel {
-    /// How many cards the as-you-type preview asks for. The full list lives behind a submit.
-    private static let previewPageSize: Int32 = 8
-
-    /// Delay both live lookups wait out before hitting the network.
+    /// Delay the player lookup waits out before hitting the network.
     private static let debounce: Duration = .milliseconds(300)
 
     /// Waits out the debounce window from a `.task(id:)` context. Returns `false` when a newer
@@ -19,10 +15,6 @@ package final class SearchViewModel {
         try? await Task.sleep(for: debounce)
         return !Task.isCancelled
     }
-
-    package private(set) var cardPreview: [SearchCard] = []
-    package private(set) var isLoadingCardPreview = false
-    package private(set) var cardPreviewFailed = false
 
     package private(set) var playerSuggestions: [UserSuggestion] = []
     package private(set) var isLoadingPlayers = false
@@ -39,37 +31,6 @@ package final class SearchViewModel {
         memory = DeviceMemory(defaults: defaults)
         recentQueries = memory.read([String].self, for: PlayerKey.searchRecentCardQueries) ?? []
         recentPlayers = memory.read([UserSuggestion].self, for: PlayerKey.searchRecentPlayers) ?? []
-    }
-
-    // MARK: Live card preview
-
-    /// Debounced: called from `.task(id:)`, so a new keystroke cancels the pending sleep.
-    package func previewCards(matching raw: String) async {
-        let query = raw.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !query.isEmpty else {
-            cardPreview = []
-            cardPreviewFailed = false
-            return
-        }
-        guard await Self.settled() else { return }
-
-        isLoadingCardPreview = true
-        cardPreviewFailed = false
-        defer { isLoadingCardPreview = false }
-
-        do {
-            let output = try await api.search_cards(query: .init(
-                page: 0,
-                page_size: Self.previewPageSize,
-                sort_dir: .desc,
-                q: query,
-                offered: true
-            ))
-            cardPreview = try output.ok.body.json.items
-        } catch {
-            cardPreview = []
-            cardPreviewFailed = true
-        }
     }
 
     // MARK: Player autocomplete

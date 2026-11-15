@@ -16,8 +16,8 @@ export const isSearchMode = (v: unknown): v is SearchMode => SEARCH_MODES.includ
  * - `player`: the browsed player (`player` mode), and `filter` the text filter on their collection;
  * - `owned`: the Possession axis, `true` for the impressions I own, `false` for those I do not,
  *   absent for all of them;
- * - `offered`: the Offre axis of the name search, `false` for the whole Catalogue, absent (the
- *   default) for the impressions some player offers. A browsed player is the Offre axis of the
+ * - `offered`: the Offre axis of the name search, `true` for the impressions some player offers,
+ *   absent (the default) for the whole Catalogue. A browsed player is the Offre axis of the
  *   player mode.
  */
 export interface SearchUrlState {
@@ -60,7 +60,7 @@ export const parseSearchQuery = (query: LocationQuery): SearchUrlState => {
       mode: 'name',
       ...(q && { q }),
       ...(owned !== undefined && { owned }),
-      ...(booleanOf(query.offered) === false && { offered: false }),
+      ...(booleanOf(query.offered) === true && { offered: true }),
     };
   }
   return { mode: 'player' };
@@ -80,7 +80,7 @@ export const toSearchQuery = (state: SearchUrlState): Record<string, string> => 
   if (state.mode === 'name' || (state.mode === 'player' && player)) {
     if (state.owned !== undefined) query.owned = String(state.owned);
   }
-  if (state.mode === 'name' && state.offered === false) query.offered = 'false';
+  if (state.mode === 'name' && state.offered === true) query.offered = 'true';
   return query;
 };
 
@@ -102,7 +102,7 @@ export const searchListParams = (state: SearchUrlState): SearchListParams | null
 
 /**
  * The scope of the set facet (`GET /search/card/sets`) for a search: the Possession axis, the
- * Offre axis (the cards offered by any player for a name, unless the whole Catalogue is asked;
+ * Offre axis (the whole Catalogue for a name, unless the cards offered by any player are asked;
  * those of the browsed player in player mode) and the text (the submitted name, or the text
  * filter on a browsed player's collection). `null` where the search shows no list, so no facet.
  */
@@ -110,7 +110,7 @@ export const searchSetsScope = (state: SearchUrlState): SearchSetsParams | null 
   const owned = state.owned !== undefined ? { owned: state.owned } : {};
   if (state.mode === 'name') {
     const q = nonBlankString(state.q);
-    return { ...owned, ...(state.offered !== false && { offered: true }), ...(q && { q }) };
+    return { ...owned, ...(state.offered === true && { offered: true }), ...(q && { q }) };
   }
   if (state.mode === 'player' && state.player) {
     const q = nonBlankString(state.filter);

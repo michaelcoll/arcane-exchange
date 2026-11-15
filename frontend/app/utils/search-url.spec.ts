@@ -39,8 +39,8 @@ describe('parseSearchQuery', () => {
     ],
     ['the impressions not owned', { owned: 'false' }, { mode: 'name', owned: false }],
     ['an unknown possession', { owned: 'maybe' }, { mode: 'name' }],
-    ['every impression of the Catalogue', { offered: 'false' }, { mode: 'name', offered: false }],
-    ['the default offer written out', { offered: 'true' }, { mode: 'name' }],
+    ['the impressions some player offers', { offered: 'true' }, { mode: 'name', offered: true }],
+    ['the default offer written out (an older link)', { offered: 'false' }, { mode: 'name' }],
     [
       'the possession of a browsed player',
       { player: 'urza', owned: 'false' },
@@ -48,7 +48,7 @@ describe('parseSearchQuery', () => {
     ],
     [
       'the offer of a browsed player, ignored',
-      { player: 'urza', offered: 'false' },
+      { player: 'urza', offered: 'true' },
       { mode: 'player', player: 'urza' },
     ],
   ])('reads %s', (_label, query, expected) => {
@@ -68,8 +68,12 @@ describe('toSearchQuery', () => {
     ['a filter without player', { mode: 'player', filter: 'tutor' }, { mode: 'player' }],
     ['the owned impressions', { mode: 'name', owned: true }, { mode: 'name', owned: 'true' }],
     ['the impressions not owned', { mode: 'name', owned: false }, { mode: 'name', owned: 'false' }],
-    ['the whole Catalogue', { mode: 'name', offered: false }, { mode: 'name', offered: 'false' }],
-    ['the default offer', { mode: 'name', offered: true }, { mode: 'name' }],
+    [
+      'the impressions some player offers',
+      { mode: 'name', offered: true },
+      { mode: 'name', offered: 'true' },
+    ],
+    ['the default offer', { mode: 'name', offered: false }, { mode: 'name' }],
     [
       'the possession of a browsed player',
       { mode: 'player', player: 'urza', owned: true },
@@ -77,7 +81,7 @@ describe('toSearchQuery', () => {
     ],
     [
       'the offer of a browsed player, left out',
-      { mode: 'player', player: 'urza', offered: false },
+      { mode: 'player', player: 'urza', offered: true },
       { mode: 'player', player: 'urza' },
     ],
   ])('writes %s', (_label, state, expected) => {
@@ -85,7 +89,7 @@ describe('toSearchQuery', () => {
   });
 
   it.each<SearchUrlState>([
-    { mode: 'name', q: 'Sol Ring', owned: false, offered: false },
+    { mode: 'name', q: 'Sol Ring', owned: false, offered: true },
     { mode: 'player', player: 'urza', owned: true },
     { mode: 'name', q: 'Sol Ring' },
     { mode: 'player', player: 'urza', filter: 'tutor' },
@@ -116,12 +120,12 @@ describe('searchRoute', () => {
 });
 
 describe('searchListParams', () => {
-  // The name search asks for the cards offered by any player (the Offre axis), a player's
-  // collection for the cards that player offers.
+  // The name search asks for the whole Catalogue unless the Offre axis narrows it to the cards
+  // offered by any player, a player's collection for the cards that player offers.
   it.each<[string, SearchUrlState, SearchListParams | null]>([
-    ['a submitted name', { mode: 'name', q: 'Sol Ring' }, { offered: true, q: 'Sol Ring' }],
-    ['the name mode before any search', { mode: 'name' }, { offered: true }],
-    ['a blank name', { mode: 'name', q: '  ' }, { offered: true }],
+    ['a submitted name', { mode: 'name', q: 'Sol Ring' }, { q: 'Sol Ring' }],
+    ['the name mode before any search', { mode: 'name' }, {}],
+    ['a blank name', { mode: 'name', q: '  ' }, {}],
     ['a player', { mode: 'player', player: 'urza' }, { offered_by: 'urza' }],
     [
       'a player with a text filter',
@@ -135,15 +139,15 @@ describe('searchListParams', () => {
     ],
     [
       'the impressions I miss that somebody offers',
-      { mode: 'name', owned: false },
+      { mode: 'name', owned: false, offered: true },
       { offered: true, owned: false },
     ],
     [
       'the impressions I own, offered or not',
-      { mode: 'name', q: 'Sol Ring', owned: true, offered: false },
+      { mode: 'name', q: 'Sol Ring', owned: true },
       { owned: true, q: 'Sol Ring' },
     ],
-    ['the whole Catalogue', { mode: 'name', offered: false }, {}],
+    ['the cards some player offers', { mode: 'name', offered: true }, { offered: true }],
     [
       'the impressions of a player I miss',
       { mode: 'player', player: 'urza', owned: false },
@@ -157,17 +161,21 @@ describe('searchListParams', () => {
 
 describe('searchSetsScope', () => {
   it.each<[string, SearchUrlState, SearchSetsParams | null]>([
-    ['a submitted name', { mode: 'name', q: 'Sol Ring' }, { offered: true, q: 'Sol Ring' }],
-    ['the name mode before any search', { mode: 'name' }, { offered: true }],
-    ['a blank name', { mode: 'name', q: '  ' }, { offered: true }],
+    ['a submitted name', { mode: 'name', q: 'Sol Ring' }, { q: 'Sol Ring' }],
+    ['the name mode before any search', { mode: 'name' }, {}],
+    ['a blank name', { mode: 'name', q: '  ' }, {}],
     ['a player', { mode: 'player', player: 'urza' }, { offered_by: 'urza' }],
     [
       'a player with a text filter',
       { mode: 'player', player: 'urza', filter: 'tutor' },
       { offered_by: 'urza', q: 'tutor' },
     ],
-    ['the whole Catalogue', { mode: 'name', q: 'Sol Ring', offered: false }, { q: 'Sol Ring' }],
-    ['a possession', { mode: 'name', owned: false }, { offered: true, owned: false }],
+    [
+      'the cards some player offers',
+      { mode: 'name', q: 'Sol Ring', offered: true },
+      { offered: true, q: 'Sol Ring' },
+    ],
+    ['a possession', { mode: 'name', owned: false }, { owned: false }],
     [
       'a possession on a player',
       { mode: 'player', player: 'urza', owned: true },

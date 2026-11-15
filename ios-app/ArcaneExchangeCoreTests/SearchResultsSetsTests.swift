@@ -9,9 +9,9 @@ struct SearchResultsSetsTests {
     typealias Query = Operations.search_cards.Input.Query
     typealias SetsQuery = Operations.search_card_sets.Input.Query
 
-    @Test func textSearchAsksForTheSetsOfTheOfferedCardsMatchingItsQuery() {
+    @Test func textSearchAsksForTheSetsOfTheCatalogueCardsMatchingItsQuery() {
         let target = SearchResultsRoute.Target.card(query: "Sol Ring")
-        #expect(target.setsQuery() == SetsQuery(q: "Sol Ring", offered: true))
+        #expect(target.setsQuery() == SetsQuery(q: "Sol Ring"))
     }
 
     @Test func playerCollectionAsksForTheSetsThePlayerOffers() {
@@ -28,7 +28,6 @@ struct SearchResultsSetsTests {
             page_size: 20,
             sort_dir: .desc,
             q: "Sol Ring",
-            offered: true,
             sets: "ABC,TST"
         ))
     }

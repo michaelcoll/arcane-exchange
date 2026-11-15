@@ -5,16 +5,22 @@ import SwiftUI
 /// Rechercher tab (`ScrSearch` in the iOS mockup): a mode switch — carte / joueur —
 /// over the system search field. Recent card queries and players are kept on the device only,
 /// as the mockup notes.
+///
+/// The card mode works like the Photos app: the full card grid follows the field as it is
+/// typed, and submitting only puts the keyboard away, the grid stays where it is. Its axes,
+/// sort and filters sit in the "…" menu of the nav bar.
 struct SearchView: View {
     @Binding var searchText: String
 
     @State private var model: SearchViewModel
+    @State private var cardResults: SearchResultsViewModel
     @State private var mode: SearchMode = .card
     @Namespace private var modeThumb
 
     init(searchText: Binding<String>, api: any APIProtocol) {
         _searchText = searchText
         _model = State(initialValue: SearchViewModel(api: api))
+        _cardResults = State(initialValue: SearchResultsViewModel(target: .card(query: ""), api: api))
     }
 
     /// Heterogeneous on purpose: the stack pushes `SearchResultsRoute`, then from the results
@@ -36,16 +42,26 @@ struct SearchView: View {
             .navigationTitle("Rechercher")
             .navigationBarTitleDisplayMode(.inline)
             .accountToolbar()
+            .toolbar {
+                if mode == .card {
+                    ToolbarItem(placement: .topBarTrailing) {
+                        SearchOptionsMenu(model: cardResults)
+                    }
+                }
+            }
             .cardBrowsingDestinations()
             .tradeDestinations()
         }
         .tradeNavigation(path: $path)
         .searchable(text: $searchText, prompt: mode.prompt)
+        // Search is active as soon as the tab opens (`.searchTabSelection`): without this, the
+        // system hides the nav bar, and the "…" menu with it, for as long as it stays active.
+        .searchPresentationToolbarBehavior(.avoidHidingContent)
         .onSubmit(of: .search) { submit() }
         .onChange(of: mode) { searchText = "" }
         .task(id: lookupKey) {
             switch mode {
-            case .card: await model.previewCards(matching: searchText)
+            case .card: await cardResults.search(searchText)
             case .player: await model.lookUpPlayers(matching: searchText)
             }
         }
@@ -77,10 +93,13 @@ struct SearchView: View {
 
     // MARK: Carte
 
+    /// A blank field shows the recent searches; as soon as it holds text, the live grid.
     @ViewBuilder private var cardMode: some View {
         let typing = !searchText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
 
-        if !typing, model.recentQueries.isEmpty {
+        if typing {
+            SearchResultsGrid(model: cardResults, showsInlineControls: false)
+        } else if model.recentQueries.isEmpty {
             ContentUnavailableView {
                 Label("Rechercher une carte", systemImage: "magnifyingglass")
             } description: {
@@ -88,69 +107,30 @@ struct SearchView: View {
             }
         } else {
             List {
-                if !filteredRecents.isEmpty {
-                    Section {
-                        ForEach(filteredRecents, id: \.self) { query in
-                            Button {
-                                searchText = query
-                                submit()
-                            } label: {
-                                Label(query, systemImage: "clock.arrow.circlepath")
-                            }
-                            .tint(.primary)
+                Section {
+                    ForEach(model.recentQueries, id: \.self) { query in
+                        Button {
+                            searchText = query
+                            submit()
+                        } label: {
+                            Label(query, systemImage: "clock.arrow.circlepath")
                         }
-                        .onDelete { offsets in
-                            model.removeQueries(Set(offsets.map { filteredRecents[$0] }))
-                        }
-                    } header: {
-                        HStack {
-                            Text("Recherches récentes")
-                            Spacer()
-                            Button("Effacer") { model.clearQueries() }
-                                .font(.caption)
-                                .textCase(nil)
-                        }
+                        .tint(.primary)
                     }
-                }
-
-                if typing {
-                    Section {
-                        cardPreviewContent
-                    } header: {
-                        Text("Résultats")
+                    .onDelete { offsets in
+                        model.removeQueries(Set(offsets.map { model.recentQueries[$0] }))
+                    }
+                } header: {
+                    HStack {
+                        Text("Recherches récentes")
+                        Spacer()
+                        Button("Effacer") { model.clearQueries() }
+                            .font(.caption)
+                            .textCase(nil)
                     }
                 }
             }
         }
-    }
-
-    @ViewBuilder private var cardPreviewContent: some View {
-        if model.isLoadingCardPreview, model.cardPreview.isEmpty {
-            HStack {
-                ProgressView()
-                Text("Recherche…").foregroundStyle(.secondary)
-            }
-        } else if model.cardPreviewFailed {
-            Label("Recherche indisponible", systemImage: "exclamationmark.triangle")
-                .foregroundStyle(.secondary)
-        } else if model.cardPreview.isEmpty {
-            Text("Aucune carte ne correspond.")
-                .foregroundStyle(.secondary)
-        } else {
-            ForEach(model.cardPreview, id: \.self) { card in
-                NavigationLink(value: CardDetailRoute(card: card.asCollectionCard)) {
-                    CardPreviewRow(card: card)
-                }
-            }
-            Button { submit() } label: {
-                Label("Voir tous les résultats", systemImage: "arrow.right")
-            }
-        }
-    }
-
-    private var filteredRecents: [String] {
-        let query = searchText.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
-        return query.isEmpty ? model.recentQueries : model.recentQueries.filter { $0.lowercased().contains(query) }
     }
 
     // MARK: Joueur
@@ -222,13 +202,14 @@ struct SearchView: View {
 
     // MARK: Submit
 
+    /// For a card search, the grid already shows the results: submitting only remembers the
+    /// query, and the system puts the keyboard away.
     private func submit() {
         let query = searchText.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !query.isEmpty else { return }
         switch mode {
         case .card:
             model.rememberQuery(query)
-            path.append(SearchResultsRoute(target: .card(query: query)))
         case .player:
             // Enter with no picked suggestion: jump straight into the top match if there is one.
             if let first = model.playerSuggestions.first {
@@ -236,37 +217,6 @@ struct SearchView: View {
                 path.append(SearchResultsRoute(target: .player(username: first.username)))
             }
         }
-    }
-}
-
-/// Compact card row for the as-you-type preview list — thumbnail, name, set, trend price.
-private struct CardPreviewRow: View {
-    let card: SearchCard
-
-    var body: some View {
-        HStack(spacing: 12) {
-            CardImageView(url: CardArtwork.url(imagePath: card.image_url))
-                .frame(width: 34, height: 47)
-                .clipShape(RoundedRectangle(cornerRadius: 4, style: .continuous))
-
-            VStack(alignment: .leading, spacing: 2) {
-                Text(card.displayName)
-                    .fontWeight(.medium)
-                    .lineLimit(1)
-                Text("\(card.set_code.uppercased()) · \(card.collector_number)")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            }
-
-            Spacer(minLength: 8)
-
-            if let priceCents = card.referencePriceCents {
-                Text(Price.euros(cents: priceCents))
-                    .font(.callout.weight(.semibold))
-                    .monospacedDigit()
-            }
-        }
-        .padding(.vertical, 2)
     }
 }
 

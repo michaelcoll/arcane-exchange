@@ -17,22 +17,22 @@ struct SearchAxesTests {
     private let text = SearchResultsRoute.Target.card(query: "Sol Ring")
     private let player = SearchResultsRoute.Target.player(username: "jace")
 
-    @Test func startsOnEveryImpressionThatSomePlayerOffers() {
-        #expect(SearchAxes() == SearchAxes(possession: .any, offer: .offered))
+    @Test func startsOnTheWholeCatalogue() {
+        #expect(SearchAxes() == SearchAxes(possession: .any, offer: .all))
     }
 
     @Test func theOwnedImpressionsSendOwnedTrue() {
         let axes = SearchAxes(possession: .owned)
         let query = text.query(filters: CollectionFilters(), axes: axes, page: 0, pageSize: 20)
         #expect(query.owned == true)
-        #expect(query.offered == true)
+        #expect(query.offered == nil)
     }
 
-    @Test func theImpressionsNotOwnedSendOwnedFalseAndStayOffered() {
+    @Test func theImpressionsNotOwnedSendOwnedFalseAndStayOnTheCatalogue() {
         let axes = SearchAxes(possession: .notOwned)
         let query = text.query(filters: CollectionFilters(), axes: axes, page: 0, pageSize: 20)
         #expect(query.owned == false)
-        #expect(query.offered == true)
+        #expect(query.offered == nil)
     }
 
     @Test func everyPossessionSendsNoOwnedParameter() {
@@ -61,7 +61,8 @@ struct SearchAxesTests {
     @Test func theSetFacetFollowsTheTextAndBothAxes() {
         let notOwned = SearchAxes(possession: .notOwned, offer: .offered)
         #expect(text.setsQuery(axes: SearchAxes(offer: .all)) == SetsQuery(q: "Sol Ring"))
-        #expect(text.setsQuery(axes: SearchAxes()) == SetsQuery(q: "Sol Ring", offered: true))
+        #expect(text.setsQuery(axes: SearchAxes()) == SetsQuery(q: "Sol Ring"))
+        #expect(text.setsQuery(axes: SearchAxes(offer: .offered)) == SetsQuery(q: "Sol Ring", offered: true))
         #expect(text.setsQuery(axes: notOwned) == SetsQuery(q: "Sol Ring", owned: false, offered: true))
         #expect(player.setsQuery(axes: SearchAxes(possession: .owned, offer: .all))
             == SetsQuery(owned: true, offered_by: "jace"))
@@ -89,16 +90,16 @@ struct SearchAxesTests {
         await model.loadInitiallyIfNeeded()
         await model.loadSetsIfNeeded()
 
-        model.axes = SearchAxes(possession: .notOwned, offer: .all)
+        model.axes = SearchAxes(possession: .notOwned, offer: .offered)
         await model.paginator.reload()
         await model.loadSetsIfNeeded()
         await model.loadSetsIfNeeded()
 
         #expect(queries.map(\.owned) == [nil, false])
-        #expect(queries.map(\.offered) == [true, nil])
+        #expect(queries.map(\.offered) == [nil, true])
         #expect(setsQueries == [
-            SetsQuery(q: "Sol Ring", offered: true),
-            SetsQuery(q: "Sol Ring", owned: false),
+            SetsQuery(q: "Sol Ring"),
+            SetsQuery(q: "Sol Ring", owned: false, offered: true),
         ])
     }
 }
