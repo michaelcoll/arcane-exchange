@@ -52,12 +52,12 @@ const setPossession = (value: string) => {
 
 // The Offre axis of the search by name; in the player mode it is the player.
 const offerOptions = [
-  { value: 'offered', label: 'Proposées', tone: 'primary' },
   { value: 'all', label: 'Tout le catalogue', tone: 'primary' },
+  { value: 'offered', label: 'Proposées', tone: 'primary' },
 ];
-const offer = computed(() => (search.offered === false ? 'all' : 'offered'));
+const offer = computed(() => (search.offered === true ? 'offered' : 'all'));
 const setOffer = (value: string) => {
-  search.offered = value === 'all' ? false : undefined;
+  search.offered = value === 'offered' ? true : undefined;
 };
 
 const size = usePreference(CARD_SIZE_PREF);

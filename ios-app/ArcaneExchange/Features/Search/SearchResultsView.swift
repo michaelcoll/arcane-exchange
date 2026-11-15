@@ -2,36 +2,43 @@ import APIClient
 import ArcaneExchangeCore
 import SwiftUI
 
-/// Where a submitted search lands (`ScrResults` in the mockup): a paginated card grid for a
-/// name or player search.
+/// A player's tradable collection (`ScrResults` in the mockup), pushed from the player search:
+/// a paginated card grid with its filter rail and axes.
 struct SearchResultsView: View {
     let route: SearchResultsRoute
-    let api: any APIProtocol
+
+    @State private var model: SearchResultsViewModel
+
+    init(route: SearchResultsRoute, api: any APIProtocol) {
+        self.route = route
+        _model = State(initialValue: SearchResultsViewModel(target: route.target, api: api))
+    }
 
     var body: some View {
-        SearchResultsGrid(target: route.target, api: api)
+        SearchResultsGrid(model: model, showsInlineControls: true)
+            .task { await model.loadInitiallyIfNeeded() }
             .navigationTitle(route.title)
             .navigationBarTitleDisplayMode(.inline)
     }
 }
 
-/// The card grid for a name or player-scoped search — same layout as the Collection tab.
-private struct SearchResultsGrid: View {
-    let target: SearchResultsRoute.Target
+/// The card grid of a search — same layout as the Collection tab. With `showsInlineControls`,
+/// the filter rail and the axes scroll above the cards; without, the screen offers them
+/// elsewhere (the "…" menu of the Rechercher tab).
+struct SearchResultsGrid: View {
+    @Bindable var model: SearchResultsViewModel
+    let showsInlineControls: Bool
 
-    @State private var model: SearchResultsViewModel
     @State private var isShowingFilters = false
 
     private let columns = [GridItem(.adaptive(minimum: 140), spacing: 14)]
 
-    init(target: SearchResultsRoute.Target, api: any APIProtocol) {
-        self.target = target
-        _model = State(initialValue: SearchResultsViewModel(target: target, api: api))
+    private var target: SearchResultsRoute.Target {
+        model.target
     }
 
     var body: some View {
         content
-            .task { await model.loadInitiallyIfNeeded() }
             .task(id: model.axes) { await model.loadSetsIfNeeded() }
             .onChange(of: model.filters) {
                 Task { await model.paginator.reload() }
@@ -45,6 +52,16 @@ private struct SearchResultsGrid: View {
     }
 
     @ViewBuilder private var content: some View {
+        if model.isAwaitingQuery, model.paginator.items.isEmpty {
+            ProgressView()
+                .controlSize(.large)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+        } else {
+            phaseContent
+        }
+    }
+
+    @ViewBuilder private var phaseContent: some View {
         switch model.paginator.phase {
         case .firstLoad:
             ProgressView()
@@ -80,7 +97,7 @@ private struct SearchResultsGrid: View {
                 }
             }
         )
-        if state.offersClearFilters || model.axes != SearchAxes() {
+        if showsInlineControls, state.offersClearFilters || model.axes != SearchAxes() {
             VStack(alignment: .leading, spacing: 14) {
                 if case let .player(username) = target {
                     playerHeader(username)
@@ -125,9 +142,10 @@ private struct SearchResultsGrid: View {
                     playerHeader(username)
                 }
 
-                rail
-
-                axesBar
+                if showsInlineControls {
+                    rail
+                    axesBar
+                }
 
                 Text(CollectionCopy.sortedSummary(total: model.paginator.total, sortBy: model.filters.sortBy))
                     .font(.caption)
@@ -171,7 +189,7 @@ private struct SearchResultsGrid: View {
 #Preview {
     NavigationStack {
         SearchResultsView(
-            route: SearchResultsRoute(target: .card(query: "Vampiric Tutor")),
+            route: SearchResultsRoute(target: .player(username: "jace")),
             api: APIClientFactory.preview
         )
     }

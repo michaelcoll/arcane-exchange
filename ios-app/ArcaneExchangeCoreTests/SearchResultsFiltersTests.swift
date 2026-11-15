@@ -17,7 +17,6 @@ struct SearchResultsFiltersTests {
             page_size: 20,
             sort_dir: .desc,
             q: "Sol Ring",
-            offered: true,
             rarity: [.C, .R, .M]
         ))
     }

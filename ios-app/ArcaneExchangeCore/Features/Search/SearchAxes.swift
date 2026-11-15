@@ -27,13 +27,13 @@ package enum PossessionAxis: CaseIterable, Hashable {
 /// The Offre axis of a search by name: the impressions some player offers, or the whole
 /// Catalogue. A player's collection has no choice: the player is its Offre axis.
 package enum OfferAxis: CaseIterable, Hashable {
-    case offered
     case all
+    case offered
 
     package var label: String {
         switch self {
-        case .offered: "Proposées"
         case .all: "Tout le catalogue"
+        case .offered: "Proposées"
         }
     }
 }
@@ -44,7 +44,7 @@ package struct SearchAxes: Hashable {
     package var possession: PossessionAxis
     package var offer: OfferAxis
 
-    package init(possession: PossessionAxis = .any, offer: OfferAxis = .offered) {
+    package init(possession: PossessionAxis = .any, offer: OfferAxis = .all) {
         self.possession = possession
         self.offer = offer
     }
