@@ -22,9 +22,7 @@ package struct SearchResultsSortStore {
     /// does not offer falls back to the screen's default.
     package func load(for target: SearchResultsRoute.Target) -> CollectionFilters {
         var filters = target.defaultFilters
-        guard let key = Self.key(for: target),
-              let sort = memory.read(Sort.self, for: key)
-        else {
+        guard let sort = memory.read(Sort.self, for: Self.key(for: target)) else {
             return filters
         }
         filters.sortBy = target.offeredSort(sort.sortBy)
@@ -33,15 +31,13 @@ package struct SearchResultsSortStore {
     }
 
     package func save(_ filters: CollectionFilters, for target: SearchResultsRoute.Target) {
-        guard let key = Self.key(for: target) else { return }
-        memory.write(Sort(sortBy: filters.sortBy, sortDir: filters.sortDir), for: key)
+        memory.write(Sort(sortBy: filters.sortBy, sortDir: filters.sortDir), for: Self.key(for: target))
     }
 
-    private static func key(for target: SearchResultsRoute.Target) -> PlayerKey? {
+    private static func key(for target: SearchResultsRoute.Target) -> PlayerKey {
         switch target {
         case .card: .searchSortText
         case .player: .searchSortPlayerCollection
-        case .decklist: nil
         }
     }
 }

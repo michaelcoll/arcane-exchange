@@ -12,10 +12,9 @@ package extension UserSuggestion {
     }
 }
 
-/// The three search modes the mockup's segmented control offers.
+/// The two search modes the segmented control offers.
 package enum SearchMode: String, CaseIterable, Identifiable {
     case card
-    case decklist
     case player
 
     package var id: Self {
@@ -25,7 +24,6 @@ package enum SearchMode: String, CaseIterable, Identifiable {
     package var label: String {
         switch self {
         case .card: "Carte"
-        case .decklist: "Decklist"
         case .player: "Joueur"
         }
     }
@@ -33,7 +31,6 @@ package enum SearchMode: String, CaseIterable, Identifiable {
     package var prompt: Text {
         switch self {
         case .card: Text("Vampiric Tutor…")
-        case .decklist: Text("Nom d'une carte…")
         case .player: Text("Pseudo d'un joueur…")
         }
     }
@@ -50,8 +47,6 @@ package struct SearchResultsRoute: Hashable {
         /// Just the handle: it is all `/search/card` is given, and it lets the trade screen
         /// open a partner's collection without inventing a `UserSuggestion` it never had.
         case player(username: String)
-        /// Not wired: the API has no batch endpoint, it is one `/search/card` call per line.
-        case decklist
     }
 
     package let target: Target
@@ -64,7 +59,6 @@ package struct SearchResultsRoute: Hashable {
         switch target {
         case let .card(query): query
         case let .player(username): "@\(username)"
-        case .decklist: "Decklist"
         }
     }
 }

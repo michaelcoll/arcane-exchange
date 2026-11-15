@@ -4,7 +4,7 @@ import Testing
 
 struct SearchModeTests {
     @Test func labelsEveryMode() {
-        #expect(SearchMode.allCases.map(\.label) == ["Carte", "Decklist", "Joueur"])
+        #expect(SearchMode.allCases.map(\.label) == ["Carte", "Joueur"])
     }
 }
 
