@@ -1,5 +1,6 @@
 use crate::application::error::{AppError, InfraError};
-use sqlx::Error;
+use sqlx::postgres::PgArguments;
+use sqlx::{Arguments, Error, Postgres};
 
 pub mod binder_repository_adapter;
 pub mod card_image_file_repository_adapter;
@@ -18,6 +19,7 @@ pub mod entities;
 pub mod purchase_repository_adapter;
 pub mod receiving_binder_repository_adapter;
 mod sealed_product_content;
+pub mod search_repository_adapter;
 pub mod set_names_repository_adapter;
 pub mod showcase_repository_adapter;
 pub mod stats_repository_adapter;
@@ -25,6 +27,19 @@ pub mod trade_repository_adapter;
 mod trade_transfer;
 pub mod trading_binders_repository_adapter;
 pub mod user_repository_adapter;
+
+/// Binds `value` as the next argument and returns its placeholder number.
+fn add<'t, T>(args: &mut PgArguments, value: T) -> Result<usize, AppError>
+where
+    T: sqlx::Encode<'t, Postgres> + sqlx::Type<Postgres>,
+{
+    args.add(value).map_err(repository_error)?;
+    Ok(args.len())
+}
+
+fn repository_error(e: impl ToString) -> AppError {
+    AppError::Infra(InfraError::RepositoryError(e.to_string()))
+}
 
 impl From<Error> for AppError {
     fn from(err: Error) -> Self {

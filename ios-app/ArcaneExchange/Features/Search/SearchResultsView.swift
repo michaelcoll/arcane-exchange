@@ -133,8 +133,8 @@ private struct SearchResultsGrid: View {
 
                 LazyVGrid(columns: columns, spacing: 18) {
                     ForEach(model.paginator.items, id: \.self) { card in
-                        NavigationLink(value: CardDetailRoute(card: card)) {
-                            CollectionCardCell(card: card)
+                        NavigationLink(value: CardDetailRoute(card: card.asCollectionCard)) {
+                            SearchCardCell(card: card)
                         }
                         .buttonStyle(.plain)
                         .task { await model.paginator.loadMore(after: card) }

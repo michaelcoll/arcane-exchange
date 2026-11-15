@@ -4,7 +4,7 @@ import Testing
 
 @testable import ArcaneExchangeCore
 
-private func page(_ items: [CollectionCard], total: Int64) -> Operations.search_cards.Output {
+private func page(_ items: [SearchCard], total: Int64) -> Operations.search_cards.Output {
     .ok(.init(body: .json(.init(items: items, page: 0, page_size: 20, total: total))))
 }
 
@@ -16,7 +16,7 @@ struct SearchViewModelTests {
 
     @Test func previewsTheCardsMatchingTheQuery() async {
         let api = FakeAPI()
-        api.onSearchCards = { _ in page([card("a")], total: 1) }
+        api.onSearchCards = { _ in page([searchCard("a")], total: 1) }
         let model = makeModel(api)
 
         await model.previewCards(matching: "sol")

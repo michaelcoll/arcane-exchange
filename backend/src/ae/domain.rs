@@ -15,6 +15,7 @@ pub mod purchase;
 pub mod rarity_code;
 pub mod rarity_trade_filter;
 pub mod scan_batch;
+pub mod search;
 pub mod set_name;
 pub mod showcase;
 pub mod stats;

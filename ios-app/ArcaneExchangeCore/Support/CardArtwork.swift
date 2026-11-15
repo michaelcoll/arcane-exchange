@@ -29,7 +29,7 @@ package enum CardArtwork {
     /// The front image URLs of a page of cards, in grid order — what the prefetcher warms.
     /// Cards still pending drop out; their cell shows the card back either way.
     package static func urls(
-        for cards: [CollectionCard],
+        for cards: [some ArtworkCard],
         apiBaseURL: @autoclosure () -> URL = AppConfig.apiBaseURL()
     ) -> [URL] {
         cards.compactMap { url(imagePath: $0.image_url, apiBaseURL: apiBaseURL()) }

@@ -475,16 +475,6 @@ fn from_collection_entry_mine_panics() {
 }
 
 #[test]
-#[should_panic(expected = "get_offers only ever returns CollectionEntry::Owned entries")]
-fn from_collection_entry_public_panics() {
-    let entry = CollectionEntry::Public {
-        owner_count: 42,
-        reserved: false,
-    };
-    let _response: CardOfferResponse = entry.into();
-}
-
-#[test]
 fn price_history_params_deserializes_with_both_dates() {
     let json = json!({
         "start_date": "2025-01-01",

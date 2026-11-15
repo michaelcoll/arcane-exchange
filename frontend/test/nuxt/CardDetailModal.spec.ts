@@ -65,7 +65,6 @@ const baseCard: CollectionCard = {
   image_url: null,
   image_back_url: null,
   collection_entry: null,
-  owner_count: null,
   reserved: false,
   price_guide: null,
 };

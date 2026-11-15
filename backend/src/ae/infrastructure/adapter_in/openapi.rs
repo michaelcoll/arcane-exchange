@@ -25,6 +25,7 @@ use super::purchase::dto::{
     PurchaseDetailResponse, PurchaseKindResponse, PurchaseResponse, SealedProductTypeParam,
     UpdatePurchaseRequest,
 };
+use super::search::dto::{PaginatedSearchResponse, SearchCardResponse};
 use super::stats::dto::StatsResponse;
 use super::trade::dto::{
     AddTradeCardRequest, CreateTradeRequest, CreateTradeResponse, PaginatedTradesResponse,
@@ -109,6 +110,8 @@ use utoipa::OpenApi;
         CardImportResponse,
         CardImportLineErrorResponse,
         PaginatedCollectionResponse,
+        SearchCardResponse,
+        PaginatedSearchResponse,
         PriceHistoryEntryResponse,
         SortByParam,
         SortDirParam,

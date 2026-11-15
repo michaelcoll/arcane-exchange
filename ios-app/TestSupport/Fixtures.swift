@@ -21,6 +21,21 @@ func card(_ id: String) -> CollectionCard {
     )
 }
 
+func searchCard(_ id: String) -> SearchCard {
+    SearchCard(
+        collector_number: "001",
+        foil: false,
+        image_url: nil,
+        language_code: "fr",
+        name: "Card \(id)",
+        owner_count: 1,
+        rarity_code: "C",
+        reserved: false,
+        scryfall_id: id,
+        set_code: "FDN"
+    )
+}
+
 func testCard() -> CollectionCard {
     CollectionCard(
         collector_number: "243",

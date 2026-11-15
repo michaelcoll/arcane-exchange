@@ -1,12 +1,13 @@
 use crate::application::error::{AppError, InfraError};
 use crate::application::use_case::{MockSearchCardsUseCase, MockSearchSetsUseCase};
-use crate::domain::card::{Card, CollectionEntry};
-use crate::domain::collection::{CollectionSortField, SearchQuery, SearchScope, SortDirection};
+use crate::domain::card::CopyId;
+use crate::domain::collection::SortDirection;
 use crate::domain::error::FunctionalError;
 use crate::domain::language_code::LanguageCode;
 use crate::domain::pagination::{PageRequest, Paginated, Pagination};
 use crate::domain::rarity_code::RarityCode;
-use crate::domain::set_name::SetName;
+use crate::domain::search::{SearchCard, SearchQuery, SearchScope, SearchSortField};
+use crate::domain::set_name::{SetCode, SetName};
 use crate::infrastructure::testing::{
     assert_error, assert_routes_refuse_anonymous, authed, json_of,
 };
@@ -29,21 +30,27 @@ fn sets_app(search_sets_use_case: MockSearchSetsUseCase) -> axum::Router {
     })
 }
 
-fn make_card(set_code: &str, collector_number: &str) -> Card {
-    Card::new(
-        set_code,
-        format!("Set {}", set_code),
-        collector_number,
-        LanguageCode::EN,
-        false,
-        "Test Card",
-        RarityCode::C,
-        1,
-        100,
-    )
+fn make_card(set_code: &str, collector_number: &str) -> SearchCard {
+    let set_code = SetCode::new(set_code);
+    SearchCard {
+        id: CopyId::new(
+            set_code.clone(),
+            collector_number.to_string(),
+            LanguageCode::EN,
+            false,
+        ),
+        set_name: SetName::new(set_code.clone(), format!("Set {}", set_code)),
+        name: "Test Card".to_string(),
+        rarity_code: RarityCode::C,
+        scryfall_id: uuid::Uuid::default(),
+        image: None,
+        price_guide: None,
+        owner_count: 1,
+        reserved: false,
+    }
 }
 
-fn make_paginated(items: Vec<Card>, page: u32, page_size: u32) -> Paginated<Card> {
+fn make_paginated(items: Vec<SearchCard>, page: u32, page_size: u32) -> Paginated<SearchCard> {
     let total = items.len() as u64;
     let pagination = Pagination::try_new(page, page_size, u32::MAX).unwrap();
     Paginated {
@@ -158,7 +165,7 @@ async fn search_cards_passes_the_requested_page_to_the_use_case_unvalidated() {
     let mut mock = MockSearchCardsUseCase::new();
     mock.expect_search_cards()
         .withf(|q| {
-            q.collection_query.pagination
+            q.pagination
                 == PageRequest {
                     page: 1000,
                     page_size: 9999,
@@ -189,7 +196,7 @@ async fn search_cards_passes_pagination_params_to_use_case() {
     let mut mock = MockSearchCardsUseCase::new();
     mock.expect_search_cards()
         .withf(|q| {
-            q.collection_query.pagination
+            q.pagination
                 == PageRequest {
                     page: 3,
                     page_size: 5,
@@ -197,7 +204,7 @@ async fn search_cards_passes_pagination_params_to_use_case() {
         })
         .times(1)
         .returning(|q| {
-            let PageRequest { page, page_size } = q.collection_query.pagination;
+            let PageRequest { page, page_size } = q.pagination;
             Box::pin(async move { Ok(make_paginated(vec![], page, page_size)) })
         });
 
@@ -234,12 +241,9 @@ async fn search_cards_maps_card_fields_correctly() {
 }
 
 #[tokio::test]
-async fn search_cards_never_exposes_collection_entry_always_owner_count() {
+async fn search_cards_exposes_the_owner_count_and_no_collection_entry() {
     let mut card = make_card("FDN", "42");
-    card.collection_entry = CollectionEntry::Public {
-        owner_count: 3,
-        reserved: false,
-    };
+    card.owner_count = 3;
 
     let mut mock = MockSearchCardsUseCase::new();
     mock.expect_search_cards().times(1).returning(move |_| {
@@ -252,13 +256,13 @@ async fn search_cards_never_exposes_collection_entry_always_owner_count() {
     assert_eq!(response.status(), StatusCode::OK);
     let body = json_of(response).await;
     let item = &body["items"][0];
-    assert_eq!(item["collection_entry"], json!(null));
+    assert!(item.get("collection_entry").is_none());
     assert_eq!(item["owner_count"], 3);
 }
 
 #[tokio::test]
 async fn search_cards_passes_sort_by_avg_to_use_case() {
-    let mock = expecting_search(|q| q.collection_query.sort_by == CollectionSortField::Avg);
+    let mock = expecting_search(|q| q.sort_by == SearchSortField::Avg);
 
     let response = authed(search_app(mock), Method::GET, "/search/card?sort_by=avg").await;
 
@@ -267,7 +271,7 @@ async fn search_cards_passes_sort_by_avg_to_use_case() {
 
 #[tokio::test]
 async fn search_cards_passes_sort_by_set_code_to_use_case() {
-    let mock = expecting_search(|q| q.collection_query.sort_by == CollectionSortField::SetCode);
+    let mock = expecting_search(|q| q.sort_by == SearchSortField::SetCode);
 
     let response = authed(
         search_app(mock),
@@ -281,8 +285,7 @@ async fn search_cards_passes_sort_by_set_code_to_use_case() {
 
 #[tokio::test]
 async fn search_cards_passes_sort_by_language_code_to_use_case() {
-    let mock =
-        expecting_search(|q| q.collection_query.sort_by == CollectionSortField::LanguageCode);
+    let mock = expecting_search(|q| q.sort_by == SearchSortField::LanguageCode);
 
     let response = authed(
         search_app(mock),
@@ -296,7 +299,7 @@ async fn search_cards_passes_sort_by_language_code_to_use_case() {
 
 #[tokio::test]
 async fn search_cards_passes_sort_dir_asc_to_use_case() {
-    let mock = expecting_search(|q| q.collection_query.sort_dir == SortDirection::Asc);
+    let mock = expecting_search(|q| q.sort_dir == SortDirection::Asc);
 
     let response = authed(search_app(mock), Method::GET, "/search/card?sort_dir=asc").await;
 
@@ -305,7 +308,7 @@ async fn search_cards_passes_sort_dir_asc_to_use_case() {
 
 #[tokio::test]
 async fn search_cards_defaults_sort_dir_to_desc() {
-    let mock = expecting_search(|q| q.collection_query.sort_dir == SortDirection::Desc);
+    let mock = expecting_search(|q| q.sort_dir == SortDirection::Desc);
 
     let response = authed(search_app(mock), Method::GET, "/search/card").await;
 
@@ -314,7 +317,7 @@ async fn search_cards_defaults_sort_dir_to_desc() {
 
 #[tokio::test]
 async fn search_cards_passes_search_query_to_use_case() {
-    let mock = expecting_search(|q| q.collection_query.search_query == Some("gob".to_string()));
+    let mock = expecting_search(|q| q.search_query == Some("gob".to_string()));
 
     let response = authed(search_app(mock), Method::GET, "/search/card?q=gob").await;
 
@@ -323,7 +326,7 @@ async fn search_cards_passes_search_query_to_use_case() {
 
 #[tokio::test]
 async fn search_cards_passes_none_search_query_when_q_is_absent() {
-    let mock = expecting_search(|q| q.collection_query.search_query.is_none());
+    let mock = expecting_search(|q| q.search_query.is_none());
 
     let response = authed(search_app(mock), Method::GET, "/search/card").await;
 
@@ -332,8 +335,7 @@ async fn search_cards_passes_none_search_query_when_q_is_absent() {
 
 #[tokio::test]
 async fn search_cards_parses_repeated_rarity_query_params_into_rarity_codes() {
-    let mock =
-        expecting_search(|q| q.collection_query.rarity == vec![RarityCode::C, RarityCode::U]);
+    let mock = expecting_search(|q| q.rarity == vec![RarityCode::C, RarityCode::U]);
 
     let response = authed(
         search_app(mock),
@@ -347,7 +349,7 @@ async fn search_cards_parses_repeated_rarity_query_params_into_rarity_codes() {
 
 #[tokio::test]
 async fn search_cards_defaults_rarity_to_empty_when_absent() {
-    let mock = expecting_search(|q| q.collection_query.rarity.is_empty());
+    let mock = expecting_search(|q| q.rarity.is_empty());
 
     let response = authed(search_app(mock), Method::GET, "/search/card").await;
 
@@ -442,7 +444,7 @@ async fn search_cards_rejects_added_at_sort_with_empty_player_username() {
 
 #[tokio::test]
 async fn search_cards_passes_sort_by_added_at_to_use_case() {
-    let mock = expecting_search(|q| q.collection_query.sort_by == CollectionSortField::AddedAt);
+    let mock = expecting_search(|q| q.sort_by == SearchSortField::AddedAt);
 
     let response = authed(
         search_app(mock),
@@ -459,7 +461,7 @@ async fn search_cards_with_added_at_sort_and_unknown_player_username_still_reach
     // Whether the username matches a real user is a repository concern; the
     // controller-level validation only cares that `player_username` is present.
     let mock = expecting_search(|q| {
-        q.collection_query.sort_by == CollectionSortField::AddedAt
+        q.sort_by == SearchSortField::AddedAt
             && q.player_username.as_deref() == Some("no-such-user")
     });
 

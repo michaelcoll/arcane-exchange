@@ -5,6 +5,7 @@ use crate::domain::card_image::{CardImage, CardImageSource};
 use crate::domain::language_code::LanguageCode;
 use crate::domain::price::{FullPriceGuide, Price, PriceGuide, PriceHistoryEntry};
 use crate::domain::rarity_code::RarityCode;
+use crate::domain::search::SearchCard;
 use crate::domain::set_name::{SetCode, SetName};
 use crate::domain::showcase::ShowcaseCard;
 use crate::domain::trade::{Trade, TradeCard, TradeCardDetail, TradeId, TradeStatus, TradeSummary};
@@ -527,18 +528,34 @@ pub struct CardWithPriceEntity {
     pub scryfall_id: Uuid,
     pub image_source: Option<String>,
     pub image_has_back: bool,
-    /// Always present, even for other users' rows (not masked).
     pub quantity: i32,
-    /// `NULL` when the row belongs to another user (masked in SQL).
     pub purchase_price: Option<i32>,
-    /// `NULL` when the row belongs to another user (masked in SQL).
-    pub added_at: Option<DateTime<Utc>>,
-    /// Number of distinct users owning this card (search mode only); `0` and unused
-    /// in "my collection" mode.
+    pub added_at: DateTime<Utc>,
+    /// `true` if this card is engaged in one of its owner's trades in `ONE_ACCEPTED` or
+    /// `FULLY_ACCEPTED` status.
+    pub reserved: bool,
+    #[sqlx(flatten)]
+    pub price: PriceGuideEntity,
+}
+
+/// A row of the public search: one card, aggregated over the players who offer it.
+#[derive(sqlx::FromRow)]
+pub struct SearchCardEntity {
+    pub set_code: String,
+    pub set_name: String,
+    pub collector_number: String,
+    pub language_code: String,
+    pub foil: bool,
+    pub name: String,
+    pub rarity: String,
+    pub scryfall_id: Uuid,
+    pub image_source: Option<String>,
+    pub image_has_back: bool,
+    /// Number of distinct users offering this card.
     pub owner_count: i64,
     /// `true` if this card is engaged in one of its owner's trades in `ONE_ACCEPTED` or
-    /// `FULLY_ACCEPTED` status. In search mode, only accurate when scoped to a single real
-    /// owner (`player_username`); `false` in the unscoped multi-owner aggregate.
+    /// `FULLY_ACCEPTED` status. Only accurate when scoped to a single real owner
+    /// (`player_username`); `false` in the unscoped multi-owner aggregate.
     pub reserved: bool,
     #[sqlx(flatten)]
     pub price: PriceGuideEntity,
@@ -569,18 +586,11 @@ impl TryFrom<CardWithPriceEntity> for Card {
             None
         };
 
-        // `added_at` is masked for the public search: it tells the owner's row from the aggregate.
-        let collection_entry = match e.added_at {
-            Some(added_at) => CollectionEntry::Mine {
-                quantity: e.quantity as u8,
-                purchase_price: e.purchase_price.map(|p| p as u32),
-                added_at,
-                reserved: e.reserved,
-            },
-            None => CollectionEntry::Public {
-                owner_count: e.owner_count as u64,
-                reserved: e.reserved,
-            },
+        let collection_entry = CollectionEntry::Mine {
+            quantity: e.quantity as u8,
+            purchase_price: e.purchase_price.map(|p| p as u32),
+            added_at: e.added_at,
+            reserved: e.reserved,
         };
 
         let card_id = card_id_from_db(&e.set_code, e.collector_number, &e.language_code)?;
@@ -597,6 +607,34 @@ impl TryFrom<CardWithPriceEntity> for Card {
             image: card_image_from_db(e.image_source.as_deref(), e.image_has_back)?,
             collection_entry,
             price_guide,
+        })
+    }
+}
+
+impl TryFrom<SearchCardEntity> for SearchCard {
+    type Error = InfraError;
+
+    fn try_from(e: SearchCardEntity) -> Result<Self, Self::Error> {
+        let price_guide = if e.price.avg.is_some() || e.price.low.is_some() {
+            Some(PriceGuide::from(e.price))
+        } else {
+            None
+        };
+
+        let card_id = card_id_from_db(&e.set_code, e.collector_number, &e.language_code)?;
+        Ok(SearchCard {
+            set_name: SetName::new(card_id.set_code.clone(), e.set_name),
+            id: CopyId {
+                card_id,
+                foil: e.foil,
+            },
+            name: e.name,
+            rarity_code: from_db_rarity(&e.rarity)?,
+            scryfall_id: e.scryfall_id,
+            image: card_image_from_db(e.image_source.as_deref(), e.image_has_back)?,
+            price_guide,
+            owner_count: e.owner_count as u64,
+            reserved: e.reserved,
         })
     }
 }
@@ -1069,8 +1107,7 @@ mod tests {
             image_has_back: false,
             quantity: 2,
             purchase_price: Some(350),
-            added_at: Some(chrono::Utc::now()),
-            owner_count: 0,
+            added_at: chrono::Utc::now(),
             reserved: true,
             price: PriceGuideEntity {
                 low: Some(300),
@@ -1089,9 +1126,11 @@ mod tests {
         }
     }
 
+    // --- SearchCardEntity ---
+
     #[test]
-    fn card_with_price_entity_converts_to_public_entry_when_purchase_price_is_null() {
-        let entity = CardWithPriceEntity {
+    fn search_card_entity_converts_to_a_search_card_with_its_owner_count() {
+        let entity = SearchCardEntity {
             set_code: "FDN".to_string(),
             set_name: "Foundations".to_string(),
             collector_number: "1".to_string(),
@@ -1102,31 +1141,26 @@ mod tests {
             scryfall_id: Uuid::new_v4(),
             image_source: None,
             image_has_back: false,
-            quantity: 0,
-            purchase_price: None,
-            added_at: None,
             owner_count: 5,
-            reserved: false,
+            reserved: true,
             price: PriceGuideEntity {
-                low: None,
-                avg: None,
+                low: Some(300),
+                avg: Some(350),
                 trend: None,
             },
         };
 
-        let card = Card::try_from(entity).unwrap();
+        let card = SearchCard::try_from(entity).unwrap();
 
-        match card.collection_entry {
-            CollectionEntry::Public { owner_count, .. } => {
-                assert_eq!(owner_count, 5);
-            }
-            _ => panic!("expected CollectionEntry::Public"),
-        }
+        assert_eq!(card.name, "Sol Ring");
+        assert_eq!(card.owner_count, 5);
+        assert!(card.reserved);
+        assert!(card.price_guide.is_some());
     }
 
     #[test]
-    fn card_with_price_entity_converts_to_public_entry_when_added_at_is_null() {
-        let entity = CardWithPriceEntity {
+    fn search_card_entity_with_no_price_returns_none_price_guide() {
+        let entity = SearchCardEntity {
             set_code: "FDN".to_string(),
             set_name: "Foundations".to_string(),
             collector_number: "1".to_string(),
@@ -1137,10 +1171,7 @@ mod tests {
             scryfall_id: Uuid::new_v4(),
             image_source: None,
             image_has_back: false,
-            quantity: 0,
-            purchase_price: Some(350),
-            added_at: None,
-            owner_count: 3,
+            owner_count: 1,
             reserved: false,
             price: PriceGuideEntity {
                 low: None,
@@ -1149,14 +1180,7 @@ mod tests {
             },
         };
 
-        let card = Card::try_from(entity).unwrap();
-
-        match card.collection_entry {
-            CollectionEntry::Public { owner_count, .. } => {
-                assert_eq!(owner_count, 3);
-            }
-            _ => panic!("expected CollectionEntry::Public"),
-        }
+        assert!(SearchCard::try_from(entity).unwrap().price_guide.is_none());
     }
 
     #[test]
@@ -1174,8 +1198,7 @@ mod tests {
             image_has_back: false,
             quantity: 1,
             purchase_price: Some(100),
-            added_at: Some(chrono::Utc::now()),
-            owner_count: 0,
+            added_at: chrono::Utc::now(),
             reserved: false,
             price: PriceGuideEntity {
                 low: None,

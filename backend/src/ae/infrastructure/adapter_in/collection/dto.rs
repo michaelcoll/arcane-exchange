@@ -512,14 +512,8 @@ pub struct CollectionCardResponse {
     /// Present only when the card is owned by the authenticated user.
     #[schema(value_type = CollectionEntryResponse, required = false)]
     pub collection_entry: Option<CollectionEntryResponse>,
-    /// Number of distinct users actually offering this card to trade (search mode only) —
-    /// after applying each owner's visibility, trade binder selection and rarity filters. A
-    /// card no one offers anymore never appears in search results at all.
-    pub owner_count: Option<u64>,
-    /// `true` if this card is engaged in an `ONE_ACCEPTED` or `FULLY_ACCEPTED` trade of its
-    /// owner (the authenticated user in collection mode, or the `player_username`-filtered
-    /// owner in search mode). Always `false` in the unscoped multi-owner search, where no
-    /// single owner can be attributed.
+    /// `true` if this card is engaged in an `ONE_ACCEPTED` or `FULLY_ACCEPTED` trade of the
+    /// authenticated user.
     pub reserved: bool,
     #[schema(value_type = PriceGuideResponse, required = false)]
     pub price_guide: Option<PriceGuideResponse>,
@@ -537,7 +531,7 @@ pub struct PaginatedCollectionResponse {
 
 impl From<Card> for CollectionCardResponse {
     fn from(c: Card) -> Self {
-        let (collection_entry, owner_count, reserved) = match c.collection_entry {
+        let (collection_entry, reserved) = match c.collection_entry {
             CollectionEntry::Mine {
                 quantity,
                 purchase_price,
@@ -549,13 +543,8 @@ impl From<Card> for CollectionCardResponse {
                     purchase_price,
                     added_at: added_at.to_rfc3339(),
                 }),
-                None,
                 reserved,
             ),
-            CollectionEntry::Public {
-                owner_count,
-                reserved,
-            } => (None, Some(owner_count), reserved),
             CollectionEntry::Owned { .. } => unreachable!(
                 "Card.collection_entry never carries CollectionEntry::Owned; that variant is reserved for /card/offers"
             ),
@@ -573,7 +562,6 @@ impl From<Card> for CollectionCardResponse {
             image_url,
             image_back_url,
             collection_entry,
-            owner_count,
             reserved,
             price_guide: c.price_guide.map(PriceGuideResponse::from),
         }

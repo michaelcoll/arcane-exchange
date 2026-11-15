@@ -8,11 +8,9 @@ import { RARITY_COLOR_CLASS } from '~/utils/rarity';
 const NEUTRAL_ICON_COLOR_CLASS = 'text-[var(--ink-2)]';
 
 /** A collection or search card, or a card of a Trade, which has no rarity and no collection
- * entry: the set icon then stays neutral and the "in my collection" block is hidden. */
-type DetailCard = Omit<
-  CollectionCard,
-  'rarity_code' | 'collection_entry' | 'owner_count' | 'reserved'
-> &
+ * entry: the set icon then stays neutral and the "in my collection" block is hidden. A search
+ * card has no collection entry either. */
+type DetailCard = Omit<CollectionCard, 'rarity_code' | 'collection_entry' | 'reserved'> &
   Partial<Pick<CollectionCard, 'rarity_code' | 'collection_entry'>>;
 
 const props = defineProps<{

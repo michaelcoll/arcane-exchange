@@ -78,69 +78,6 @@ impl CollectionQuery<PageRequest> {
     }
 }
 
-/// A search across every user's cards, adding an optional exact-match filter on the
-/// owning player's username to the shared `CollectionQuery` filters.
-#[derive(Clone, Debug, Default)]
-pub struct SearchQuery<P = Pagination> {
-    pub collection_query: CollectionQuery<P>,
-    pub player_username: Option<String>,
-}
-
-impl SearchQuery<PageRequest> {
-    /// Validates the requested page against `max_offset`, see [`CollectionQuery::paginate`].
-    ///
-    /// # Errors
-    ///
-    /// Same as [`PageRequest::paginate`].
-    pub fn paginate(self, max_offset: u32) -> Result<SearchQuery, FunctionalError> {
-        Ok(SearchQuery {
-            collection_query: self.collection_query.paginate(max_offset)?,
-            player_username: self.player_username,
-        })
-    }
-}
-
-impl<P> SearchQuery<P> {
-    /// Builds a `SearchQuery`, rejecting combinations that don't make sense together.
-    ///
-    /// # Errors
-    ///
-    /// Returns [`FunctionalError::AddedAtSortRequiresPlayerUsername`] when `sort_by` is
-    /// [`CollectionSortField::AddedAt`] and no `player_username` is set: an unscoped search can
-    /// group cards from several owners into a single row, so there is no single `added_at` value
-    /// to sort by.
-    pub fn try_new(
-        collection_query: CollectionQuery<P>,
-        player_username: Option<String>,
-    ) -> Result<Self, FunctionalError> {
-        if collection_query.sort_by == CollectionSortField::AddedAt && player_username.is_none() {
-            return Err(FunctionalError::AddedAtSortRequiresPlayerUsername);
-        }
-
-        Ok(Self {
-            collection_query,
-            player_username,
-        })
-    }
-}
-
-/// What a search covers, without its filters: a text query, a player, or both. The search
-/// facets are computed over this scope alone, so they stay stable while filters change.
-#[derive(Clone, Debug, Default, PartialEq, Eq)]
-pub struct SearchScope {
-    pub search_query: Option<String>,
-    pub player_username: Option<String>,
-}
-
-impl<P> From<CollectionQuery<P>> for SearchQuery<P> {
-    fn from(collection_query: CollectionQuery<P>) -> Self {
-        Self {
-            collection_query,
-            player_username: None,
-        }
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -180,18 +117,6 @@ mod tests {
         assert_eq!(q.sort_by, CollectionSortField::Trend);
         assert_eq!(q.sort_dir, SortDirection::Desc);
         assert_eq!(q.search_query, None);
-    }
-
-    #[test]
-    fn search_query_default_has_no_player_username() {
-        let q: SearchQuery = SearchQuery::default();
-        assert_eq!(q.player_username, None);
-    }
-
-    #[test]
-    fn search_query_from_collection_query_has_no_player_username() {
-        let q: SearchQuery = CollectionQuery::default().into();
-        assert_eq!(q.player_username, None);
     }
 
     #[test]
@@ -237,54 +162,5 @@ mod tests {
                 max: 20
             })
         ));
-    }
-
-    #[test]
-    fn search_query_paginate_keeps_the_player_username() {
-        let query = SearchQuery {
-            collection_query: CollectionQuery::<PageRequest>::default(),
-            player_username: Some("alice".to_string()),
-        };
-
-        let paginated = query.paginate(20).unwrap();
-
-        assert_eq!(paginated.player_username, Some("alice".to_string()));
-    }
-
-    #[test]
-    fn search_query_try_new_rejects_added_at_sort_without_player_username() {
-        let query = CollectionQuery::<PageRequest> {
-            sort_by: CollectionSortField::AddedAt,
-            ..Default::default()
-        };
-
-        let result = SearchQuery::try_new(query, None);
-
-        assert!(matches!(
-            result,
-            Err(FunctionalError::AddedAtSortRequiresPlayerUsername)
-        ));
-    }
-
-    #[test]
-    fn search_query_try_new_accepts_added_at_sort_with_player_username() {
-        let query = CollectionQuery::<PageRequest> {
-            sort_by: CollectionSortField::AddedAt,
-            ..Default::default()
-        };
-
-        let result = SearchQuery::try_new(query, Some("alice".to_string()));
-
-        assert!(result.is_ok());
-        assert_eq!(result.unwrap().player_username, Some("alice".to_string()));
-    }
-
-    #[test]
-    fn search_query_try_new_accepts_non_added_at_sort_without_player_username() {
-        let query = CollectionQuery::<PageRequest>::default();
-
-        let result = SearchQuery::try_new(query, None);
-
-        assert!(result.is_ok());
     }
 }

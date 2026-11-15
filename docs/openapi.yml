@@ -1491,7 +1491,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/PaginatedCollectionResponse'
+                $ref: '#/components/schemas/PaginatedSearchResponse'
         '400':
           description: Pagination out of bounds, or sort_by=added_at without player_username
           content:
@@ -2429,16 +2429,6 @@ components:
           type: string
         name:
           type: string
-        owner_count:
-          type:
-          - integer
-          - 'null'
-          format: int64
-          description: |-
-            Number of distinct users actually offering this card to trade (search mode only) —
-            after applying each owner's visibility, trade binder selection and rarity filters. A
-            card no one offers anymore never appears in search results at all.
-          minimum: 0
         price_guide:
           $ref: '#/components/schemas/PriceGuideResponse'
         rarity_code:
@@ -2446,10 +2436,8 @@ components:
         reserved:
           type: boolean
           description: |-
-            `true` if this card is engaged in an `ONE_ACCEPTED` or `FULLY_ACCEPTED` trade of its
-            owner (the authenticated user in collection mode, or the `player_username`-filtered
-            owner in search mode). Always `false` in the unscoped multi-owner search, where no
-            single owner can be attributed.
+            `true` if this card is engaged in an `ONE_ACCEPTED` or `FULLY_ACCEPTED` trade of the
+            authenticated user.
         scryfall_id:
           type: string
         set_code:
@@ -2735,6 +2723,30 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/PurchaseResponse'
+        page:
+          type: integer
+          format: int32
+          minimum: 0
+        page_size:
+          type: integer
+          format: int32
+          minimum: 0
+        total:
+          type: integer
+          format: int64
+          minimum: 0
+    PaginatedSearchResponse:
+      type: object
+      required:
+      - items
+      - total
+      - page
+      - page_size
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/SearchCardResponse'
         page:
           type: integer
           format: int32
@@ -3150,6 +3162,62 @@ components:
       - BUNDLE
       - PRERELEASE_PACK
       - PRECONSTRUCTED_DECK
+    SearchCardResponse:
+      type: object
+      description: 'A card a search found, reduced to what is public: no purchase price, no date of addition.'
+      required:
+      - set_code
+      - collector_number
+      - language_code
+      - foil
+      - name
+      - rarity_code
+      - scryfall_id
+      - owner_count
+      - reserved
+      properties:
+        collector_number:
+          type: string
+        foil:
+          type: boolean
+        image_back_url:
+          type:
+          - string
+          - 'null'
+          description: Back image of a double-faced card, like `image_url`; `null` for a single-faced card.
+        image_url:
+          type:
+          - string
+          - 'null'
+          description: |-
+            Front image, relative to the frontend (e.g. `/card-images/FDN_1_EN.webp?v=gatherer`);
+            `null` while the card's image is pending.
+        language_code:
+          type: string
+        name:
+          type: string
+        owner_count:
+          type: integer
+          format: int64
+          description: |-
+            Number of distinct users actually offering this card to trade — after applying each
+            owner's visibility, trade binder selection and rarity filters. A card no one offers
+            anymore never appears in search results at all.
+          minimum: 0
+        price_guide:
+          $ref: '#/components/schemas/PriceGuideResponse'
+        rarity_code:
+          type: string
+        reserved:
+          type: boolean
+          description: |-
+            `true` if this card is engaged in an `ONE_ACCEPTED` or `FULLY_ACCEPTED` trade of the
+            `player_username`-filtered owner. Always `false` in the unscoped multi-owner search,
+            where no single owner can be attributed.
+        scryfall_id:
+          type: string
+        set_code:
+          type: string
     SetInfoResponse:
       type: object
       description: A set, as several resources show it.

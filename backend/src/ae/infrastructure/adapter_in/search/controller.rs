@@ -1,13 +1,10 @@
-use super::dto::{SearchParams, SearchSetsParams};
+use super::dto::{PaginatedSearchResponse, SearchCardResponse, SearchParams, SearchSetsParams};
 use crate::application::error::AppError;
-use crate::domain::collection::{CollectionQuery, SearchQuery, SearchScope};
 use crate::domain::pagination::PageRequest;
+use crate::domain::search::{SearchQuery, SearchScope};
 use crate::infrastructure::AppState;
 use crate::infrastructure::adapter_in::SetInfoResponse;
 use crate::infrastructure::adapter_in::auth_extractor::AuthenticatedUser;
-use crate::infrastructure::adapter_in::collection::dto::{
-    CollectionCardResponse, PaginatedCollectionResponse,
-};
 use axum::extract::State;
 use axum::routing::get;
 use axum_extra::extract::Query;
@@ -45,7 +42,7 @@ fn normalize_player_username(player_username: Option<&str>) -> Option<String> {
         ("player_username" = Option<String>, Query, description = "Exact username of the owner to filter by (case-insensitive, no partial match)"),
     ),
     responses(
-        (status = 200, description = "Paginated card search results", body = PaginatedCollectionResponse),
+        (status = 200, description = "Paginated card search results", body = PaginatedSearchResponse),
         (status = 400, description = "Pagination out of bounds, or sort_by=added_at without player_username"),
         (status = 401, description = "Missing or invalid token"),
     ),
@@ -56,7 +53,7 @@ pub(crate) async fn search_cards(
     AuthenticatedUser(_user): AuthenticatedUser,
     State(state): State<AppState>,
     Query(params): Query<SearchParams>,
-) -> Result<axum::Json<PaginatedCollectionResponse>, AppError> {
+) -> Result<axum::Json<PaginatedSearchResponse>, AppError> {
     let pagination = PageRequest {
         page: params.page,
         page_size: params.page_size,
@@ -76,27 +73,26 @@ pub(crate) async fn search_cards(
 
     let player_username = normalize_player_username(params.player_username.as_deref());
 
-    let query = SearchQuery::try_new(
-        CollectionQuery {
-            pagination,
-            sort_by: params.sort_by.into(),
-            sort_dir: params.sort_dir.into(),
-            search_query: params.q,
-            rarity,
-            sets,
-            price_min: params.price_min,
-            price_max: params.price_max,
-        },
+    let query = SearchQuery {
+        pagination,
+        sort_by: params.sort_by.into(),
+        sort_dir: params.sort_dir.into(),
+        search_query: params.q,
+        rarity,
+        sets,
+        price_min: params.price_min,
+        price_max: params.price_max,
         player_username,
-    )?;
+    }
+    .validate()?;
 
     let result = state.search_cards_use_case.search_cards(query).await?;
 
-    Ok(axum::Json(PaginatedCollectionResponse {
+    Ok(axum::Json(PaginatedSearchResponse {
         items: result
             .items
             .into_iter()
-            .map(CollectionCardResponse::from)
+            .map(SearchCardResponse::from)
             .collect(),
         total: result.total,
         page: result.pagination.page(),
