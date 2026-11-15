@@ -183,61 +183,6 @@ paths:
                 $ref: '#/components/schemas/ErrorResponse'
       security:
       - bearer_auth: []
-  /catalog/cards:
-    get:
-      tags:
-      - catalog
-      operationId: search_catalog
-      parameters:
-      - name: q
-        in: query
-        description: 'Name to search, English or French: substring or trigram similarity. Blank or absent matches every card'
-        required: false
-        schema:
-          type: string
-      - name: set_code
-        in: query
-        description: Restricts the search to a set
-        required: false
-        schema:
-          type: string
-      - name: page
-        in: query
-        description: Page number, 0-based (default 0). `page * page_size` must not exceed 1000
-        required: false
-        schema:
-          type: integer
-          format: int32
-          minimum: 0
-      - name: page_size
-        in: query
-        description: Items per page, 1 to 100 (default 20)
-        required: false
-        schema:
-          type: integer
-          format: int32
-          minimum: 0
-      responses:
-        '200':
-          description: The impressions of the catalog matching the search, by decreasing similarity of the name, then set code, then collector number. Tokens are not in the catalog
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/PaginatedCatalogResponse'
-        '400':
-          description: Pagination out of bounds, or invalid set code
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '401':
-          description: Missing or invalid token
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-      security:
-      - bearer_auth: []
   /catalog/scan-index:
     get:
       tags:
@@ -2381,37 +2326,6 @@ components:
       type: string
       enum:
       - selling_price
-    CatalogCardResponse:
-      type: object
-      description: 'One impression of the catalog: a set and a collector number, without language or finish.'
-      required:
-      - set
-      - collector_number
-      - rarity_code
-      - name
-      properties:
-        collector_number:
-          type: string
-        french_name:
-          type:
-          - string
-          - 'null'
-          description: French name; absent when Scryfall has none.
-        image_url:
-          type:
-          - string
-          - 'null'
-          description: |-
-            Scryfall image of the impression (its front face for a double-faced card), to load from
-            Scryfall's CDN as is; `null` when Scryfall has none. It is not the image of a Card.
-        name:
-          type: string
-          description: English name.
-        rarity_code:
-          type: string
-          description: 'Rarity code: `C`, `U`, `R`, `M` or `S`.'
-        set:
-          $ref: '#/components/schemas/SetInfoResponse'
     CollectionCardResponse:
       type: object
       required:
@@ -2669,30 +2583,6 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/CardOfferResponse'
-        page:
-          type: integer
-          format: int32
-          minimum: 0
-        page_size:
-          type: integer
-          format: int32
-          minimum: 0
-        total:
-          type: integer
-          format: int64
-          minimum: 0
-    PaginatedCatalogResponse:
-      type: object
-      required:
-      - items
-      - total
-      - page
-      - page_size
-      properties:
-        items:
-          type: array
-          items:
-            $ref: '#/components/schemas/CatalogCardResponse'
         page:
           type: integer
           format: int32

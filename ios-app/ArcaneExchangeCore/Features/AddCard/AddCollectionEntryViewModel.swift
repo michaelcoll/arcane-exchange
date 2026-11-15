@@ -7,7 +7,7 @@ import Foundation
 @MainActor
 @Observable
 package final class AddCollectionEntryViewModel {
-    package let card: CatalogCard
+    package let card: SearchCard
     private let api: any APIProtocol
     private let memory: DeviceMemory
 
@@ -32,7 +32,7 @@ package final class AddCollectionEntryViewModel {
     /// Set when the addition was refused. French message, ready to show.
     package var writeError: String?
 
-    package init(card: CatalogCard, api: any APIProtocol, defaults: UserDefaults = .standard) {
+    package init(card: SearchCard, api: any APIProtocol, defaults: UserDefaults = .standard) {
         self.card = card
         self.api = api
         memory = DeviceMemory(defaults: defaults)
@@ -84,7 +84,7 @@ package final class AddCollectionEntryViewModel {
                 purchase_price: priceCents.map { Int32($0) },
                 quantity: Int32(quantity),
                 sealed_product_id: sealedProductID,
-                set_code: card.set.code
+                set_code: card.set_code
             )
             _ = try await api.add_collection_entry(body: .json(body)).created
             memory.write(language, for: PlayerKey.addCardLanguage)

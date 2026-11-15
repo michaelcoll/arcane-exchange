@@ -14,7 +14,6 @@ use crate::application::service::card::get_offers::CardOfferService;
 use crate::application::service::card::get_price_history::CardPriceHistoryService;
 use crate::application::service::catalog::create_card::CreateCardService;
 use crate::application::service::catalog::scan_index::ScanIndexService;
-use crate::application::service::catalog::search::SearchCatalogService;
 use crate::application::service::catalog::trend_prices::TrendPricesService;
 use crate::application::service::collection::add_entry::AddCollectionEntryService;
 use crate::application::service::collection::attach_card_to_sealed_product::AttachCardToSealedProductService;
@@ -80,9 +79,9 @@ use crate::application::use_case::{
     MoveCollectionEntryUseCase, RateTradeUseCase, RegisterUserUseCase,
     RemoveCollectionEntryUseCase, RemoveTradeBinderUseCase, RemoveTradeCardUseCase,
     RenameBinderUseCase, RunCardImportUseCase, ScanIndexUseCase, SearchCardsUseCase,
-    SearchCatalogUseCase, SearchSetsUseCase, SetCollectionVisibilityUseCase,
-    SetRarityTradeFilterUseCase, SetReceivingBinderUseCase, StatsUseCase, TrendPricesUseCase,
-    UpdateCatalogUseCase, UpdateCollectionEntryUseCase,
+    SearchSetsUseCase, SetCollectionVisibilityUseCase, SetRarityTradeFilterUseCase,
+    SetReceivingBinderUseCase, StatsUseCase, TrendPricesUseCase, UpdateCatalogUseCase,
+    UpdateCollectionEntryUseCase,
 };
 use crate::application::use_case::{
     AttachCardToSealedProductUseCase, CreateSealedProductUseCase, DeletePurchaseUseCase,
@@ -202,7 +201,6 @@ pub struct AppState {
     pub card_import_query_use_case: Arc<dyn GetCardImportUseCase>,
     pub update_catalog_use_case: Arc<dyn UpdateCatalogUseCase>,
     pub scan_index_use_case: Arc<dyn ScanIndexUseCase>,
-    pub search_catalog_use_case: Arc<dyn SearchCatalogUseCase>,
     pub trend_prices_use_case: Arc<dyn TrendPricesUseCase>,
 }
 
@@ -474,8 +472,6 @@ fn create_app_state(
         Arc::new(RemoveTradeCardService::new(repos.trade, repos.user));
     let scan_index_service: Arc<dyn ScanIndexUseCase> =
         Arc::new(ScanIndexService::new(repos.catalog.clone()));
-    let search_catalog_service: Arc<dyn SearchCatalogUseCase> =
-        Arc::new(SearchCatalogService::new(repos.catalog.clone()));
     let trend_prices_service: Arc<dyn TrendPricesUseCase> =
         Arc::new(TrendPricesService::new(repos.catalog.clone()));
     let update_catalog_service: Arc<dyn UpdateCatalogUseCase> = Arc::new(
@@ -541,7 +537,6 @@ fn create_app_state(
         card_import_query_use_case: card_import_query_service,
         update_catalog_use_case: update_catalog_service,
         scan_index_use_case: scan_index_service,
-        search_catalog_use_case: search_catalog_service,
         trend_prices_use_case: trend_prices_service,
     }
 }

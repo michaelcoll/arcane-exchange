@@ -5,9 +5,7 @@ use crate::domain::card::{Card, CardId, CollectionEntry, CopyId};
 use crate::domain::card_image::{CardImageSource, CardImages, EnglishImage};
 use crate::domain::card_import::{CardImport, CardImportId, CardImportStatus};
 use crate::domain::card_offer::CardOfferSortField;
-use crate::domain::catalog::{
-    CatalogCard, CatalogSearchItem, CatalogSet, ScanIndexEntry, TrendPrices,
-};
+use crate::domain::catalog::{CatalogCard, CatalogSet, ScanIndexEntry, TrendPrices};
 use crate::domain::collection::CollectionQuery;
 use crate::domain::collection_entry::{CardEntries, CollectionEntryId, EntryUpdate};
 use crate::domain::collection_stats::CollectionStats;
@@ -137,16 +135,6 @@ pub trait CatalogRepository: Send + Sync {
     /// so a card nobody owns has its price.
     async fn trend_prices(&self, cards: &[(SetCode, String)])
     -> Result<Vec<TrendPrices>, AppError>;
-
-    /// The catalog cards matching `name` (English or French name: substring or trigram
-    /// similarity) and, when given, `set_code`, ordered by decreasing similarity of the name, then
-    /// set code, then collector number. Without `name` every card of the set matches.
-    async fn search(
-        &self,
-        name: Option<&str>,
-        set_code: Option<&SetCode>,
-        pagination: Pagination,
-    ) -> Result<Paginated<CatalogSearchItem>, AppError>;
 }
 
 #[async_trait]

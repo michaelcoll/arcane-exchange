@@ -3,13 +3,17 @@ import Testing
 
 @testable import ArcaneExchangeCore
 
-private let card = CatalogCard(
+private let card = SearchCard(
     collector_number: "H13",
-    french_name: nil,
     image_url: nil,
     name: "Lightning Bolt",
+    offered_languages: [],
+    owned_quantity: 0,
+    owner_count: 0,
     rarity_code: "R",
-    set: .init(code: "MKM", name: "Murders at Karlov Manor")
+    scryfall_id: "id-h13",
+    set_code: "MKM",
+    set_name: "Murders at Karlov Manor"
 )
 
 private let added = Operations.add_collection_entry.Output.created(.init(body: .json(.init(

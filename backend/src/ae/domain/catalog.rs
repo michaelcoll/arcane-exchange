@@ -1,5 +1,5 @@
 use crate::domain::rarity_code::RarityCode;
-use crate::domain::set_name::{SetCode, SetName};
+use crate::domain::set_name::SetCode;
 use chrono::NaiveDate;
 use serde::Serialize;
 use uuid::Uuid;
@@ -28,17 +28,6 @@ pub struct CatalogCard {
     /// The Scryfall image (`normal`) of the reference object, its front face for a double-faced
     /// card. Stored as is and loaded by the clients from Scryfall's CDN: it does not replace the
     /// image sources of a Card. `None` when Scryfall has no image for the object.
-    pub image_url: Option<String>,
-}
-
-/// One impression of the catalog as the search lists it.
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct CatalogSearchItem {
-    pub set: SetName,
-    pub collector_number: String,
-    pub rarity: RarityCode,
-    pub name: String,
-    pub french_name: Option<String>,
     pub image_url: Option<String>,
 }
 
