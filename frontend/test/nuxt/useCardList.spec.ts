@@ -530,10 +530,10 @@ describe('useCardList', () => {
 
   describe('a page that shows no list', () => {
     it('requests nothing, and keeps only its own parameters in the URL', async () => {
-      await openAt({ mode: 'decklist', rarity: 'M' });
+      await openAt({ mode: 'player', rarity: 'M' });
 
       const { list, fetchPage } = await openList(3, {
-        scope: { params: null, query: { mode: 'decklist' } },
+        scope: { params: null, query: { mode: 'player' } },
       });
       list.loadMore();
       list.reload();
@@ -542,7 +542,7 @@ describe('useCardList', () => {
       expect(fetchPage).not.toHaveBeenCalled();
       expect(list.loading.value).toBe(false);
       expect(list.cards.value).toEqual([]);
-      await expectUrl({ mode: 'decklist' });
+      await expectUrl({ mode: 'player' });
     });
 
     it('loads the list once the page shows one, and empties it when it no longer does', async () => {

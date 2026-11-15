@@ -11,7 +11,7 @@ collections, and trade them — card for card.
 - **Your collection, valued** — import a Manabox export and see the total value, the 30-day trend and a price history
   for every card.
 - **Real market prices** — daily prices from Cardmarket, card data from Scryfall, playability signals from EDHREC.
-- **Find who owns a card** — search by card name, by decklist, or browse a specific player's collection.
+- **Find who owns a card** — search by card name, or browse a specific player's collection.
 - **Trade in two clicks** — request a card, get a counter-offer, negotiate. The app computes the value difference; the
   cash delta is settled between players, off-platform.
 
