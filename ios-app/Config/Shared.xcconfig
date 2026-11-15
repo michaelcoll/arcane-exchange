@@ -1,5 +1,5 @@
 PRODUCT_BUNDLE_IDENTIFIER = fr.piconsoft.arcane-exchange
-IPHONEOS_DEPLOYMENT_TARGET = 18.0
+IPHONEOS_DEPLOYMENT_TARGET = 26.0
 SWIFT_VERSION = 6.0
 // Lets ArcaneExchangeCore's `package` declarations be seen by the app, the widgets and the tests (ADR 0025).
 SWIFT_PACKAGE_NAME = arcane-exchange

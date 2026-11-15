@@ -1,4 +1,4 @@
-// swift-tools-version: 6.0
+// swift-tools-version: 6.2
 import PackageDescription
 
 /// The `*Shared` targets have no code of their own: without it the linker loads none of their
@@ -7,7 +7,7 @@ let loadEverything: [LinkerSetting] = [.unsafeFlags(["-Xlinker", "-all_load"])]
 
 let package = Package(
     name: "APIClient",
-    platforms: [.iOS(.v18), .macOS(.v13)],
+    platforms: [.iOS(.v26), .macOS(.v13)],
     products: [
         .library(name: "APIClient", targets: ["APIClient"]),
         // Clerk and Nuke, forced dynamic so the app, the framework and the widget extension share
