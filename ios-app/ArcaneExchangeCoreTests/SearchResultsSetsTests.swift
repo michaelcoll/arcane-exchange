@@ -11,16 +11,16 @@ struct SearchResultsSetsTests {
 
     @Test func textSearchAsksForTheSetsOfTheOfferedCardsMatchingItsQuery() {
         let target = SearchResultsRoute.Target.card(query: "Sol Ring")
-        #expect(target.setsQuery == SetsQuery(q: "Sol Ring", offered: true))
+        #expect(target.setsQuery() == SetsQuery(q: "Sol Ring", offered: true))
     }
 
     @Test func playerCollectionAsksForTheSetsThePlayerOffers() {
         let target = SearchResultsRoute.Target.player(username: "jace")
-        #expect(target.setsQuery == SetsQuery(offered_by: "jace"))
+        #expect(target.setsQuery() == SetsQuery(offered_by: "jace"))
     }
 
     @Test func decklistHasNoSetFacet() {
-        #expect(SearchResultsRoute.Target.decklist.setsQuery == nil)
+        #expect(SearchResultsRoute.Target.decklist.setsQuery() == nil)
     }
 
     @Test func textSearchSendsTheSelectedSetsSortedAndCommaSeparated() {

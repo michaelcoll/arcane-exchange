@@ -1854,6 +1854,11 @@ extension Components {
             ///
             /// - Remark: Generated from `#/components/schemas/SearchCardResponse/offered_languages`.
             public var offered_languages: [Swift.String]
+            /// Copies of this impression the authenticated player owns, every language and finish
+            /// together; `0` when they own none. Never another player's.
+            ///
+            /// - Remark: Generated from `#/components/schemas/SearchCardResponse/owned_quantity`.
+            public var owned_quantity: Swift.Int64
             /// Number of distinct players offering this impression to trade — after applying each
             /// player's visibility, trade binder selection and rarity filters — the authenticated one
             /// included. `0` when nobody does.
@@ -1887,6 +1892,7 @@ extension Components {
             ///   - image_url: Front image: relative to the frontend (e.g. `/card-images/FDN_1_EN.webp?v=gatherer`) when
             ///   - name: The English name.
             ///   - offered_languages: Language codes (`EN`, `FR`...) in which this impression is offered for trade: by the
+            ///   - owned_quantity: Copies of this impression the authenticated player owns, every language and finish
             ///   - owner_count: Number of distinct players offering this impression to trade — after applying each
             ///   - price_guide: The normal Cardmarket price guide; `null` when there is no normal price.
             ///   - rarity_code:
@@ -1902,6 +1908,7 @@ extension Components {
                 image_url: Swift.String? = nil,
                 name: Swift.String,
                 offered_languages: [Swift.String],
+                owned_quantity: Swift.Int64,
                 owner_count: Swift.Int64,
                 price_guide: Components.Schemas.PriceGuideResponse? = nil,
                 rarity_code: Swift.String,
@@ -1917,6 +1924,7 @@ extension Components {
                 self.image_url = image_url
                 self.name = name
                 self.offered_languages = offered_languages
+                self.owned_quantity = owned_quantity
                 self.owner_count = owner_count
                 self.price_guide = price_guide
                 self.rarity_code = rarity_code
@@ -1933,6 +1941,7 @@ extension Components {
                 case image_url
                 case name
                 case offered_languages
+                case owned_quantity
                 case owner_count
                 case price_guide
                 case rarity_code

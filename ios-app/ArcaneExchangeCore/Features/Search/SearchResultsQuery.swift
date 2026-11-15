@@ -24,31 +24,44 @@ package extension SearchResultsRoute.Target {
         sortOptions.contains(sortBy) ? sortBy : defaultFilters.sortBy
     }
 
+    /// Whether the screen lets the user pick the Offre axis: a text search does (the offered
+    /// impressions or the whole Catalogue), a player's collection has the player for it.
+    var offersOfferAxis: Bool {
+        if case .card = self {
+            true
+        } else {
+            false
+        }
+    }
+
     /// What the search is scoped to, which is also all the set facet is asked for: the filters
-    /// never reach it, so the drawer's list stays put while the user filters. A text search asks
-    /// for the cards any player offers (the Offre axis), a player's collection for the cards
-    /// that player offers. `nil` for a target the endpoints do not serve.
-    var setsQuery: Operations.search_card_sets.Input.Query? {
+    /// and the Possession axis never reach it, so the drawer's list stays put while the user
+    /// filters. A text search asks for the cards any player offers, or for the whole Catalogue
+    /// (the Offre axis), a player's collection for the cards that player offers. `nil` for a
+    /// target the endpoints do not serve.
+    func setsQuery(offer: OfferAxis = .offered) -> Operations.search_card_sets.Input.Query? {
         switch self {
-        case let .card(text): .init(q: text, offered: true)
+        case let .card(text): .init(q: text, offered: offer == .offered ? true : nil)
         case let .player(username): .init(offered_by: username)
         case .decklist: nil
         }
     }
 
-    /// One page of results for `filters` within the search's scope, or `nil` for a target the
-    /// endpoint does not serve.
+    /// One page of results for `filters` and the `axes` within the search's scope, or `nil` for
+    /// a target the endpoint does not serve.
     func query(
         filters: CollectionFilters,
+        axes: SearchAxes = SearchAxes(),
         page: Int32,
         pageSize: Int32
     ) -> Operations.search_cards.Input.Query? {
-        guard let scope = setsQuery else { return nil }
+        guard let scope = setsQuery(offer: axes.offer) else { return nil }
         return .init(
             page: page,
             page_size: pageSize,
             sort_dir: filters.sortDir,
             q: scope.q,
+            owned: axes.possession.ownedQuery,
             offered: scope.offered,
             offered_by: scope.offered_by,
             rarity: filters.rarityQuery,

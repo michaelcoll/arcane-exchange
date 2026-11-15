@@ -14,6 +14,7 @@ const card = (overrides: Partial<SearchCard> = {}): SearchCard => ({
   image_url: '/card-images/LTR_246_EN.webp?v=gatherer',
   image_back_url: null,
   owner_count: 2,
+  owned_quantity: 0,
   offered_languages: [],
   price_guide: guide(500),
   foil_price_guide: guide(900),

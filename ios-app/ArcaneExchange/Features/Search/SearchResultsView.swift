@@ -50,8 +50,11 @@ private struct SearchResultsGrid: View {
     var body: some View {
         content
             .task { await model.loadInitiallyIfNeeded() }
-            .task { await model.loadSetsIfNeeded() }
+            .task(id: model.axes.offer) { await model.loadSetsIfNeeded() }
             .onChange(of: model.filters) {
+                Task { await model.paginator.reload() }
+            }
+            .onChange(of: model.axes) {
                 Task { await model.paginator.reload() }
             }
             .sheet(isPresented: $isShowingFilters) {
@@ -78,8 +81,8 @@ private struct SearchResultsGrid: View {
         }
     }
 
-    /// With filters on, the rail stays above the message: the way out may be another rarity,
-    /// not only clearing them all.
+    /// With filters or axes on, the rail and the axes stay above the message: the way out may be
+    /// another rarity or another axis, not only clearing the filters.
     @ViewBuilder private func emptyState(_ state: SearchResultsEmptyState) -> some View {
         let unavailable = ContentUnavailableView(
             label: { Label(state.title, systemImage: state.systemImage) },
@@ -95,12 +98,13 @@ private struct SearchResultsGrid: View {
                 }
             }
         )
-        if state.offersClearFilters {
+        if state.offersClearFilters || model.axes != SearchAxes() {
             VStack(alignment: .leading, spacing: 14) {
                 if case let .player(username) = target {
                     playerHeader(username)
                 }
                 rail
+                axesBar
                 unavailable
             }
             .padding(.horizontal, 16)
@@ -117,6 +121,21 @@ private struct SearchResultsGrid: View {
         )
     }
 
+    /// The Possession axis, and the Offre axis of a search by name: two independent pickers.
+    private var axesBar: some View {
+        VStack(spacing: 8) {
+            Picker("Possession", selection: $model.axes.possession) {
+                ForEach(PossessionAxis.allCases, id: \.self) { Text($0.label) }
+            }
+            if target.offersOfferAxis {
+                Picker("Offre", selection: $model.axes.offer) {
+                    ForEach(OfferAxis.allCases, id: \.self) { Text($0.label) }
+                }
+            }
+        }
+        .pickerStyle(.segmented)
+    }
+
     private var grid: some View {
         ScrollView {
             LazyVStack(alignment: .leading, spacing: 14) {
@@ -125,6 +144,8 @@ private struct SearchResultsGrid: View {
                 }
 
                 rail
+
+                axesBar
 
                 Text(CollectionCopy.sortedSummary(total: model.paginator.total, sortBy: model.filters.sortBy))
                     .font(.caption)

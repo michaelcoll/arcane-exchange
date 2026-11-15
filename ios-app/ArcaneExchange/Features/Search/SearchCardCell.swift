@@ -1,8 +1,9 @@
 import ArcaneExchangeCore
 import SwiftUI
 
-/// One tile of the search results grid: artwork first, reference price second. A search result
-/// holds no collection entry, so there is no quantity and no purchase price to show.
+/// One tile of the search results grid: artwork first, reference price second, and the copies the
+/// player owns when there are some. There is no purchase price to show: that stays in the
+/// Collection.
 struct SearchCardCell: View {
     let card: SearchCard
 
@@ -38,6 +39,7 @@ struct SearchCardCell: View {
             .overlay { CardImageView(url: CardArtwork.url(imagePath: card.image_url), foil: card.isFoilOnly) }
             .clipShape(RoundedRectangle(cornerRadius: Self.cornerRadius, style: .continuous))
             .overlay { border }
+            .overlay(alignment: .bottomLeading) { ownedBadge }
             .overlay(alignment: .top) { reservedFlag }
             .cardArtworkLift(
                 tint: nil,
@@ -54,6 +56,20 @@ struct SearchCardCell: View {
                 reserved ? AnyShapeStyle(Palette.secondary) : AnyShapeStyle(.black.opacity(0.4)),
                 lineWidth: reserved ? 2 : 1
             )
+    }
+
+    @ViewBuilder private var ownedBadge: some View {
+        if card.owned_quantity > 0 {
+            Text("×\(card.owned_quantity)")
+                .font(.caption2)
+                .fontWeight(.semibold)
+                .monospacedDigit()
+                .padding(.horizontal, 6)
+                .padding(.vertical, 2)
+                .background(.ultraThinMaterial, in: Capsule())
+                .padding(6)
+                .accessibilityLabel("Possédée en \(card.owned_quantity) exemplaires")
+        }
     }
 
     @ViewBuilder private var reservedFlag: some View {
@@ -76,6 +92,7 @@ struct SearchCardCell: View {
             foil_price_guide: .init(avg: 2900, low: 2500, trend: 2800),
             name: "Vampiric Tutor",
             offered_languages: ["FR"],
+            owned_quantity: 2,
             owner_count: 3,
             rarity_code: "M",
             reserved: true,

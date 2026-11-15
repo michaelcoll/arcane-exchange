@@ -4363,6 +4363,13 @@ public struct Client: APIProtocol {
                     in: &request,
                     style: .form,
                     explode: true,
+                    name: "owned",
+                    value: input.query.owned
+                )
+                try converter.setQueryItemAsURI(
+                    in: &request,
+                    style: .form,
+                    explode: true,
                     name: "offered",
                     value: input.query.offered
                 )

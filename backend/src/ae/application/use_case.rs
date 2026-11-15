@@ -380,6 +380,7 @@ pub trait SearchCardsUseCase: Send + Sync {
     /// is out of the search's bounds.
     async fn search_cards(
         &self,
+        user_id: &UserId,
         query: SearchQuery<PageRequest>,
     ) -> Result<Paginated<SearchCard>, AppError>;
 }

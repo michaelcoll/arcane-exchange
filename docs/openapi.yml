@@ -1443,6 +1443,12 @@ paths:
         required: false
         schema:
           type: string
+      - name: owned
+        in: query
+        description: 'Possession axis: `true` keeps the impressions the authenticated player owns (any language or finish), `false` those they do not own. Absent: all of them'
+        required: false
+        schema:
+          type: boolean
       - name: offered
         in: query
         description: Only the impressions offered for trade by any player, the authenticated one included
@@ -3181,6 +3187,7 @@ components:
       - scryfall_id
       - name
       - owner_count
+      - owned_quantity
       - offered_languages
       properties:
         collector_number:
@@ -3219,6 +3226,13 @@ components:
             Language codes (`EN`, `FR`...) in which this impression is offered for trade: by the
             `offered_by` player when there is one, by any player otherwise. Empty when nobody offers
             it.
+        owned_quantity:
+          type: integer
+          format: int64
+          description: |-
+            Copies of this impression the authenticated player owns, every language and finish
+            together; `0` when they own none. Never another player's.
+          minimum: 0
         owner_count:
           type: integer
           format: int64

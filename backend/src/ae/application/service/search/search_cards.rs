@@ -3,6 +3,7 @@ use crate::application::repository::SearchRepository;
 use crate::application::use_case::SearchCardsUseCase;
 use crate::domain::pagination::{PageRequest, Paginated};
 use crate::domain::search::{SearchCard, SearchQuery};
+use crate::domain::user::UserId;
 use async_trait::async_trait;
 use std::sync::Arc;
 
@@ -24,10 +25,11 @@ impl SearchCardsService {
 impl SearchCardsUseCase for SearchCardsService {
     async fn search_cards(
         &self,
+        user_id: &UserId,
         query: SearchQuery<PageRequest>,
     ) -> Result<Paginated<SearchCard>, AppError> {
         let query = query.paginate(SEARCH_MAX_OFFSET)?;
-        self.repository.search_paginated(query).await
+        self.repository.search_paginated(user_id, query).await
     }
 }
 
@@ -38,7 +40,11 @@ mod tests {
     use crate::application::repository::MockSearchRepository;
     use crate::domain::collection::SortDirection;
     use crate::domain::error::FunctionalError;
-    use crate::domain::search::Offer;
+    use crate::domain::search::{Offer, Possession};
+
+    fn user() -> UserId {
+        UserId::new("userA")
+    }
 
     fn query_for(page: u32, page_size: u32) -> SearchQuery<PageRequest> {
         SearchQuery {
@@ -50,7 +56,7 @@ mod tests {
     /// A repository that echoes the validated pagination it receives back as an empty page.
     fn echoing_repository() -> MockSearchRepository {
         let mut mock_repo = MockSearchRepository::new();
-        mock_repo.expect_search_paginated().returning(|q| {
+        mock_repo.expect_search_paginated().returning(|_, q| {
             Box::pin(async move {
                 Ok(Paginated {
                     items: vec![],
@@ -67,7 +73,10 @@ mod tests {
         let service = SearchCardsService::new(Arc::new(echoing_repository()));
 
         // 100 * 100 = 10 000, exactly SEARCH_MAX_OFFSET.
-        let result = service.search_cards(query_for(100, 100)).await.unwrap();
+        let result = service
+            .search_cards(&user(), query_for(100, 100))
+            .await
+            .unwrap();
 
         assert_eq!(result.pagination.offset(), SEARCH_MAX_OFFSET);
     }
@@ -78,7 +87,7 @@ mod tests {
         // No expectation set: mockall panics if the repository is called.
         let service = SearchCardsService::new(Arc::new(MockSearchRepository::new()));
 
-        let result = service.search_cards(query_for(101, 100)).await;
+        let result = service.search_cards(&user(), query_for(101, 100)).await;
 
         match result {
             Err(AppError::Functional(FunctionalError::PaginationTooDeep {
@@ -93,7 +102,7 @@ mod tests {
     async fn search_cards_rejects_a_page_size_above_the_max() {
         let service = SearchCardsService::new(Arc::new(MockSearchRepository::new()));
 
-        let result = service.search_cards(query_for(0, 101)).await;
+        let result = service.search_cards(&user(), query_for(0, 101)).await;
 
         match result {
             Err(AppError::Functional(FunctionalError::InvalidPageSize {
@@ -108,13 +117,15 @@ mod tests {
         let mut mock_repo = MockSearchRepository::new();
         mock_repo
             .expect_search_paginated()
-            .withf(|q| {
-                q.pagination.page() == 1
+            .withf(|user_id, q| {
+                *user_id == UserId::new("userA")
+                    && q.pagination.page() == 1
                     && q.pagination.page_size() == 10
                     && q.sort_dir == SortDirection::Asc
+                    && q.possession == Possession::NotOwned
                     && q.offer == Offer::OfferedBy("alice".to_string())
             })
-            .returning(|q| {
+            .returning(|_, q| {
                 Box::pin(async move {
                     Ok(Paginated {
                         items: vec![],
@@ -131,11 +142,12 @@ mod tests {
                 page_size: 10,
             },
             sort_dir: SortDirection::Asc,
+            possession: Possession::NotOwned,
             offer: Offer::OfferedBy("alice".to_string()),
             ..Default::default()
         };
 
-        let result = service.search_cards(query).await;
+        let result = service.search_cards(&user(), query).await;
 
         assert!(result.is_ok());
     }
@@ -143,7 +155,7 @@ mod tests {
     #[tokio::test]
     async fn search_cards_propagates_repository_error() {
         let mut mock_repo = MockSearchRepository::new();
-        mock_repo.expect_search_paginated().returning(|_| {
+        mock_repo.expect_search_paginated().returning(|_, _| {
             Box::pin(async {
                 Err(AppError::Infra(InfraError::RepositoryError(
                     "db error".to_string(),
@@ -152,7 +164,7 @@ mod tests {
         });
 
         let service = SearchCardsService::new(Arc::new(mock_repo));
-        let result = service.search_cards(SearchQuery::default()).await;
+        let result = service.search_cards(&user(), SearchQuery::default()).await;
         assert!(result.is_err());
     }
 }

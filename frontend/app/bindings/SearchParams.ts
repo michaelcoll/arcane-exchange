@@ -8,6 +8,11 @@ export type SearchParams = {
   sort_dir: SortDir;
   q?: string;
   /**
+   * Possession axis: `true` for the impressions the authenticated player owns, `false` for
+   * those they do not own, absent for all of them
+   */
+  owned?: boolean;
+  /**
    * Only the impressions offered by any player, the authenticated one included
    */
   offered?: boolean;

@@ -218,9 +218,13 @@ pub trait SearchRepository: Send + Sync {
     /// Searches the Catalogue: one [`SearchCard`] per impression, whether anybody owns it or not.
     /// Its `owner_count` is the number of distinct players offering it (`v_tradable_entry`), and
     /// `query.offer` restricts the impressions to the offered ones, or to those a given player
-    /// offers (exact username, case-insensitive), in which case `reserved` is set.
-    async fn search_paginated(&self, query: SearchQuery)
-    -> Result<Paginated<SearchCard>, AppError>;
+    /// offers (exact username, case-insensitive), in which case `reserved` is set. `user_id` is
+    /// the searching player: it gives each `owned_quantity` and `query.possession`.
+    async fn search_paginated(
+        &self,
+        user_id: &UserId,
+        query: SearchQuery,
+    ) -> Result<Paginated<SearchCard>, AppError>;
     /// The sets of the impressions [`Self::search_paginated`] can return for `scope`, whatever
     /// the rarity, set or price filters, sorted by set name.
     async fn search_sets(&self, scope: &SearchScope) -> Result<Vec<SetName>, AppError>;

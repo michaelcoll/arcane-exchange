@@ -13,7 +13,12 @@ export const isSearchMode = (v: unknown): v is SearchMode => SEARCH_MODES.includ
  * kept in localStorage.
  *
  * - `q`: the submitted card name (`name` mode);
- * - `player`: the browsed player (`player` mode), and `filter` the text filter on their collection.
+ * - `player`: the browsed player (`player` mode), and `filter` the text filter on their collection;
+ * - `owned`: the Possession axis, `true` for the impressions I own, `false` for those I do not,
+ *   absent for all of them;
+ * - `offered`: the Offre axis of the name search, `false` for the whole Catalogue, absent (the
+ *   default) for the impressions some player offers. A browsed player is the Offre axis of the
+ *   player mode.
  *
  * The decklist text is too long for the URL: `mode=decklist` only says to read it back from
  * sessionStorage (see `loadDecklist`).
@@ -23,10 +28,15 @@ export interface SearchUrlState {
   q?: string;
   player?: string;
   filter?: string;
+  owned?: boolean;
+  offered?: boolean;
 }
 
 const nonBlankString = (v: unknown): string | undefined =>
   typeof v === 'string' && v.trim() ? v : undefined;
+
+const booleanOf = (v: unknown): boolean | undefined =>
+  v === 'true' ? true : v === 'false' ? false : undefined;
 
 /**
  * Reads the search from the URL. `player` without a `mode` (the links from the home page and a
@@ -36,14 +46,25 @@ const nonBlankString = (v: unknown): string | undefined =>
 export const parseSearchQuery = (query: LocationQuery): SearchUrlState => {
   const mode = isSearchMode(query.mode) ? query.mode : undefined;
   const player = nonBlankString(query.player);
+  const owned = booleanOf(query.owned);
 
   if (player && (mode === 'player' || !mode)) {
     const filter = nonBlankString(query.filter);
-    return { mode: 'player', player, ...(filter && { filter }) };
+    return {
+      mode: 'player',
+      player,
+      ...(filter && { filter }),
+      ...(owned !== undefined && { owned }),
+    };
   }
   if (!mode || mode === 'name') {
     const q = nonBlankString(query.q);
-    return { mode: 'name', ...(q && { q }) };
+    return {
+      mode: 'name',
+      ...(q && { q }),
+      ...(owned !== undefined && { owned }),
+      ...(booleanOf(query.offered) === false && { offered: false }),
+    };
   }
   return { mode };
 };
@@ -59,6 +80,10 @@ export const toSearchQuery = (state: SearchUrlState): Record<string, string> => 
     query.player = player;
     if (filter) query.filter = filter;
   }
+  if (state.mode === 'name' || (state.mode === 'player' && player)) {
+    if (state.owned !== undefined) query.owned = String(state.owned);
+  }
+  if (state.mode === 'name' && state.offered === false) query.offered = 'false';
   return query;
 };
 
@@ -69,29 +94,35 @@ export const searchRoute = (state: SearchUrlState) => ({
 });
 
 /** What a search adds to the request of its card list, next to the criteria. */
-export type SearchListParams = Pick<SearchParams, 'q' | 'offered' | 'offered_by'>;
+export type SearchListParams = Pick<SearchParams, 'q' | 'owned' | 'offered' | 'offered_by'>;
 
 /**
  * The request of the card list of a search (`GET /search/card`): the scope of its set facet, which
- * the text filter on a browsed player's collection narrows further. `null` where the search shows
- * no list (decklist mode, player mode before a player is chosen).
+ * the text filter on a browsed player's collection narrows further, and the Possession axis (which
+ * the set facet does not follow yet) completes. `null` where the search shows no list (decklist
+ * mode, player mode before a player is chosen).
  */
 export const searchListParams = (state: SearchUrlState): SearchListParams | null => {
   const scope = searchSetsScope(state);
+  if (!scope) return null;
   const filter = state.mode === 'player' ? nonBlankString(state.filter) : undefined;
-  return scope && filter ? { ...scope, q: filter } : scope;
+  return {
+    ...scope,
+    ...(filter && { q: filter }),
+    ...(state.owned !== undefined && { owned: state.owned }),
+  };
 };
 
 /**
  * The scope of the set facet (`GET /search/card/sets`) for a search: the Offre axis (the cards
- * offered by any player for a name, those of the browsed player in player mode) and the submitted
- * name (the text filter on a player's collection does not narrow the sets). `null` where the
- * search shows no list, so no facet.
+ * offered by any player for a name, unless the whole Catalogue is asked; those of the browsed
+ * player in player mode) and the submitted name (the text filter on a player's collection does
+ * not narrow the sets). `null` where the search shows no list, so no facet.
  */
 export const searchSetsScope = (state: SearchUrlState): SearchSetsParams | null => {
   if (state.mode === 'name') {
     const q = nonBlankString(state.q);
-    return { offered: true, ...(q && { q }) };
+    return { ...(state.offered !== false && { offered: true }), ...(q && { q }) };
   }
   if (state.mode === 'player' && state.player) return { offered_by: state.player };
   return null;

@@ -37,6 +37,11 @@ export type SearchCard = {
    */
   owner_count: number;
   /**
+   * Copies of this impression the authenticated player owns, every language and finish
+   * together; `0` when they own none. Never another player's.
+   */
+  owned_quantity: number;
+  /**
    * Language codes (`EN`, `FR`...) in which this impression is offered for trade: by the
    * `offered_by` player when there is one, by any player otherwise. Empty when nobody offers
    * it.

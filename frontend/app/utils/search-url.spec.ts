@@ -37,6 +37,30 @@ describe('parseSearchQuery', () => {
     ['a player in another mode', { mode: 'name', player: 'urza' }, { mode: 'name' }],
     ['an unknown mode', { mode: 'oops', q: 'Sol Ring' }, { mode: 'name', q: 'Sol Ring' }],
     ['repeated parameters', { q: ['a', 'b'] }, { mode: 'name' }],
+    [
+      'the owned impressions',
+      { q: 'Sol Ring', owned: 'true' },
+      { mode: 'name', q: 'Sol Ring', owned: true },
+    ],
+    ['the impressions not owned', { owned: 'false' }, { mode: 'name', owned: false }],
+    ['an unknown possession', { owned: 'maybe' }, { mode: 'name' }],
+    ['every impression of the Catalogue', { offered: 'false' }, { mode: 'name', offered: false }],
+    ['the default offer written out', { offered: 'true' }, { mode: 'name' }],
+    [
+      'the possession of a browsed player',
+      { player: 'urza', owned: 'false' },
+      { mode: 'player', player: 'urza', owned: false },
+    ],
+    [
+      'the offer of a browsed player, ignored',
+      { player: 'urza', offered: 'false' },
+      { mode: 'player', player: 'urza' },
+    ],
+    [
+      'the axes in decklist mode, ignored',
+      { mode: 'decklist', owned: 'true', offered: 'false' },
+      { mode: 'decklist' },
+    ],
   ])('reads %s', (_label, query, expected) => {
     expect(parseSearchQuery(query)).toEqual(expected);
   });
@@ -53,11 +77,32 @@ describe('toSearchQuery', () => {
     ],
     ['a filter without player', { mode: 'player', filter: 'tutor' }, { mode: 'player' }],
     ['the decklist mode', { mode: 'decklist', q: 'x', player: 'y' }, { mode: 'decklist' }],
+    ['the owned impressions', { mode: 'name', owned: true }, { mode: 'name', owned: 'true' }],
+    ['the impressions not owned', { mode: 'name', owned: false }, { mode: 'name', owned: 'false' }],
+    ['the whole Catalogue', { mode: 'name', offered: false }, { mode: 'name', offered: 'false' }],
+    ['the default offer', { mode: 'name', offered: true }, { mode: 'name' }],
+    [
+      'the possession of a browsed player',
+      { mode: 'player', player: 'urza', owned: true },
+      { mode: 'player', player: 'urza', owned: 'true' },
+    ],
+    [
+      'the offer of a browsed player, left out',
+      { mode: 'player', player: 'urza', offered: false },
+      { mode: 'player', player: 'urza' },
+    ],
+    [
+      'the axes in decklist mode, left out',
+      { mode: 'decklist', owned: true, offered: false },
+      { mode: 'decklist' },
+    ],
   ])('writes %s', (_label, state, expected) => {
     expect(toSearchQuery(state)).toEqual(expected);
   });
 
   it.each<SearchUrlState>([
+    { mode: 'name', q: 'Sol Ring', owned: false, offered: false },
+    { mode: 'player', player: 'urza', owned: true },
     { mode: 'name', q: 'Sol Ring' },
     { mode: 'player', player: 'urza', filter: 'tutor' },
     { mode: 'decklist' },
@@ -107,6 +152,22 @@ describe('searchListParams', () => {
       { mode: 'player', player: 'urza', q: 'Sol Ring' },
       { offered_by: 'urza' },
     ],
+    [
+      'the impressions I miss that somebody offers',
+      { mode: 'name', owned: false },
+      { offered: true, owned: false },
+    ],
+    [
+      'the impressions I own, offered or not',
+      { mode: 'name', q: 'Sol Ring', owned: true, offered: false },
+      { owned: true, q: 'Sol Ring' },
+    ],
+    ['the whole Catalogue', { mode: 'name', offered: false }, {}],
+    [
+      'the impressions of a player I miss',
+      { mode: 'player', player: 'urza', owned: false },
+      { offered_by: 'urza', owned: false },
+    ],
     ['the player mode without player: no list', { mode: 'player', filter: 'tutor' }, null],
     ['the decklist mode: no list', { mode: 'decklist', q: 'Sol Ring', player: 'urza' }, null],
   ])('lists %s', (_label, state, expected) => {
@@ -125,6 +186,8 @@ describe('searchSetsScope', () => {
       { mode: 'player', player: 'urza', filter: 'tutor' },
       { offered_by: 'urza' },
     ],
+    ['the whole Catalogue', { mode: 'name', q: 'Sol Ring', offered: false }, { q: 'Sol Ring' }],
+    ['a possession, ignored for now', { mode: 'name', owned: false }, { offered: true }],
     ['the player mode without player', { mode: 'player' }, null],
     ['the decklist mode', { mode: 'decklist' }, null],
   ])('scopes %s', (_label, state, expected) => {

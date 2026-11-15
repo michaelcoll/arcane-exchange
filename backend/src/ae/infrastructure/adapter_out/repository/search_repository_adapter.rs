@@ -2,8 +2,9 @@ use crate::application::error::AppError;
 use crate::application::repository::SearchRepository;
 use crate::domain::pagination::Paginated;
 use crate::domain::rarity_code::RarityCode;
-use crate::domain::search::{Offer, SearchCard, SearchQuery, SearchScope};
+use crate::domain::search::{Offer, Possession, SearchCard, SearchQuery, SearchScope};
 use crate::domain::set_name::{SetCode, SetName};
+use crate::domain::user::UserId;
 use crate::infrastructure::adapter_out::repository::entities::{
     SearchCardEntity, invalid_db_value,
 };
@@ -66,10 +67,25 @@ fn offers_join(player_idx: Option<usize>) -> String {
     )
 }
 
-/// The filters of a search (text, Offre axis, rarity, sets, price range), as SQL over
-/// `catalog_card cc`.
+/// What `user_idx` (the placeholder of the user id) owns of each impression, every language and
+/// finish together: the quantity of the searching player's own collection, whatever its binders.
+fn owned_join(user_idx: usize) -> String {
+    format!(
+        r#"LEFT JOIN (SELECT ce.set_code, ce.collector_number, SUM(ce.quantity) AS owned_quantity
+                     FROM collection_entry ce
+                     WHERE ce.user_id = ${user_idx}
+                     GROUP BY ce.set_code, ce.collector_number) own
+                    ON (own.set_code, own.collector_number) = (cc.set_code, cc.collector_number)"#
+    )
+}
+
+/// The filters of a search (text, Possession and Offre axes, rarity, sets, price range), as SQL
+/// over `catalog_card cc`.
 struct Filters<'a> {
     search_query: Option<&'a str>,
+    /// The searching player: `None` for a scope, which has no Possession axis.
+    user_id: Option<&'a UserId>,
+    possession: Possession,
     offer: &'a Offer,
     rarity: &'a [RarityCode],
     sets: &'a [String],
@@ -88,9 +104,11 @@ struct Clauses {
 }
 
 impl<'a> Filters<'a> {
-    fn of(query: &'a SearchQuery) -> Self {
+    fn of(user_id: &'a UserId, query: &'a SearchQuery) -> Self {
         Self {
             search_query: query.search_query.as_deref(),
+            user_id: Some(user_id),
+            possession: query.possession,
             offer: &query.offer,
             rarity: &query.rarity,
             sets: &query.sets,
@@ -103,6 +121,8 @@ impl<'a> Filters<'a> {
     fn scope(scope: &'a SearchScope) -> Self {
         Self {
             search_query: scope.search_query.as_deref(),
+            user_id: None,
+            possession: Possession::Any,
             offer: &scope.offer,
             rarity: &[],
             sets: &[],
@@ -131,6 +151,22 @@ impl<'a> Filters<'a> {
                 "GREATEST(COALESCE(word_similarity(${idx}, cc.name), 0), \
                           COALESCE(word_similarity(${idx}, cc.french_name), 0)) DESC,"
             );
+        }
+
+        if let Some(user_id) = self.user_id
+            && (with_result || self.possession != Possession::Any)
+        {
+            let idx = add(args, user_id.as_str())?;
+            joins.push(owned_join(idx));
+            match self.possession {
+                Possession::Any => {}
+                Possession::Owned => {
+                    conditions.push("COALESCE(own.owned_quantity, 0) > 0".to_string())
+                }
+                Possession::NotOwned => {
+                    conditions.push("COALESCE(own.owned_quantity, 0) = 0".to_string());
+                }
+            }
         }
 
         match self.offer {
@@ -198,9 +234,10 @@ impl SearchRepository for SearchRepositoryAdapter {
     #[tracing::instrument(name = "search_repo.search_paginated", skip_all, fields(sentry.op = "db"))]
     async fn search_paginated(
         &self,
+        user_id: &UserId,
         query: SearchQuery,
     ) -> Result<Paginated<SearchCard>, AppError> {
-        let filters = Filters::of(&query);
+        let filters = Filters::of(user_id, &query);
 
         let mut args = PgArguments::default();
         let mut count_args = PgArguments::default();
@@ -239,6 +276,7 @@ impl SearchRepository for SearchRepositoryAdapter {
                  img.image_source,
                  img.image_has_back,
                  COALESCE(o.owner_count, 0) AS owner_count,
+                 COALESCE(own.owned_quantity, 0) AS owned_quantity,
                  {reserved_column} AS reserved,
                  COALESCE({languages_column}, ARRAY[]::TEXT[]) AS offered_languages,
                  p.low, p.avg, p.trend, p.low_foil, p.avg_foil, p.trend_foil
@@ -322,7 +360,8 @@ mod tests {
     use crate::domain::collection::SortDirection;
     use crate::domain::language_code::LanguageCode;
     use crate::domain::pagination::Pagination;
-    use crate::domain::search::SearchImage;
+    use crate::domain::search::{Possession, SearchImage};
+    use crate::domain::user::UserId;
     use crate::infrastructure::adapter_out::repository::common_repository_tests::{
         insert_card, insert_catalog_card, insert_collection_entry,
         insert_collection_entry_with_binder, insert_price, insert_rarity_filter, insert_set,
@@ -335,11 +374,62 @@ mod tests {
     use sqlx::PgPool;
     use uuid::Uuid;
 
+    /// A search by a player who owns nothing.
     async fn search(pool: &PgPool, query: SearchQuery) -> Paginated<SearchCard> {
+        search_as(pool, "nobody", query).await
+    }
+
+    async fn search_as(pool: &PgPool, user_id: &str, query: SearchQuery) -> Paginated<SearchCard> {
         SearchRepositoryAdapter::new(pool.clone())
-            .search_paginated(query)
+            .search_paginated(&UserId::new(user_id), query)
             .await
             .unwrap()
+    }
+
+    fn possession(possession: Possession) -> SearchQuery {
+        SearchQuery {
+            possession,
+            ..SearchQuery::default()
+        }
+    }
+
+    /// `user_id` owns `quantity` non-foil `language` copies of the impression, in the Catalogue
+    /// already, without offering them (no public collection).
+    async fn owns(
+        pool: &PgPool,
+        user_id: &str,
+        number: &str,
+        language: &str,
+        foil: bool,
+        quantity: i32,
+    ) {
+        let known: bool = sqlx::query_scalar(
+            "SELECT EXISTS (SELECT 1 FROM card WHERE (set_code, collector_number, language_code) = ('TST', $1, $2))",
+        )
+        .bind(number)
+        .bind(language)
+        .fetch_one(pool)
+        .await
+        .unwrap();
+        if !known {
+            insert_card(pool, "TST", number, language, "Card", 9_000).await;
+        }
+        insert_collection_entry(
+            pool,
+            "TST",
+            number,
+            language,
+            foil,
+            user_id,
+            quantity,
+            100,
+            Utc::now(),
+        )
+        .await;
+    }
+
+    async fn private_user(pool: &PgPool, id: &str, username: &str) {
+        insert_user_with_visibility(pool, id, username, "private").await;
     }
 
     fn names(result: &Paginated<SearchCard>) -> Vec<&str> {
@@ -727,6 +817,104 @@ mod tests {
         let result = search(&pool, offer(Offer::OfferedBy("Alice".to_string()))).await;
 
         assert_eq!(result.total, 0);
+    }
+
+    // --- Possession axis and owned quantity ---
+
+    #[sqlx::test]
+    async fn the_owned_quantity_sums_every_language_and_finish(pool: PgPool) {
+        catalog(&pool, "TST", "1", "Sol Ring").await;
+        private_user(&pool, "userA", "Alice").await;
+        owns(&pool, "userA", "1", "FR", false, 2).await;
+        owns(&pool, "userA", "1", "EN", false, 1).await;
+        owns(&pool, "userA", "1", "EN", true, 3).await;
+
+        let result = search_as(&pool, "userA", SearchQuery::default()).await;
+
+        assert_eq!(result.total, 1);
+        assert_eq!(result.items[0].owned_quantity, 6);
+    }
+
+    #[sqlx::test]
+    async fn an_impression_the_player_does_not_own_has_a_zero_quantity(pool: PgPool) {
+        catalog(&pool, "TST", "1", "Sol Ring").await;
+
+        let result = search_as(&pool, "userA", SearchQuery::default()).await;
+
+        assert_eq!(result.items[0].owned_quantity, 0);
+    }
+
+    #[sqlx::test]
+    async fn another_players_copies_are_never_in_the_owned_quantity(pool: PgPool) {
+        catalog(&pool, "TST", "1", "Sol Ring").await;
+        public_user(&pool, "userA", "Alice").await;
+        public_user(&pool, "userB", "Bob").await;
+        owns(&pool, "userB", "1", "EN", false, 4).await;
+
+        let any = search_as(&pool, "userA", SearchQuery::default()).await;
+        let by_bob = search_as(&pool, "userA", offer(Offer::OfferedBy("Bob".to_string()))).await;
+
+        assert_eq!(any.items[0].owned_quantity, 0);
+        assert_eq!(by_bob.total, 1);
+        assert_eq!(by_bob.items[0].owned_quantity, 0);
+        assert_eq!(by_bob.items[0].owner_count, 1);
+    }
+
+    #[sqlx::test]
+    async fn the_possession_axis_splits_the_catalogue_into_owned_and_not_owned(pool: PgPool) {
+        catalog(&pool, "TST", "1", "Mine").await;
+        catalog(&pool, "TST", "2", "Missing").await;
+        private_user(&pool, "userA", "Alice").await;
+        owns(&pool, "userA", "1", "EN", false, 1).await;
+
+        let any = search_as(&pool, "userA", possession(Possession::Any)).await;
+        let owned = search_as(&pool, "userA", possession(Possession::Owned)).await;
+        let missing = search_as(&pool, "userA", possession(Possession::NotOwned)).await;
+
+        assert_eq!(any.total, 2);
+        assert_eq!(names(&owned), vec!["Mine"]);
+        assert_eq!(owned.total, 1);
+        assert_eq!(names(&missing), vec!["Missing"]);
+        assert_eq!(missing.total, 1);
+    }
+
+    #[sqlx::test]
+    async fn not_owned_and_offered_keep_what_the_player_lacks_and_somebody_offers(pool: PgPool) {
+        catalog(&pool, "TST", "1", "Mine and offered").await;
+        catalog(&pool, "TST", "2", "Missing and offered").await;
+        catalog(&pool, "TST", "3", "Missing and not offered").await;
+        public_user(&pool, "userA", "Alice").await;
+        public_user(&pool, "userB", "Bob").await;
+        owns(&pool, "userA", "1", "EN", false, 1).await;
+        offers(&pool, "userB", "TST", "1", "EN").await;
+        offers(&pool, "userB", "TST", "2", "EN").await;
+
+        let result = search_as(
+            &pool,
+            "userA",
+            SearchQuery {
+                possession: Possession::NotOwned,
+                offer: Offer::Offered,
+                ..SearchQuery::default()
+            },
+        )
+        .await;
+
+        assert_eq!(names(&result), vec!["Missing and offered"]);
+        assert_eq!(result.total, 1);
+    }
+
+    #[sqlx::test]
+    async fn an_impression_owned_only_by_somebody_else_is_not_owned(pool: PgPool) {
+        catalog(&pool, "TST", "1", "Sol Ring").await;
+        public_user(&pool, "userB", "Bob").await;
+        owns(&pool, "userB", "1", "EN", false, 1).await;
+
+        let owned = search_as(&pool, "userA", possession(Possession::Owned)).await;
+        let missing = search_as(&pool, "userA", possession(Possession::NotOwned)).await;
+
+        assert_eq!(owned.total, 0);
+        assert_eq!(missing.total, 1);
     }
 
     // --- reserved ---

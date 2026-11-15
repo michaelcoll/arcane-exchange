@@ -1,4 +1,4 @@
-use crate::domain::search::{Offer, SearchCard, SearchImage};
+use crate::domain::search::{Offer, Possession, SearchCard, SearchImage};
 pub(crate) use crate::infrastructure::adapter_in::collection::dto::{
     PriceGuideResponse, RarityCodeParam, SortDirParam, card_image_urls,
 };
@@ -6,6 +6,16 @@ use crate::infrastructure::adapter_in::default_page_size;
 use serde::{Deserialize, Serialize};
 use ts_rs::TS;
 use utoipa::ToSchema;
+
+/// The Possession axis of the query: `owned=true` keeps the owned impressions, `owned=false` the
+/// others, no `owned` all of them.
+pub(crate) fn possession_of(owned: Option<bool>) -> Possession {
+    match owned {
+        Some(true) => Possession::Owned,
+        Some(false) => Possession::NotOwned,
+        None => Possession::Any,
+    }
+}
 
 /// The Offre axis of the query: `offered_by` wins when it names a player, `offered` otherwise.
 /// A blank username means no player.
@@ -46,6 +56,9 @@ pub struct SearchCardResponse {
     /// player's visibility, trade binder selection and rarity filters — the authenticated one
     /// included. `0` when nobody does.
     pub owner_count: u64,
+    /// Copies of this impression the authenticated player owns, every language and finish
+    /// together; `0` when they own none. Never another player's.
+    pub owned_quantity: u64,
     /// Language codes (`EN`, `FR`...) in which this impression is offered for trade: by the
     /// `offered_by` player when there is one, by any player otherwise. Empty when nobody offers
     /// it.
@@ -91,6 +104,7 @@ impl From<SearchCard> for SearchCardResponse {
             image_url,
             image_back_url,
             owner_count: c.owner_count,
+            owned_quantity: c.owned_quantity,
             offered_languages: c
                 .offered_languages
                 .iter()
@@ -114,6 +128,10 @@ pub(crate) struct SearchParams {
     pub(crate) sort_dir: SortDirParam,
     #[ts(optional)]
     pub(crate) q: Option<String>,
+    /// Possession axis: `true` for the impressions the authenticated player owns, `false` for
+    /// those they do not own, absent for all of them
+    #[ts(optional)]
+    pub(crate) owned: Option<bool>,
     /// Only the impressions offered by any player, the authenticated one included
     #[ts(optional)]
     pub(crate) offered: Option<bool>,
@@ -158,6 +176,7 @@ impl Default for SearchParams {
             page_size: default_page_size(),
             sort_dir: SortDirParam::default(),
             q: None,
+            owned: None,
             offered: None,
             offered_by: None,
             rarity: Vec::new(),

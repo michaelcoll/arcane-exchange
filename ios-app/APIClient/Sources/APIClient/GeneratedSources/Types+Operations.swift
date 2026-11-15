@@ -9054,6 +9054,10 @@ public enum Operations {
                 ///
                 /// - Remark: Generated from `#/paths/search/card/GET/query/q`.
                 public var q: Swift.String?
+                /// Possession axis: `true` keeps the impressions the authenticated player owns (any language or finish), `false` those they do not own. Absent: all of them
+                ///
+                /// - Remark: Generated from `#/paths/search/card/GET/query/owned`.
+                public var owned: Swift.Bool?
                 /// Only the impressions offered for trade by any player, the authenticated one included
                 ///
                 /// - Remark: Generated from `#/paths/search/card/GET/query/offered`.
@@ -9085,6 +9089,7 @@ public enum Operations {
                 ///   - page_size: Items per page, 1 to 100 (default 20)
                 ///   - sort_dir: Sort direction of the reference price (the normal trend price, or the foil one when there is no normal price). With `q`, the best name match comes first
                 ///   - q: English or French card name, by substring or similarity. Does not match the set
+                ///   - owned: Possession axis: `true` keeps the impressions the authenticated player owns (any language or finish), `false` those they do not own. Absent: all of them
                 ///   - offered: Only the impressions offered for trade by any player, the authenticated one included
                 ///   - offered_by: Only the impressions offered by this player: exact username, case-insensitive, no partial match. Wins over `offered`; adds `reserved` to the results
                 ///   - rarity: Rarity codes, repeated for multiple values (e.g. rarity=C&rarity=U)
@@ -9096,6 +9101,7 @@ public enum Operations {
                     page_size: Swift.Int32? = nil,
                     sort_dir: Components.Schemas.SortDirParam? = nil,
                     q: Swift.String? = nil,
+                    owned: Swift.Bool? = nil,
                     offered: Swift.Bool? = nil,
                     offered_by: Swift.String? = nil,
                     rarity: [Components.Schemas.RarityCodeParam]? = nil,
@@ -9107,6 +9113,7 @@ public enum Operations {
                     self.page_size = page_size
                     self.sort_dir = sort_dir
                     self.q = q
+                    self.owned = owned
                     self.offered = offered
                     self.offered_by = offered_by
                     self.rarity = rarity
