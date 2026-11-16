@@ -1,7 +1,7 @@
 import Observation
 
-/// App-wide navigation state a widget tap can drive: the selected tab, and a trade to push
-/// once the Échanges tab is on screen.
+/// App-wide navigation state a widget tap or an App Intent can drive: the selected tab, and a
+/// trade or an impression to push once its tab is on screen.
 @MainActor
 @Observable
 package final class AppRouter {
@@ -18,19 +18,36 @@ package final class AppRouter {
     /// Consumed by `TradesView`, which owns the stack the trade is pushed onto.
     package var pendingTrade: TradeDetailRoute?
 
+    /// An impression to show, and which of its pages.
+    package enum PendingImpression: Equatable {
+        case detail(ImpressionKey)
+
+        package var key: ImpressionKey {
+            switch self {
+            case let .detail(key): key
+            }
+        }
+    }
+
+    /// Consumed by `SearchView`, which looks the impression up again and pushes its page.
+    package var pendingImpression: PendingImpression?
+
     package init() {}
 
     package func open(_ link: HomeWidgetLink) {
+        pendingTrade = nil
+        pendingImpression = nil
         switch link {
         case .collection:
             tab = .collection
-            pendingTrade = nil
         case .trades:
             tab = .trades
-            pendingTrade = nil
         case let .trade(route):
             tab = .trades
             pendingTrade = route
+        case let .impression(key):
+            tab = .search
+            pendingImpression = .detail(key)
         }
     }
 }

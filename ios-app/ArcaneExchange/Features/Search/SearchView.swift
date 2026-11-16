@@ -16,9 +16,12 @@ struct SearchView: View {
     @State private var cardResults: SearchResultsViewModel
     @State private var mode: SearchMode = .card
     @Namespace private var modeThumb
+    @Environment(AppRouter.self) private var router
+    private let api: any APIProtocol
 
     init(searchText: Binding<String>, api: any APIProtocol) {
         _searchText = searchText
+        self.api = api
         _model = State(initialValue: SearchViewModel(api: api))
         _cardResults = State(initialValue: SearchResultsViewModel(target: .card(query: ""), api: api))
     }
@@ -59,6 +62,13 @@ struct SearchView: View {
         .searchPresentationToolbarBehavior(.avoidHidingContent)
         .onSubmit(of: .search) { submit() }
         .onChange(of: mode) { searchText = "" }
+        // An impression opened by a link (Siri, Spotlight, Shortcuts) replaces whatever the
+        // stack showed. The router holds it until this tab is on screen, so a cold start works.
+        .onChange(of: router.pendingImpression, initial: true) { _, pending in
+            guard let pending else { return }
+            router.pendingImpression = nil
+            Task { await open(pending) }
+        }
         .task(id: lookupKey) {
             switch mode {
             case .card: await cardResults.search(searchText)
@@ -200,6 +210,18 @@ struct SearchView: View {
         .tint(.primary)
     }
 
+    // MARK: Link
+
+    /// Looks the impression up again by set and number, then shows its page. An impression that
+    /// is not found, or a failed call, leaves the tab as it was.
+    private func open(_ pending: AppRouter.PendingImpression) async {
+        guard let card = await ImpressionLinkResolver(api: api).card(for: pending) else { return }
+        switch pending {
+        case .detail:
+            path = NavigationPath([CardDetailRoute(card: card.asCollectionCard)])
+        }
+    }
+
     // MARK: Submit
 
     /// For a card search, the grid already shows the results: submitting only remembers the
@@ -222,4 +244,5 @@ struct SearchView: View {
 
 #Preview {
     SearchView(searchText: .constant(""), api: APIClientFactory.preview)
+        .environment(AppRouter())
 }
