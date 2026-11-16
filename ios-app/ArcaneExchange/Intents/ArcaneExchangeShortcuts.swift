@@ -15,7 +15,7 @@ struct ArcaneExchangeShortcuts: AppShortcutsProvider {
     static var appShortcuts: [AppShortcut] {
         AppShortcut(
             intent: OpenImpressionIntent(),
-            phrases: ["Ouvre \(\.$impression) dans \(.applicationName)"],
+            phrases: ["Ouvre \(\.$target) dans \(.applicationName)"],
             shortTitle: "Ouvrir une carte",
             systemImageName: "magnifyingglass"
         )

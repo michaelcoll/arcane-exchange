@@ -88,6 +88,7 @@ struct DeviceMemoryTests {
             "search.recentPlayers",
             "search.sort.player",
             "search.sort.text",
+            "spotlight.ownedKeys",
         ])
     }
 }

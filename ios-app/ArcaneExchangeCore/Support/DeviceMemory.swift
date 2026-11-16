@@ -11,6 +11,8 @@ package enum PlayerKey: String, CaseIterable {
     case addCardLanguage = "collection.addCard.language"
     /// The scan batch: a player's work in progress, forgotten at sign-out.
     case scanBatch = "scanner.batch"
+    /// The keys of the impressions the Spotlight indexer last indexed.
+    case spotlightOwnedKeys = "spotlight.ownedKeys"
     // Kept in the App Group, which the widgets extension reads with the same codec.
     case collectionWidgetSnapshot = "home_widget_snapshot.CollectionWidget"
     case tradesWidgetSnapshot = "home_widget_snapshot.TradesWidget"
