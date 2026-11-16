@@ -4268,6 +4268,13 @@ public struct Client: APIProtocol {
                     in: &request,
                     style: .form,
                     explode: true,
+                    name: "collector_number",
+                    value: input.query.collector_number
+                )
+                try converter.setQueryItemAsURI(
+                    in: &request,
+                    style: .form,
+                    explode: true,
                     name: "price_min",
                     value: input.query.price_min
                 )

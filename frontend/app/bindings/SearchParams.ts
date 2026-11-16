@@ -30,6 +30,10 @@ export type SearchParams = {
    */
   sets?: string;
   /**
+   * Exact collector number (`1` does not match `10` or `1a`)
+   */
+  collector_number?: string;
+  /**
    * Minimum reference price in cents
    */
   price_min?: number;

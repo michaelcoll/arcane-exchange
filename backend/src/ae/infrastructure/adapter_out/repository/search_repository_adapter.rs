@@ -89,6 +89,7 @@ struct Filters<'a> {
     offer: &'a Offer,
     rarity: &'a [RarityCode],
     sets: &'a [String],
+    collector_number: Option<&'a str>,
     price_min: Option<u32>,
     price_max: Option<u32>,
 }
@@ -112,6 +113,7 @@ impl<'a> Filters<'a> {
             offer: &query.offer,
             rarity: &query.rarity,
             sets: &query.sets,
+            collector_number: query.collector_number.as_deref(),
             price_min: query.price_min,
             price_max: query.price_max,
         }
@@ -126,6 +128,7 @@ impl<'a> Filters<'a> {
             offer: &scope.offer,
             rarity: &[],
             sets: &[],
+            collector_number: None,
             price_min: None,
             price_max: None,
         }
@@ -192,6 +195,10 @@ impl<'a> Filters<'a> {
         if !self.sets.is_empty() {
             let idx = add(args, self.sets)?;
             conditions.push(format!("cc.set_code = ANY(${idx})"));
+        }
+        if let Some(number) = self.collector_number {
+            let idx = add(args, number)?;
+            conditions.push(format!("cc.collector_number = ${idx}"));
         }
         if let Some(v) = self.price_min {
             let idx = add(args, i64::from(v))?;
@@ -1123,6 +1130,79 @@ mod tests {
 
         assert_eq!(rare.total, 2);
         assert_eq!(names(&rare_in_bbb), vec!["BBB rare"]);
+    }
+
+    fn number(set: &str, number: &str) -> SearchQuery {
+        SearchQuery {
+            sets: vec![set.to_string()],
+            collector_number: Some(number.to_string()),
+            ..SearchQuery::default()
+        }
+    }
+
+    #[sqlx::test]
+    async fn the_collector_number_is_matched_exactly_within_the_set(pool: PgPool) {
+        catalog(&pool, "AAA", "1", "AAA one").await;
+        catalog(&pool, "AAA", "10", "AAA ten").await;
+        catalog(&pool, "AAA", "1a", "AAA one a").await;
+        catalog(&pool, "AAA", "123a", "AAA lettered").await;
+        catalog(&pool, "BBB", "1", "BBB one").await;
+
+        let one = search(&pool, number("AAA", "1")).await;
+        let lettered = search(&pool, number("AAA", "123a")).await;
+        let missing = search(&pool, number("AAA", "99")).await;
+
+        assert_eq!(names(&one), vec!["AAA one"]);
+        assert_eq!(names(&lettered), vec!["AAA lettered"]);
+        assert_eq!(missing.total, 0);
+    }
+
+    #[sqlx::test]
+    async fn the_collector_number_combines_with_the_other_filters(pool: PgPool) {
+        catalog(&pool, "TST", "1", "Sol Ring").await;
+        catalog(&pool, "TST", "2", "Other").await;
+        private_user(&pool, "userA", "Alice").await;
+        owns(&pool, "userA", "1", "EN", false, 1).await;
+
+        let with_text = search(
+            &pool,
+            SearchQuery {
+                search_query: Some("sol".to_string()),
+                ..number("TST", "1")
+            },
+        )
+        .await;
+        let mismatching_text = search(
+            &pool,
+            SearchQuery {
+                search_query: Some("other".to_string()),
+                ..number("TST", "1")
+            },
+        )
+        .await;
+        let owned = search_as(
+            &pool,
+            "userA",
+            SearchQuery {
+                possession: Possession::Owned,
+                ..number("TST", "1")
+            },
+        )
+        .await;
+        let owned_other = search_as(
+            &pool,
+            "userA",
+            SearchQuery {
+                possession: Possession::Owned,
+                ..number("TST", "2")
+            },
+        )
+        .await;
+
+        assert_eq!(names(&with_text), vec!["Sol Ring"]);
+        assert_eq!(mismatching_text.total, 0);
+        assert_eq!(names(&owned), vec!["Sol Ring"]);
+        assert_eq!(owned_other.total, 0);
     }
 
     #[sqlx::test]
