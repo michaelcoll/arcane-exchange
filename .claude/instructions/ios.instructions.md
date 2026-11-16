@@ -1,8 +1,8 @@
 # iOS App Development Guide (Swift/SwiftUI)
 
-`ios-app/`, SwiftUI. Structure et rôle dans l'ensemble : [ARCHITECTURE.md](../ARCHITECTURE.md).
+`ios-app/`, SwiftUI. Structure et rôle dans l'ensemble : [ARCHITECTURE.md](../../ARCHITECTURE.md).
 Commandes : [mise.instructions.md](mise.instructions.md) · CI : [ci.instructions.md](ci.instructions.md) · Règles de
-code : [CODING_STANDARDS.md](../CODING_STANDARDS.md) › iOS.
+code : [CODING_STANDARDS.md](../../CODING_STANDARDS.md) › iOS.
 
 ## Generated files (CRITICAL)
 

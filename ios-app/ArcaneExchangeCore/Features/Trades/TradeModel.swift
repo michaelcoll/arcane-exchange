@@ -8,7 +8,8 @@ package typealias TradeCard = Components.Schemas.TradeCardResponse
 package typealias TradeStatusParam = Components.Schemas.TradeStatusParam
 
 /// The trade state machine, mirroring the backend's `TradeStatus` (`src/ae/domain/trade.rs`)
-/// and the web client's `utils/trade.ts`. See `.agents/trade-workflow.instructions.md`.
+/// and the web client's `utils/trade.ts`. See
+/// `.claude/instructions/trade-workflow.instructions.md`.
 ///
 /// The API types `status` as a plain string, so this narrows it, falling back to `.pending`
 /// exactly like `toTradeStatus` on the web.

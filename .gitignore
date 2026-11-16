@@ -7,7 +7,10 @@ example-files
 /maquette
 .sentryclirc
 .playwright-cli
-.claude
+/.claude/*
+!/.claude/agents/
+!/.claude/instructions/
+!/.claude/skills/
 CLAUDE.md
 
 # Card images downloaded by the local backend (CARD_IMAGES_DIR)

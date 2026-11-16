@@ -37,9 +37,9 @@ const IMAGE_JOIN: &str = r#"LEFT JOIN LATERAL (SELECT c.language_code, c.image_s
                                   LIMIT 1) img ON TRUE"#;
 
 /// What the players offer of each impression: from `v_tradable_entry`, the only source of what a
-/// player actually offers (see `.agents/database-schema.instructions.md`). With a player
-/// (`player_idx`, the placeholder of their username), also whether they offer the impression and
-/// whether one of their Cards of it is reserved.
+/// player actually offers (see `.claude/instructions/database-schema.instructions.md`). With a
+/// player (`player_idx`, the placeholder of their username), also whether they offer the
+/// impression and whether one of their Cards of it is reserved.
 fn offers_join(player_idx: Option<usize>) -> String {
     let player_columns = player_idx.map_or_else(String::new, |idx| {
         let player =

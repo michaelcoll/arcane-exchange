@@ -11,9 +11,9 @@ You are consulting this project's UI mockup to use it as a visual/UX reference b
   This is not code to port as-is: the real stack is `frontend/` (Nuxt 4 / Vue 3 / Tailwind), not React.
 - Lives in the `maquette/` folder at the repo root. It is in `.gitignore`: never committed, never referenced in a PR,
   don't try to version it.
-- Serves as the visual source of truth behind `../../../.agents/design-system.instructions.md` (color tokens, spacing,
-  components) and the Web section of `../../../CODING_STANDARDS.md` — those files partly document what's visible in
-  the mockup. Check them for the translation into Tailwind classes.
+- Serves as the visual source of truth behind `../../../.claude/instructions/design-system.instructions.md` (color
+  tokens, spacing, components) and the Web section of `../../../CODING_STANDARDS.md` — those files partly document
+  what's visible in the mockup. Check them for the translation into Tailwind classes.
 
 ## How to consult it
 
@@ -55,7 +55,7 @@ You are consulting this project's UI mockup to use it as a visual/UX reference b
    (`playwright-cli`) — `snapshot` for structure, `screenshot` for visuals, `click` for interactions — and note layout,
    visual hierarchy, and behaviors (hover, transitions, empty/error states) rather than guessing.
 2. Translate into Vue/Tailwind following the conventions already in place in `frontend/`, not by copying the mockup's
-   JSX/CSS. Use `../../../.agents/design-system.instructions.md` for tokens (colors, spacing, radius, button/badge
-   variants).
-3. If the mockup diverges from `../../../.agents/design-system.instructions.md`, flag it to the user rather than
-   deciding unilaterally — the mockup may have evolved since the instructions were written.
+   JSX/CSS. Use `../../../.claude/instructions/design-system.instructions.md` for tokens (colors, spacing, radius,
+   button/badge variants).
+3. If the mockup diverges from `../../../.claude/instructions/design-system.instructions.md`, flag it to the user
+   rather than deciding unilaterally — the mockup may have evolved since the instructions were written.

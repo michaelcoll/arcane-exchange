@@ -14,8 +14,8 @@ in the native iOS app.
 - Lives in the `maquette/` folder at the repo root. It is in `.gitignore`: never committed, never referenced in a PR,
   don't try to version it.
 - Serves as the visual source of truth for iOS-specific layout, navigation and interactions — a native-feeling
-  reinterpretation of the web app's design system (see `../../../.agents/design-system.instructions.md` for the
-  underlying tokens: colors, spacing, components), adapted to iOS conventions (tab bar, nav bar, sheets, etc.).
+  reinterpretation of the web app's design system (see `../../../.claude/instructions/design-system.instructions.md`
+  for the underlying tokens: colors, spacing, components), adapted to iOS conventions (tab bar, nav bar, sheets, etc.).
 
 ## How to consult it
 
@@ -52,7 +52,8 @@ in the native iOS app.
    layout, visual hierarchy, and behaviors (transitions, empty/error states, native iOS patterns like swipe/sheet)
    rather than guessing.
 2. Translate into native Swift/SwiftUI following the conventions already in place in `ios-app/`, not by copying the
-   mockup's JSX/CSS. Use `../../../.agents/design-system.instructions.md` for the underlying tokens (colors, spacing,
-   radius) and adapt them to SwiftUI idioms.
-3. If the mockup diverges from `../../../.agents/design-system.instructions.md` or from iOS platform conventions, flag
-   it to the user rather than deciding unilaterally — the mockup may have evolved since the instructions were written.
+   mockup's JSX/CSS. Use `../../../.claude/instructions/design-system.instructions.md` for the underlying tokens
+   (colors, spacing, radius) and adapt them to SwiftUI idioms.
+3. If the mockup diverges from `../../../.claude/instructions/design-system.instructions.md` or from iOS platform
+   conventions, flag it to the user rather than deciding unilaterally — the mockup may have evolved since the
+   instructions were written.

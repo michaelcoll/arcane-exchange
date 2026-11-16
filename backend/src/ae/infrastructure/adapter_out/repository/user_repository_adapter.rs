@@ -71,7 +71,7 @@ impl UserRepository for UserRepositoryAdapter {
     async fn autocomplete(&self, query: &str, limit: i64) -> Result<Vec<UserSuggestion>, AppError> {
         // Inner join on `v_tradable_entry`: a user who offers nothing to trade (private,
         // no binder selected, every rarity closed) is never suggested — see
-        // `.agents/database-schema.instructions.md`.
+        // `.claude/instructions/database-schema.instructions.md`.
         let rows = sqlx::query_as!(
             UserSuggestionEntity,
             r#"

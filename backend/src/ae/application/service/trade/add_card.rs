@@ -51,7 +51,7 @@ impl AddTradeCardUseCase for AddTradeCardService {
 
         // The caller disposes freely of their own side of the trade; a card put up on the other
         // party's behalf must be one that party actually offers to trade — see
-        // `.agents/database-schema.instructions.md` on `v_tradable_entry`.
+        // `.claude/instructions/database-schema.instructions.md` on `v_tradable_entry`.
         let availability = if owner_id == caller_id {
             CardAvailability::Owned
         } else {

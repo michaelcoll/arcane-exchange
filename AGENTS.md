@@ -53,15 +53,15 @@ Vue d'ensemble technique (couches, contrats générés, traitements asynchrones,
 
 ## Instructions
 
-- **CI/CD**: [ci.instructions.md](.agents/ci.instructions.md)
+- **CI/CD**: [ci.instructions.md](.claude/instructions/ci.instructions.md)
 - **Coding Standards**: [CODING_STANDARDS.md](CODING_STANDARDS.md) — the do / don't rules per area (backend, web,
   iOS), to read before writing or reviewing code
-- **Database Schema**: [database-schema.instructions.md](.agents/database-schema.instructions.md)
-- **Design System**: [design-system.instructions.md](.agents/design-system.instructions.md)
-- **API Endpoints**: [endpoints.instructions.md](.agents/endpoints.instructions.md)
-- **iOS App**: [ios.instructions.md](.agents/ios.instructions.md)
-- **Mise & Workflow**: [mise.instructions.md](.agents/mise.instructions.md)
-- **Trade Workflow**: [trade-workflow.instructions.md](.agents/trade-workflow.instructions.md)
+- **Database Schema**: [database-schema.instructions.md](.claude/instructions/database-schema.instructions.md)
+- **Design System**: [design-system.instructions.md](.claude/instructions/design-system.instructions.md)
+- **API Endpoints**: [endpoints.instructions.md](.claude/instructions/endpoints.instructions.md)
+- **iOS App**: [ios.instructions.md](.claude/instructions/ios.instructions.md)
+- **Mise & Workflow**: [mise.instructions.md](.claude/instructions/mise.instructions.md)
+- **Trade Workflow**: [trade-workflow.instructions.md](.claude/instructions/trade-workflow.instructions.md)
 
 ## Agent skills
 

@@ -1,6 +1,6 @@
 # Database Schema Guide
 
-**Source of truth for the schema: [`docs/db.md`](../docs/db.md)** — generated ERD (tables, columns, types, PK/FK,
+**Source of truth for the schema: [`docs/db.md`](../../docs/db.md)** — generated ERD (tables, columns, types, PK/FK,
 indexes, constraints). Read it for column names and relations; this file only documents what the ERD cannot express.
 
 ## Invariants
