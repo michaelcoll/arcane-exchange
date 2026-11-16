@@ -46,6 +46,23 @@
 - Before pushing, check `docker info`: the pre-push hook needs PostgreSQL. If Docker is down, ask the user to start it
 - Once the PR is open, offer to remove the worktrees and local branches whose PR is merged
 
+## SUBAGENTS
+
+The main session keeps the decisions: design, grilling, ADR, glossary, epic split, hard bug diagnosis. Delegate the
+rest to the agent whose model fits the task:
+
+| Task                                                     | Agent                               |
+| -------------------------------------------------------- | ----------------------------------- |
+| Locate code, read and summarise files                    | `Explore` (Haiku)                   |
+| Read a web page or library docs, take notes              | `general-purpose`, `model: "haiku"` |
+| Run checks or tests, read CI or test logs                | `runner` (Haiku)                    |
+| Implement a settled issue or spec, bump dependencies     | `implementer` (Sonnet)              |
+| Check a web page in the browser, compare with the mockup | `verifier` (Sonnet)                 |
+| The two sub-agents of the `code-review` skill            | `reviewer` (Opus)                   |
+
+- Pass `model` to every `general-purpose` agent: without it, the agent inherits the main session's model
+- Fable only when the user asks for it
+
 ## Architecture
 
 Vue d'ensemble technique (couches, contrats générés, traitements asynchrones, clients, déploiement) :
