@@ -328,6 +328,199 @@ struct SpotlightIndexerTests {
         #expect(thumbnails.files.isEmpty)
     }
 
+    // MARK: Viewed impressions
+
+    /// A Catalogue where every impression exists, found by set and number as the detail screen asks.
+    private func serveCatalogue(on api: FakeAPI) {
+        api.onSearchCards = { input in
+            if let set = input.query.sets, let number = input.query.collector_number {
+                return page([impression(number, set: set)], total: 1)
+            }
+            return page([], total: 0)
+        }
+    }
+
+    @Test func indexesAViewedImpressionTheCollectionDoesNotHold() async {
+        let api = FakeAPI()
+        serveCatalogue(on: api)
+        let index = FakeIndex()
+
+        await makeIndexer(api, index).noteViewed(key("7"))
+
+        #expect(await index.keys == [key("7")])
+    }
+
+    @Test func viewingAgainDoesNotDuplicateAndKeepsItsPlace() async {
+        let api = FakeAPI()
+        serveCatalogue(on: api)
+        let index = FakeIndex()
+        let indexer = makeIndexer(api, index)
+
+        // 50 views, then the first one again: it moves to the front, so a 51st new card drops the second.
+        for number in 1 ... 50 { await indexer.noteViewed(key(String(number))) }
+        await indexer.noteViewed(key("1"))
+        await indexer.noteViewed(key("51"))
+
+        let expected = Set((1 ... 51).filter { $0 != 2 }.map { key(String($0)) })
+        #expect(await index.keys == expected)
+    }
+
+    @Test func keepsOnlyTheFiftyLastViewedImpressions() async {
+        let api = FakeAPI()
+        serveCatalogue(on: api)
+        let index = FakeIndex()
+        let indexer = makeIndexer(api, index)
+
+        for number in 1 ... 52 { await indexer.noteViewed(key(String(number))) }
+
+        #expect(await index.keys == Set((3 ... 52).map { key(String($0)) }))
+    }
+
+    @Test func anImpressionLeavingTheHistoryStaysWhenOwned() async {
+        let api = FakeAPI()
+        serveCatalogue(on: api)
+        let index = FakeIndex()
+        let indexer = makeIndexer(api, index)
+        serve([impression("1")], on: api)
+        await indexer.reconcileCollection()
+        serveCatalogue(on: api)
+
+        for number in 1 ... 51 { await indexer.noteViewed(key(String(number))) }
+
+        #expect(await index.keys.contains(key("1")))
+        #expect(await index.keys.count == 51)
+    }
+
+    @Test func reconciliationKeepsAViewedImpressionThatLeftTheCollection() async {
+        let api = FakeAPI()
+        let index = FakeIndex()
+        let indexer = makeIndexer(api, index)
+        serve([impression("1"), impression("2")], on: api)
+        await indexer.reconcileCollection()
+        serveCatalogue(on: api)
+        await indexer.noteViewed(key("2"))
+
+        serve([impression("1")], on: api)
+        await indexer.reconcileCollection()
+
+        #expect(await index.keys == [key("1"), key("2")])
+    }
+
+    @Test func aViewedImpressionLeavingTheHistoryAndTheCollectionIsRemoved() async {
+        let api = FakeAPI()
+        let index = FakeIndex()
+        let indexer = makeIndexer(api, index)
+        serve([impression("1")], on: api)
+        await indexer.reconcileCollection()
+        serveCatalogue(on: api)
+        await indexer.noteViewed(key("1"))
+        serve([], on: api)
+        await indexer.reconcileCollection()
+        serveCatalogue(on: api)
+
+        for number in 2 ... 51 { await indexer.noteViewed(key(String(number))) }
+
+        #expect(await index.keys == Set((2 ... 51).map { key(String($0)) }))
+    }
+
+    @Test func remembersTheHistoryAcrossLaunches() async {
+        let api = FakeAPI()
+        serveCatalogue(on: api)
+        let index = FakeIndex()
+        let defaults = isolatedDefaults()
+        await makeIndexer(api, index, defaults: defaults).noteViewed(key("1"))
+
+        serve([], on: api)
+        await makeIndexer(api, index, defaults: defaults).reconcileCollection()
+
+        #expect(await index.keys == [key("1")])
+    }
+
+    @Test func purgeForgetsTheHistory() async {
+        let api = FakeAPI()
+        serveCatalogue(on: api)
+        let index = FakeIndex()
+        let indexer = makeIndexer(api, index)
+        await indexer.noteViewed(key("1"))
+
+        await indexer.purge()
+        #expect(await index.keys.isEmpty)
+
+        // Were the history still there, the impression would outlive its Collection membership.
+        serve([impression("1")], on: api)
+        await indexer.reconcileCollection()
+        serve([], on: api)
+        await indexer.reconcileCollection()
+        #expect(await index.keys.isEmpty)
+    }
+
+    @Test func aViewWhoseImpressionCannotBeReadChangesNothing() async {
+        let api = FakeAPI()
+        api.onSearchCards = { _ in throw URLError(.notConnectedToInternet) }
+        let index = FakeIndex()
+
+        await makeIndexer(api, index).noteViewed(key("1"))
+
+        #expect(await index.keys.isEmpty)
+    }
+
+    @Test func aViewDuringAnExpiredSessionChangesNothing() async {
+        let api = FakeAPI()
+        api.onSearchCards = { _ in throw APIError(code: "unauthorized", status: 401) }
+        let index = FakeIndex()
+
+        await makeIndexer(api, index).noteViewed(key("1"))
+
+        #expect(await index.keys.isEmpty)
+    }
+
+    @Test func aPurgeDuringAViewIsNotUndoneByIt() async {
+        let api = FakeAPI()
+        let index = FakeIndex()
+        let indexer = makeIndexer(api, index)
+        api.onSearchCards = { _ in
+            await indexer.purge()
+            return page([impression("1")], total: 1)
+        }
+
+        await indexer.noteViewed(key("1"))
+
+        #expect(await index.keys.isEmpty)
+        // Nor did it enter the history: it would outlive its Collection membership.
+        serve([impression("1")], on: api)
+        await indexer.reconcileCollection()
+        serve([], on: api)
+        await indexer.reconcileCollection()
+        #expect(await index.keys.isEmpty)
+    }
+
+    @Test func removesTheThumbnailOfAViewedImpressionLeavingTheHistory() async {
+        let api = FakeAPI()
+        let thumbnails = FakeThumbnails()
+        let indexer = makeIndexer(api, FakeIndex(), thumbnails: thumbnails)
+        api.onSearchCards = { input in
+            var card = impression(input.query.collector_number ?? "")
+            card.image_url = "https://img.example/card.jpg"
+            return page([card], total: 1)
+        }
+
+        for number in 1 ... 51 { await indexer.noteViewed(key(String(number))) }
+
+        #expect(thumbnails.files == Set((2 ... 51).map { key(String($0)) }))
+    }
+
+    @Test func aPurgeDuringTheIndexingOfAViewLeavesNothingOfIt() async {
+        let api = FakeAPI()
+        let index = FakeIndex()
+        let indexer = makeIndexer(api, index)
+        serveCatalogue(on: api)
+        await index.duringNextIndexing { await indexer.purge() }
+
+        await indexer.noteViewed(key("1"))
+
+        #expect(await index.keys.isEmpty)
+    }
+
     // MARK: Thumbnails
 
     @Test func indexesTheNamesTheSetTheNumberAndTheThumbnailOnly() async throws {

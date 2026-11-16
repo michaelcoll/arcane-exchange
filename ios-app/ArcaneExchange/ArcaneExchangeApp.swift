@@ -53,6 +53,7 @@ struct ArcaneExchangeApp: App {
                     .environment(\.api, api)
                     .environment(\.avatarStore, avatarStore)
                     .environment(\.scanIndex, scanIndex)
+                    .environment(\.spotlightIndexer, spotlightIndexer)
                     .onChange(of: Clerk.shared.user != nil) { _, isSignedIn in
                         if isSignedIn {
                             Task { await unauthorizedLatch.rearm() }

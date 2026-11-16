@@ -15,6 +15,10 @@ extension EnvironmentValues {
     /// the one built on the session's client; this default, used by previews, has its own.
     @Entry var scanIndex = ScanIndexModel(api: APIClientFactory.preview)
 
+    /// What notes the card pages the player opens, for Spotlight. The app sets its indexer; this
+    /// default, used by previews, indexes nothing.
+    @Entry var spotlightIndexer: SpotlightIndexer?
+
     /// The API client for the public endpoints of the login screen: no token, and a 401 signs
     /// nobody out.
     @Entry var anonymousAPI: any APIProtocol = APIClientFactory.anonymous()

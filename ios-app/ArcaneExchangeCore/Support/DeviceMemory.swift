@@ -13,6 +13,8 @@ package enum PlayerKey: String, CaseIterable {
     case scanBatch = "scanner.batch"
     /// The keys of the impressions the Spotlight indexer last indexed.
     case spotlightOwnedKeys = "spotlight.ownedKeys"
+    /// The keys of the last 50 impressions whose page the player opened, the latest first.
+    case spotlightViewedKeys = "spotlight.viewedKeys"
     // Kept in the App Group, which the widgets extension reads with the same codec.
     case collectionWidgetSnapshot = "home_widget_snapshot.CollectionWidget"
     case tradesWidgetSnapshot = "home_widget_snapshot.TradesWidget"

@@ -8,20 +8,25 @@ package protocol ImpressionIndex: Sendable {
     func removeAll() async throws
 }
 
-/// Keeps the impressions of the player's Collection in the system search, so that typing a card
-/// name in Spotlight finds it. Spotlight never asks an app while the player types: only what
-/// is in its local index can be found, hence this indexer.
+/// Keeps the impressions of the player's Collection, and those whose page they opened lately, in
+/// the system search, so that typing a card name in Spotlight finds it. Spotlight never asks an
+/// app while the player types: only what is in its local index can be found, hence this indexer.
 ///
-/// It remembers the keys of the last reconciliation (in `DeviceMemory`: the index offers no
-/// readable list) to know what left the Collection since.
+/// It remembers the keys of the last reconciliation and the viewed history (in `DeviceMemory`:
+/// the index offers no readable list) to know what left the Collection or the history since.
 package actor SpotlightIndexer {
     /// The Collection is read 100 impressions at a time, as many as the API allows.
     private static let pageSize: Int32 = 100
     /// The API refuses `page * page_size` beyond 10 000: the impressions past it are not indexed.
     private static let maxPages = 100
+    /// The viewed history keeps the last 50 pages the player opened.
+    private static let historyLimit = 50
     private static let minimumInterval: TimeInterval = 15 * 60
 
     private let api: any APIProtocol
+    /// Reads an impression by its key, as the intents do. Nobody signed out gets here: the app
+    /// only runs the indexer for a signed-in player, and a 401 fails the read like any error.
+    private let lookup: ImpressionLookup
     private let index: any ImpressionIndex
     private let thumbnails: any ThumbnailStore
     private let memory: DeviceMemory
@@ -40,6 +45,7 @@ package actor SpotlightIndexer {
         now: @escaping @Sendable () -> Date = { Date() }
     ) {
         self.api = api
+        lookup = ImpressionLookup(api: api, isSignedIn: { true })
         self.index = index
         self.thumbnails = thumbnails
         memory = DeviceMemory(defaults: defaults)
@@ -67,8 +73,9 @@ package actor SpotlightIndexer {
                 await discard(Array(ownedKeys))
                 return
             }
-            try await index.remove(Array(left))
-            thumbnails.remove(Array(left))
+            let gone = left.subtracting(keys(for: .spotlightViewedKeys))
+            try await index.remove(Array(gone))
+            thumbnails.remove(Array(gone))
             guard generation == started else { return }
             memory.write(ownedKeys.map(\.id).sorted(), for: PlayerKey.spotlightOwnedKeys)
         } catch {
@@ -78,12 +85,38 @@ package actor SpotlightIndexer {
         }
     }
 
-    /// Empties the index and forgets what was indexed: nobody is signed in any more.
+    /// Puts an impression whose page the player opened at the front of the history, and indexes
+    /// it, owned or not. The one that falls out of the history (past 50) leaves the index unless
+    /// the Collection holds it. An impression that cannot be read changes nothing.
+    package func noteViewed(_ key: ImpressionKey) async {
+        let started = generation
+        do {
+            guard let card = try await lookup.impression(for: key), generation == started else { return }
+            let entity = await entity(for: card)
+            guard generation == started else { return }
+            let history = [key] + keys(for: .spotlightViewedKeys).filter { $0 != key }
+            let evicted = Set(history.dropFirst(Self.historyLimit)).subtracting(keys(for: .spotlightOwnedKeys))
+            try await index.index([entity])
+            guard generation == started else {
+                await discard([key])
+                return
+            }
+            try await index.remove(Array(evicted))
+            thumbnails.remove(Array(evicted))
+            guard generation == started else { return }
+            memory.write(history.prefix(Self.historyLimit).map(\.id), for: PlayerKey.spotlightViewedKeys)
+        } catch {
+            return
+        }
+    }
+
+    /// Empties the index and forgets what was indexed and viewed: nobody is signed in any more.
     package func purge() async {
         generation += 1
         try? await index.removeAll()
         thumbnails.removeAll()
         memory.remove(.spotlightOwnedKeys)
+        memory.remove(.spotlightViewedKeys)
         lastReconciliation = nil
     }
 

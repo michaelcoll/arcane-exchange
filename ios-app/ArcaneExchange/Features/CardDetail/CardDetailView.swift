@@ -10,6 +10,7 @@ struct CardDetailView: View {
     @State private var model: CardDetailViewModel
     @State private var entriesModel: CollectionEntriesViewModel
     @Environment(\.tradeNavigator) private var openTrade
+    @Environment(\.spotlightIndexer) private var spotlightIndexer
 
     init(card: CollectionCard, api: any APIProtocol) {
         self.card = card
@@ -41,6 +42,7 @@ struct CardDetailView: View {
             .frame(maxWidth: .infinity)
         }
         .navigationBarTitleDisplayMode(.inline)
+        .task { await spotlightIndexer?.noteViewed(ImpressionKey(set: card.set_code, number: card.collector_number)) }
         .task { await model.loadHistory() }
         .task { await model.loadSetName() }
         .task { await model.loadOffers() }
