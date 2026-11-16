@@ -8821,6 +8821,10 @@ public enum Operations {
                 ///
                 /// - Remark: Generated from `#/paths/search/card/GET/query/sets`.
                 public var sets: Swift.String?
+                /// Exact collector number, combined with the other filters (`1` matches neither `10` nor `1a`). With `sets=<set>`, at most one impression
+                ///
+                /// - Remark: Generated from `#/paths/search/card/GET/query/collector_number`.
+                public var collector_number: Swift.String?
                 /// Minimum reference price in cents
                 ///
                 /// - Remark: Generated from `#/paths/search/card/GET/query/price_min`.
@@ -8841,6 +8845,7 @@ public enum Operations {
                 ///   - offered_by: Only the impressions offered by this player: exact username, case-insensitive, no partial match. Wins over `offered`; adds `reserved` to the results
                 ///   - rarity: Rarity codes, repeated for multiple values (e.g. rarity=C&rarity=U)
                 ///   - sets: Comma-separated set codes
+                ///   - collector_number: Exact collector number, combined with the other filters (`1` matches neither `10` nor `1a`). With `sets=<set>`, at most one impression
                 ///   - price_min: Minimum reference price in cents
                 ///   - price_max: Maximum reference price in cents
                 public init(
@@ -8853,6 +8858,7 @@ public enum Operations {
                     offered_by: Swift.String? = nil,
                     rarity: [Components.Schemas.RarityCodeParam]? = nil,
                     sets: Swift.String? = nil,
+                    collector_number: Swift.String? = nil,
                     price_min: Swift.Int32? = nil,
                     price_max: Swift.Int32? = nil
                 ) {
@@ -8865,6 +8871,7 @@ public enum Operations {
                     self.offered_by = offered_by
                     self.rarity = rarity
                     self.sets = sets
+                    self.collector_number = collector_number
                     self.price_min = price_min
                     self.price_max = price_max
                 }

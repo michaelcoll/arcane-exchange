@@ -1420,6 +1420,12 @@ paths:
         required: false
         schema:
           type: string
+      - name: collector_number
+        in: query
+        description: Exact collector number, combined with the other filters (`1` matches neither `10` nor `1a`). With `sets=<set>`, at most one impression
+        required: false
+        schema:
+          type: string
       - name: price_min
         in: query
         description: Minimum reference price in cents

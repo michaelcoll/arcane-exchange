@@ -145,6 +145,9 @@ pub(crate) struct SearchParams {
     /// Comma-separated set codes
     #[ts(optional)]
     pub(crate) sets: Option<String>,
+    /// Exact collector number (`1` does not match `10` or `1a`)
+    #[ts(optional)]
+    pub(crate) collector_number: Option<String>,
     /// Minimum reference price in cents
     #[ts(optional)]
     pub(crate) price_min: Option<u32>,
@@ -185,6 +188,7 @@ impl Default for SearchParams {
             offered_by: None,
             rarity: Vec::new(),
             sets: None,
+            collector_number: None,
             price_min: None,
             price_max: None,
         }

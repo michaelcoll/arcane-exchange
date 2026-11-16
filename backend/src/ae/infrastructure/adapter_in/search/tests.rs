@@ -605,6 +605,36 @@ async fn search_cards_passes_the_set_and_price_filters_to_use_case() {
 }
 
 #[tokio::test]
+async fn search_cards_passes_the_trimmed_collector_number_to_use_case() {
+    let mock = expecting_search(|q| {
+        q.collector_number.as_deref() == Some("123a") && q.sets == vec!["FDN".to_string()]
+    });
+
+    let response = authed(
+        search_app(mock),
+        Method::GET,
+        "/search/card?sets=FDN&collector_number=%20123a%20",
+    )
+    .await;
+
+    assert_eq!(response.status(), StatusCode::OK);
+}
+
+#[tokio::test]
+async fn search_cards_treats_a_blank_collector_number_as_no_filter() {
+    let mock = expecting_search(|q| q.collector_number.is_none());
+
+    let response = authed(
+        search_app(mock),
+        Method::GET,
+        "/search/card?collector_number=%20%20",
+    )
+    .await;
+
+    assert_eq!(response.status(), StatusCode::OK);
+}
+
+#[tokio::test]
 async fn search_card_sets_passes_the_scope_with_a_trimmed_player() {
     let mock = expecting_sets(|scope| {
         *scope

@@ -34,6 +34,7 @@ pub fn create_search_router() -> axum::Router<AppState> {
         ("offered_by" = Option<String>, Query, description = "Only the impressions offered by this player: exact username, case-insensitive, no partial match. Wins over `offered`; adds `reserved` to the results"),
         ("rarity" = Option<Vec<super::dto::RarityCodeParam>>, Query, description = "Rarity codes, repeated for multiple values (e.g. rarity=C&rarity=U)"),
         ("sets" = Option<String>, Query, description = "Comma-separated set codes"),
+        ("collector_number" = Option<String>, Query, description = "Exact collector number, combined with the other filters (`1` matches neither `10` nor `1a`). With `sets=<set>`, at most one impression"),
         ("price_min" = Option<u32>, Query, description = "Minimum reference price in cents"),
         ("price_max" = Option<u32>, Query, description = "Maximum reference price in cents"),
     ),
@@ -76,6 +77,10 @@ pub(crate) async fn search_cards(
         offer: offer_of(params.offered, params.offered_by.as_deref()),
         rarity,
         sets,
+        collector_number: params
+            .collector_number
+            .map(|n| n.trim().to_string())
+            .filter(|n| !n.is_empty()),
         price_min: params.price_min,
         price_max: params.price_max,
     };

@@ -48,6 +48,9 @@ pub struct SearchQuery<P = Pagination> {
     pub offer: Offer,
     pub rarity: Vec<RarityCode>,
     pub sets: Vec<String>,
+    /// Exact collector number, combined with the other filters; with one set it names one
+    /// impression.
+    pub collector_number: Option<String>,
     pub price_min: Option<u32>,
     pub price_max: Option<u32>,
 }
@@ -67,6 +70,7 @@ impl SearchQuery<PageRequest> {
             offer: self.offer,
             rarity: self.rarity,
             sets: self.sets,
+            collector_number: self.collector_number,
             price_min: self.price_min,
             price_max: self.price_max,
         })
