@@ -4,7 +4,7 @@ import formatPrice from './format-price';
 
 /* Le statut d'un échange est typé par le contrat généré (`TradeStatusParam`, seule union de
  * statuts que ts-rs émet) : un statut ajouté côté backend casse la compilation de
- * `TRADE_STATUS_META`. Voir .agents/trade-workflow.instructions.md. */
+ * `TRADE_STATUS_META`. Voir .claude/instructions/trade-workflow.instructions.md. */
 
 /** Valide et rétrécit le `status: string` de `TradeDetail` / `TradeSummary` vers le statut du
  * contrat, repli sur `PENDING`. */

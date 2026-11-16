@@ -177,8 +177,7 @@ psql -h 127.0.0.1 -U postgres -c "SELECT 1"
 
 ### Compatible with
 
-- **Pi** (`pi-coding-agent`) — auto-discovered as `/skill:dev-servers` via `.agents/skills/`
-- **Claude Code** — auto-discovered via `.agents/skills/`
+- **Claude Code** — auto-discovered via `.claude/skills/`
 - Any harness that implements the [Agent Skills standard](https://agentskills.io/specification)
 
 ### When to use

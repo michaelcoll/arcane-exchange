@@ -13,7 +13,7 @@ The mockup's global CSS classes (`.btn`, `.panel`, `.chip`…, `maquette/styles.
 `*-violet-*` class in `frontend/app`.
 
 How to apply the tokens in a component (semantic colors, arbitrary values, fonts, theme):
-[CODING_STANDARDS.md](../CODING_STANDARDS.md) › Web.
+[CODING_STANDARDS.md](../../CODING_STANDARDS.md) › Web.
 
 ---
 

@@ -41,7 +41,7 @@ rustfmt, clippy, ESLint, Prettier, SwiftLint or SwiftFormat already reports is l
 
 ## Web
 
-Token names and values: [design-system.instructions.md](.agents/design-system.instructions.md).
+Token names and values: [design-system.instructions.md](.claude/instructions/design-system.instructions.md).
 
 - **Styling**: compose Tailwind classes in the template, with no `<style>` block in a `.vue` component except
   `<style scoped>` for what utilities cannot express — complex `@keyframes`, layered gradients and pseudo-elements (the
@@ -76,7 +76,7 @@ Token names and values: [design-system.instructions.md](.agents/design-system.in
 - **Tests**: write tests with Swift Testing, never XCTest: the whole suite is `import Testing`.
 - **Design**: never port the mockup's HTML/CSS structure into SwiftUI: the mockup is a reference (`maquette-ios`
   skill) adapted to iOS idioms, with its tokens in
-  [design-system.instructions.md](.agents/design-system.instructions.md).
+  [design-system.instructions.md](.claude/instructions/design-system.instructions.md).
 - **Colors**: name a color by role, as on the web — `Palette.primary` / `.primaryInk` / `.onPrimary` and their
   `secondary` counterparts (`ArcaneExchangeCore/Support/Palette.swift`), `Palette.down` for a value drop,
   `RarityColor` for the five rarities. Never `Color.accentColor`, SwiftUI `.cyan` / `.purple` for an accent, or
@@ -107,7 +107,8 @@ These files keep their own rules; a review loads them too.
 - [`ARCHITECTURE.md`](ARCHITECTURE.md) — backend layer rules: direction of dependencies, injection as
   `Arc<dyn Trait>` wired in `create_infra`, services grouped by HTTP resource with one file per use case,
   configuration read once.
-- [`.agents/design-system.instructions.md`](.agents/design-system.instructions.md) — token reference and component
-  inventory.
-- [`.agents/database-schema.instructions.md`](.agents/database-schema.instructions.md) and
-  [`.agents/trade-workflow.instructions.md`](.agents/trade-workflow.instructions.md) — data and workflow invariants.
+- [`.claude/instructions/design-system.instructions.md`](.claude/instructions/design-system.instructions.md) — token
+  reference and component inventory.
+- [`.claude/instructions/database-schema.instructions.md`](.claude/instructions/database-schema.instructions.md) and
+  [`.claude/instructions/trade-workflow.instructions.md`](.claude/instructions/trade-workflow.instructions.md) — data
+  and workflow invariants.

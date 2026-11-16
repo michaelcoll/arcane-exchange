@@ -9,8 +9,8 @@ package enum TradePrimaryAction: Equatable {
 
 /// What the player can do on a trade, from its status and the state of their own side — the
 /// single place the screen reads instead of testing the status itself. Mirrors
-/// `.agents/trade-workflow.instructions.md`, the web's `isTradeAbandonable` and `useTradeView`,
-/// and the backend's `abandon`.
+/// `.claude/instructions/trade-workflow.instructions.md`, the web's `isTradeAbandonable` and
+/// `useTradeView`, and the backend's `abandon`.
 package struct TradeActions: Equatable {
     package let status: TradeStatus
     package let meAccepted: Bool

@@ -1,6 +1,6 @@
 # GitHub Actions CI/CD Guide
 
-Huit workflows dans `.github/workflows/`. Déploiement et images : [ARCHITECTURE.md](../ARCHITECTURE.md) ·
+Huit workflows dans `.github/workflows/`. Déploiement et images : [ARCHITECTURE.md](../../ARCHITECTURE.md) ·
 équivalents locaux : [mise.instructions.md](mise.instructions.md).
 
 | Workflow                 | Déclencheur                | Jobs                                                     |
@@ -19,7 +19,7 @@ Points qui ne se lisent pas dans les YAML :
 - **Labels de PR** : `pr-label.yml` ne pose que `feat` et `fix`, depuis le préfixe ancré du titre
   (`^type(scope)?!?:`). Les notes de release (`.github/release.yml`) ont quatre catégories, dans l'ordre :
   🎁 Features (`feat`), 🔧 Fixes (`fix`), 📦 Dependencies (`dependencies`), 🧹 Maintenance (attrape-tout `*`).
-  Règle de nommage et scopes : [AGENTS.md](../AGENTS.md#pr-titles).
+  Règle de nommage et scopes : [AGENTS.md](../../AGENTS.md#pr-titles).
 
 - **`check-openapi` est un gate** : il régénère `docs/openapi.yml` et échoue s'il diffère. Toute modification de
   contrôleur ou de DTO impose `mise run rebuild-docs` + commit du fichier.

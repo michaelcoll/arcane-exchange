@@ -36,7 +36,8 @@ mise run build-ios
 mise run test-ios
 ```
 
-See [`.agents/ios.instructions.md`](.agents/ios.instructions.md) for the details (XcodeGen, Metal toolchain, …).
+See [`.claude/instructions/ios.instructions.md`](.claude/instructions/ios.instructions.md) for the details (XcodeGen,
+Metal toolchain, …).
 
 ## Useful tasks
 
@@ -87,5 +88,5 @@ gates, notably:
 - [`docs/adr/`](docs/adr) — architecture decisions.
 - [`docs/openapi.yml`](docs/openapi.yml) — the HTTP API, generated from the backend.
 - [`docs/db.md`](docs/db.md) — the database schema (ERD).
-- [`AGENTS.md`](AGENTS.md) and [`.agents/`](.agents) — tooling and references per area (endpoints, iOS, database,
-  design system, CI).
+- [`AGENTS.md`](AGENTS.md) and [`.claude/`](.claude) — agents, skills and references per area (endpoints, iOS,
+  database, design system, CI).

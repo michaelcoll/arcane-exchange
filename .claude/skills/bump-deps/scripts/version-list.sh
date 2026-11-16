@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Print the dependency versions that moved between a base ref and the working tree.
 #
-# Usage, from the repo root: bash .agents/skills/bump-deps/scripts/version-list.sh [base-ref]
+# Usage, from the repo root: bash .claude/skills/bump-deps/scripts/version-list.sh [base-ref]
 # (base-ref defaults to origin/main). Direct dependencies are listed as `name: old → new`, transitive ones as a count.
 set -euo pipefail
 
