@@ -23,7 +23,7 @@ struct ImpressionLinkResolverTests {
         let api = FakeAPI()
         api.onSearchCards = { _ in page([]) }
 
-        #expect(await ImpressionLinkResolver(api: api).card(for: .detail(key)) == nil)
+        #expect(await ImpressionLinkResolver(api: api).card(for: .offers(key)) == nil)
     }
 
     @Test func findsNothingWhenTheCallFails() async {

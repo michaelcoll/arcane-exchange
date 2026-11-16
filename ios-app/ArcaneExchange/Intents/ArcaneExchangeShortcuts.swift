@@ -31,5 +31,11 @@ struct ArcaneExchangeShortcuts: AppShortcutsProvider {
             shortTitle: "Prix d'une carte",
             systemImageName: "eurosign.circle"
         )
+        AppShortcut(
+            intent: ImpressionOffersIntent(),
+            phrases: ["Qui propose \(\.$impression) dans \(.applicationName)"],
+            shortTitle: "Qui propose une carte",
+            systemImageName: "person.2"
+        )
     }
 }

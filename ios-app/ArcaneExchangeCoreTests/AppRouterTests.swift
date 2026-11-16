@@ -23,8 +23,17 @@ struct AppRouterTests {
         #expect(router.pendingImpression == .detail(key))
     }
 
+    @Test func anOffersLinkOpensTheSearchTabAndQueuesTheOffers() {
+        let router = AppRouter()
+        router.open(.impressionOffers(key))
+
+        #expect(router.tab == .search)
+        #expect(router.pendingImpression == .offers(key))
+    }
+
     @Test func aQueuedImpressionKnowsItsKey() {
         #expect(AppRouter.PendingImpression.detail(key).key == key)
+        #expect(AppRouter.PendingImpression.offers(key).key == key)
     }
 
     @Test func aTabLinkDropsAnyQueuedImpression() {
