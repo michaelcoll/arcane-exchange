@@ -19,5 +19,11 @@ struct ArcaneExchangeShortcuts: AppShortcutsProvider {
             shortTitle: "Ouvrir une carte",
             systemImageName: "magnifyingglass"
         )
+        AppShortcut(
+            intent: OwnedIntent(),
+            phrases: ["Est-ce que j'ai \(\.$impression) dans \(.applicationName)"],
+            shortTitle: "Est-ce que je l'ai ?",
+            systemImageName: "checkmark.circle"
+        )
     }
 }
