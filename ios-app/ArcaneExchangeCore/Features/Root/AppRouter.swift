@@ -21,10 +21,11 @@ package final class AppRouter {
     /// An impression to show, and which of its pages.
     package enum PendingImpression: Equatable {
         case detail(ImpressionKey)
+        case offers(ImpressionKey)
 
         package var key: ImpressionKey {
             switch self {
-            case let .detail(key): key
+            case let .detail(key), let .offers(key): key
             }
         }
     }
@@ -48,6 +49,9 @@ package final class AppRouter {
         case let .impression(key):
             tab = .search
             pendingImpression = .detail(key)
+        case let .impressionOffers(key):
+            tab = .search
+            pendingImpression = .offers(key)
         }
     }
 }

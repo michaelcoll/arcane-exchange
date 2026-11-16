@@ -219,6 +219,8 @@ struct SearchView: View {
         switch pending {
         case .detail:
             path = NavigationPath([CardDetailRoute(card: card.asCollectionCard)])
+        case .offers:
+            path = NavigationPath([CardOffersRoute(card: card.asCollectionCard)])
         }
     }
 

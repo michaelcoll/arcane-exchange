@@ -11,11 +11,13 @@ package enum HomeWidgetLink: Hashable {
     case trade(TradeDetailRoute)
     /// An impression: the app looks it up again by its key before showing it.
     case impression(ImpressionKey)
+    /// The offers of an impression, found the same way as `.impression`.
+    case impressionOffers(ImpressionKey)
 
     package static let scheme = "arcane-exchange"
 
     /// `arcane-exchange://collection`, `…://trades`, `…://trades/<id>?partner=<username>`,
-    /// `…://impression/<set>/<collector number>`.
+    /// `…://impression/<set>/<collector number>`, `…://impression-offers/<set>/<collector number>`.
     package var url: URL {
         var components = URLComponents()
         components.scheme = Self.scheme
@@ -30,6 +32,9 @@ package enum HomeWidgetLink: Hashable {
             components.queryItems = [URLQueryItem(name: "partner", value: route.partnerUsername)]
         case let .impression(key):
             components.host = "impression"
+            components.percentEncodedPath = Self.path(of: key)
+        case let .impressionOffers(key):
+            components.host = "impression-offers"
             components.percentEncodedPath = Self.path(of: key)
         }
         return components.url!
@@ -50,14 +55,14 @@ package enum HomeWidgetLink: Hashable {
         case "trades":
             let partner = components.queryItems?.first { $0.name == "partner" }?.value ?? ""
             self = .trade(TradeDetailRoute(id: tradeID, partnerUsername: partner))
-        case "impression":
+        case "impression", "impression-offers":
             let segments = components.percentEncodedPath
                 .split(separator: "/", omittingEmptySubsequences: false)
                 .dropFirst()
                 .compactMap(\.removingPercentEncoding)
             guard segments.count == 2, !segments[0].isEmpty, !segments[1].isEmpty else { return nil }
             let key = ImpressionKey(set: segments[0], number: segments[1])
-            self = .impression(key)
+            self = components.host == "impression" ? .impression(key) : .impressionOffers(key)
         default:
             return nil
         }
