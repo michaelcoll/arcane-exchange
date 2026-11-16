@@ -25,5 +25,11 @@ struct ArcaneExchangeShortcuts: AppShortcutsProvider {
             shortTitle: "Est-ce que je l'ai ?",
             systemImageName: "checkmark.circle"
         )
+        AppShortcut(
+            intent: GetCardPriceIntent(),
+            phrases: ["Combien vaut \(\.$impression) dans \(.applicationName)"],
+            shortTitle: "Prix d'une carte",
+            systemImageName: "eurosign.circle"
+        )
     }
 }
