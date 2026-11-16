@@ -275,6 +275,9 @@ struct HomeWidgetLinkTests {
         HomeWidgetLink.collection,
         .trades,
         .trade(TradeDetailRoute(id: "0190-abc", partnerUsername: "golgari.jo")),
+        .impression(ImpressionKey(set: "FDN", number: "001")),
+        .impression(ImpressionKey(set: "SLD", number: "123a")),
+        .impression(ImpressionKey(set: "30A", number: "12★")),
     ])
     func survivesARoundTripThroughItsURL(link: HomeWidgetLink) {
         #expect(HomeWidgetLink(url: link.url) == link)
@@ -283,6 +286,17 @@ struct HomeWidgetLinkTests {
     @Test func escapesThePartnerName() {
         let link = HomeWidgetLink.trade(TradeDetailRoute(id: "t1", partnerUsername: "jo & co"))
         #expect(HomeWidgetLink(url: link.url) == link)
+    }
+
+    @Test func anImpressionLinkNamesTheImpressionBySetAndNumber() {
+        #expect(
+            HomeWidgetLink.impression(ImpressionKey(set: "FDN", number: "001")).url.absoluteString
+                == "arcane-exchange://impression/FDN/001"
+        )
+    }
+
+    @Test func ignoresAnImpressionLinkWithoutANumber() {
+        #expect(HomeWidgetLink(url: URL(string: "arcane-exchange://impression/FDN")!) == nil)
     }
 
     @Test func ignoresOtherSchemes() {
