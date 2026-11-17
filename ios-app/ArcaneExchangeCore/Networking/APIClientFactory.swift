@@ -128,7 +128,8 @@ struct WidgetsReloadMiddleware: ClientMiddleware {
 
 /// Raises every failure as an `APIError`: a response of status 400 and above, decoded from its
 /// `ErrorResponse` body when it has one, and a transport failure. The generated error cases of
-/// an `Output` are never reached.
+/// an `Output` are never reached. A cancelled call is not a failure: it passes through untouched,
+/// for `APIError.isCancellation`.
 struct APIErrorMiddleware: ClientMiddleware {
     private struct ErrorBody: Decodable {
         let code: String?
@@ -153,9 +154,9 @@ struct APIErrorMiddleware: ClientMiddleware {
         let responseBody: HTTPBody?
         do {
             (response, responseBody) = try await next(request, body, baseURL)
-        } catch is CancellationError {
-            throw CancellationError()
-        } catch let error as URLError where error.code == .cancelled {
+        } catch where APIError.isCancellation(error) {
+            // Already wrapped in a `ClientError` by the runtime: passed on as is, so the caller
+            // still reads a cancellation.
             throw error
         } catch {
             throw APIError.read(error)

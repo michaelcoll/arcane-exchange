@@ -246,6 +246,19 @@ struct LiveAPITests {
         #expect(error?.status == nil)
     }
 
+    /// The runtime wraps the transport error in a `ClientError` before the middlewares see it: a
+    /// cancelled request must still read as a cancellation, not as a network failure.
+    @Test(arguments: [URLError(.cancelled), CancellationError()] as [any Error & Sendable])
+    func keepsACancelledRequestACancellation(_ cancellation: any Error & Sendable) async {
+        let transport = StubTransport { _, _ in throw cancellation }
+        do {
+            try await listTrades(authenticated(transport))
+            Issue.record("The call should have thrown")
+        } catch {
+            #expect(APIError.isCancellation(error))
+        }
+    }
+
     @Test func signsTheRequestWithTheToken() async throws {
         let transport = StubTransport(StubTransport.json(200, tradesPage))
         try await listTrades(authenticated(transport))

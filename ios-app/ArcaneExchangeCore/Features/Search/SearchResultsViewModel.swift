@@ -62,8 +62,9 @@ package final class SearchResultsViewModel {
     /// new text. A blank text fetches nothing: the tab shows the recent searches instead.
     package func search(_ raw: String) async {
         let query = raw.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard Criteria(target: .card(query: query), filters: filters, axes: axes) != loaded else { return }
-        guard !query.isEmpty else {
+        // Already loaded: nothing to wait for, even when the call that loaded it was cancelled
+        // before it could say so (the screen left mid-load).
+        guard Criteria(target: .card(query: query), filters: filters, axes: axes) != loaded, !query.isEmpty else {
             isAwaitingQuery = false
             return
         }
@@ -75,6 +76,8 @@ package final class SearchResultsViewModel {
         sets = []
         loadedSetsAxes = nil
         await paginator.reload()
+        // A newer keystroke took over: its own call is awaiting, the spinner stays.
+        guard !Task.isCancelled else { return }
         isAwaitingQuery = false
         await loadSetsIfNeeded()
     }
