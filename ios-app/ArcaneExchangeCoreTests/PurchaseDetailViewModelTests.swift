@@ -107,4 +107,17 @@ struct PurchaseDetailViewModelTests {
         #expect(model.loadError == nil)
         #expect(model.hasLoaded)
     }
+
+    @Test func aCancelledReloadKeepsTheContentAndShowsNoError() async {
+        let api = FakeAPI()
+        api.onGetPurchase = { _ in detail() }
+        let model = PurchaseDetailViewModel(purchase: purchase("p-1"), api: api)
+        await model.load()
+        api.onGetPurchase = { _ in throw CancellationError() }
+
+        await model.load()
+
+        #expect(model.loadError == nil)
+        #expect(model.hasLoaded)
+    }
 }

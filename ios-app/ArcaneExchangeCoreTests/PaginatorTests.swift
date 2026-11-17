@@ -1,4 +1,5 @@
 import Foundation
+import OpenAPIRuntime
 import Testing
 
 @testable import ArcaneExchangeCore
@@ -265,6 +266,31 @@ struct PaginatorTests {
         shouldCancel = false
         await paginator.loadMore(after: 20)
         #expect(paginator.items == numbers(1 ... 21))
+    }
+
+    /// The generated client wraps whatever its transport throws, a cancellation included: a
+    /// pull-to-refresh cancelled by SwiftUI reaches the paginator this way.
+    @Test(arguments: [CancellationError(), URLError(.cancelled)] as [any Error])
+    func aCancellationWrappedByTheClientIsNotAnError(_ cancellation: any Error) async {
+        var shouldCancel = false
+        let paginator = Paginator<Int>(fetch: { _, _ in
+            if shouldCancel {
+                throw ClientError(
+                    operationID: "get_collection",
+                    operationInput: (),
+                    causeDescription: "Transport threw an error.",
+                    underlyingError: cancellation
+                )
+            }
+            return PaginatorPage(items: numbers(1 ... 20), total: 21)
+        })
+        await paginator.reload()
+        shouldCancel = true
+
+        await paginator.reload()
+
+        #expect(paginator.state == .idle)
+        #expect(paginator.items == numbers(1 ... 20))
     }
 
     // MARK: Phase

@@ -30,6 +30,8 @@ package final class BindersViewModel {
         loadError = nil
         do {
             binders = try await api.list_binders().ok.body.json.binders
+        } catch where APIError.isCancellation(error) {
+            // A cancelled pull-to-refresh: the list already shown stays.
         } catch {
             loadError = APIError.read(error).message
         }

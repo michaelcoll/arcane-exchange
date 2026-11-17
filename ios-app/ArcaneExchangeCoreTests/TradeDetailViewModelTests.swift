@@ -65,6 +65,20 @@ struct TradeDetailViewModelTests {
         #expect(model.loadError == APIErrorMessages.network)
     }
 
+    @Test func aCancelledReloadKeepsTheTradeAndShowsNoError() async {
+        let api = FakeAPI()
+        api.onGetTrade = { _ in loaded(.oneAccepted) }
+        let model = TradeDetailViewModel(tradeID: "t1", api: api)
+        await model.load()
+        api.onGetTrade = { _ in throw CancellationError() }
+
+        await model.load()
+
+        #expect(model.status == .oneAccepted)
+        #expect(model.loadError == nil)
+        #expect(!model.isLoading)
+    }
+
     @Test func anActionIsFollowedByAReload() async {
         let api = FakeAPI()
         api.onGetTrade = { _ in loaded() }

@@ -55,6 +55,8 @@ package final class TradeSettingsViewModel {
             selectedBinders = loaded.2
             self.rarities = loaded.3
             receivingBinder = loaded.4
+        } catch where APIError.isCancellation(error) {
+            // A cancelled pull-to-refresh: the settings already shown stay.
         } catch {
             loadError = APIError.read(error).message
         }

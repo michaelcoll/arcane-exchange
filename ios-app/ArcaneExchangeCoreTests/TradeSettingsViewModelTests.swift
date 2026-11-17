@@ -125,6 +125,19 @@ struct TradeSettingsViewModelTests {
         #expect(model.loadError == APIErrorMessages.network)
     }
 
+    @Test func aCancelledReloadKeepsTheSettingsAndShowsNoError() async {
+        let api = loadableAPI()
+        let model = TradeSettingsViewModel(api: api)
+        await model.load()
+        api.onGetTradeVisibility = { _ in throw CancellationError() }
+
+        await model.load()
+
+        #expect(model.visibility == .trade)
+        #expect(model.loadError == nil)
+        #expect(!model.isLoading)
+    }
+
     @Test func savesAVisibilityChange() async {
         let api = loadableAPI()
         nonisolated(unsafe) var sent: CollectionVisibility?
