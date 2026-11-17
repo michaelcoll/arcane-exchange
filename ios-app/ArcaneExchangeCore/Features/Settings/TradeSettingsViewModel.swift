@@ -42,6 +42,7 @@ package final class TradeSettingsViewModel {
     /// independent, so they go out together.
     package func load() async {
         isLoading = true
+        let previousError = loadError
         loadError = nil
         do {
             async let visibility = fetchVisibility()
@@ -56,7 +57,8 @@ package final class TradeSettingsViewModel {
             self.rarities = loaded.3
             receivingBinder = loaded.4
         } catch where APIError.isCancellation(error) {
-            // A cancelled pull-to-refresh: the settings already shown stay.
+            // A cancelled load: the screen stays as it was, its error included.
+            loadError = previousError
         } catch {
             loadError = APIError.read(error).message
         }

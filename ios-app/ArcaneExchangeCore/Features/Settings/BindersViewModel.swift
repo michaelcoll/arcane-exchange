@@ -27,11 +27,13 @@ package final class BindersViewModel {
 
     package func load() async {
         isLoading = true
+        let previousError = loadError
         loadError = nil
         do {
             binders = try await api.list_binders().ok.body.json.binders
         } catch where APIError.isCancellation(error) {
-            // A cancelled pull-to-refresh: the list already shown stays.
+            // A cancelled load: the screen stays as it was, its error included.
+            loadError = previousError
         } catch {
             loadError = APIError.read(error).message
         }

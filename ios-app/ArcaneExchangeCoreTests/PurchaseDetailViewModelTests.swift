@@ -108,6 +108,18 @@ struct PurchaseDetailViewModelTests {
         #expect(model.hasLoaded)
     }
 
+    @Test func aCancelledReloadAfterAFailureKeepsTheError() async {
+        let api = FakeAPI()
+        api.onGetPurchase = { _ in throw APIError(code: "purchase_not_found", status: 404) }
+        let model = PurchaseDetailViewModel(purchase: purchase("p-1"), api: api)
+        await model.load()
+        api.onGetPurchase = { _ in throw CancellationError() }
+
+        await model.load()
+
+        #expect(model.loadError == "Cet achat n'existe plus.")
+    }
+
     @Test func aCancelledReloadKeepsTheContentAndShowsNoError() async {
         let api = FakeAPI()
         api.onGetPurchase = { _ in detail() }

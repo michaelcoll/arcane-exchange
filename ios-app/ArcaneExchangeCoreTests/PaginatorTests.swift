@@ -293,6 +293,20 @@ struct PaginatorTests {
         #expect(paginator.items == numbers(1 ... 20))
     }
 
+    @Test func aCancelledReloadAfterAFailureKeepsTheError() async {
+        var shouldCancel = false
+        let paginator = Paginator<Int>(fetch: { _, _ in
+            if shouldCancel { throw CancellationError() }
+            throw APIError(code: "internal", status: 500)
+        })
+        await paginator.reload()
+        shouldCancel = true
+
+        await paginator.reload()
+
+        #expect(paginator.phase == .failed("Erreur technique, réessaie plus tard."))
+    }
+
     // MARK: Phase
 
     @Test func isInTheFirstLoadPhaseWhileTheFirstPageLoads() async {

@@ -55,8 +55,7 @@ struct PurchaseDetailView: View {
         .navigationTitle(PurchaseCopy.title(of: model.purchase))
         .navigationBarTitleDisplayMode(.inline)
         .task { await model.load() }
-        // Its own task: SwiftUI may cancel the refresh task mid-load (see `CollectionView`).
-        .refreshable { await Task { await model.load() }.value }
+        .refreshableToCompletion { await model.load() }
     }
 
     private func row(_ line: PurchaseContentLine) -> some View {
