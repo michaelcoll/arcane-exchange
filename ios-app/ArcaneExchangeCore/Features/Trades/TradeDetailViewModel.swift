@@ -65,11 +65,13 @@ package final class TradeDetailViewModel {
 
     package func load() async {
         isLoading = true
+        let previousError = loadError
         loadError = nil
         do {
             trade = try await api.get_trade(path: .init(trade_id: tradeID)).ok.body.json
         } catch where APIError.isCancellation(error) {
-            // A cancelled pull-to-refresh: the trade already shown stays.
+            // A cancelled load: the screen stays as it was, its error included.
+            loadError = previousError
         } catch {
             loadError = APIError.read(error).message
         }

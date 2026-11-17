@@ -65,6 +65,19 @@ struct TradeDetailViewModelTests {
         #expect(model.loadError == APIErrorMessages.network)
     }
 
+    @Test func aCancelledReloadAfterAFailureKeepsTheError() async {
+        let api = FakeAPI()
+        api.onGetTrade = { _ in throw APIError(code: "trade_not_found", status: 404) }
+        let model = TradeDetailViewModel(tradeID: "t1", api: api)
+        await model.load()
+        api.onGetTrade = { _ in throw CancellationError() }
+
+        await model.load()
+
+        #expect(model.loadError == "Cet échange n'existe pas.")
+        #expect(!model.isLoading)
+    }
+
     @Test func aCancelledReloadKeepsTheTradeAndShowsNoError() async {
         let api = FakeAPI()
         api.onGetTrade = { _ in loaded(.oneAccepted) }

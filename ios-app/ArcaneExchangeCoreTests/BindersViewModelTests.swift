@@ -36,6 +36,19 @@ struct BindersViewModelTests {
         #expect(model.binders.isEmpty)
     }
 
+    @Test func aCancelledReloadAfterAFailureKeepsTheError() async {
+        let api = FakeAPI()
+        api.onListBinders = { _ in throw APIError(code: "internal", status: 500) }
+        let model = BindersViewModel(api: api)
+        await model.load()
+        api.onListBinders = { _ in throw CancellationError() }
+
+        await model.load()
+
+        #expect(model.loadError == "Erreur technique, réessaie plus tard.")
+        #expect(!model.isLoading)
+    }
+
     @Test func aCancelledReloadKeepsTheBindersAndShowsNoError() async {
         let api = FakeAPI()
         api.onListBinders = { _ in listing([binder("1", "Bulk")]) }

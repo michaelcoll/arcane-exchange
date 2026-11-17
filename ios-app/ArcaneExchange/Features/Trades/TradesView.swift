@@ -23,8 +23,7 @@ struct TradesView: View {
                 .navigationTitle("Échanges")
                 .navigationBarTitleDisplayMode(.inline)
                 .accountToolbar()
-                // Its own task: SwiftUI may cancel the refresh task mid-load (see `CollectionView`).
-                .refreshable { await Task { await model.reload() }.value }
+                .refreshableToCompletion { await model.reload() }
                 .task { await model.reload() }
                 .tradeDestinations()
                 .cardBrowsingDestinations()

@@ -102,6 +102,7 @@ package final class Paginator<Item: Equatable> {
         generation += 1
         let current = generation
         let previousNextPage = nextPage
+        let previousState = state
         state = .loading
         nextPage = 0
         onReload?()
@@ -116,7 +117,13 @@ package final class Paginator<Item: Equatable> {
         } catch where APIError.isCancellation(error) {
             guard generation == current else { return }
             nextPage = previousNextPage
-            state = .idle
+            // The list stays as it was, its error included. A load still in flight before this
+            // one was superseded by it: its state is not one to go back to.
+            if case .failed = previousState {
+                state = previousState
+            } else {
+                state = .idle
+            }
         } catch {
             guard generation == current else { return }
             items = []

@@ -27,11 +27,13 @@ package final class PurchaseDetailViewModel {
     }
 
     package func load() async {
+        let previousError = loadError
         loadError = nil
         do {
             detail = try await api.get_purchase(path: .init(id: purchase.id)).ok.body.json
         } catch where APIError.isCancellation(error) {
-            // A cancelled pull-to-refresh: the content already shown stays.
+            // A cancelled load: the screen stays as it was, its error included.
+            loadError = previousError
         } catch {
             detail = nil
             loadError = APIError.read(error).message

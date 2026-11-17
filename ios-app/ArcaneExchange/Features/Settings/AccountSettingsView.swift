@@ -81,8 +81,7 @@ struct AccountSettingsView: View {
             }
             signOutSection
         }
-        // Its own task: SwiftUI may cancel the refresh task mid-load (see `CollectionView`).
-        .refreshable { await Task { await model.load() }.value }
+        .refreshableToCompletion { await model.load() }
         .overlay {
             if model.isLoading {
                 ProgressView().controlSize(.large)

@@ -125,6 +125,19 @@ struct TradeSettingsViewModelTests {
         #expect(model.loadError == APIErrorMessages.network)
     }
 
+    @Test func aCancelledReloadAfterAFailureKeepsTheError() async {
+        let api = loadableAPI()
+        api.onGetTradeVisibility = { _ in throw APIError(code: "internal", status: 500) }
+        let model = TradeSettingsViewModel(api: api)
+        await model.load()
+        api.onGetTradeVisibility = { _ in throw CancellationError() }
+
+        await model.load()
+
+        #expect(model.loadError == "Erreur technique, réessaie plus tard.")
+        #expect(!model.isLoading)
+    }
+
     @Test func aCancelledReloadKeepsTheSettingsAndShowsNoError() async {
         let api = loadableAPI()
         let model = TradeSettingsViewModel(api: api)

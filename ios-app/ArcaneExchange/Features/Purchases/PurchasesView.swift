@@ -123,8 +123,7 @@ struct PurchasesView: View {
                 }
                 .task { await model.paginator.loadMore(after: purchase) }
             }
-            // Its own task: SwiftUI may cancel the refresh task mid-load (see `CollectionView`).
-            .refreshable { await Task { await model.reload() }.value }
+            .refreshableToCompletion { await model.reload() }
         }
     }
 
