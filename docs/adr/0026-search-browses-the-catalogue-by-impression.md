@@ -8,10 +8,10 @@ status: supersedes ADR-0007, amends ADR-0006
 Trois recherches coexistaient : celle des cartes proposées par les autres, celle du Catalogue pour
 ajouter une carte, et le filtrage de la collection. Chacune avait sa règle de correspondance du nom
 et son unité de résultat. Pour qu'une même saisie réponde à « l'ai-je ? », « qui la propose ? » et
-« combien vaut-elle ? », y compris depuis les App Intents d'iOS, les deux premières fusionnent en
-une seule recherche. Elle part du Catalogue, son résultat est une impression (set et numéro, toutes
-langues confondues), et chaque résultat dit combien d'exemplaires le joueur connecté en possède et
-combien de joueurs la proposent, lui compris.
+« combien vaut-elle ? », les deux premières fusionnent en une seule recherche. Elle part du
+Catalogue, son résultat est une impression (set et numéro, toutes langues confondues), et chaque
+résultat dit combien d'exemplaires le joueur connecté en possède et combien de joueurs la proposent,
+lui compris.
 
 La collection reste à part : la lister, la trier par date d'ajout ou par prix d'achat n'est pas
 une recherche. La recherche ne porte qu'une seule donnée privée, la quantité possédée par le joueur

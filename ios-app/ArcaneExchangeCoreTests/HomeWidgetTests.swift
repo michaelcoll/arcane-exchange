@@ -275,11 +275,6 @@ struct HomeWidgetLinkTests {
         HomeWidgetLink.collection,
         .trades,
         .trade(TradeDetailRoute(id: "0190-abc", partnerUsername: "golgari.jo")),
-        .impression(ImpressionKey(set: "FDN", number: "001")),
-        .impression(ImpressionKey(set: "SLD", number: "123a")),
-        .impression(ImpressionKey(set: "30A", number: "12★")),
-        .impressionOffers(ImpressionKey(set: "FDN", number: "001")),
-        .impressionOffers(ImpressionKey(set: "30A", number: "12★")),
     ])
     func survivesARoundTripThroughItsURL(link: HomeWidgetLink) {
         #expect(HomeWidgetLink(url: link.url) == link)
@@ -290,26 +285,12 @@ struct HomeWidgetLinkTests {
         #expect(HomeWidgetLink(url: link.url) == link)
     }
 
-    @Test func anImpressionLinkNamesTheImpressionBySetAndNumber() {
-        #expect(
-            HomeWidgetLink.impression(ImpressionKey(set: "FDN", number: "001")).url.absoluteString
-                == "arcane-exchange://impression/FDN/001"
-        )
-    }
-
-    @Test func anOffersLinkNamesTheImpressionBySetAndNumber() {
-        #expect(
-            HomeWidgetLink.impressionOffers(ImpressionKey(set: "FDN", number: "001")).url.absoluteString
-                == "arcane-exchange://impression-offers/FDN/001"
-        )
-    }
-
-    @Test func ignoresAnOffersLinkWithoutANumber() {
-        #expect(HomeWidgetLink(url: URL(string: "arcane-exchange://impression-offers/FDN")!) == nil)
-    }
-
-    @Test func ignoresAnImpressionLinkWithoutANumber() {
-        #expect(HomeWidgetLink(url: URL(string: "arcane-exchange://impression/FDN")!) == nil)
+    @Test(arguments: [
+        "arcane-exchange://impression/FDN/001",
+        "arcane-exchange://impression-offers/FDN/001",
+    ])
+    func ignoresACardLink(url: String) {
+        #expect(HomeWidgetLink(url: URL(string: url)!) == nil)
     }
 
     @Test func ignoresOtherSchemes() {
