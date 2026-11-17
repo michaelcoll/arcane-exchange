@@ -98,7 +98,8 @@ Token names and values: [design-system.instructions.md](.claude/instructions/des
 - **API errors**: read only the success of a call through the generated accessor (`.ok`, `.noContent`…) and catch a
   failure with `APIError.read` (`ArcaneExchangeCore/Networking/APIError.swift`), showing its `message` and testing
   its `code`, never a generated error case, a status or a `switch` on the `Output`: the client middleware raises
-  every failure as an `APIError` (ADR 0020), whose messages mirror the web's.
+  every failure as an `APIError` (ADR 0020), whose messages mirror the web's. A cancelled call is not a failure: it
+  comes out as is, and a caller tells it apart with `APIError.isCancellation` before `APIError.read`.
 
 ## Complementary sources
 

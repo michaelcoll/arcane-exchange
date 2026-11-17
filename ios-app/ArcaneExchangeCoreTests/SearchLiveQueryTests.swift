@@ -73,6 +73,39 @@ struct SearchLiveQueryTests {
         #expect(calls == 1)
     }
 
+    /// A keystroke during the load cancels it and starts a new search: the grid keeps its spinner
+    /// for the new text, not the empty screen of the cancelled one.
+    @Test func keepsAwaitingWhenANewerKeystrokeCancelsTheLoad() async {
+        let api = FakeAPI()
+        api.onSearchCards = { _ in
+            withUnsafeCurrentTask { $0?.cancel() }
+            throw CancellationError()
+        }
+        let model = makeModel(api)
+
+        await Task { await model.search("Sol") }.value
+
+        #expect(model.isAwaitingQuery)
+        #expect(model.paginator.phase == .empty)
+    }
+
+    /// The screen left right after the first page came back: back on it, the same text shows
+    /// that page, not a spinner waiting for a load that already happened.
+    @Test func stopsAwaitingWhenTheScreenComesBackToALoadedText() async {
+        let api = FakeAPI()
+        api.onSearchCards = { _ in
+            withUnsafeCurrentTask { $0?.cancel() }
+            return page([], total: 0)
+        }
+        let model = makeModel(api)
+        await Task { await model.search("Sol") }.value
+
+        await model.search("Sol")
+
+        #expect(!model.isAwaitingQuery)
+        #expect(model.paginator.phase == .empty)
+    }
+
     /// The tab shows the recent searches while the field is blank: a filter picked then must
     /// still apply when the same text comes back.
     @Test func reloadsTheSameTextAfterAFilterChange() async {
