@@ -50,6 +50,18 @@ package struct APIError: Error, Equatable, LocalizedError {
         }
         return APIError(code: nil, status: nil)
     }
+
+    /// True for a call that was cancelled rather than failed: a `CancellationError` or a
+    /// cancelled `URLError`, bare or wrapped in the `ClientError` the generated client throws.
+    package static func isCancellation(_ error: any Error) -> Bool {
+        if let clientError = error as? ClientError {
+            return isCancellation(clientError.underlyingError)
+        }
+        if let urlError = error as? URLError {
+            return urlError.code == .cancelled
+        }
+        return error is CancellationError
+    }
 }
 
 /// French messages of the stable codes the API returns, copied word for word from

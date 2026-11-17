@@ -18,8 +18,8 @@ package struct PaginatorPage<Item> {
 /// responses come back in. It knows neither the API client nor the image pipeline: a list
 /// supplies its `fetch`, and optionally two callbacks.
 ///
-/// A fetch that throws `CancellationError` (or whose request was cancelled) leaves the list as it
-/// was and the state `.idle`: it is not a failure to show.
+/// A fetch that is cancelled (`APIError.isCancellation`) leaves the list as it was and the state
+/// `.idle`: it is not a failure to show.
 ///
 /// A screen reads this state through `model.paginator`, and calls its actions on the model when
 /// the model adds behaviour around them (`TradesViewModel.reload`), otherwise on the paginator.
@@ -113,7 +113,7 @@ package final class Paginator<Item: Equatable> {
             nextPage = 1
             state = .idle
             onPageApplied?(page.items)
-        } catch is CancellationError {
+        } catch where APIError.isCancellation(error) {
             guard generation == current else { return }
             nextPage = previousNextPage
             state = .idle
@@ -148,7 +148,7 @@ package final class Paginator<Item: Equatable> {
             nextPage = page + 1
             state = .idle
             onPageApplied?(response.items)
-        } catch is CancellationError {
+        } catch where APIError.isCancellation(error) {
             guard generation == current else { return }
             state = .idle
         } catch {

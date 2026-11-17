@@ -126,7 +126,8 @@ struct BindersView: View {
                     row(binder)
                 }
             }
-            .refreshable { await model.load() }
+            // Its own task: SwiftUI may cancel the refresh task mid-load (see `CollectionView`).
+            .refreshable { await Task { await model.load() }.value }
             .overlay {
                 if model.isLoading, model.binders.isEmpty {
                     ProgressView().controlSize(.large)

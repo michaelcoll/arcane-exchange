@@ -36,6 +36,20 @@ struct BindersViewModelTests {
         #expect(model.binders.isEmpty)
     }
 
+    @Test func aCancelledReloadKeepsTheBindersAndShowsNoError() async {
+        let api = FakeAPI()
+        api.onListBinders = { _ in listing([binder("1", "Bulk")]) }
+        let model = BindersViewModel(api: api)
+        await model.load()
+        api.onListBinders = { _ in throw CancellationError() }
+
+        await model.load()
+
+        #expect(model.binders.map(\.name) == ["Bulk"])
+        #expect(model.loadError == nil)
+        #expect(!model.isLoading)
+    }
+
     @Test func createsABinderAndKeepsTheListSorted() async {
         let api = FakeAPI()
         api.onListBinders = { _ in listing([binder("1", "Bulk"), binder("2", "Trade")]) }

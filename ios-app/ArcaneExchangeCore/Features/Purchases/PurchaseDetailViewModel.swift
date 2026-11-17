@@ -30,6 +30,8 @@ package final class PurchaseDetailViewModel {
         loadError = nil
         do {
             detail = try await api.get_purchase(path: .init(id: purchase.id)).ok.body.json
+        } catch where APIError.isCancellation(error) {
+            // A cancelled pull-to-refresh: the content already shown stays.
         } catch {
             detail = nil
             loadError = APIError.read(error).message

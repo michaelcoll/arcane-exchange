@@ -44,7 +44,9 @@ struct CollectionView: View {
                         })
                     }
                 }
-                .refreshable { await model.paginator.reload() }
+                // SwiftUI cancels the refresh task when the grid re-renders mid-load: the reload
+                // runs in its own task so it still completes, and the spinner waits for it.
+                .refreshable { await Task { await model.paginator.reload() }.value }
                 .task { await model.loadInitiallyIfNeeded() }
                 .task { await model.loadSetsIfNeeded() }
                 .onChange(of: model.filters) {
