@@ -27,6 +27,27 @@ struct ScanBatchCorrectionTests {
         #expect(batch.lines[0].number == "1")
     }
 
+    @Test func showsTheNameInTheLanguageOfALine() {
+        let elesh = RecognisedCard(set: "MOM", number: "1", language: .english, rarity: "R", name: "Elesh Norn",
+                                   frenchName: "Elesh Norn, Mère des Machines")
+        var batch = batch((elesh, false))
+        #expect(batch.lines[0].displayName == "Elesh Norn")
+
+        batch.setLanguage(.french, ofLine: batch.lines[0].id)
+        #expect(batch.lines[0].displayName == "Elesh Norn, Mère des Machines")
+
+        batch.setLanguage(.japanese, ofLine: batch.lines[0].id)
+        #expect(batch.lines[0].displayName == "Elesh Norn, Mère des Machines")
+    }
+
+    @Test func showsTheEnglishNameOfALineWithoutFrenchNameInAnyLanguage() {
+        var batch = batch((card("1", language: .japanese), false))
+        #expect(batch.lines[0].displayName == "Card 1")
+
+        batch.setLanguage(.french, ofLine: batch.lines[0].id)
+        #expect(batch.lines[0].displayName == "Card 1")
+    }
+
     @Test func changesTheFinishOfALine() {
         var batch = batch((card("1"), false))
 

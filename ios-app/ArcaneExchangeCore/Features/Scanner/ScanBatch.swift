@@ -31,9 +31,9 @@ package struct ScanBatchLine: Codable, Hashable, Identifiable, Sendable {
         Key(set: set, number: number, language: language, foil: foil)
     }
 
-    /// The French name when there is one, the English one otherwise.
+    /// The name in the card's language (see `CardLanguage.displayName(name:frenchName:)`).
     package var displayName: String {
-        frenchName ?? name
+        language.displayName(name: name, frenchName: frenchName)
     }
 }
 
