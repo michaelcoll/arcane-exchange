@@ -14,6 +14,11 @@ package enum Price {
                 .locale(Locale(identifier: "fr_FR"))
         )
     }
+
+    /// Like `euros(cents:)`, a dash when the price is unknown.
+    package static func eurosOrDash(cents: Int?) -> String {
+        cents.map { euros(cents: $0) } ?? "—"
+    }
 }
 
 /// Compares what a card is worth today against what it was bought for.

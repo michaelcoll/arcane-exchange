@@ -76,6 +76,16 @@ struct ScannerViewModelTests {
         }
     }
 
+    /// Shows a card, then takes it away, so the same card can be read again.
+    private func scan(_ lines: [String], to scanner: ScannerViewModel, from start: TimeInterval) {
+        show(lines, to: scanner, from: start)
+        showNothing(to: scanner, from: start + 1)
+    }
+
+    private func priced(_ api: FakeAPI) async -> ScannerViewModel {
+        ScannerViewModel(index: await index(loaded: true), storage: MemoryStorage(), prices: ScanBatchPrices(api: api))
+    }
+
     /// An empty frame for longer than the stabiliser's gap: the card left the camera.
     private func showNothing(to scanner: ScannerViewModel, from start: TimeInterval) {
         scanner.frame(lines: [], at: start)
@@ -223,6 +233,59 @@ struct ScannerViewModelTests {
         let scanner = ScannerViewModel(index: await index(loaded: true), storage: MemoryStorage())
 
         #expect(scanner.batch.lines.isEmpty)
+    }
+
+    @Test func theLastRecognisedPriceIsUnitAndFollowsItsFinish() async {
+        let scanner = await priced(FakeAPI.trendPrices(["123": (1000, 5000), "45": (20, nil)]))
+        scan(lines, to: scanner, from: 0)
+        await scanner.refreshPrices()
+        #expect(scanner.lastRecognisedUnitCents == 1000)
+
+        scan(otherLines, to: scanner, from: 5)
+        scanner.foil = true
+        scan(lines, to: scanner, from: 10)
+        await scanner.refreshPrices()
+        #expect(scanner.lastRecognisedUnitCents == 5000)
+
+        // The third copy of the same card: still the price of one.
+        scanner.foil = false
+        scan(otherLines, to: scanner, from: 15)
+        scan(lines, to: scanner, from: 20)
+        scan(otherLines, to: scanner, from: 25)
+        scan(lines, to: scanner, from: 30)
+        await scanner.refreshPrices()
+        #expect(scanner.batch.lines.first { $0.number == "123" && !$0.foil }?.quantity == 3)
+        #expect(scanner.lastRecognisedUnitCents == 1000)
+    }
+
+    @Test func theLastRecognisedPriceIsNilBeforeTheAnswerWhenUnknownOrHidden() async {
+        let api = FakeAPI.trendPrices(["123": (1000, nil)])
+        let scanner = await priced(api)
+        #expect(scanner.lastRecognisedUnitCents == nil)
+
+        scan(lines, to: scanner, from: 0)
+        #expect(scanner.lastRecognisedUnitCents == nil)
+        await scanner.refreshPrices()
+        #expect(scanner.lastRecognisedUnitCents == 1000)
+
+        // No foil price for this card.
+        scanner.foil = true
+        scan(otherLines, to: scanner, from: 5)
+        scan(lines, to: scanner, from: 10)
+        await scanner.refreshPrices()
+        #expect(scanner.lastRecognisedUnitCents == nil)
+
+        // No price at all for this card.
+        scan(otherLines, to: scanner, from: 15)
+        await scanner.refreshPrices()
+        #expect(scanner.lastRecognisedUnitCents == nil)
+
+        // Without the network.
+        api.onGetTrendPrices = { _ in throw URLError(.notConnectedToInternet) }
+        scanner.foil = false
+        scan(lines, to: scanner, from: 20)
+        await scanner.refreshPrices()
+        #expect(scanner.lastRecognisedUnitCents == nil)
     }
 }
 

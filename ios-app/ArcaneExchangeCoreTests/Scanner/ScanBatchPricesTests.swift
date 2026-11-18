@@ -29,19 +29,6 @@ struct ScanBatchPricesTests {
         return model
     }
 
-    /// The API answers with the given trend and foil trend for each card, nil meaning unknown.
-    private func api(_ prices: [String: (Int32?, Int32?)]) -> FakeAPI {
-        let api = FakeAPI()
-        api.onGetTrendPrices = { input in
-            guard case let .json(request) = input.body else { throw URLError(.badServerResponse) }
-            return .ok(.init(body: .json(.init(prices: request.cards.map {
-                .init(collector_number: $0.collector_number, foil_trend_cents: prices[$0.collector_number]?.1,
-                      set_code: $0.set_code, trend_cents: prices[$0.collector_number]?.0)
-            }))))
-        }
-        return api
-    }
-
     private func scanner(api: FakeAPI) async -> ScannerViewModel {
         ScannerViewModel(index: await index(), storage: MemoryStorage(), prices: ScanBatchPrices(api: api))
     }
@@ -54,7 +41,7 @@ struct ScanBatchPricesTests {
     }
 
     @Test func pricesALineInItsFinishAndSumsTheBatch() async {
-        let scanner = await scanner(api: api(["123": (1000, 5000), "45": (20, nil)]))
+        let scanner = await scanner(api: FakeAPI.trendPrices(["123": (1000, 5000), "45": (20, nil)]))
         scan(elesh, into: scanner, from: 0)
         scanner.foil = true
         scan(reprieve, into: scanner, from: 5)
@@ -74,7 +61,7 @@ struct ScanBatchPricesTests {
     }
 
     @Test func aLinePriceFollowsItsQuantityAndFinish() async {
-        let scanner = await scanner(api: api(["123": (1000, 5000)]))
+        let scanner = await scanner(api: FakeAPI.trendPrices(["123": (1000, 5000)]))
         scan(elesh, into: scanner, from: 0)
         await scanner.refreshPrices()
         let line = scanner.batch.lines[0]
@@ -86,7 +73,7 @@ struct ScanBatchPricesTests {
     }
 
     @Test func asksForEachNewCardAndHidesPricesWhenTheNetworkFails() async {
-        let api = api(["123": (1000, nil)])
+        let api = FakeAPI.trendPrices(["123": (1000, nil)])
         let scanner = await scanner(api: api)
         scan(elesh, into: scanner, from: 0)
         await scanner.refreshPrices()
@@ -102,11 +89,46 @@ struct ScanBatchPricesTests {
     }
 
     @Test func asksNothingForAnEmptyBatch() async {
-        let api = api([:])
+        let api = FakeAPI.trendPrices([:])
         let scanner = await scanner(api: api)
 
         await scanner.refreshPrices()
 
         #expect(api.calls.isEmpty)
+    }
+
+    private let line123 = ScanBatchLine(set: "MOM", number: "123", language: .french, foil: false, quantity: 1,
+                                        rarity: "R", name: "Elesh Norn", frenchName: nil)
+
+    @Test func unitCentsIsOneCopyInItsFinish() async {
+        let prices = ScanBatchPrices(api: FakeAPI.trendPrices(["123": (1000, 5000)]))
+        let key = CardKey(set: "MOM", number: "123")
+        await prices.refresh(for: [line123])
+
+        #expect(prices.unitCents(of: key, foil: false) == 1000)
+        #expect(prices.unitCents(of: key, foil: true) == 5000)
+    }
+
+    @Test func unitCentsIsNilForAnUnknownCardOrFinish() async {
+        let prices = ScanBatchPrices(api: FakeAPI.trendPrices(["123": (1000, nil)]))
+        await prices.refresh(for: [line123])
+
+        #expect(prices.unitCents(of: CardKey(set: "MOM", number: "123"), foil: true) == nil)
+        #expect(prices.unitCents(of: CardKey(set: "MOM", number: "999"), foil: false) == nil)
+    }
+
+    @Test func unitCentsIsNilBeforeTheAnswerAndWhenTheNetworkFails() async {
+        let api = FakeAPI.trendPrices(["123": (1000, nil)])
+        let prices = ScanBatchPrices(api: api)
+        let key = CardKey(set: "MOM", number: "123")
+        let lines = [line123]
+        #expect(prices.unitCents(of: key, foil: false) == nil)
+
+        await prices.refresh(for: lines)
+        #expect(prices.unitCents(of: key, foil: false) == 1000)
+
+        api.onGetTrendPrices = { _ in throw URLError(.notConnectedToInternet) }
+        await prices.refresh(for: lines)
+        #expect(prices.unitCents(of: key, foil: false) == nil)
     }
 }

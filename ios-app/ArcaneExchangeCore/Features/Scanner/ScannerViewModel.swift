@@ -143,6 +143,12 @@ package final class ScannerViewModel {
         prices.cents(of: line)
     }
 
+    /// What one copy of `lastRecognised` is worth in its finish, whatever the quantity of its line;
+    /// nil before the prices arrive, when hidden or unknown.
+    package var lastRecognisedUnitCents: Int? {
+        lastRecognised.flatMap { prices.unitCents(of: $0.key, foil: lastRecognisedFoil) }
+    }
+
     /// The value of the batch, with the lines left out; nil when the prices are hidden.
     package var batchValue: BatchValue? {
         prices.value(of: batch)

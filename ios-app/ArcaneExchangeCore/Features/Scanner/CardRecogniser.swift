@@ -30,6 +30,17 @@ package struct RecognisedCard: Hashable, Sendable {
     package var displayName: String {
         frenchName ?? name
     }
+
+    /// The card a price is asked for.
+    package var key: CardKey {
+        CardKey(set: set, number: number)
+    }
+
+    /// What VoiceOver reads: the name, the references, the finish and the price of one copy when known.
+    package func accessibilityLabel(foil: Bool, unitCents: Int?) -> String {
+        let price = unitCents.map { ", \(Price.euros(cents: $0))" } ?? ""
+        return "\(displayName), \(set) numéro \(number)\(foil ? ", foil" : "")\(price)"
+    }
 }
 
 /// The recognition seam: the text lines Vision read in one image and the scan index in, a recognised

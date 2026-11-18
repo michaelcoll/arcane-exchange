@@ -8,6 +8,17 @@ package struct BatchValue: Equatable, Sendable {
     package let unpricedLines: Int
 }
 
+/// A card as the prices are keyed: its set and number, whatever the language and the finish.
+package struct CardKey: Hashable, Sendable {
+    package let set: String
+    package let number: String
+
+    package init(set: String, number: String) {
+        self.set = set
+        self.number = number
+    }
+}
+
 /// The trend prices of the cards of a scan batch, asked of `POST /catalog/trend-prices`. Prices are
 /// per card (set, number), both finishes: a change of finish or quantity of a line reprices it with
 /// no new request. Without the network the prices are hidden, with no
@@ -15,11 +26,6 @@ package struct BatchValue: Equatable, Sendable {
 @MainActor
 @Observable
 package final class ScanBatchPrices {
-    private struct CardKey: Hashable {
-        let set: String
-        let number: String
-    }
-
     private struct Trend {
         let normal: Int?
         let foil: Int?
@@ -63,12 +69,15 @@ package final class ScanBatchPrices {
         )
     }
 
+    /// What one copy of a card is worth in a finish; nil when hidden or unknown.
+    package func unitCents(of card: CardKey, foil: Bool) -> Int? {
+        guard let trend = trends?[card] else { return nil }
+        return foil ? trend.foil : trend.normal
+    }
+
     /// What a line is worth in its finish, times its quantity; nil when hidden or unknown.
     package func cents(of line: ScanBatchLine) -> Int? {
-        guard let trend = trends?[CardKey(set: line.set, number: line.number)],
-              let unit = line.foil ? trend.foil : trend.normal
-        else { return nil }
-        return unit * line.quantity
+        unitCents(of: CardKey(set: line.set, number: line.number), foil: line.foil).map { $0 * line.quantity }
     }
 
     /// The value of the batch; nil when the prices are hidden.

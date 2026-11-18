@@ -9,6 +9,11 @@ struct PriceTests {
         #expect(Price.euros(cents: 0).hasPrefix("0"))
     }
 
+    @Test func showsADashWhenThePriceIsUnknown() {
+        #expect(Price.eurosOrDash(cents: nil) == "—")
+        #expect(Price.eurosOrDash(cents: 3150) == Price.euros(cents: 3150))
+    }
+
 }
 
 struct PurchaseSpreadTests {

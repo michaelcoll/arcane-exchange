@@ -47,7 +47,7 @@ struct CardPriceGuide: View {
     }
 
     private func price(_ cents: Int32?) -> String {
-        cents.map { Price.euros(cents: Int($0)) } ?? "—"
+        Price.eurosOrDash(cents: cents.map(Int.init))
     }
 
     @ViewBuilder private var chartArea: some View {
