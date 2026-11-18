@@ -20,7 +20,7 @@ struct CollectionEmptyView: View {
             ContentUnavailableView(
                 "Collection vide",
                 systemImage: "rectangle.stack",
-                description: Text("Importe ton fichier ManaBox pour voir tes cartes ici.")
+                description: Text("Importe ton fichier ManaBox depuis Réglages → Ma collection.")
             )
         }
     }
