@@ -39,7 +39,8 @@ struct ScannerDrawer: View {
             if isOpen {
                 list
             } else {
-                ScannerResultCard(card: scanner.lastRecognised, foil: scanner.lastRecognisedFoil)
+                ScannerResultCard(card: scanner.lastRecognised, foil: scanner.lastRecognisedFoil,
+                                  unitCents: scanner.lastRecognisedUnitCents)
                 Spacer(minLength: 0)
             }
             actions

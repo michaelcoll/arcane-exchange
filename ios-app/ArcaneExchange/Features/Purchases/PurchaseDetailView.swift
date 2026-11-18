@@ -74,7 +74,7 @@ struct PurchaseDetailView: View {
             VStack(alignment: .trailing, spacing: 2) {
                 Text("×\(line.quantity)")
                     .font(.body.monospacedDigit())
-                Text(line.trend_cents.map { Price.euros(cents: Int($0)) } ?? "—")
+                Text(Price.eurosOrDash(cents: line.trend_cents.map(Int.init)))
                     .font(.caption.monospacedDigit())
                     .foregroundStyle(.secondary)
             }

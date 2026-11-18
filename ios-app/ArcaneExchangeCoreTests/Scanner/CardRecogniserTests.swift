@@ -22,6 +22,16 @@ struct CardRecogniserTests {
                                        name: "Elesh Norn", frenchName: "Elesh Norn, Mère des Machines"))
     }
 
+    @Test func describesTheCardForVoiceOver() {
+        let card = RecognisedCard(set: "MOM", number: "123", language: .french, rarity: "R",
+                                  name: "Elesh Norn", frenchName: "Elesh Norn, Mère des Machines")
+
+        #expect(card.accessibilityLabel(foil: false, unitCents: nil)
+            == "Elesh Norn, Mère des Machines, MOM numéro 123")
+        #expect(card.accessibilityLabel(foil: true, unitCents: 5000)
+            == "Elesh Norn, Mère des Machines, MOM numéro 123, foil, \(Price.euros(cents: 5000))")
+    }
+
     @Test func showsTheFrenchNameWhenThereIsOneAndTheEnglishNameOtherwise() {
         let french = CardRecogniser.recognise(lines: ["R 0123", "MOM • EN"], in: index)
         let english = CardRecogniser.recognise(lines: ["C 0012", "MKM • EN"], in: index)
