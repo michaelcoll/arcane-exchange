@@ -32,12 +32,16 @@ struct CardRecogniserTests {
             == "Elesh Norn, Mère des Machines, MOM numéro 123, foil, \(Price.euros(cents: 5000))")
     }
 
-    @Test func showsTheFrenchNameWhenThereIsOneAndTheEnglishNameOtherwise() {
-        let french = CardRecogniser.recognise(lines: ["R 0123", "MOM • EN"], in: index)
-        let english = CardRecogniser.recognise(lines: ["C 0012", "MKM • EN"], in: index)
+    @Test func showsTheNameInTheLanguageReadOnTheCard() {
+        let english = CardRecogniser.recognise(lines: ["R 0123", "MOM • EN"], in: index)
+        let french = CardRecogniser.recognise(lines: ["R 0123", "MOM • FR"], in: index)
+        let japanese = CardRecogniser.recognise(lines: ["R 0123", "MOM • JP"], in: index)
+        let noFrenchName = CardRecogniser.recognise(lines: ["C 0012", "MKM • JP"], in: index)
 
+        #expect(english?.displayName == "Elesh Norn")
         #expect(french?.displayName == "Elesh Norn, Mère des Machines")
-        #expect(english?.displayName == "Hard Evidence")
+        #expect(japanese?.displayName == "Elesh Norn, Mère des Machines")
+        #expect(noFrenchName?.displayName == "Hard Evidence")
     }
 
     @Test func keepsTheLanguageReadOnTheCard() {

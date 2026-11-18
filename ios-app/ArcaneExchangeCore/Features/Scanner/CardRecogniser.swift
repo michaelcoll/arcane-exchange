@@ -26,9 +26,9 @@ package struct RecognisedCard: Hashable, Sendable {
         self.frenchName = frenchName
     }
 
-    /// The French name when there is one, the English one otherwise.
+    /// The name in the card's language (see `CardLanguage.displayName(name:frenchName:)`).
     package var displayName: String {
-        frenchName ?? name
+        language.displayName(name: name, frenchName: frenchName)
     }
 
     /// The card a price is asked for.
