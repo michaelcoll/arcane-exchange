@@ -25,20 +25,32 @@ private func importStatus(
 }
 
 @MainActor
+private func makeModel(api: FakeAPI, signal: CollectionImportSignal = CollectionImportSignal()) -> ImportViewModel {
+    ImportViewModel(api: api, signal: signal)
+}
+
+@MainActor
+private func waitUntilDone(_ model: ImportViewModel) async {
+    for _ in 0 ..< 50 where model.step != .done {
+        try? await Task.sleep(for: .milliseconds(20))
+    }
+}
+
+@MainActor
 struct ImportViewModelTests {
     @Test func startsAtThePickStep() {
-        let model = ImportViewModel(api: FakeAPI())
+        let model = makeModel(api: FakeAPI())
         #expect(model.step == .pick)
         #expect(model.loadError == nil)
         #expect(model.wasAlreadyRunning == false)
     }
 
     @Test func progressFractionIsZeroWithNoStatusYet() {
-        #expect(ImportViewModel(api: FakeAPI()).progressFraction == 0)
+        #expect(makeModel(api: FakeAPI()).progressFraction == 0)
     }
 
     @Test func resetReturnsToThePickStepAndClearsState() {
-        let model = ImportViewModel(api: FakeAPI())
+        let model = makeModel(api: FakeAPI())
         model.reset()
 
         #expect(model.step == .pick)
@@ -48,13 +60,13 @@ struct ImportViewModelTests {
     }
 
     @Test func hasNoFailureMessageBeforeAnyImport() {
-        #expect(ImportViewModel(api: FakeAPI()).failureMessage == nil)
+        #expect(makeModel(api: FakeAPI()).failureMessage == nil)
     }
 
     @Test func aRejectedFileShowsTheMessageOfItsCode() async {
         let api = FakeAPI()
         api.onImportCards = { _ in throw APIError(code: "binder_export", status: 400) }
-        let model = ImportViewModel(api: api)
+        let model = makeModel(api: api)
 
         await model.start(csv: "x")
 
@@ -68,7 +80,7 @@ struct ImportViewModelTests {
     @Test func aRejectedFileWithAnUnknownCodeShowsTheGenericMessage() async {
         let api = FakeAPI()
         api.onImportCards = { _ in throw APIError(code: "wrong_format", status: 400) }
-        let model = ImportViewModel(api: api)
+        let model = makeModel(api: api)
 
         await model.start(csv: "x")
 
@@ -78,7 +90,7 @@ struct ImportViewModelTests {
     @Test func anUnreachableServerShowsTheNetworkMessage() async {
         let api = FakeAPI()
         api.onImportCards = { _ in throw APIError(code: nil, status: nil, isNetworkFailure: true) }
-        let model = ImportViewModel(api: api)
+        let model = makeModel(api: api)
 
         await model.start(csv: "x")
 
@@ -89,12 +101,10 @@ struct ImportViewModelTests {
         let api = FakeAPI()
         api.onImportCards = { _ in .accepted(.init(body: .json(.init(id: "imp-1")))) }
         api.onGetCardImport = { _ in .ok(.init(body: .json(importStatus(status: "completed")))) }
-        let model = ImportViewModel(api: api)
+        let model = makeModel(api: api)
 
         await model.start(csv: "x")
-        for _ in 0 ..< 50 where model.step != .done {
-            try? await Task.sleep(for: .milliseconds(20))
-        }
+        await waitUntilDone(model)
 
         #expect(model.step == .done)
         #expect(model.status?.id == "imp-1")
@@ -109,12 +119,10 @@ struct ImportViewModelTests {
         api.onGetCardImport = { _ in
             .ok(.init(body: .json(importStatus(status: "failed", errorCode: "no_valid_line"))))
         }
-        let model = ImportViewModel(api: api)
+        let model = makeModel(api: api)
 
         await model.start(csv: "x")
-        for _ in 0 ..< 50 where model.step != .done {
-            try? await Task.sleep(for: .milliseconds(20))
-        }
+        await waitUntilDone(model)
 
         #expect(model.failureMessage == "Aucune ligne du fichier n'a pu être lue.")
     }
@@ -126,12 +134,10 @@ struct ImportViewModelTests {
         api.onGetCardImport = { _ in
             .ok(.init(body: .json(importStatus(status: "failed", errorCode: errorCode))))
         }
-        let model = ImportViewModel(api: api)
+        let model = makeModel(api: api)
 
         await model.start(csv: "x")
-        for _ in 0 ..< 50 where model.step != .done {
-            try? await Task.sleep(for: .milliseconds(20))
-        }
+        await waitUntilDone(model)
 
         #expect(model.failureMessage == "L'import a échoué.")
     }
@@ -145,16 +151,80 @@ struct ImportViewModelTests {
         api.onGetCardImport = { input in
             .ok(.init(body: .json(importStatus(input.path.id, status: "completed"))))
         }
-        let model = ImportViewModel(api: api)
+        let model = makeModel(api: api)
 
         await model.start(csv: "x")
-        for _ in 0 ..< 50 where model.step != .done {
-            try? await Task.sleep(for: .milliseconds(20))
-        }
+        await waitUntilDone(model)
 
         #expect(model.wasAlreadyRunning)
         #expect(model.status?.id == "run")
         #expect(model.loadError == nil)
+    }
+
+    @Test func aCompletedImportRaisesTheSignal() async {
+        let api = FakeAPI()
+        api.onImportCards = { _ in .accepted(.init(body: .json(.init(id: "imp-1")))) }
+        api.onGetCardImport = { _ in .ok(.init(body: .json(importStatus(status: "completed")))) }
+        let signal = CollectionImportSignal()
+        let model = makeModel(api: api, signal: signal)
+
+        await model.start(csv: "x")
+        await waitUntilDone(model)
+
+        #expect(signal.collectionChanges == 1)
+    }
+
+    @Test func anImportAlreadyRunningAfterAConflictRaisesTheSignal() async {
+        let api = FakeAPI()
+        api.onImportCards = { _ in throw APIError(code: "import_already_running", status: 409) }
+        api.onListCardImports = { _ in .ok(.init(body: .json([importStatus("run", status: "running")]))) }
+        api.onGetCardImport = { input in
+            .ok(.init(body: .json(importStatus(input.path.id, status: "completed"))))
+        }
+        let signal = CollectionImportSignal()
+        let model = makeModel(api: api, signal: signal)
+
+        await model.start(csv: "x")
+        await waitUntilDone(model)
+
+        #expect(signal.collectionChanges == 1)
+    }
+
+    @Test func aFailedImportDoesNotRaiseTheSignal() async {
+        let api = FakeAPI()
+        api.onImportCards = { _ in .accepted(.init(body: .json(.init(id: "imp-1")))) }
+        api.onGetCardImport = { _ in
+            .ok(.init(body: .json(importStatus(status: "failed", errorCode: "no_valid_line"))))
+        }
+        let signal = CollectionImportSignal()
+        let model = makeModel(api: api, signal: signal)
+
+        await model.start(csv: "x")
+        await waitUntilDone(model)
+
+        #expect(signal.collectionChanges == 0)
+    }
+
+    @Test func closingTheSheetMidImportRaisesTheSignal() async {
+        let api = FakeAPI()
+        api.onImportCards = { _ in .accepted(.init(body: .json(.init(id: "imp-1")))) }
+        api.onGetCardImport = { _ in .ok(.init(body: .json(importStatus(status: "running", processed: 3)))) }
+        let signal = CollectionImportSignal()
+        let model = makeModel(api: api, signal: signal)
+
+        await model.start(csv: "x")
+        model.reset()
+
+        #expect(signal.collectionChanges == 1)
+    }
+
+    @Test func closingTheSheetBeforeTheStartDoesNotRaiseTheSignal() {
+        let signal = CollectionImportSignal()
+        let model = makeModel(api: FakeAPI(), signal: signal)
+
+        model.reset()
+
+        #expect(signal.collectionChanges == 0)
     }
 
     private func apiWithCollection(totalCards: Int64) -> FakeAPI {
@@ -166,7 +236,7 @@ struct ImportViewModelTests {
     }
 
     @Test func anEmptyCollectionOpensThePickerWithoutConfirmation() async {
-        let model = ImportViewModel(api: apiWithCollection(totalCards: 0))
+        let model = makeModel(api: apiWithCollection(totalCards: 0))
 
         await model.requestImport()
 
@@ -175,7 +245,7 @@ struct ImportViewModelTests {
     }
 
     @Test func aNonEmptyCollectionAsksForConfirmationBeforeThePicker() async {
-        let model = ImportViewModel(api: apiWithCollection(totalCards: 3))
+        let model = makeModel(api: apiWithCollection(totalCards: 3))
 
         await model.requestImport()
 
@@ -184,7 +254,7 @@ struct ImportViewModelTests {
     }
 
     @Test func confirmingTheReplacementOpensThePicker() async {
-        let model = ImportViewModel(api: apiWithCollection(totalCards: 3))
+        let model = makeModel(api: apiWithCollection(totalCards: 3))
 
         await model.requestImport()
         model.confirmReplace()
@@ -195,7 +265,7 @@ struct ImportViewModelTests {
 
     @Test func cancellingTheConfirmationNeverStartsTheImport() async {
         let api = apiWithCollection(totalCards: 3)
-        let model = ImportViewModel(api: api)
+        let model = makeModel(api: api)
 
         await model.requestImport()
         model.cancelReplace()
@@ -209,7 +279,7 @@ struct ImportViewModelTests {
     @Test func anUnreadableCollectionOpensNothing() async {
         let api = FakeAPI()
         api.onGetCollectionStats = { _ in throw APIError(code: nil, status: nil, isNetworkFailure: true) }
-        let model = ImportViewModel(api: api)
+        let model = makeModel(api: api)
 
         await model.requestImport()
 
@@ -222,7 +292,7 @@ struct ImportViewModelTests {
         let api = FakeAPI()
         api.onImportCards = { _ in throw APIError(code: "import_already_running", status: 409) }
         api.onListCardImports = { _ in .ok(.init(body: .json([importStatus(status: "completed")]))) }
-        let model = ImportViewModel(api: api)
+        let model = makeModel(api: api)
 
         await model.start(csv: "x")
 

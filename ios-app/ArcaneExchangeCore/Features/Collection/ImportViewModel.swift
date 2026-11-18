@@ -16,9 +16,11 @@ package final class ImportViewModel {
     }
 
     private let api: any APIProtocol
+    private let signal: CollectionImportSignal
 
-    package init(api: any APIProtocol) {
+    package init(api: any APIProtocol, signal: CollectionImportSignal) {
         self.api = api
+        self.signal = signal
     }
 
     package private(set) var step: Step = .pick
@@ -62,7 +64,7 @@ package final class ImportViewModel {
 
     package var progressFraction: Double {
         guard let status, status.total_lines > 0 else {
-            return status?.status == "completed" ? 1 : 0
+            return status?.isCompleted == true ? 1 : 0
         }
         return Double(status.processed_lines) / Double(status.total_lines)
     }
@@ -74,8 +76,12 @@ package final class ImportViewModel {
     }
 
     /// Cancels any in-flight polling and returns to the picker — called when the sheet is
-    /// reopened after a previous run, and when the view disappears.
+    /// reopened after a previous run, and when the view disappears. Closing mid-import stops the
+    /// tracking, so it raises the signal: the import has probably changed the collection.
     package func reset() {
+        if step == .progress {
+            signal.collectionChanged()
+        }
         pollTask?.cancel()
         pollTask = nil
         step = .pick
@@ -130,10 +136,13 @@ package final class ImportViewModel {
                 do {
                     let current = try await api.get_card_import(.init(path: .init(id: id))).ok.body.json
                     status = current
-                    if current.status == "completed" || current.status == "failed" {
+                    if current.isCompleted || current.status == "failed" {
                         step = .done
                         // A finished import changes the card counts on the widget.
                         HomeWidgetReload.reload(.collection)
+                        if current.isCompleted {
+                            signal.collectionChanged()
+                        }
                         return
                     }
                 } catch {

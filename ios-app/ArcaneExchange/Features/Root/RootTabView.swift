@@ -46,4 +46,5 @@ struct RootTabView: View {
 #Preview {
     RootTabView()
         .environment(AppRouter())
+        .environment(CollectionImportSignal())
 }
