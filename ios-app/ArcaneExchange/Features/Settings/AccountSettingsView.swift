@@ -12,6 +12,7 @@ struct AccountSettingsView: View {
         case binders
         case rarities
         case manageBinders
+        case importCollection
         case receivingBinder
 
         var id: String {
@@ -21,6 +22,7 @@ struct AccountSettingsView: View {
 
     @Environment(Clerk.self) private var clerk
     @Environment(\.dismiss) private var dismiss
+    @Environment(CollectionImportSignal.self) private var importSignal
 
     private let api: any APIProtocol
 
@@ -50,6 +52,7 @@ struct AccountSettingsView: View {
                     case .binders: TradeSettingsBindersSheet(model: model)
                     case .rarities: TradeSettingsRaritiesSheet(model: model)
                     case .manageBinders: BindersView(api: api)
+                    case .importCollection: ImportView(api: api, signal: importSignal)
                     case .receivingBinder: TradeSettingsReceivingBinderSheet(model: model)
                     }
                 }
@@ -68,6 +71,12 @@ struct AccountSettingsView: View {
             AccountSection()
             Section {
                 drawerRow(title: "Binders", systemImage: "books.vertical", value: "", drawer: .manageBinders)
+                drawerRow(
+                    title: "Importer depuis ManaBox",
+                    systemImage: "square.and.arrow.down",
+                    value: "",
+                    drawer: .importCollection
+                )
             } header: {
                 Text("Ma collection")
                     .sectionCaptionStyle()
@@ -175,4 +184,5 @@ struct AccountSettingsView: View {
 #Preview {
     AccountSettingsView(api: APIClientFactory.preview)
         .environment(Clerk.shared)
+        .environment(CollectionImportSignal())
 }

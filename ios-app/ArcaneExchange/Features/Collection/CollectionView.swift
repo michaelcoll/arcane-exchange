@@ -10,7 +10,6 @@ struct CollectionView: View {
     @State private var model: CollectionViewModel
     private let api: any APIProtocol
     @State private var isShowingFilters = false
-    @State private var isShowingImport = false
     @Environment(CollectionImportSignal.self) private var importSignal
     @State private var isShowingAddCard = false
     @State private var isShowingPurchases = false
@@ -35,11 +34,6 @@ struct CollectionView: View {
                         })
                     }
                     ToolbarItem(placement: .topBarTrailing) {
-                        Button(action: { isShowingImport = true }, label: {
-                            Label("Importer", systemImage: "square.and.arrow.down")
-                        })
-                    }
-                    ToolbarItem(placement: .topBarTrailing) {
                         Button(action: { isShowingPurchases = true }, label: {
                             Label("Achats", systemImage: "bag")
                         })
@@ -48,7 +42,7 @@ struct CollectionView: View {
                 .refreshableToCompletion { await model.paginator.reload() }
                 .task { await model.loadInitiallyIfNeeded() }
                 .task { await model.loadSetsIfNeeded() }
-                // The import has replaced the whole collection (it can run from any tab).
+                // The import has replaced the whole collection (it runs from the Settings, on any tab).
                 .onChange(of: importSignal.collectionChanges) {
                     Task { await model.reloadAfterImport() }
                 }
@@ -72,9 +66,6 @@ struct CollectionView: View {
                     CatalogSearchView(api: api) {
                         Task { await model.reloadAfterImport() }
                     }
-                }
-                .sheet(isPresented: $isShowingImport) {
-                    ImportView(api: api, signal: importSignal)
                 }
                 .sheet(isPresented: $isShowingPurchases) {
                     PurchasesView(api: api)
