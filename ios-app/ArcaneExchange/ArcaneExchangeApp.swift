@@ -8,6 +8,7 @@ struct ArcaneExchangeApp: App {
     /// One CoreMotion source for the whole app, read by every `FoilOverlay`.
     @State private var tilt = TiltProvider()
     @State private var router = AppRouter()
+    @State private var importSignal = CollectionImportSignal()
     /// The one API client of the session. A 401 signs the player out; `ContentView` follows
     /// the Clerk session back to the login screen.
     private let api: any APIProtocol
@@ -43,6 +44,7 @@ struct ArcaneExchangeApp: App {
                     .environment(Clerk.shared)
                     .environment(tilt)
                     .environment(router)
+                    .environment(importSignal)
                     .environment(\.api, api)
                     .environment(\.avatarStore, avatarStore)
                     .environment(\.scanIndex, scanIndex)

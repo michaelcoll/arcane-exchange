@@ -11,6 +11,7 @@ struct CollectionView: View {
     private let api: any APIProtocol
     @State private var isShowingFilters = false
     @State private var isShowingImport = false
+    @Environment(CollectionImportSignal.self) private var importSignal
     @State private var isShowingAddCard = false
     @State private var isShowingPurchases = false
     @State private var path = NavigationPath()
@@ -47,6 +48,10 @@ struct CollectionView: View {
                 .refreshableToCompletion { await model.paginator.reload() }
                 .task { await model.loadInitiallyIfNeeded() }
                 .task { await model.loadSetsIfNeeded() }
+                // The import has replaced the whole collection (it can run from any tab).
+                .onChange(of: importSignal.collectionChanges) {
+                    Task { await model.reloadAfterImport() }
+                }
                 .onChange(of: model.filters) {
                     Task { await model.paginator.reload() }
                 }
@@ -68,8 +73,8 @@ struct CollectionView: View {
                         Task { await model.reloadAfterImport() }
                     }
                 }
-                .sheet(isPresented: $isShowingImport, onDismiss: handleImportDismiss) {
-                    ImportView(api: api)
+                .sheet(isPresented: $isShowingImport) {
+                    ImportView(api: api, signal: importSignal)
                 }
                 .sheet(isPresented: $isShowingPurchases) {
                     PurchasesView(api: api)
@@ -107,11 +112,5 @@ struct CollectionView: View {
 
     private var summary: String {
         CollectionCopy.sortedSummary(total: model.paginator.total, sortBy: model.filters.sortBy)
-    }
-
-    /// The import may have replaced the whole collection — reload from page 0 once the sheet
-    /// closes, whether it completed, failed, or was dismissed mid-import.
-    private func handleImportDismiss() {
-        Task { await model.reloadAfterImport() }
     }
 }

@@ -11,8 +11,8 @@ struct ImportView: View {
 
     @Environment(\.dismiss) private var dismiss
 
-    init(api: any APIProtocol) {
-        _model = State(initialValue: ImportViewModel(api: api))
+    init(api: any APIProtocol, signal: CollectionImportSignal) {
+        _model = State(initialValue: ImportViewModel(api: api, signal: signal))
     }
 
     var body: some View {
@@ -112,7 +112,7 @@ struct ImportView: View {
     }
 
     @ViewBuilder private var doneView: some View {
-        if model.status?.status == "completed" {
+        if model.status?.isCompleted == true {
             completedView
         } else {
             failedView
@@ -199,5 +199,5 @@ struct ImportView: View {
 }
 
 #Preview {
-    ImportView(api: APIClientFactory.preview)
+    ImportView(api: APIClientFactory.preview, signal: CollectionImportSignal())
 }
