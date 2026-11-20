@@ -90,6 +90,7 @@ mod tests {
             price_guide: None,
             scryfall_id: uuid::Uuid::new_v4(),
             image: None,
+            inclusion_rate: None,
         }
     }
 

@@ -8,6 +8,7 @@ pub mod collection;
 pub mod collection_entry;
 pub mod collection_stats;
 pub mod error;
+pub mod inclusion_rate;
 pub mod language_code;
 pub mod pagination;
 pub mod price;

@@ -6,7 +6,8 @@ use crate::application::repository::{
     TradingBinderRepository,
 };
 use crate::application::use_case::{
-    EnqueueCardImageUpdateUseCase, EnqueueCardMarketIdUpdateUseCase, RunCardImportUseCase,
+    EnqueueCardImageUpdateUseCase, EnqueueCardMarketIdUpdateUseCase,
+    EnqueueInclusionRateUpdateUseCase, RunCardImportUseCase,
 };
 use crate::domain::card_import::{CardImportId, CardImportStatus};
 use crate::domain::error::FunctionalError;
@@ -27,6 +28,7 @@ pub struct RunCardImportService {
     card_import_repository: Arc<dyn CardImportRepository>,
     enqueue_cardmarket_ids: Arc<dyn EnqueueCardMarketIdUpdateUseCase>,
     enqueue_card_images: Arc<dyn EnqueueCardImageUpdateUseCase>,
+    enqueue_inclusion_rates: Arc<dyn EnqueueInclusionRateUpdateUseCase>,
     card_prices_view_repository: Arc<dyn CardPricesViewRepository>,
     trading_binder_repository: Arc<dyn TradingBinderRepository>,
 }
@@ -39,6 +41,7 @@ impl RunCardImportService {
         card_import_repository: Arc<dyn CardImportRepository>,
         enqueue_cardmarket_ids: Arc<dyn EnqueueCardMarketIdUpdateUseCase>,
         enqueue_card_images: Arc<dyn EnqueueCardImageUpdateUseCase>,
+        enqueue_inclusion_rates: Arc<dyn EnqueueInclusionRateUpdateUseCase>,
         card_prices_view_repository: Arc<dyn CardPricesViewRepository>,
         trading_binder_repository: Arc<dyn TradingBinderRepository>,
     ) -> Self {
@@ -48,6 +51,7 @@ impl RunCardImportService {
             card_import_repository,
             enqueue_cardmarket_ids,
             enqueue_card_images,
+            enqueue_inclusion_rates,
             card_prices_view_repository,
             trading_binder_repository,
         }
@@ -87,6 +91,9 @@ impl RunCardImportService {
             .enqueue_pending_updates()
             .await?;
         self.enqueue_card_images.enqueue_pending_updates().await?;
+        self.enqueue_inclusion_rates
+            .enqueue_pending_updates()
+            .await?;
         self.card_prices_view_repository.refresh().await?;
 
         Ok(())
@@ -155,6 +162,7 @@ mod tests {
     };
     use crate::application::use_case::{
         MockEnqueueCardImageUpdateUseCase, MockEnqueueCardMarketIdUpdateUseCase,
+        MockEnqueueInclusionRateUpdateUseCase,
     };
     use crate::domain::card::{Card, CollectionEntry};
     use crate::domain::language_code::LanguageCode;
@@ -189,6 +197,7 @@ mod tests {
         }
     }
 
+    #[allow(clippy::too_many_arguments)]
     fn run_service(
         card_repository: MockCardRepository,
         set_name_repository: MockSetNameRepository,
@@ -196,6 +205,7 @@ mod tests {
         trading_binder_repository: MockTradingBinderRepository,
         enqueue_cardmarket: MockEnqueueCardMarketIdUpdateUseCase,
         enqueue_card_images: MockEnqueueCardImageUpdateUseCase,
+        enqueue_inclusion_rates: MockEnqueueInclusionRateUpdateUseCase,
         card_prices_view_repository: MockCardPricesViewRepository,
     ) -> RunCardImportService {
         RunCardImportService::new(
@@ -204,6 +214,7 @@ mod tests {
             Arc::new(card_import_repository),
             Arc::new(enqueue_cardmarket),
             Arc::new(enqueue_card_images),
+            Arc::new(enqueue_inclusion_rates),
             Arc::new(card_prices_view_repository),
             Arc::new(trading_binder_repository),
         )
@@ -269,6 +280,12 @@ mod tests {
             .times(1)
             .returning(|| Box::pin(async { Ok(0) }));
 
+        let mut enqueue_inclusion_rates = MockEnqueueInclusionRateUpdateUseCase::new();
+        enqueue_inclusion_rates
+            .expect_enqueue_pending_updates()
+            .times(1)
+            .returning(|| Box::pin(async { Ok(0) }));
+
         let mut card_prices_view_repository = MockCardPricesViewRepository::new();
         card_prices_view_repository
             .expect_refresh()
@@ -282,6 +299,7 @@ mod tests {
             trading_binder_repository,
             enqueue_cardmarket,
             enqueue_card_images,
+            enqueue_inclusion_rates,
             card_prices_view_repository,
         );
 
@@ -326,6 +344,7 @@ mod tests {
             MockTradingBinderRepository::new(),
             MockEnqueueCardMarketIdUpdateUseCase::new(),
             MockEnqueueCardImageUpdateUseCase::new(),
+            MockEnqueueInclusionRateUpdateUseCase::new(),
             MockCardPricesViewRepository::new(),
         );
 
@@ -383,6 +402,7 @@ mod tests {
             MockTradingBinderRepository::new(),
             MockEnqueueCardMarketIdUpdateUseCase::new(),
             MockEnqueueCardImageUpdateUseCase::new(),
+            MockEnqueueInclusionRateUpdateUseCase::new(),
             MockCardPricesViewRepository::new(),
         );
 

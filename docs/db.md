@@ -77,6 +77,12 @@ erDiagram
         boolean is_open "not null, default: false"
         smallint kept_copies "not null, default: 0"
     }
+    edhrec_inclusion {
+        character_varying(255) card_name PK
+        integer num_decks "not null"
+        integer potential_decks "not null"
+        timestamp_with_time_zone fetched_at "not null"
+    }
     mv_card_prices {
         character_varying(6) set_code
         character_varying(10) collector_number

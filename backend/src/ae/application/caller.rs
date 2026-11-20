@@ -1,6 +1,6 @@
 use crate::application::error::AppError;
-use crate::domain::card::CardInfo;
 use crate::domain::card_image::CardImages;
+use crate::domain::inclusion_rate::InclusionRate;
 use crate::domain::language_code::LanguageCode;
 use crate::domain::price::FullPriceGuide;
 use crate::domain::set_name::SetCode;
@@ -23,7 +23,13 @@ pub trait CardMarketCaller: Send + Sync {
 #[async_trait]
 #[cfg_attr(test, automock)]
 pub trait EdhRecCaller: Send + Sync {
-    async fn get_card_info(&self, card_name: String) -> Result<CardInfo, AppError>;
+    /// The inclusion rate of the card named `card_name` (English name; the front face for a
+    /// double-faced card), or `None` when EDHREC has no page for it. A technical failure (timeout,
+    /// 5xx, unexpected page) is an error.
+    async fn get_inclusion_rate(
+        &self,
+        card_name: String,
+    ) -> Result<Option<InclusionRate>, AppError>;
 }
 
 #[async_trait]

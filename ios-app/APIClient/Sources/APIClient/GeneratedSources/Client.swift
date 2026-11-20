@@ -101,66 +101,6 @@ public struct Client: APIProtocol {
             }
         )
     }
-    /// - Remark: HTTP `POST /card/card-info`.
-    /// - Remark: Generated from `#/paths//card/card-info/post(get_card_info)`.
-    public func get_card_info(_ input: Operations.get_card_info.Input) async throws -> Operations.get_card_info.Output {
-        try await client.send(
-            input: input,
-            forOperation: Operations.get_card_info.id,
-            serializer: { input in
-                let path = try converter.renderedPath(
-                    template: "/card/card-info",
-                    parameters: []
-                )
-                var request: HTTPTypes.HTTPRequest = .init(
-                    soar_path: path,
-                    method: .post
-                )
-                suppressMutabilityWarning(&request)
-                converter.setAcceptHeader(
-                    in: &request.headerFields,
-                    contentTypes: input.headers.accept
-                )
-                return (request, nil)
-            },
-            deserializer: { response, responseBody in
-                switch response.status.code {
-                case 200:
-                    return .ok(.init())
-                case 401:
-                    let contentType = converter.extractContentTypeIfPresent(in: response.headerFields)
-                    let body: Operations.get_card_info.Output.Unauthorized.Body
-                    let chosenContentType = try converter.bestContentType(
-                        received: contentType,
-                        options: [
-                            "application/json"
-                        ]
-                    )
-                    switch chosenContentType {
-                    case "application/json":
-                        body = try await converter.getResponseBodyAsJSON(
-                            Components.Schemas.ErrorResponse.self,
-                            from: responseBody,
-                            transforming: { value in
-                                .json(value)
-                            }
-                        )
-                    default:
-                        preconditionFailure("bestContentType chose an invalid content type.")
-                    }
-                    return .unauthorized(.init(body: body))
-                default:
-                    return .undocumented(
-                        statusCode: response.status.code,
-                        .init(
-                            headerFields: response.headerFields,
-                            body: responseBody
-                        )
-                    )
-                }
-            }
-        )
-    }
     /// - Remark: HTTP `GET /card/offers`.
     /// - Remark: Generated from `#/paths//card/offers/get(get_card_offers)`.
     public func get_card_offers(_ input: Operations.get_card_offers.Input) async throws -> Operations.get_card_offers.Output {

@@ -1,0 +1,62 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT DISTINCT ON (c.name) c.set_code, c.collector_number, c.language_code, c.name\n            FROM card c\n            WHERE NOT EXISTS (SELECT 1 FROM edhrec_inclusion e WHERE e.card_name = c.name)\n            ORDER BY c.name, c.set_code, c.collector_number, c.language_code",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "set_code",
+        "type_info": "Varchar",
+        "origin": {
+          "Table": {
+            "table": "card",
+            "name": "set_code"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "collector_number",
+        "type_info": "Varchar",
+        "origin": {
+          "Table": {
+            "table": "card",
+            "name": "collector_number"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "language_code",
+        "type_info": "Varchar",
+        "origin": {
+          "Table": {
+            "table": "card",
+            "name": "language_code"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "name",
+        "type_info": "Varchar",
+        "origin": {
+          "Table": {
+            "table": "card",
+            "name": "name"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "c8cc8b150f4527ff37b2f4ae8044a505f8feb682ac3bb9ecae4ca0ab641d8675"
+}

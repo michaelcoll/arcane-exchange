@@ -9,6 +9,7 @@ use crate::domain::catalog::{CatalogCard, CatalogSet, ScanIndexEntry, TrendPrice
 use crate::domain::collection::CollectionQuery;
 use crate::domain::collection_entry::{CardEntries, CollectionEntryId, EntryUpdate};
 use crate::domain::collection_stats::CollectionStats;
+use crate::domain::inclusion_rate::InclusionRate;
 use crate::domain::pagination::{Paginated, Pagination};
 use crate::domain::price::{FullPriceGuide, PriceHistoryEntry};
 use crate::domain::purchase::{
@@ -78,6 +79,24 @@ pub trait CardRepository: Send + Sync {
     /// already using that image on it: they share one file.
     async fn record_english_image(&self, id: CardId, image: EnglishImage) -> Result<(), AppError>;
     async fn delete_all(&self, user: User) -> Result<(), AppError>;
+}
+
+/// Inclusion rates (ADR-0027), one per English card name.
+#[async_trait]
+#[cfg_attr(test, automock)]
+pub trait InclusionRateRepository: Send + Sync {
+    /// One card per English name that has no inclusion rate yet: the smallest of all the cards of
+    /// that name.
+    async fn get_names_without_rate(&self) -> Result<Vec<(CardId, InclusionRateLookup)>, AppError>;
+    /// Stores the rate of `card_name`, replacing the previous one.
+    async fn save(&self, card_name: String, rate: InclusionRate) -> Result<(), AppError>;
+}
+
+/// What fetching an inclusion rate needs besides the id of the card standing for its name.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct InclusionRateLookup {
+    /// The card's English name, which EDHREC pages are named after.
+    pub card_name: String,
 }
 
 /// What finding a card's images needs besides its id.

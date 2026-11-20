@@ -329,7 +329,6 @@ async fn get_card_offers_rejects_non_numeric_page_size_with_bad_request() {
 async fn every_route_refuses_an_anonymous_request() {
     let price_history_uri = format!("/card/{}/price-history?foil=false", Uuid::new_v4());
     let routes = [
-        (Method::POST, "/card/card-info"),
         (Method::GET, price_history_uri.as_str()),
         (Method::GET, OFFERS_URI),
     ];

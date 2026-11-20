@@ -8,6 +8,7 @@ use crate::application::use_case::{
 use crate::domain::card::CopyId;
 use crate::domain::card_image::{CardImage, CardImageSource};
 use crate::domain::error::FunctionalError;
+use crate::domain::inclusion_rate::InclusionRate;
 use crate::domain::language_code::LanguageCode;
 use crate::domain::pagination::{PageRequest, Paginated, Pagination};
 use crate::domain::price::PriceGuide;
@@ -768,6 +769,7 @@ async fn get_trade_response_maps_card_details() {
             source: CardImageSource::GathererEn,
             has_back: true,
         }),
+        inclusion_rate: None,
     };
     let mut mock_use_case = MockGetTradeUseCase::new();
     mock_use_case
@@ -810,6 +812,68 @@ async fn get_trade_response_maps_card_details() {
     assert_eq!(card["price_guide"]["low"], 150);
     assert_eq!(card["price_guide"]["avg"], 200);
     assert_eq!(card["price_guide"]["trend"], 220);
+}
+
+async fn partner_card_of(inclusion_rate: Option<InclusionRate>) -> serde_json::Value {
+    let card = TradeCardDetail {
+        card_id: copy_id(),
+        owner_user_id: UserId::new("bob"),
+        name: "Sol Ring".to_string(),
+        quantity: 1,
+        price_guide: None,
+        scryfall_id: Uuid::from_u128(1),
+        image: None,
+        inclusion_rate,
+    };
+    let mut mock_use_case = MockGetTradeUseCase::new();
+    mock_use_case.expect_get_trade().returning(move |_, _| {
+        let card = card.clone();
+        Box::pin(async move {
+            Ok(TradeDetail {
+                partner_cards: vec![card],
+                ..make_trade_detail()
+            })
+        })
+    });
+
+    let response = authed(
+        get_trade_app(mock_use_case),
+        Method::GET,
+        &format!("/trades/{TRADE_ID}"),
+    )
+    .await;
+
+    assert_eq!(response.status(), StatusCode::OK);
+    json_of(response).await["partner_cards"][0].clone()
+}
+
+#[tokio::test]
+async fn get_trade_response_carries_the_inclusion_rate_as_a_percentage() {
+    let card = partner_card_of(Some(InclusionRate {
+        num_decks: 1,
+        potential_decks: 4,
+    }))
+    .await;
+
+    assert_eq!(card["inclusion_rate"], 25.0);
+}
+
+#[tokio::test]
+async fn get_trade_response_has_no_inclusion_rate_when_it_is_unknown() {
+    let card = partner_card_of(None).await;
+
+    assert!(card.get("inclusion_rate").is_none());
+}
+
+#[tokio::test]
+async fn get_trade_response_has_no_inclusion_rate_when_no_deck_could_play_the_card() {
+    let card = partner_card_of(Some(InclusionRate {
+        num_decks: 0,
+        potential_decks: 0,
+    }))
+    .await;
+
+    assert!(card.get("inclusion_rate").is_none());
 }
 
 // --- list_trades ---

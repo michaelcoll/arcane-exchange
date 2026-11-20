@@ -280,12 +280,14 @@ impl TradeRepository for TradeRepositoryAdapter {
                        tc.owner_user_id AS "owner_user_id!", tc.quantity AS "quantity!",
                        c.name AS "name!", c.scryfall_id AS "scryfall_id!",
                        c.image_source, c.image_has_back,
-                       lcp.low, lcp.trend, lcp.avg
+                       lcp.low, lcp.trend, lcp.avg,
+                       ei.num_decks AS "num_decks?", ei.potential_decks AS "potential_decks?"
                 FROM trade_card tc
                 JOIN card c ON c.set_code = tc.set_code AND c.collector_number = tc.collector_number
                     AND c.language_code = tc.language_code
                 LEFT JOIN mv_last_cardmarket_prices lcp ON lcp.set_code = c.set_code
                     AND lcp.collector_number = c.collector_number AND lcp.foil = tc.foil
+                LEFT JOIN edhrec_inclusion ei ON ei.card_name = c.name
                 WHERE tc.trade_id = $1"#,
             trade_id.0
         )
@@ -564,6 +566,7 @@ mod tests {
     use super::*;
     use crate::application::service::trade::list::TRADES_MAX_OFFSET;
     use crate::domain::card_image::{CardImage, CardImageSource};
+    use crate::domain::inclusion_rate::InclusionRate;
     use crate::domain::language_code::LanguageCode;
     use crate::domain::pagination::Pagination;
     use crate::domain::trade::Party;
@@ -2417,6 +2420,52 @@ mod tests {
             Some(200)
         );
         assert_eq!(cards[0].image, None, "the card's image is still pending");
+    }
+
+    #[sqlx::test]
+    async fn find_trade_cards_with_details_returns_the_inclusion_rate_shared_by_a_name(
+        pool: PgPool,
+    ) {
+        insert_user(&pool, "user_a", "alice").await;
+        insert_user(&pool, "user_b", "bob").await;
+        insert_card(&pool, "FDN", "87", "FR", "Goblin Boarders", 1).await;
+        insert_card(&pool, "FDN", "12", "EN", "Sol Ring", 2).await;
+        sqlx::query(
+            "INSERT INTO edhrec_inclusion (card_name, num_decks, potential_decks, fetched_at)
+            VALUES ('Goblin Boarders', 5, 100, now())",
+        )
+        .execute(&pool)
+        .await
+        .unwrap();
+        let trade_id = uuid::Uuid::new_v4();
+        insert_trade(&pool, trade_id, "user_a", "user_b", "PENDING").await;
+        insert_trade_card(&pool, trade_id, "FDN", "87", "FR", false, "user_b", 1).await;
+        insert_trade_card(&pool, trade_id, "FDN", "12", "EN", false, "user_b", 1).await;
+
+        let cards = TradeRepositoryAdapter::new(pool)
+            .find_trade_cards_with_details(TradeId(trade_id))
+            .await
+            .unwrap();
+
+        let rate_of = |name: &str| {
+            cards
+                .iter()
+                .find(|c| c.name == name)
+                .unwrap()
+                .inclusion_rate
+        };
+        assert_eq!(
+            rate_of("Goblin Boarders"),
+            Some(InclusionRate {
+                num_decks: 5,
+                potential_decks: 100
+            })
+        );
+        assert_eq!(
+            rate_of("Sol Ring"),
+            None,
+            "a name without a row has no rate"
+        );
     }
 
     #[sqlx::test]

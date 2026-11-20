@@ -22,4 +22,9 @@ export type TradeCard = {
    * Back image of a double-faced card; `null` for a single-faced card.
    */
   image_back_url: string | null;
+  /**
+   * Share of the Commander decks listed by EDHREC that play the card, from 0 to 100, the same
+   * for every printing and language of its name; absent while unknown.
+   */
+  inclusion_rate?: number;
 };

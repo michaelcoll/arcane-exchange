@@ -32,7 +32,7 @@ impl Config {
                 },
             ),
             edh_rec_base_url: env::var("EDHREC_BASE_URL")
-                .unwrap_or_else(|_| "https://edhrec.com".to_string()),
+                .unwrap_or_else(|_| "https://json.edhrec.com".to_string()),
             scryfall_base_url: env::var("SCRYFALL_BASE_URL")
                 .unwrap_or_else(|_| "https://api.scryfall.com".to_string()),
             gatherer_base_url: env::var("GATHERER_BASE_URL")
@@ -115,7 +115,7 @@ mod tests {
             config.cardmarket_price_guides_url,
             "https://downloads.s3.cardmarket.com/productCatalog/priceGuide/price_guide_1.json"
         );
-        assert_eq!(config.edh_rec_base_url, "https://edhrec.com");
+        assert_eq!(config.edh_rec_base_url, "https://json.edhrec.com");
         assert_eq!(config.scryfall_base_url, "https://api.scryfall.com");
         assert_eq!(config.gatherer_base_url, "https://gatherer.wizards.com");
         assert_eq!(config.clerk_frontend_api_url, "https://clerk.example.com");

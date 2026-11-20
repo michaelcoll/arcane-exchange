@@ -15,7 +15,7 @@ CARD_IMAGES_DIR = "{{config_root}}/.card-images"
 
 # External APIs
 CARDMARKET_PRICE_GUIDES_URL = "https://downloads.s3.cardmarket.com/productCatalog/priceGuide/price_guide_1.json"
-EDHREC_BASE_URL = "https://edhrec.com"
+EDHREC_BASE_URL = "https://json.edhrec.com"
 SCRYFALL_BASE_URL = "https://api.scryfall.com"
 
 [tools]

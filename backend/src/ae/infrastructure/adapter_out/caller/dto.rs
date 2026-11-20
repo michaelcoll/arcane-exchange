@@ -43,19 +43,9 @@ impl From<CardmarketPriceGuide> for FullPriceGuide {
     }
 }
 
+/// A page of `json.edhrec.com/pages/cards/<slug>.json`: only what the inclusion rate needs.
 #[derive(Debug, serde::Deserialize)]
-pub struct EdhRecCardInfo {
-    #[serde(rename(deserialize = "pageProps"))]
-    pub page_props: EdhRecProps,
-}
-
-#[derive(Debug, serde::Deserialize)]
-pub struct EdhRecProps {
-    pub data: EdhRecData,
-}
-
-#[derive(Debug, serde::Deserialize)]
-pub struct EdhRecData {
+pub struct EdhRecCardPage {
     pub container: EdhRecContainer,
 }
 
@@ -71,8 +61,8 @@ pub struct EdhRecJsonDict {
 
 #[derive(Debug, serde::Deserialize)]
 pub struct EdhRecCard {
-    pub inclusion: i32,
-    pub potential_decks: i32,
+    pub num_decks: u32,
+    pub potential_decks: u32,
 }
 
 /// The answer of `GET /bulk-data`.

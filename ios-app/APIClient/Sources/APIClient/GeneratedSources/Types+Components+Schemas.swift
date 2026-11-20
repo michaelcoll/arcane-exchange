@@ -2047,6 +2047,11 @@ extension Components {
             ///
             /// - Remark: Generated from `#/components/schemas/TradeCardResponse/image_url`.
             public var image_url: Swift.String?
+            /// Share of the Commander decks listed by EDHREC that play the card, from 0 to 100, the same
+            /// for every printing and language of its name; absent while unknown.
+            ///
+            /// - Remark: Generated from `#/components/schemas/TradeCardResponse/inclusion_rate`.
+            public var inclusion_rate: Swift.Double?
             /// - Remark: Generated from `#/components/schemas/TradeCardResponse/language_code`.
             public var language_code: Swift.String
             /// - Remark: Generated from `#/components/schemas/TradeCardResponse/name`.
@@ -2066,6 +2071,7 @@ extension Components {
             ///   - foil:
             ///   - image_back_url: Back image of a double-faced card; `null` for a single-faced card.
             ///   - image_url: Front image, relative to the frontend; `null` while the card's image is pending.
+            ///   - inclusion_rate: Share of the Commander decks listed by EDHREC that play the card, from 0 to 100, the same
             ///   - language_code:
             ///   - name:
             ///   - price_guide:
@@ -2077,6 +2083,7 @@ extension Components {
                 foil: Swift.Bool,
                 image_back_url: Swift.String? = nil,
                 image_url: Swift.String? = nil,
+                inclusion_rate: Swift.Double? = nil,
                 language_code: Swift.String,
                 name: Swift.String,
                 price_guide: Components.Schemas.PriceGuideResponse? = nil,
@@ -2088,6 +2095,7 @@ extension Components {
                 self.foil = foil
                 self.image_back_url = image_back_url
                 self.image_url = image_url
+                self.inclusion_rate = inclusion_rate
                 self.language_code = language_code
                 self.name = name
                 self.price_guide = price_guide
@@ -2100,6 +2108,7 @@ extension Components {
                 case foil
                 case image_back_url
                 case image_url
+                case inclusion_rate
                 case language_code
                 case name
                 case price_guide

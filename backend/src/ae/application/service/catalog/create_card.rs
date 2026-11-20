@@ -2,6 +2,7 @@ use crate::application::error::AppError;
 use crate::application::repository::{CardPricesViewRepository, CardRepository, CatalogRepository};
 use crate::application::use_case::{
     CreateCardUseCase, EnqueueCardImageUpdateUseCase, EnqueueCardMarketIdUpdateUseCase,
+    EnqueueInclusionRateUpdateUseCase,
 };
 use crate::domain::card::CardId;
 use crate::domain::error::FunctionalError;
@@ -15,6 +16,7 @@ pub struct CreateCardService {
     card_repository: Arc<dyn CardRepository>,
     enqueue_cardmarket_ids: Arc<dyn EnqueueCardMarketIdUpdateUseCase>,
     enqueue_card_images: Arc<dyn EnqueueCardImageUpdateUseCase>,
+    enqueue_inclusion_rates: Arc<dyn EnqueueInclusionRateUpdateUseCase>,
 }
 
 impl CreateCardService {
@@ -24,6 +26,7 @@ impl CreateCardService {
         card_repository: Arc<dyn CardRepository>,
         enqueue_cardmarket_ids: Arc<dyn EnqueueCardMarketIdUpdateUseCase>,
         enqueue_card_images: Arc<dyn EnqueueCardImageUpdateUseCase>,
+        enqueue_inclusion_rates: Arc<dyn EnqueueInclusionRateUpdateUseCase>,
     ) -> Self {
         Self {
             known_cards,
@@ -31,6 +34,7 @@ impl CreateCardService {
             card_repository,
             enqueue_cardmarket_ids,
             enqueue_card_images,
+            enqueue_inclusion_rates,
         }
     }
 }
@@ -68,6 +72,9 @@ impl CreateCardUseCase for CreateCardService {
                     .await?;
             }
             self.enqueue_card_images.enqueue_pending_updates().await?;
+            self.enqueue_inclusion_rates
+                .enqueue_pending_updates()
+                .await?;
         }
 
         Ok(card_id)
@@ -90,6 +97,7 @@ mod tests {
     };
     use crate::application::use_case::{
         MockEnqueueCardImageUpdateUseCase, MockEnqueueCardMarketIdUpdateUseCase,
+        MockEnqueueInclusionRateUpdateUseCase,
     };
     use crate::domain::catalog::CatalogCard;
     use crate::domain::language_code::LanguageCode;
@@ -158,6 +166,28 @@ mod tests {
         ids
     }
 
+    /// Expects exactly `times` calls, or any number when `None`.
+    fn inclusion_rates(times: Option<usize>) -> MockEnqueueInclusionRateUpdateUseCase {
+        let mut rates = MockEnqueueInclusionRateUpdateUseCase::new();
+        let expectation = rates.expect_enqueue_pending_updates();
+        if let Some(times) = times {
+            expectation.times(times);
+        }
+        expectation.returning(|| Box::pin(async { Ok(1) }));
+        rates
+    }
+
+    fn service_expecting_inclusion_rates(created: bool, times: usize) -> CreateCardService {
+        CreateCardService::new(
+            Arc::new(known_cards(None)),
+            Arc::new(catalog_with(Some(catalog_card("12", Some(99))))),
+            Arc::new(cards(created)),
+            Arc::new(cardmarket_ids(0)),
+            Arc::new(images(usize::from(created))),
+            Arc::new(inclusion_rates(Some(times))),
+        )
+    }
+
     fn service(
         catalog: MockCatalogRepository,
         cards: MockCardRepository,
@@ -180,6 +210,7 @@ mod tests {
             Arc::new(cards),
             Arc::new(cardmarket_ids),
             Arc::new(images),
+            Arc::new(inclusion_rates(None)),
         )
     }
 
@@ -209,6 +240,26 @@ mod tests {
             .unwrap();
 
         assert_eq!(id, CardId::new("MKM", "12", LanguageCode::FR));
+    }
+
+    #[tokio::test]
+    async fn a_created_card_gets_its_inclusion_rate_fetched() {
+        let service = service_expecting_inclusion_rates(true, 1);
+
+        service
+            .create_card(CardId::new("MKM", "12", LanguageCode::EN))
+            .await
+            .unwrap();
+    }
+
+    #[tokio::test]
+    async fn an_existing_card_does_not_trigger_an_inclusion_rate_fetch() {
+        let service = service_expecting_inclusion_rates(false, 0);
+
+        service
+            .create_card(CardId::new("MKM", "12", LanguageCode::EN))
+            .await
+            .unwrap();
     }
 
     #[tokio::test]
