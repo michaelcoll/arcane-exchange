@@ -39,6 +39,31 @@ export const tradeCardKey = (card: TradeCard): string =>
 export const tradeCardsTotal = (cards: TradeCard[]): number =>
   cards.reduce((s, c) => s + tradeCardValue(c), 0);
 
+/** What the screen compares between the two sides: the price, or the inclusion rate. */
+export type TradeValueMode = 'eur' | 'inclusion_rate';
+
+const UNKNOWN_RATE = '—';
+
+/** Inclusion rate (0 to 100) with one decimal: "4,9 %", "< 0,1 %" for any known rate below 0.1
+ * (zero included), "—" when it is unknown. */
+export const formatInclusionRate = (rate?: number): string => {
+  if (rate === undefined) return UNKNOWN_RATE;
+  if (rate < 0.1) return '< 0,1 %';
+  const value = rate.toLocaleString('fr-FR', {
+    minimumFractionDigits: 1,
+    maximumFractionDigits: 1,
+  });
+  return `${value} %`;
+};
+
+/** Average inclusion rate of the cards that have one: "moy. 13,2 %", "—" when none has. */
+export const tradeInclusionAverageLabel = (cards: TradeCard[]): string => {
+  const rates = cards.flatMap((c) => (c.inclusion_rate === undefined ? [] : [c.inclusion_rate]));
+  if (!rates.length) return UNKNOWN_RATE;
+  const average = rates.reduce((s, r) => s + r, 0) / rates.length;
+  return `moy. ${formatInclusionRate(average)}`;
+};
+
 /** Ce qu'un statut donne à lire : son libellé et son ton. */
 export interface TradeStatusPresentation {
   label: string;

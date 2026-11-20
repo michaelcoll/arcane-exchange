@@ -1,5 +1,5 @@
-import { describe, it, expect, vi } from 'vitest';
-import { ref } from 'vue';
+import { afterEach, beforeEach, describe, it, expect, vi } from 'vitest';
+import { nextTick, ref } from 'vue';
 import type { TradeCard } from '~/bindings/TradeCard';
 import type { TradeDetail } from '~/bindings/TradeDetail';
 import type { TradePartyState } from '~/bindings/TradePartyState';
@@ -630,5 +630,67 @@ describe('useTradeView', () => {
 
     expect(view().busy).toBe(false);
     expect(view().confirmation).toBeNull();
+  });
+});
+
+describe('le mode de comparaison', () => {
+  const storage = new Map<string, string>();
+
+  beforeEach(() => {
+    storage.clear();
+    vi.stubGlobal('localStorage', {
+      getItem: (key: string) => storage.get(key) ?? null,
+      setItem: (key: string, value: string) => storage.set(key, value),
+    });
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it('compare les prix par défaut', () => {
+    const { valueMode } = setup();
+
+    expect(valueMode.value).toBe('eur');
+  });
+
+  it('retrouve le mode choisi lors d’une visite précédente', () => {
+    storage.set('tae_trade_value_mode', 'inclusion_rate');
+
+    const { valueMode } = setup();
+
+    expect(valueMode.value).toBe('inclusion_rate');
+  });
+
+  it('mémorise le mode choisi pour la prochaine visite', async () => {
+    const first = setup();
+
+    first.valueMode.value = 'inclusion_rate';
+    await nextTick();
+
+    expect(setup().valueMode.value).toBe('inclusion_rate');
+  });
+
+  it.each(['rank', 'edhrec'])('ignore un mode stocké qui n’existe plus (%s)', (stored) => {
+    storage.set('tae_trade_value_mode', stored);
+
+    const { valueMode } = setup();
+
+    expect(valueMode.value).toBe('eur');
+  });
+
+  it('ne change ni le Delta cash ni le montant du paiement', () => {
+    const { view, valueMode } = setup({
+      my_cards: [worth(400)],
+      partner_cards: [worth(2500, { inclusion_rate: 12 })],
+    });
+
+    valueMode.value = 'inclusion_rate';
+
+    expect(view().primaryAction).toEqual({
+      kind: 'accept',
+      label: `Accepter et payer ${formatPrice(2100)}`,
+    });
+    expect([view().give.total, view().receive.total]).toEqual([400, 2500]);
   });
 });

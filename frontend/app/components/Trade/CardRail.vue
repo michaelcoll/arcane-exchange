@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { TradeCard } from '~/bindings/TradeCard';
 import type { TradeViewSide } from '~/composables/useTradeView';
+import type { TradeValueMode } from '~/utils/trade';
 
 /* Un côté de l'échange en « table de jeu », comme `TradeCardRail` côté iOS : un en-tête qui dit
  * qui pose quoi et pour combien, puis les cartes face visible, côte à côte, en grand. */
@@ -25,15 +26,39 @@ const props = withDefaults(
     /** `rail`: the tiles scroll on one line (mobile); `grid`: they wrap onto new lines
      * (desktop). Only the layout changes. */
     layout?: 'rail' | 'grid';
+    /** What the header and the tiles show: the price, or the EDHREC inclusion rate (violet). */
+    mode?: TradeValueMode;
   }>(),
-  { addLabel: undefined, layout: 'rail' },
+  { addLabel: undefined, layout: 'rail', mode: 'eur' },
 );
 
 const emit = defineEmits<{ remove: [card: TradeCard]; add: []; open: [card: TradeCard] }>();
 
-const valueClass = computed(() =>
-  props.direction === 'receive' ? 'text-secondary' : 'text-[var(--ink)]',
-);
+/** How each mode shows a card, a side's total, and in which tone. */
+const VALUE_DISPLAYS: Record<
+  TradeValueMode,
+  {
+    card: (c: TradeCard) => string;
+    total: (side: TradeViewSide) => string;
+    tone: (direction: 'give' | 'receive') => string;
+  }
+> = {
+  eur: {
+    card: (c) => formatPrice(tradeCardValue(c)),
+    total: (side) => formatPrice(side.total),
+    tone: (direction) => (direction === 'receive' ? 'text-secondary' : 'text-[var(--ink)]'),
+  },
+  inclusion_rate: {
+    card: (c) => formatInclusionRate(c.inclusion_rate),
+    total: (side) => tradeInclusionAverageLabel(side.cards),
+    tone: () => 'text-secondary',
+  },
+};
+
+const display = computed(() => VALUE_DISPLAYS[props.mode]);
+const valueClass = computed(() => display.value.tone(props.direction));
+const totalLabel = computed(() => display.value.total(props.side));
+const cardLabel = (c: TradeCard) => display.value.card(c);
 
 /* Une carte verrouillée est atténuée, pas masquée : c'est toujours la carte échangée. */
 const dimmed = computed(() => props.reserved && !props.removable);
@@ -64,7 +89,7 @@ const badge =
       <span
         data-part="total"
         :class="['font-mono text-[11px] font-medium whitespace-nowrap tabular-nums', valueClass]"
-        >{{ formatPrice(side.total) }}</span
+        >{{ totalLabel }}</span
       >
     </div>
 
@@ -122,7 +147,7 @@ const badge =
         </span>
         <span class="truncate text-[11.5px] text-[var(--ink-2)]">{{ c.name }}</span>
         <span :class="['font-mono text-[12.5px] font-semibold tabular-nums', valueClass]">{{
-          formatPrice(tradeCardValue(c))
+          cardLabel(c)
         }}</span>
       </div>
 

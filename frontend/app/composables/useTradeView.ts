@@ -1,8 +1,9 @@
-import { computed, ref, type Ref } from 'vue';
+import { computed, ref, watch, type Ref } from 'vue';
 import type { TradeCard } from '~/bindings/TradeCard';
 import type { TradeDetail } from '~/bindings/TradeDetail';
 import type { TradeStatusParam } from '~/bindings/TradeStatusParam';
 import { readApiError } from '../utils/api-error';
+import { loadPreference, savePreference, TRADE_VALUE_MODE_PREF } from '../utils/display-prefs';
 import {
   isTradeAbandonable,
   isTradeEditable,
@@ -160,6 +161,9 @@ export const useTradeView = (
   services: TradeViewServices,
 ) => {
   const busy = ref(false);
+  /* Explicit imports rather than `usePreference`: this composable is unit-tested outside Nuxt. */
+  const valueMode = ref(loadPreference(TRADE_VALUE_MODE_PREF));
+  watch(valueMode, (mode) => savePreference(TRADE_VALUE_MODE_PREF, mode));
   const pending = ref<PendingConfirmation | null>(null);
 
   /** `null` until the Trade is loaded. */
@@ -278,6 +282,8 @@ export const useTradeView = (
 
   return {
     view,
+    /** What the screen compares between the two sides, remembered across visits. */
+    valueMode,
     requestAccept,
     requestAbandon,
     confirmPending,
