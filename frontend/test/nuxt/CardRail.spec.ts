@@ -170,3 +170,25 @@ describe.each(['rail', 'grid'] as const)('CardRail (%s)', (layout) => {
     expect(give.classes()).not.toContain('text-secondary');
   });
 });
+
+describe('CardRail in EDHREC mode', () => {
+  const rated: TradeViewSide = {
+    cards: [card({ inclusion_rate: 4.9 }), card({ collector_number: '167' })],
+    total: 9900,
+  };
+  const props = { ...commonProps, side: rated, mode: 'inclusion_rate' as const };
+
+  it('shows the inclusion rate of each card, a dash when unknown', () => {
+    const tiles = mount(CardRail, { props }).findAll('[data-part="tile"]');
+    expect(tiles[0]!.text()).toContain('4,9 %');
+    expect(tiles[1]!.text()).toContain('—');
+  });
+
+  it('shows the average rate instead of the total, in the secondary tone', () => {
+    const total = mount(CardRail, { props: { ...props, direction: 'give' as const } }).get(
+      '[data-part="total"]',
+    );
+    expect(total.text()).toBe('moy. 4,9 %');
+    expect(total.classes()).toContain('text-secondary');
+  });
+});

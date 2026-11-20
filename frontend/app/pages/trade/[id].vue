@@ -29,6 +29,7 @@ const errorTitle = computed(() => {
  * la câbler aux services et l'afficher. */
 const {
   view,
+  valueMode,
   requestAccept,
   requestAbandon,
   confirmPending,
@@ -69,6 +70,11 @@ const askAbandon = () => {
   menuOpen.value = false;
   requestAbandon();
 };
+
+const valueModeOptions = [
+  { value: 'eur', label: 'Prix €', tone: 'primary' },
+  { value: 'inclusion_rate', label: 'EDHREC %', tone: 'secondary' },
+];
 
 const addGet = () =>
   navigateTo(searchRoute({ mode: 'player', player: view.value?.partnerUsername ?? '' }));
@@ -156,11 +162,20 @@ const addGet = () =>
           @help="stepsOpen = true"
         />
 
+        <SegToggle
+          v-model="valueMode"
+          :options="valueModeOptions"
+          size="sm"
+          class="self-center"
+          data-part="value-mode"
+        />
+
         <div class="flex flex-col gap-[18px]">
           <TradeCardRail
             :owner="view.partnerUsername"
             direction="receive"
             :side="view.receive"
+            :mode="valueMode"
             :reserved="view.reserved"
             :removable="view.editable"
             :busy="view.busy"
@@ -177,6 +192,7 @@ const addGet = () =>
             :owner="null"
             direction="give"
             :side="view.give"
+            :mode="valueMode"
             :reserved="view.reserved"
             :removable="false"
             :empty-message="`@${view.partnerUsername} n'a demandé aucune de tes cartes.`"
@@ -218,11 +234,14 @@ const addGet = () =>
               @{{ view.partnerUsername }}
             </h2>
           </div>
-          <TradeStatusDots
-            :presentation="view.presentation"
-            :steps="view.steps"
-            @help="stepsOpen = true"
-          />
+          <div class="flex flex-wrap items-center gap-3.5">
+            <TradeStatusDots
+              :presentation="view.presentation"
+              :steps="view.steps"
+              @help="stepsOpen = true"
+            />
+            <SegToggle v-model="valueMode" :options="valueModeOptions" data-part="value-mode" />
+          </div>
         </div>
 
         <!-- The middle column is as wide as the "échange réservé" separator, so the sides keep
@@ -235,6 +254,7 @@ const addGet = () =>
             :owner="view.partnerUsername"
             direction="receive"
             :side="view.receive"
+            :mode="valueMode"
             :reserved="view.reserved"
             :removable="view.editable"
             :busy="view.busy"
@@ -252,6 +272,7 @@ const addGet = () =>
             :owner="null"
             direction="give"
             :side="view.give"
+            :mode="valueMode"
             :reserved="view.reserved"
             :removable="false"
             :empty-message="`@${view.partnerUsername} n'a demandé aucune de tes cartes.`"

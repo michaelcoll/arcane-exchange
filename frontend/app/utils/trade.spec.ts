@@ -14,6 +14,8 @@ import {
   tradeCardValue,
   tradeCardsTotal,
   tradeConfirmation,
+  formatInclusionRate,
+  tradeInclusionAverageLabel,
   tradeSettlementLabel,
 } from './trade';
 import formatPrice from './format-price';
@@ -242,5 +244,44 @@ describe('tradeCardsTotal', () => {
       card({ quantity: 2, price_guide: { low: 0, avg: 0, trend: 300 } }),
     ];
     expect(tradeCardsTotal(cards)).toBe(200 + 600);
+  });
+});
+
+describe('formatInclusionRate', () => {
+  it('shows one decimal, comma-separated', () => {
+    expect(formatInclusionRate(4.9)).toBe('4,9 %');
+    expect(formatInclusionRate(13.24)).toBe('13,2 %');
+    expect(formatInclusionRate(100)).toBe('100,0 %');
+  });
+
+  it('shows « < 0,1 % » for any known rate below 0.1, zero included', () => {
+    expect(formatInclusionRate(0)).toBe('< 0,1 %');
+    expect(formatInclusionRate(0.04)).toBe('< 0,1 %');
+    expect(formatInclusionRate(0.05)).toBe('< 0,1 %');
+    expect(formatInclusionRate(0.099)).toBe('< 0,1 %');
+  });
+
+  it('shows one decimal from 0.1 on', () => {
+    expect(formatInclusionRate(0.1)).toBe('0,1 %');
+  });
+
+  it('shows a dash when the rate is unknown', () => {
+    expect(formatInclusionRate(undefined)).toBe('—');
+  });
+});
+
+describe('tradeInclusionAverageLabel', () => {
+  it('averages the cards that have a rate, ignoring the others', () => {
+    const cards = [
+      card({ inclusion_rate: 10 }),
+      card({ inclusion_rate: 16.4 }),
+      card({ inclusion_rate: undefined }),
+    ];
+    expect(tradeInclusionAverageLabel(cards)).toBe('moy. 13,2 %');
+  });
+
+  it('shows a dash when no card has a rate', () => {
+    expect(tradeInclusionAverageLabel([card(), card()])).toBe('—');
+    expect(tradeInclusionAverageLabel([])).toBe('—');
   });
 });

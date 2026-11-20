@@ -1,4 +1,5 @@
 import type { CardSize } from '../composables/useCardPageSize';
+import type { TradeValueMode } from './trade';
 
 /**
  * A display preference kept in localStorage across reloads: the key, the values the page still
@@ -32,6 +33,13 @@ export const COLLECTION_GRAPH_RANGE_PREF = definePreference<GraphRange>(
   'tae_collection_graph_range',
   GRAPH_RANGES,
   '30 j',
+);
+
+/** What the Trade screen compares between the two sides: the prices, or the inclusion rates. */
+export const TRADE_VALUE_MODE_PREF = definePreference<TradeValueMode>(
+  'tae_trade_value_mode',
+  ['eur', 'inclusion_rate'],
+  'eur',
 );
 
 /** The stored value, or the default when there is none, it is no longer offered, or the storage fails. */
