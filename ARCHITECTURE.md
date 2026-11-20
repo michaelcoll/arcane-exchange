@@ -123,7 +123,8 @@ Tout tourne dans le même processus que l'API, sans ordonnanceur externe :
   un worker via un canal Tokio et répond immédiatement. Le client suit l'avancement en interrogeant
   l'état de l'import. Au démarrage, les imports restés actifs d'un process précédent sont marqués en
   échec.
-- **Enrichissement des cartes** (identifiants Cardmarket via Scryfall, images de cartes) : une
+- **Enrichissement des cartes** (identifiants Cardmarket via Scryfall, images de cartes, taux
+  d'inclusion EDHREC) : une
   `EnrichmentQueue` générique par source (`application/enrichment_queue.rs`) possède le
   canal, l'ensemble des cartes en file (une carte n'y est jamais deux fois) et le rafraîchissement
   des vues quand la file se vide. Chaque source n'est qu'un `Enricher` (cartes en attente +
@@ -142,6 +143,11 @@ Tout tourne dans le même processus que l'API, sans ordonnanceur externe :
   meilleure, et toutes les cartes qui la partagent sont alors alignées. Une image enregistrée n'est
   jamais retéléchargée automatiquement : `POST /maintenance/update-card-images` remet en file les
   cartes en fallback et celles en attente.
+- **Taux d'inclusion EDHREC** : indexé par nom anglais de carte (ADR-0027), une carte par nom en
+  file, au plus une requête par seconde vers EDHREC. Une nouvelle carte est mise en file si son nom
+  n'a pas encore de taux ; une tâche planifiée hebdomadaire (cron in-process, dimanche) ou
+  `POST /maintenance/update-inclusion-rates` remet en file tous les noms présents en collection. Un
+  404 ou une erreur n'écrit rien : le taux existant est conservé et le nom retenté au passage suivant.
 - **Import des prix** : tâche planifiée (cron in-process) toutes les 12 heures.
 - **Chargement du catalogue** : tâche planifiée quotidienne (cron in-process) ou
   `POST /maintenance/update-catalog`, un seul à la fois. Le bulk Scryfall `all_cards` (~2 Go décompressé)

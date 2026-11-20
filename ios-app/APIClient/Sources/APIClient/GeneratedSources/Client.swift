@@ -3553,6 +3553,64 @@ public struct Client: APIProtocol {
             }
         )
     }
+    /// - Remark: HTTP `POST /maintenance/update-inclusion-rates`.
+    /// - Remark: Generated from `#/paths//maintenance/update-inclusion-rates/post(update_inclusion_rates)`.
+    public func update_inclusion_rates(_ input: Operations.update_inclusion_rates.Input) async throws -> Operations.update_inclusion_rates.Output {
+        try await client.send(
+            input: input,
+            forOperation: Operations.update_inclusion_rates.id,
+            serializer: { input in
+                let path = try converter.renderedPath(
+                    template: "/maintenance/update-inclusion-rates",
+                    parameters: []
+                )
+                var request: HTTPTypes.HTTPRequest = .init(
+                    soar_path: path,
+                    method: .post
+                )
+                suppressMutabilityWarning(&request)
+                converter.setAcceptHeader(
+                    in: &request.headerFields,
+                    contentTypes: input.headers.accept
+                )
+                return (request, nil)
+            },
+            deserializer: { response, responseBody in
+                switch response.status.code {
+                case 202:
+                    let contentType = converter.extractContentTypeIfPresent(in: response.headerFields)
+                    let body: Operations.update_inclusion_rates.Output.Accepted.Body
+                    let chosenContentType = try converter.bestContentType(
+                        received: contentType,
+                        options: [
+                            "application/json"
+                        ]
+                    )
+                    switch chosenContentType {
+                    case "application/json":
+                        body = try await converter.getResponseBodyAsJSON(
+                            Components.Schemas.EnqueueResponse.self,
+                            from: responseBody,
+                            transforming: { value in
+                                .json(value)
+                            }
+                        )
+                    default:
+                        preconditionFailure("bestContentType chose an invalid content type.")
+                    }
+                    return .accepted(.init(body: body))
+                default:
+                    return .undocumented(
+                        statusCode: response.status.code,
+                        .init(
+                            headerFields: response.headerFields,
+                            body: responseBody
+                        )
+                    )
+                }
+            }
+        )
+    }
     /// - Remark: HTTP `GET /purchases`.
     /// - Remark: Generated from `#/paths//purchases/get(list_purchases)`.
     public func list_purchases(_ input: Operations.list_purchases.Input) async throws -> Operations.list_purchases.Output {

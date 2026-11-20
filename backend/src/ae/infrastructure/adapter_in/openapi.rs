@@ -84,6 +84,7 @@ use utoipa::OpenApi;
         super::maintenance::controller::trigger_price_update,
         super::maintenance::controller::update_cardmarket_ids,
         super::maintenance::controller::update_catalog,
+        super::maintenance::controller::update_inclusion_rates,
         super::user::controller::register,
         super::user::controller::get_user_profile,
         super::trade::controller::create_trade,

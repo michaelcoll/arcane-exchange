@@ -12,6 +12,7 @@ pub fn create_maintenance_router() -> axum::Router<AppState> {
         .route("/update-cardmarket-ids", post(update_cardmarket_ids))
         .route("/update-card-images", post(update_card_images))
         .route("/update-catalog", post(update_catalog))
+        .route("/update-inclusion-rates", post(update_inclusion_rates))
 }
 
 #[utoipa::path(
@@ -80,6 +81,25 @@ pub(crate) async fn update_card_images(
     let enqueued = state
         .enqueue_card_image_use_case
         .enqueue_fallback_and_pending_updates()
+        .await?;
+
+    Ok((StatusCode::ACCEPTED, Json(EnqueueResponse { enqueued })))
+}
+
+#[utoipa::path(
+    post,
+    path = "/maintenance/update-inclusion-rates",
+    responses(
+        (status = 202, description = "One card per English name in a collection enqueued to refresh its EDHREC inclusion rate, as the weekly cron does", body = EnqueueResponse),
+    ),
+    tag = "maintenance",
+)]
+pub(crate) async fn update_inclusion_rates(
+    State(state): State<AppState>,
+) -> Result<(StatusCode, Json<EnqueueResponse>), AppError> {
+    let enqueued = state
+        .enqueue_inclusion_rate_use_case
+        .enqueue_collected_names()
         .await?;
 
     Ok((StatusCode::ACCEPTED, Json(EnqueueResponse { enqueued })))

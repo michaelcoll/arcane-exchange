@@ -1,0 +1,62 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT DISTINCT ON (c.name) c.set_code, c.collector_number, c.language_code, c.name\n            FROM card c\n            WHERE c.name IN (\n                SELECT collected.name\n                FROM card collected\n                JOIN collection_entry ce\n                  ON ce.set_code = collected.set_code\n                 AND ce.collector_number = collected.collector_number\n                 AND ce.language_code = collected.language_code\n            )\n            ORDER BY c.name, c.set_code, c.collector_number, c.language_code",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "set_code",
+        "type_info": "Varchar",
+        "origin": {
+          "Table": {
+            "table": "card",
+            "name": "set_code"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "collector_number",
+        "type_info": "Varchar",
+        "origin": {
+          "Table": {
+            "table": "card",
+            "name": "collector_number"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "language_code",
+        "type_info": "Varchar",
+        "origin": {
+          "Table": {
+            "table": "card",
+            "name": "language_code"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "name",
+        "type_info": "Varchar",
+        "origin": {
+          "Table": {
+            "table": "card",
+            "name": "name"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "35f72b558d12128d5b32f706330f5be5f3173628fa3f4148837fcf32ed339ae4"
+}

@@ -157,6 +157,7 @@ pub struct AppState {
     pub import_price_use_case: Arc<dyn ImportPriceUseCase>,
     pub enqueue_cardmarket_id_use_case: Arc<dyn EnqueueCardMarketIdUpdateUseCase>,
     pub enqueue_card_image_use_case: Arc<dyn EnqueueCardImageUpdateUseCase>,
+    pub enqueue_inclusion_rate_use_case: Arc<dyn EnqueueInclusionRateUpdateUseCase>,
     pub get_collection_price_history_use_case: Arc<dyn GetCollectionPriceHistoryUseCase>,
     pub get_card_price_history_use_case: Arc<dyn GetCardPriceHistoryUseCase>,
     pub get_collection_stats_use_case: Arc<dyn GetCollectionStatsUseCase>,
@@ -381,7 +382,7 @@ fn create_app_state(
         repos.card.clone(),
         enqueue_cardmarket_id_use_case.clone(),
         enqueue_card_image_use_case.clone(),
-        enqueue_inclusion_rate_use_case,
+        enqueue_inclusion_rate_use_case.clone(),
     ));
     let attach_card_to_sealed_product_service: Arc<dyn AttachCardToSealedProductUseCase> =
         Arc::new(AttachCardToSealedProductService::new(
@@ -504,6 +505,7 @@ fn create_app_state(
         import_price_use_case,
         enqueue_cardmarket_id_use_case,
         enqueue_card_image_use_case,
+        enqueue_inclusion_rate_use_case,
         get_collection_price_history_use_case: collection_price_history_service,
         get_card_price_history_use_case: card_price_history_service,
         get_collection_stats_use_case: collection_stats_service,
@@ -583,6 +585,22 @@ async fn schedule_catalog_update_job(update_catalog_use_case: Arc<dyn UpdateCata
         async move {
             if let Err(e) = service.update_catalog().await {
                 tracing::error!(error = %e, "failed to update the catalog");
+            }
+        }
+    })
+    .await;
+}
+
+async fn schedule_inclusion_rate_refresh_job(
+    enqueue_inclusion_rate_use_case: Arc<dyn EnqueueInclusionRateUpdateUseCase>,
+) {
+    // Weekly, Sunday 02:00 UTC: the queue's worker spaces the requests to EDHREC.
+    schedule_job("0 0 2 * * SUN", move || {
+        let service = enqueue_inclusion_rate_use_case.clone();
+        async move {
+            match service.enqueue_collected_names().await {
+                Ok(count) => tracing::info!(count, "queued the inclusion rates to refresh"),
+                Err(e) => tracing::error!(error = %e, "failed to queue the inclusion rates"),
             }
         }
     })
@@ -679,7 +697,7 @@ pub async fn create_infra(pool: Pool<Postgres>, config: &Config) -> Router {
         card_collection_service,
         enqueue_cardmarket_id_use_case,
         enqueue_card_image_use_case,
-        enqueue_inclusion_rate_use_case,
+        enqueue_inclusion_rate_use_case.clone(),
         card_import_sender,
         card_prices_refresh,
     );
@@ -691,6 +709,7 @@ pub async fn create_infra(pool: Pool<Postgres>, config: &Config) -> Router {
 
     schedule_price_import_job(app_state.import_price_use_case.clone()).await;
     schedule_catalog_update_job(app_state.update_catalog_use_case.clone()).await;
+    schedule_inclusion_rate_refresh_job(enqueue_inclusion_rate_use_case).await;
 
     create_router(app_state)
 }

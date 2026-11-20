@@ -85,9 +85,15 @@ pub trait CardRepository: Send + Sync {
 #[async_trait]
 #[cfg_attr(test, automock)]
 pub trait InclusionRateRepository: Send + Sync {
-    /// One card per English name that has no inclusion rate yet: the smallest of all the cards of
-    /// that name.
+    /// One card per English name that has no inclusion rate yet. The card is the smallest of all
+    /// the cards of that name, the same one whatever the question asked (see
+    /// [`Self::get_names_in_collections`]): a name is queued once.
     async fn get_names_without_rate(&self) -> Result<Vec<(CardId, InclusionRateLookup)>, AppError>;
+    /// One card per English name present in at least one collection, whether it has a rate or
+    /// not. The card is the smallest of all the cards of that name, collected or not.
+    async fn get_names_in_collections(
+        &self,
+    ) -> Result<Vec<(CardId, InclusionRateLookup)>, AppError>;
     /// Stores the rate of `card_name`, replacing the previous one.
     async fn save(&self, card_name: String, rate: InclusionRate) -> Result<(), AppError>;
 }

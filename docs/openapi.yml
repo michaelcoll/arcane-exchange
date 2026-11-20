@@ -1150,6 +1150,18 @@ paths:
       responses:
         '204':
           description: Catalog reloaded from the Scryfall bulk; a load already running makes this call a no-op
+  /maintenance/update-inclusion-rates:
+    post:
+      tags:
+      - maintenance
+      operationId: update_inclusion_rates
+      responses:
+        '202':
+          description: One card per English name in a collection enqueued to refresh its EDHREC inclusion rate, as the weekly cron does
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnqueueResponse'
   /purchases:
     get:
       tags:

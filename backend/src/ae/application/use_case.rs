@@ -279,6 +279,9 @@ pub trait EnqueueCardImageUpdateUseCase: Send + Sync {
 pub trait EnqueueInclusionRateUpdateUseCase: Send + Sync {
     /// Queues one card per English name that has no inclusion rate yet.
     async fn enqueue_pending_updates(&self) -> Result<usize, AppError>;
+    /// Queues one card per English name present in at least one collection, whether it already
+    /// has a rate or not (weekly refresh).
+    async fn enqueue_collected_names(&self) -> Result<usize, AppError>;
 }
 
 #[async_trait]
