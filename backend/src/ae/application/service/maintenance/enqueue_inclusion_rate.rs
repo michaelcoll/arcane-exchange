@@ -27,6 +27,13 @@ impl InclusionRateEnricher {
             edh_rec_caller,
         }
     }
+
+    /// One card per name present in at least one collection, rate or not.
+    async fn in_collections(&self) -> Result<Vec<(CardId, InclusionRateLookup)>, AppError> {
+        self.inclusion_rate_repository
+            .get_names_in_collections()
+            .await
+    }
 }
 
 #[async_trait]
@@ -68,6 +75,11 @@ impl EnqueueInclusionRateUpdateUseCase for EnrichmentQueue<InclusionRateEnricher
     async fn enqueue_pending_updates(&self) -> Result<usize, AppError> {
         self.enqueue_pending().await
     }
+
+    async fn enqueue_collected_names(&self) -> Result<usize, AppError> {
+        let names = self.enricher().in_collections().await?;
+        self.enqueue(names)
+    }
 }
 
 #[cfg(test)]
@@ -75,7 +87,9 @@ mod tests {
     use super::*;
     use crate::application::caller::MockEdhRecCaller;
     use crate::application::error::InfraError;
-    use crate::application::repository::MockInclusionRateRepository;
+    use crate::application::repository::{
+        MockCardPricesViewRepository, MockInclusionRateRepository,
+    };
     use crate::domain::inclusion_rate::InclusionRate;
     use crate::domain::language_code::LanguageCode;
 
@@ -167,5 +181,30 @@ mod tests {
             .await;
 
         assert!(result.is_err());
+    }
+
+    #[tokio::test]
+    async fn collection_updates_queue_one_card_per_name_in_a_collection_rate_or_not() {
+        let mut repository = MockInclusionRateRepository::new();
+        repository.expect_get_names_in_collections().returning(|| {
+            Box::pin(async {
+                Ok(vec![
+                    (card_id(), lookup("Sol Ring")),
+                    (
+                        CardId::new("FDN", "3", LanguageCode::EN),
+                        lookup("Counterspell"),
+                    ),
+                ])
+            })
+        });
+        repository.expect_get_names_without_rate().times(0);
+        let (queue, _worker) = EnrichmentQueue::new(
+            enricher(repository, MockEdhRecCaller::new()),
+            Arc::new(MockCardPricesViewRepository::new()),
+        );
+
+        assert_eq!(queue.enqueue_collected_names().await.unwrap(), 2);
+        // Already in flight: not queued twice.
+        assert_eq!(queue.enqueue_collected_names().await.unwrap(), 0);
     }
 }

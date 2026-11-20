@@ -3,7 +3,7 @@
 use crate::application::error::{AppError, InfraError};
 use crate::application::use_case::{
     MockEnqueueCardImageUpdateUseCase, MockEnqueueCardMarketIdUpdateUseCase,
-    MockImportPriceUseCase, MockUpdateCatalogUseCase,
+    MockEnqueueInclusionRateUpdateUseCase, MockImportPriceUseCase, MockUpdateCatalogUseCase,
 };
 use crate::domain::error::FunctionalError;
 use crate::infrastructure::testing::{anonymous, assert_error, json_of};
@@ -36,6 +36,13 @@ fn card_images_app(use_case: MockEnqueueCardImageUpdateUseCase) -> axum::Router 
 fn catalog_app(use_case: MockUpdateCatalogUseCase) -> axum::Router {
     create_router(AppState {
         update_catalog_use_case: Arc::new(use_case),
+        ..AppState::for_testing()
+    })
+}
+
+fn inclusion_rates_app(use_case: MockEnqueueInclusionRateUpdateUseCase) -> axum::Router {
+    create_router(AppState {
+        enqueue_inclusion_rate_use_case: Arc::new(use_case),
         ..AppState::for_testing()
     })
 }
@@ -237,6 +244,46 @@ async fn update_card_images_returns_error_on_repository_error() {
         card_images_app(mock_enqueue),
         Method::POST,
         "/maintenance/update-card-images",
+    )
+    .await;
+
+    assert_error(response, StatusCode::INTERNAL_SERVER_ERROR, "internal").await;
+}
+
+// --- Update inclusion rates ---
+
+#[tokio::test]
+async fn update_inclusion_rates_enqueues_every_name_in_a_collection() {
+    let mut mock_enqueue = MockEnqueueInclusionRateUpdateUseCase::new();
+    mock_enqueue
+        .expect_enqueue_collected_names()
+        .times(1)
+        .returning(|| Box::pin(async { Ok(7) }));
+    mock_enqueue.expect_enqueue_pending_updates().times(0);
+
+    let response = anonymous(
+        inclusion_rates_app(mock_enqueue),
+        Method::POST,
+        "/maintenance/update-inclusion-rates",
+    )
+    .await;
+
+    assert_eq!(response.status(), StatusCode::ACCEPTED);
+    assert_eq!(json_of(response).await, json!({ "enqueued": 7 }));
+}
+
+#[tokio::test]
+async fn update_inclusion_rates_returns_error_on_repository_error() {
+    let mut mock_enqueue = MockEnqueueInclusionRateUpdateUseCase::new();
+    mock_enqueue
+        .expect_enqueue_collected_names()
+        .times(1)
+        .returning(|| Box::pin(async { Err(repository_error("DB error")) }));
+
+    let response = anonymous(
+        inclusion_rates_app(mock_enqueue),
+        Method::POST,
+        "/maintenance/update-inclusion-rates",
     )
     .await;
 

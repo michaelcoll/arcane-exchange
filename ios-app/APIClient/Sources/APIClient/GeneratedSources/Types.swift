@@ -108,6 +108,9 @@ public protocol APIProtocol: Sendable {
     /// - Remark: HTTP `POST /maintenance/update-catalog`.
     /// - Remark: Generated from `#/paths//maintenance/update-catalog/post(update_catalog)`.
     func update_catalog(_ input: Operations.update_catalog.Input) async throws -> Operations.update_catalog.Output
+    /// - Remark: HTTP `POST /maintenance/update-inclusion-rates`.
+    /// - Remark: Generated from `#/paths//maintenance/update-inclusion-rates/post(update_inclusion_rates)`.
+    func update_inclusion_rates(_ input: Operations.update_inclusion_rates.Input) async throws -> Operations.update_inclusion_rates.Output
     /// - Remark: HTTP `GET /purchases`.
     /// - Remark: Generated from `#/paths//purchases/get(list_purchases)`.
     func list_purchases(_ input: Operations.list_purchases.Input) async throws -> Operations.list_purchases.Output
@@ -482,6 +485,11 @@ extension APIProtocol {
     /// - Remark: Generated from `#/paths//maintenance/update-catalog/post(update_catalog)`.
     public func update_catalog() async throws -> Operations.update_catalog.Output {
         try await update_catalog(Operations.update_catalog.Input())
+    }
+    /// - Remark: HTTP `POST /maintenance/update-inclusion-rates`.
+    /// - Remark: Generated from `#/paths//maintenance/update-inclusion-rates/post(update_inclusion_rates)`.
+    public func update_inclusion_rates(headers: Operations.update_inclusion_rates.Input.Headers = .init()) async throws -> Operations.update_inclusion_rates.Output {
+        try await update_inclusion_rates(Operations.update_inclusion_rates.Input(headers: headers))
     }
     /// - Remark: HTTP `GET /purchases`.
     /// - Remark: Generated from `#/paths//purchases/get(list_purchases)`.
