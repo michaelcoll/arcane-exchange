@@ -3,8 +3,8 @@
 //! A test overrides only the field it cares about with struct update syntax:
 //! `AppState { get_collection_use_case: Arc::new(mock), ..AppState::for_testing() }`.
 //!
-//! Most mocks have no expectation and panic if called. Four are pre-armed to succeed on any
-//! call: `import_card_use_case`, `edh_rec_caller_adapter`, `token_validator` and
+//! Most mocks have no expectation and panic if called. Three are pre-armed to succeed on any
+//! call: `import_card_use_case`, `token_validator` and
 //! `import_price_use_case`. Override them to assert on calls.
 //!
 //! The pre-armed `token_validator` accepts any token and resolves it to `User::for_testing()`.
@@ -15,7 +15,6 @@
 //! `401` of a table of routes.
 
 use super::AppState;
-use crate::application::caller::MockEdhRecCaller;
 use crate::application::service::showcase::get::ShowcaseService;
 use crate::application::service::stats::get::StatsService;
 use crate::application::token_validator::MockTokenValidator;
@@ -43,7 +42,6 @@ use crate::application::use_case::{
     MockCreateSealedProductUseCase, MockDeletePurchaseUseCase, MockGetPurchaseUseCase,
     MockListPurchasesUseCase, MockUpdatePurchaseUseCase,
 };
-use crate::domain::card::CardInfo;
 use crate::domain::card_import::CardImportId;
 use crate::domain::user::User;
 use crate::infrastructure::adapter_out::repository::showcase_repository_adapter::ShowcaseRepositoryAdapter;
@@ -174,16 +172,6 @@ impl AppState {
             .expect_start_import()
             .returning(|_, _| Box::pin(async { Ok(CardImportId::new()) }));
 
-        let mut mock_edh_rec = MockEdhRecCaller::new();
-        mock_edh_rec.expect_get_card_info().returning(|_| {
-            Box::pin(async {
-                Ok(CardInfo {
-                    inclusion: 0,
-                    total_decks: 0,
-                })
-            })
-        });
-
         let mut mock_auth = MockTokenValidator::new();
         mock_auth
             .expect_validate_token()
@@ -196,7 +184,6 @@ impl AppState {
 
         Self {
             import_card_use_case: Arc::new(mock_import_card),
-            edh_rec_caller_adapter: Arc::new(mock_edh_rec),
             stats_use_case: Arc::new(MockStatsUseCase::new()),
             get_showcase_use_case: Arc::new(MockGetShowcaseUseCase::new()),
             token_validator: Arc::new(mock_auth),

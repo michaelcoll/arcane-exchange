@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT tc.set_code AS \"set_code!\", tc.collector_number AS \"collector_number!\",\n                       tc.language_code AS \"language_code!\", tc.foil AS \"foil!\",\n                       tc.owner_user_id AS \"owner_user_id!\", tc.quantity AS \"quantity!\",\n                       c.name AS \"name!\", c.scryfall_id AS \"scryfall_id!\",\n                       c.image_source, c.image_has_back,\n                       lcp.low, lcp.trend, lcp.avg\n                FROM trade_card tc\n                JOIN card c ON c.set_code = tc.set_code AND c.collector_number = tc.collector_number\n                    AND c.language_code = tc.language_code\n                LEFT JOIN mv_last_cardmarket_prices lcp ON lcp.set_code = c.set_code\n                    AND lcp.collector_number = c.collector_number AND lcp.foil = tc.foil\n                WHERE tc.trade_id = $1",
+  "query": "SELECT tc.set_code AS \"set_code!\", tc.collector_number AS \"collector_number!\",\n                       tc.language_code AS \"language_code!\", tc.foil AS \"foil!\",\n                       tc.owner_user_id AS \"owner_user_id!\", tc.quantity AS \"quantity!\",\n                       c.name AS \"name!\", c.scryfall_id AS \"scryfall_id!\",\n                       c.image_source, c.image_has_back,\n                       lcp.low, lcp.trend, lcp.avg,\n                       ei.num_decks AS \"num_decks?\", ei.potential_decks AS \"potential_decks?\"\n                FROM trade_card tc\n                JOIN card c ON c.set_code = tc.set_code AND c.collector_number = tc.collector_number\n                    AND c.language_code = tc.language_code\n                LEFT JOIN mv_last_cardmarket_prices lcp ON lcp.set_code = c.set_code\n                    AND lcp.collector_number = c.collector_number AND lcp.foil = tc.foil\n                LEFT JOIN edhrec_inclusion ei ON ei.card_name = c.name\n                WHERE tc.trade_id = $1",
   "describe": {
     "columns": [
       {
@@ -145,6 +145,28 @@
             "name": "avg"
           }
         }
+      },
+      {
+        "ordinal": 13,
+        "name": "num_decks?",
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "edhrec_inclusion",
+            "name": "num_decks"
+          }
+        }
+      },
+      {
+        "ordinal": 14,
+        "name": "potential_decks?",
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "edhrec_inclusion",
+            "name": "potential_decks"
+          }
+        }
       }
     ],
     "parameters": {
@@ -165,8 +187,10 @@
       false,
       true,
       true,
+      true,
+      true,
       true
     ]
   },
-  "hash": "7c317b64674eb5076f353f3dd143c7240d62a947f9e0eacd6ea7a7f371daa8be"
+  "hash": "dda564765cfc4371efe1436840a30bf3bee4226651046ff3feda3e90e877a531"
 }

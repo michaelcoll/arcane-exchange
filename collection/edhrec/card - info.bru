@@ -1,11 +1,11 @@
 meta {
   name: card - info
   type: http
-  seq: 2
+  seq: 1
 }
 
 get {
-  url: https://edhrec.com/_next/data/{{edhrecBuildId}}/cards/:cardName.json
+  url: https://json.edhrec.com/pages/cards/:cardName.json
   body: none
   auth: inherit
 }

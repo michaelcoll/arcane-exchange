@@ -276,6 +276,13 @@ pub trait EnqueueCardImageUpdateUseCase: Send + Sync {
 
 #[async_trait]
 #[cfg_attr(test, automock)]
+pub trait EnqueueInclusionRateUpdateUseCase: Send + Sync {
+    /// Queues one card per English name that has no inclusion rate yet.
+    async fn enqueue_pending_updates(&self) -> Result<usize, AppError>;
+}
+
+#[async_trait]
+#[cfg_attr(test, automock)]
 pub trait CardCollectionPriceCalculationUseCase: Send + Sync {
     async fn calculate_total_price(&self) -> Result<(), AppError>;
 }

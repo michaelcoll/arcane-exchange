@@ -66,6 +66,12 @@ pub struct TradeCardResponse {
     pub image_url: Option<String>,
     /// Back image of a double-faced card; `null` for a single-faced card.
     pub image_back_url: Option<String>,
+    /// Share of the Commander decks listed by EDHREC that play the card, from 0 to 100, the same
+    /// for every printing and language of its name; absent while unknown.
+    #[schema(value_type = f64, required = false)]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[ts(optional)]
+    pub inclusion_rate: Option<f64>,
 }
 
 impl From<TradeCardDetail> for TradeCardResponse {
@@ -82,6 +88,7 @@ impl From<TradeCardDetail> for TradeCardResponse {
             scryfall_id: c.scryfall_id.to_string(),
             image_url,
             image_back_url,
+            inclusion_rate: c.inclusion_rate.and_then(|rate| rate.percentage()),
         }
     }
 }

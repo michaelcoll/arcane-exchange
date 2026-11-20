@@ -12,9 +12,6 @@ public protocol APIProtocol: Sendable {
     /// - Remark: HTTP `GET /autocomplete/user`.
     /// - Remark: Generated from `#/paths//autocomplete/user/get(autocomplete_user)`.
     func autocomplete_user(_ input: Operations.autocomplete_user.Input) async throws -> Operations.autocomplete_user.Output
-    /// - Remark: HTTP `POST /card/card-info`.
-    /// - Remark: Generated from `#/paths//card/card-info/post(get_card_info)`.
-    func get_card_info(_ input: Operations.get_card_info.Input) async throws -> Operations.get_card_info.Output
     /// - Remark: HTTP `GET /card/offers`.
     /// - Remark: Generated from `#/paths//card/offers/get(get_card_offers)`.
     func get_card_offers(_ input: Operations.get_card_offers.Input) async throws -> Operations.get_card_offers.Output
@@ -191,11 +188,6 @@ extension APIProtocol {
             query: query,
             headers: headers
         ))
-    }
-    /// - Remark: HTTP `POST /card/card-info`.
-    /// - Remark: Generated from `#/paths//card/card-info/post(get_card_info)`.
-    public func get_card_info(headers: Operations.get_card_info.Input.Headers = .init()) async throws -> Operations.get_card_info.Output {
-        try await get_card_info(Operations.get_card_info.Input(headers: headers))
     }
     /// - Remark: HTTP `GET /card/offers`.
     /// - Remark: Generated from `#/paths//card/offers/get(get_card_offers)`.

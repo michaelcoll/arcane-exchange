@@ -42,15 +42,6 @@ final class FakeAPI: APIProtocol, @unchecked Sendable {
         return try await onAutocompleteUser(input)
     }
 
-    var onGetCardInfo: (Operations.get_card_info.Input) async throws -> Operations.get_card_info.Output = { _ in
-        throw NotStubbed(operation: "get_card_info")
-    }
-
-    func get_card_info(_ input: Operations.get_card_info.Input) async throws -> Operations.get_card_info.Output {
-        record("get_card_info")
-        return try await onGetCardInfo(input)
-    }
-
     var onGetCardOffers: (Operations.get_card_offers.Input) async throws -> Operations.get_card_offers.Output = { _ in
         throw NotStubbed(operation: "get_card_offers")
     }

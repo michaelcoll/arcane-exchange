@@ -1,7 +1,8 @@
 use crate::application::error::InfraError;
-use crate::application::repository::CardImageLookup;
+use crate::application::repository::{CardImageLookup, InclusionRateLookup};
 use crate::domain::card::{Card, CardId, CollectionEntry, CopyId};
 use crate::domain::card_image::{CardImage, CardImageSource};
+use crate::domain::inclusion_rate::InclusionRate;
 use crate::domain::language_code::LanguageCode;
 use crate::domain::price::{FullPriceGuide, Price, PriceGuide, PriceHistoryEntry};
 use crate::domain::rarity_code::RarityCode;
@@ -48,6 +49,31 @@ impl TryFrom<CardImageLookupEntity> for (CardId, CardImageLookup) {
     }
 }
 
+/// The card standing for its name when fetching inclusion rates.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct InclusionRateLookupEntity {
+    pub set_code: String,
+    pub collector_number: String,
+    pub language_code: String,
+    pub name: String,
+}
+
+impl TryFrom<InclusionRateLookupEntity> for (CardId, InclusionRateLookup) {
+    type Error = InfraError;
+
+    fn try_from(entity: InclusionRateLookupEntity) -> Result<Self, InfraError> {
+        let card_id = card_id_from_db(
+            &entity.set_code,
+            entity.collector_number,
+            &entity.language_code,
+        )?;
+        let lookup = InclusionRateLookup {
+            card_name: entity.name,
+        };
+        Ok((card_id, lookup))
+    }
+}
+
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct SetNameEntity {
     pub set_code: String,
@@ -86,6 +112,31 @@ pub(super) fn card_id_from_db(
         language_code: LanguageCode::try_new(language_code)
             .map_err(|_| invalid_db_value("language code", language_code))?,
     })
+}
+
+/// The inclusion rate of a card name from the counts of its `edhrec_inclusion` row, `None` when
+/// the name has no row.
+pub(super) fn inclusion_rate_from_db(
+    num_decks: Option<i32>,
+    potential_decks: Option<i32>,
+) -> Result<Option<InclusionRate>, InfraError> {
+    match (num_decks, potential_decks) {
+        (Some(num_decks), Some(potential_decks)) => Ok(Some(InclusionRate {
+            num_decks: deck_count_from_db("num_decks", num_decks)?,
+            potential_decks: deck_count_from_db("potential_decks", potential_decks)?,
+        })),
+        _ => Ok(None),
+    }
+}
+
+/// A deck count of an `edhrec_inclusion` row (`what` names the column).
+pub(super) fn deck_count_from_db(what: &str, value: i32) -> Result<u32, InfraError> {
+    u32::try_from(value).map_err(|_| invalid_db_value(what, &value.to_string()))
+}
+
+/// Deck counts are `INTEGER` in the database: one too large for it is refused, not truncated.
+pub(super) fn deck_count_to_db(what: &str, value: u32) -> Result<i32, InfraError> {
+    i32::try_from(value).map_err(|_| invalid_db_value(what, &value.to_string()))
 }
 
 /// The image of a card from its `image_source` and `image_has_back` columns, `None` while it is
@@ -306,6 +357,8 @@ pub struct TradeCardDetailEntity {
     pub low: Option<i32>,
     pub avg: Option<i32>,
     pub trend: Option<i32>,
+    pub num_decks: Option<i32>,
+    pub potential_decks: Option<i32>,
 }
 
 impl TryFrom<TradeCardDetailEntity> for TradeCardDetail {
@@ -338,6 +391,7 @@ impl TryFrom<TradeCardDetailEntity> for TradeCardDetail {
             price_guide,
             scryfall_id: entity.scryfall_id,
             image: card_image_from_db(entity.image_source.as_deref(), entity.image_has_back)?,
+            inclusion_rate: inclusion_rate_from_db(entity.num_decks, entity.potential_decks)?,
         })
     }
 }
@@ -932,6 +986,46 @@ mod tests {
         };
 
         assert!(<(CardId, CardImageLookup)>::try_from(entity).is_err());
+    }
+
+    // --- InclusionRateLookupEntity ---
+
+    #[test]
+    fn inclusion_rate_lookup_entity_converts_to_card_id_and_lookup() {
+        let entity = InclusionRateLookupEntity {
+            set_code: "FDN".to_string(),
+            collector_number: "42".to_string(),
+            language_code: "EN".to_string(),
+            name: "Sol Ring".to_string(),
+        };
+
+        let (card_id, lookup) = <(CardId, InclusionRateLookup)>::try_from(entity).unwrap();
+
+        assert_eq!(card_id, CardId::new("FDN", "42", LanguageCode::EN));
+        assert_eq!(
+            lookup,
+            InclusionRateLookup {
+                card_name: "Sol Ring".to_string()
+            }
+        );
+    }
+
+    #[test]
+    fn inclusion_rate_lookup_entity_with_unknown_language_fails_to_convert() {
+        let entity = InclusionRateLookupEntity {
+            set_code: "FDN".to_string(),
+            collector_number: "42".to_string(),
+            language_code: "XX".to_string(),
+            name: "Sol Ring".to_string(),
+        };
+
+        assert!(<(CardId, InclusionRateLookup)>::try_from(entity).is_err());
+    }
+
+    #[test]
+    fn deck_count_too_large_for_the_database_is_refused() {
+        assert!(deck_count_to_db("num_decks", u32::MAX).is_err());
+        assert_eq!(deck_count_to_db("num_decks", 7).unwrap(), 7);
     }
 
     // --- UserEntity ---

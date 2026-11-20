@@ -1,6 +1,7 @@
 use crate::domain::card::CopyId;
 use crate::domain::card_image::CardImage;
 use crate::domain::error::FunctionalError;
+use crate::domain::inclusion_rate::InclusionRate;
 use crate::domain::pagination::{PageRequest, Pagination};
 use crate::domain::price::PriceGuide;
 use crate::domain::user::UserId;
@@ -356,6 +357,8 @@ pub struct TradeCardDetail {
     pub scryfall_id: uuid::Uuid,
     /// `None` while the card's image is pending.
     pub image: Option<CardImage>,
+    /// `None` while EDHREC's rate for the card's name is unknown.
+    pub inclusion_rate: Option<InclusionRate>,
 }
 
 /// One party's acceptance/confirmation/rating/abandon state on a trade.

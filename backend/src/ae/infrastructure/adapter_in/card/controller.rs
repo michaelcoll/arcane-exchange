@@ -8,40 +8,13 @@ use crate::infrastructure::AppState;
 use crate::infrastructure::adapter_in::auth_extractor::AuthenticatedUser;
 use crate::infrastructure::adapter_in::parse_copy_id;
 use axum::extract::{Path, Query, State};
-use axum::http::StatusCode;
-use axum::routing::{get, post};
+use axum::routing::get;
 use uuid::Uuid;
 
 pub fn create_card_router() -> axum::Router<AppState> {
     axum::Router::new()
-        .route("/card-info", post(get_card_info))
         .route("/{scryfall_id}/price-history", get(get_card_price_history))
         .route("/offers", get(get_card_offers))
-}
-
-#[utoipa::path(
-    post,
-    path = "/card/card-info",
-    responses(
-        (status = 200, description = "Card info from EDHRec"),
-        (status = 401, description = "Missing or invalid token"),
-    ),
-    security(("bearer_auth" = [])),
-    tag = "card",
-)]
-pub(crate) async fn get_card_info(
-    AuthenticatedUser(user): AuthenticatedUser,
-    State(state): State<AppState>,
-) -> Result<String, (StatusCode, String)> {
-    tracing::info!("Getting card info for user: {}", user.id);
-
-    state
-        .edh_rec_caller_adapter
-        .get_card_info("Sol Ring".to_string())
-        .await
-        .expect("panic message");
-
-    Ok("card Info".to_string())
 }
 
 #[utoipa::path(

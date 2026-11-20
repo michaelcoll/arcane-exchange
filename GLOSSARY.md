@@ -102,6 +102,13 @@ _Avoid_ : cote, valeur marchande, prix à zéro
 La série des prix de marché d'une carte, jour par jour, sur une période. À distinguer de l'historique
 de valeur d'une collection, qui agrège prix et quantités possédées pour un joueur.
 
+**Taux d'inclusion** :
+La part des decks Commander recensés par EDHREC qui jouent une carte, parmi ceux dont l'identité de
+couleur permet de la jouer. Le même pour toutes les impressions et toutes les langues d'un nom de
+carte. Un taux inconnu est absent, jamais nul. Par exception, la table qui le stocke porte le nom de
+la source, `edhrec_inclusion`.
+_Avoid_ : popularité, inclusion EDHREC, score EDHREC
+
 ### Collection
 
 **Collection** :
