@@ -4,6 +4,7 @@ use crate::domain::inclusion_rate::InclusionRate;
 use crate::infrastructure::adapter_out::caller::dto::{EdhRecCardPage, EdhRecPage};
 use crate::infrastructure::adapter_out::caller::http;
 use async_trait::async_trait;
+use reqwest::StatusCode;
 use std::time::Duration;
 use tokio::sync::Mutex;
 use tokio::time::Instant;
@@ -12,31 +13,55 @@ use tokio::time::Instant;
 const FACE_SEPARATOR: &str = " // ";
 
 /// Reads the inclusion rate on EDHREC's public JSON pages, one request per card, never closer
-/// than `min_interval` to the previous one: EDHREC is free and has no official API.
+/// than `min_interval` to the previous one: EDHREC is free and has no official API. After a 429
+/// or a 503 the interval becomes `backoff_interval`, for the rest of the process.
 pub struct EdhRecCallerAdapter {
     client: reqwest::Client,
     edh_rec_base_url: String,
-    min_interval: Duration,
+    backoff_interval: Duration,
+    schedule: Mutex<Schedule>,
+}
+
+struct Schedule {
+    interval: Duration,
     /// When the next request may start.
-    next_request_at: Mutex<Instant>,
+    next_request_at: Instant,
 }
 
 impl EdhRecCallerAdapter {
-    pub fn new(edh_rec_base_url: impl Into<String>, min_interval: Duration) -> Self {
+    pub fn new(
+        edh_rec_base_url: impl Into<String>,
+        min_interval: Duration,
+        backoff_interval: Duration,
+    ) -> Self {
         Self {
             client: http::client(),
             edh_rec_base_url: edh_rec_base_url.into(),
-            min_interval,
-            next_request_at: Mutex::new(Instant::now()),
+            backoff_interval,
+            schedule: Mutex::new(Schedule {
+                interval: min_interval,
+                next_request_at: Instant::now(),
+            }),
         }
     }
 
     /// Waits for this request's turn. The lock is held while waiting, so concurrent callers are
-    /// served one `min_interval` apart.
+    /// served one interval apart.
     async fn wait_for_turn(&self) {
-        let mut next_request_at = self.next_request_at.lock().await;
-        tokio::time::sleep_until(*next_request_at).await;
-        *next_request_at = Instant::now() + self.min_interval;
+        let mut schedule = self.schedule.lock().await;
+        tokio::time::sleep_until(schedule.next_request_at).await;
+        schedule.next_request_at = Instant::now() + schedule.interval;
+    }
+
+    /// EDHREC refuses to serve us at this pace: slows every following request down.
+    async fn back_off(&self, status: StatusCode, url: &str) {
+        let mut schedule = self.schedule.lock().await;
+        schedule.interval = self.backoff_interval;
+        schedule.next_request_at = Instant::now() + self.backoff_interval;
+        tracing::warn!(
+            "EDHREC answered {status} on {url}: backing off to one request every {:?}.",
+            self.backoff_interval
+        );
     }
 }
 
@@ -116,7 +141,15 @@ impl EdhRecCallerAdapter {
         card_name: &str,
     ) -> Result<Option<T>, AppError> {
         self.wait_for_turn().await;
-        let Some(response) = http::get_unless_not_found(&self.client, url).await? else {
+        let response = self.client.get(url).send().await?;
+        let status = response.status();
+        if matches!(
+            status,
+            StatusCode::TOO_MANY_REQUESTS | StatusCode::SERVICE_UNAVAILABLE
+        ) {
+            self.back_off(status, url).await;
+        }
+        let Some(response) = http::check_status(url, response)? else {
             return Ok(None);
         };
         let page = response.json().await.map_err(|e| {
@@ -129,11 +162,12 @@ impl EdhRecCallerAdapter {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::sync::Arc;
     use wiremock::matchers::path;
     use wiremock::{Mock, MockServer, ResponseTemplate};
 
     fn create_adapter(edh_rec_base_url: impl Into<String>) -> EdhRecCallerAdapter {
-        EdhRecCallerAdapter::new(edh_rec_base_url, Duration::ZERO)
+        EdhRecCallerAdapter::new(edh_rec_base_url, Duration::ZERO, Duration::ZERO)
     }
 
     fn page(num_decks: u32, potential_decks: u32) -> String {
@@ -301,7 +335,11 @@ mod tests {
             ResponseTemplate::new(200).set_body_string(page(1, 2)),
         )
         .await;
-        let adapter = EdhRecCallerAdapter::new(server.uri(), Duration::from_millis(300));
+        let adapter = EdhRecCallerAdapter::new(
+            server.uri(),
+            Duration::from_millis(300),
+            Duration::from_secs(5),
+        );
 
         let started = std::time::Instant::now();
         adapter.get_inclusion_rate("A".to_string()).await.unwrap();
@@ -409,7 +447,11 @@ mod tests {
             ResponseTemplate::new(200).set_body_string(page(1, 2)),
         )
         .await;
-        let adapter = EdhRecCallerAdapter::new(server.uri(), Duration::from_millis(300));
+        let adapter = EdhRecCallerAdapter::new(
+            server.uri(),
+            Duration::from_millis(300),
+            Duration::from_secs(5),
+        );
 
         let started = std::time::Instant::now();
         adapter
@@ -429,7 +471,11 @@ mod tests {
             ResponseTemplate::new(200).set_body_string(page(1, 2)),
         )
         .await;
-        let adapter = EdhRecCallerAdapter::new(server.uri(), Duration::from_millis(300));
+        let adapter = EdhRecCallerAdapter::new(
+            server.uri(),
+            Duration::from_millis(300),
+            Duration::from_secs(5),
+        );
 
         let started = std::time::Instant::now();
         for _ in 0..3 {
@@ -441,6 +487,98 @@ mod tests {
 
         // The first request is not delayed: two intervals separate the three.
         assert!(started.elapsed() >= Duration::from_millis(600));
+    }
+
+    #[tokio::test]
+    async fn requests_from_concurrent_callers_are_spaced_by_the_minimum_interval() {
+        let server = MockServer::start().await;
+        serve(
+            &server,
+            "/pages/cards/sol-ring.json",
+            ResponseTemplate::new(200).set_body_string(page(1, 2)),
+        )
+        .await;
+        let adapter = EdhRecCallerAdapter::new(
+            server.uri(),
+            Duration::from_millis(200),
+            Duration::from_secs(5),
+        );
+
+        let starts = Arc::new(std::sync::Mutex::new(Vec::new()));
+        let adapter = &adapter;
+        let calls = (0..4).map(|_| {
+            let starts = starts.clone();
+            async move {
+                let result = adapter.get_inclusion_rate("Sol Ring".to_string()).await;
+                starts.lock().unwrap().push(std::time::Instant::now());
+                result
+            }
+        });
+        for result in futures::future::join_all(calls).await {
+            result.unwrap();
+        }
+
+        // Completions follow the starts in order; a response takes about the same time each.
+        let starts = starts.lock().unwrap();
+        for pair in starts.windows(2) {
+            assert!(pair[1] - pair[0] >= Duration::from_millis(150));
+        }
+    }
+
+    async fn assert_status_slows_the_next_request_down(status: u16) {
+        let server = MockServer::start().await;
+        serve(
+            &server,
+            "/pages/cards/sol-ring.json",
+            ResponseTemplate::new(status),
+        )
+        .await;
+        let adapter =
+            EdhRecCallerAdapter::new(server.uri(), Duration::ZERO, Duration::from_millis(300));
+
+        let result = adapter.get_inclusion_rate("Sol Ring".to_string()).await;
+        assert!(matches!(
+            result,
+            Err(AppError::Infra(InfraError::CallError(_)))
+        ));
+
+        let started = std::time::Instant::now();
+        let _ = adapter.get_inclusion_rate("Sol Ring".to_string()).await;
+        assert!(started.elapsed() >= Duration::from_millis(300));
+
+        // The back-off is kept: the next request is spaced by it too.
+        let started = std::time::Instant::now();
+        let _ = adapter.get_inclusion_rate("Sol Ring".to_string()).await;
+        assert!(started.elapsed() >= Duration::from_millis(300));
+    }
+
+    #[tokio::test]
+    async fn a_429_is_an_error_and_slows_the_next_requests_down() {
+        assert_status_slows_the_next_request_down(429).await;
+    }
+
+    #[tokio::test]
+    async fn a_503_is_an_error_and_slows_the_next_requests_down() {
+        assert_status_slows_the_next_request_down(503).await;
+    }
+
+    #[tokio::test]
+    async fn a_500_does_not_slow_the_next_requests_down() {
+        let server = MockServer::start().await;
+        serve(
+            &server,
+            "/pages/cards/sol-ring.json",
+            ResponseTemplate::new(500),
+        )
+        .await;
+        let adapter =
+            EdhRecCallerAdapter::new(server.uri(), Duration::ZERO, Duration::from_secs(5));
+
+        let _ = adapter.get_inclusion_rate("Sol Ring".to_string()).await;
+
+        let started = std::time::Instant::now();
+        let _ = adapter.get_inclusion_rate("Sol Ring".to_string()).await;
+        assert!(started.elapsed() < Duration::from_secs(1));
     }
 
     #[test]

@@ -49,6 +49,14 @@ pub async fn get_unless_not_found(
     url: &str,
 ) -> Result<Option<reqwest::Response>, AppError> {
     let response = client.get(url).send().await?;
+    check_status(url, response)
+}
+
+/// `None` on a 404, an error on any other non-success status, the response otherwise.
+pub fn check_status(
+    url: &str,
+    response: reqwest::Response,
+) -> Result<Option<reqwest::Response>, AppError> {
     match response.status() {
         StatusCode::NOT_FOUND => Ok(None),
         status if status.is_success() => Ok(Some(response)),
