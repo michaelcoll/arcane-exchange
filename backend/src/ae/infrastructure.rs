@@ -260,8 +260,12 @@ fn create_repositories(pool: &Pool<Postgres>) -> Repositories {
 }
 
 // ---- Callers ----
-/// EDHREC is a free service without an official API: at most one request per second.
-const EDH_REC_MIN_INTERVAL: Duration = Duration::from_secs(1);
+/// EDHREC is a free service without an official API: at most five requests per second, half of
+/// what was measured without a refusal.
+const EDH_REC_MIN_INTERVAL: Duration = Duration::from_millis(200);
+
+/// The interval between two requests once EDHREC answered 429 or 503.
+const EDH_REC_BACKOFF_INTERVAL: Duration = Duration::from_secs(1);
 
 struct Callers {
     card_market: Arc<CardMarketCallerAdapter>,
@@ -278,6 +282,7 @@ fn create_callers(config: &Config) -> Callers {
         edh_rec: Arc::new(EdhRecCallerAdapter::new(
             config.edh_rec_base_url.clone(),
             EDH_REC_MIN_INTERVAL,
+            EDH_REC_BACKOFF_INTERVAL,
         )),
         scryfall: Arc::new(ScryfallCallerAdapter::new(
             config.scryfall_base_url.clone(),

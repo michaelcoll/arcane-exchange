@@ -53,6 +53,8 @@ fn resolved_line(card_name: &str, rate: &InclusionRate) -> String {
 impl Enricher for InclusionRateEnricher {
     type Lookup = InclusionRateLookup;
     const NAME: &'static str = "Inclusion rate";
+    /// Requests overlap: EDHREC answers in ~0.65 s, the adapter spaces their starts.
+    const CONCURRENCY: usize = 4;
 
     async fn pending(&self) -> Result<Vec<(CardId, InclusionRateLookup)>, AppError> {
         self.inclusion_rate_repository

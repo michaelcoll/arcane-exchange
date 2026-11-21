@@ -144,10 +144,11 @@ Tout tourne dans le même processus que l'API, sans ordonnanceur externe :
   jamais retéléchargée automatiquement : `POST /maintenance/update-card-images` remet en file les
   cartes en fallback et celles en attente.
 - **Taux d'inclusion EDHREC** : indexé par nom anglais de carte (ADR-0027), une carte par nom en
-  file, au plus une requête par seconde vers EDHREC. Une nouvelle carte est mise en file si son nom
-  n'a pas encore de taux ; une tâche planifiée hebdomadaire (cron in-process, dimanche) ou
-  `POST /maintenance/update-inclusion-rates` remet en file tous les noms présents en collection. Un
-  404 ou une erreur n'écrit rien : le taux existant est conservé et le nom retenté au passage suivant.
+  file, 4 cartes en parallèle et au plus 5 requêtes par seconde vers EDHREC (1 par seconde après un
+  429 ou un 503). Une nouvelle carte est mise en file si son nom n'a pas encore de taux ; une tâche
+  planifiée hebdomadaire (cron in-process, dimanche) ou `POST /maintenance/update-inclusion-rates`
+  remet en file tous les noms présents en collection. Un 404 ou une erreur n'écrit rien : le taux
+  existant est conservé et le nom retenté au passage suivant.
 - **Import des prix** : tâche planifiée (cron in-process) toutes les 12 heures.
 - **Chargement du catalogue** : tâche planifiée quotidienne (cron in-process) ou
   `POST /maintenance/update-catalog`, un seul à la fois. Le bulk Scryfall `all_cards` (~2 Go décompressé)

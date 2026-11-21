@@ -9,10 +9,11 @@ use crate::application::error::{AppError, InfraError};
 use crate::application::repository::CardPricesViewRepository;
 use crate::domain::card::CardId;
 use async_trait::async_trait;
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 use std::sync::{Arc, Mutex, PoisonError};
 use tokio::sync::mpsc::error::SendError;
 use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender, unbounded_channel};
+use tokio::task::JoinSet;
 
 /// One enrichment source (e.g. Cardmarket id via Scryfall, Gatherer id).
 #[async_trait]
@@ -22,6 +23,9 @@ pub trait Enricher: Send + Sync + 'static {
 
     /// Source name, used in logs.
     const NAME: &'static str;
+
+    /// How many cards are resolved at the same time at most.
+    const CONCURRENCY: usize = 1;
 
     /// Cards still missing the enriched attribute.
     async fn pending(&self) -> Result<Vec<(CardId, Self::Lookup)>, AppError>;
@@ -113,23 +117,61 @@ pub(super) struct EnrichmentWorker<E: Enricher> {
 }
 
 impl<E: Enricher> EnrichmentWorker<E> {
-    /// Processes cards in series until every sender is dropped.
+    /// Resolves up to `E::CONCURRENCY` cards at once until every sender is dropped and the
+    /// cards in progress are done.
     async fn run(mut self) {
+        const {
+            assert!(
+                E::CONCURRENCY > 0,
+                "an enricher resolves at least one card at a time"
+            )
+        };
         tracing::info!("{} enrichment worker started.", E::NAME);
 
-        while let Some((card_id, lookup)) = self.receiver.recv().await {
-            if let Err(e) = self.enricher.resolve(&card_id, lookup).await {
-                tracing::error!(
-                    "{} enrichment failed for card {}: {:?}",
-                    E::NAME,
-                    card_id,
-                    e
-                );
-            }
-            self.in_flight.remove(&card_id);
+        let mut tasks: JoinSet<Result<(), AppError>> = JoinSet::new();
+        // The card of each task, found again by task id (a panicked task returns nothing).
+        let mut task_cards: HashMap<tokio::task::Id, CardId> = HashMap::new();
+        let mut channel_open = true;
 
-            if self.receiver.is_empty() {
-                self.on_drained().await;
+        while channel_open || !tasks.is_empty() {
+            tokio::select! {
+                received = self.receiver.recv(),
+                    if channel_open && tasks.len() < E::CONCURRENCY =>
+                {
+                    match received {
+                        Some((card_id, lookup)) => {
+                            let enricher = self.enricher.clone();
+                            let handle = tasks.spawn({
+                                let card_id = card_id.clone();
+                                async move { enricher.resolve(&card_id, lookup).await }
+                            });
+                            task_cards.insert(handle.id(), card_id);
+                        }
+                        None => channel_open = false,
+                    }
+                }
+                Some(joined) = tasks.join_next_with_id() => {
+                    let (task_id, outcome) = match joined {
+                        Ok((task_id, result)) => (task_id, result.map_err(|e| format!("{e:?}"))),
+                        Err(e) => (e.id(), Err(format!("task failed: {e}"))),
+                    };
+                    let Some(card_id) = task_cards.remove(&task_id) else {
+                        continue;
+                    };
+                    if let Err(e) = outcome {
+                        tracing::error!(
+                            "{} enrichment failed for card {}: {}",
+                            E::NAME,
+                            card_id,
+                            e
+                        );
+                    }
+                    self.in_flight.remove(&card_id);
+
+                    if tasks.is_empty() && self.receiver.is_empty() {
+                        self.on_drained().await;
+                    }
+                }
             }
         }
     }
@@ -173,6 +215,7 @@ mod tests {
     use crate::domain::language_code::LanguageCode;
     use crate::domain::set_name::SetCode;
     use std::sync::atomic::{AtomicUsize, Ordering};
+    use std::time::Duration;
     use tokio::sync::Notify;
 
     fn make_card_id(n: &str) -> CardId {
@@ -359,5 +402,141 @@ mod tests {
             vec![make_card_id("0"), make_card_id("1")]
         );
         assert_eq!(enricher.drains.load(Ordering::SeqCst), 1);
+    }
+
+    /// Resolves slowly, keeping track of how many `resolve` calls overlap.
+    #[derive(Default)]
+    struct SlowEnricher {
+        pending: Vec<CardId>,
+        panicking_card: Option<CardId>,
+        running: AtomicUsize,
+        max_running: AtomicUsize,
+        resolved: AtomicUsize,
+        drains: AtomicUsize,
+    }
+
+    #[async_trait]
+    impl Enricher for SlowEnricher {
+        type Lookup = ();
+        const NAME: &'static str = "Slow";
+        const CONCURRENCY: usize = 3;
+
+        async fn pending(&self) -> Result<Vec<(CardId, ())>, AppError> {
+            Ok(self.pending.iter().cloned().map(|c| (c, ())).collect())
+        }
+
+        async fn resolve(&self, card_id: &CardId, _: ()) -> Result<(), AppError> {
+            let running = self.running.fetch_add(1, Ordering::SeqCst) + 1;
+            self.max_running.fetch_max(running, Ordering::SeqCst);
+            tokio::time::sleep(Duration::from_millis(30)).await;
+            self.running.fetch_sub(1, Ordering::SeqCst);
+            if self.panicking_card.as_ref() == Some(card_id) {
+                panic!("resolve panicked");
+            }
+            self.resolved.fetch_add(1, Ordering::SeqCst);
+            Ok(())
+        }
+
+        async fn after_drain(&self) -> Result<(), AppError> {
+            self.drains.fetch_add(1, Ordering::SeqCst);
+            Ok(())
+        }
+    }
+
+    fn slow_enricher(cards: &[&str]) -> SlowEnricher {
+        SlowEnricher {
+            pending: cards.iter().copied().map(make_card_id).collect(),
+            ..SlowEnricher::default()
+        }
+    }
+
+    #[tokio::test]
+    async fn at_most_concurrency_cards_are_resolved_at_once() {
+        let (queue, worker) = EnrichmentQueue::new(
+            slow_enricher(&["0", "1", "2", "3", "4", "5", "6", "7"]),
+            prices_view(1),
+        );
+        let enricher = queue.enricher.clone();
+
+        queue.enqueue_pending().await.unwrap();
+        drop(queue);
+        worker.run().await;
+
+        assert_eq!(enricher.resolved.load(Ordering::SeqCst), 8);
+        assert_eq!(enricher.max_running.load(Ordering::SeqCst), 3);
+    }
+
+    #[tokio::test]
+    async fn the_drained_hook_runs_once_after_every_concurrent_resolution() {
+        let (queue, worker) =
+            EnrichmentQueue::new(slow_enricher(&["0", "1", "2", "3", "4"]), prices_view(1));
+        let enricher = queue.enricher.clone();
+
+        queue.enqueue_pending().await.unwrap();
+        drop(queue);
+        worker.run().await;
+
+        assert_eq!(enricher.drains.load(Ordering::SeqCst), 1);
+        assert_eq!(enricher.resolved.load(Ordering::SeqCst), 5);
+    }
+
+    #[tokio::test]
+    async fn a_panicking_resolution_is_logged_and_frees_its_card() {
+        let enricher = SlowEnricher {
+            panicking_card: Some(make_card_id("1")),
+            ..slow_enricher(&["0", "1", "2"])
+        };
+        let (queue, worker) = EnrichmentQueue::new(enricher, prices_view(1));
+        let enricher = queue.enricher.clone();
+
+        queue.enqueue_pending().await.unwrap();
+        let in_flight = queue.in_flight.clone();
+        drop(queue);
+        worker.run().await;
+
+        assert_eq!(enricher.resolved.load(Ordering::SeqCst), 2);
+        assert_eq!(enricher.drains.load(Ordering::SeqCst), 1);
+        assert!(in_flight.insert(make_card_id("1")));
+    }
+
+    #[tokio::test]
+    async fn an_enricher_without_a_concurrency_override_resolves_one_card_at_a_time() {
+        struct SerialEnricher {
+            running: AtomicUsize,
+            max_running: AtomicUsize,
+        }
+
+        #[async_trait]
+        impl Enricher for SerialEnricher {
+            type Lookup = ();
+            const NAME: &'static str = "Serial";
+
+            async fn pending(&self) -> Result<Vec<(CardId, ())>, AppError> {
+                Ok(vec![])
+            }
+
+            async fn resolve(&self, _: &CardId, _: ()) -> Result<(), AppError> {
+                let running = self.running.fetch_add(1, Ordering::SeqCst) + 1;
+                self.max_running.fetch_max(running, Ordering::SeqCst);
+                tokio::time::sleep(Duration::from_millis(20)).await;
+                self.running.fetch_sub(1, Ordering::SeqCst);
+                Ok(())
+            }
+        }
+
+        let enricher = SerialEnricher {
+            running: AtomicUsize::new(0),
+            max_running: AtomicUsize::new(0),
+        };
+        let (queue, worker) = EnrichmentQueue::new(enricher, prices_view(1));
+        let enricher = queue.enricher.clone();
+
+        queue
+            .enqueue(["0", "1", "2", "3"].map(|n| (make_card_id(n), ())).into())
+            .unwrap();
+        drop(queue);
+        worker.run().await;
+
+        assert_eq!(enricher.max_running.load(Ordering::SeqCst), 1);
     }
 }
