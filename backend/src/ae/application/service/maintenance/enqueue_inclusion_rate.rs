@@ -4,6 +4,7 @@ use crate::application::error::AppError;
 use crate::application::repository::{InclusionRateLookup, InclusionRateRepository};
 use crate::application::use_case::EnqueueInclusionRateUpdateUseCase;
 use crate::domain::card::CardId;
+use crate::domain::inclusion_rate::InclusionRate;
 use async_trait::async_trait;
 use std::sync::Arc;
 
@@ -36,6 +37,18 @@ impl InclusionRateEnricher {
     }
 }
 
+/// The log line of a resolved name: `Sol Ring -> 0,3 %`, or `Sol Ring -> —` when no deck could
+/// play the card.
+fn resolved_line(card_name: &str, rate: &InclusionRate) -> String {
+    match rate.percentage() {
+        Some(percentage) => {
+            let percentage = format!("{percentage:.1}").replace('.', ",");
+            format!("{card_name} -> {percentage} %")
+        }
+        None => format!("{card_name} -> —"),
+    }
+}
+
 #[async_trait]
 impl Enricher for InclusionRateEnricher {
     type Lookup = InclusionRateLookup;
@@ -58,7 +71,7 @@ impl Enricher for InclusionRateEnricher {
                 self.inclusion_rate_repository
                     .save(card_name.clone(), rate)
                     .await?;
-                tracing::info!("{} ({}) -> {:?}", card_name, card_id, rate);
+                tracing::info!("{}", resolved_line(&card_name, &rate));
             }
             None => tracing::warn!(
                 "EDHREC does not know '{}' ({}), left pending",
@@ -108,6 +121,42 @@ mod tests {
             num_decks: 10,
             potential_decks: 100,
         }
+    }
+
+    #[test]
+    fn the_log_line_gives_the_percentage_with_one_decimal_and_a_comma() {
+        let rate = InclusionRate {
+            num_decks: 2445,
+            potential_decks: 900_894,
+        };
+
+        assert_eq!(
+            resolved_line("Screeching Soulbreaker", &rate),
+            "Screeching Soulbreaker -> 0,3 %"
+        );
+    }
+
+    #[test]
+    fn the_log_line_has_a_dash_when_no_deck_could_play_the_card() {
+        let rate = InclusionRate {
+            num_decks: 0,
+            potential_decks: 0,
+        };
+
+        assert_eq!(resolved_line("Sol Ring", &rate), "Sol Ring -> —");
+    }
+
+    #[test]
+    fn the_log_line_keeps_the_dots_of_the_card_name() {
+        let rate = InclusionRate {
+            num_decks: 1,
+            potential_decks: 4,
+        };
+
+        assert_eq!(
+            resolved_line("Dr. Julius Jumblemorph", &rate),
+            "Dr. Julius Jumblemorph -> 25,0 %"
+        );
     }
 
     fn enricher(

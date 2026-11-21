@@ -1,7 +1,7 @@
 use crate::application::caller::EdhRecCaller;
 use crate::application::error::{AppError, InfraError};
 use crate::domain::inclusion_rate::InclusionRate;
-use crate::infrastructure::adapter_out::caller::dto::EdhRecCardPage;
+use crate::infrastructure::adapter_out::caller::dto::{EdhRecCardPage, EdhRecPage};
 use crate::infrastructure::adapter_out::caller::http;
 use async_trait::async_trait;
 use std::time::Duration;
@@ -82,28 +82,47 @@ impl EdhRecCaller for EdhRecCallerAdapter {
         &self,
         card_name: String,
     ) -> Result<Option<InclusionRate>, AppError> {
-        let mut found = None;
         for slug in card_slugs(&card_name) {
             let url = format!("{}/pages/cards/{slug}.json", self.edh_rec_base_url);
-            self.wait_for_turn().await;
-            found = http::get_unless_not_found(&self.client, &url).await?;
-            if found.is_some() {
-                break;
-            }
+            let Some(page) = self.get_page::<EdhRecPage>(&url, &card_name).await? else {
+                continue;
+            };
+            let card_page = match page {
+                EdhRecPage::Card(card_page) => card_page,
+                // A single redirect is followed: the page it points to is a card page or an error.
+                EdhRecPage::Redirect { redirect } => {
+                    let url = format!("{}/pages{redirect}.json", self.edh_rec_base_url);
+                    match self.get_page::<EdhRecCardPage>(&url, &card_name).await? {
+                        Some(card_page) => card_page,
+                        None => continue,
+                    }
+                }
+            };
+            let card = card_page.container.json_dict.card;
+            return Ok(Some(InclusionRate {
+                num_decks: card.num_decks,
+                potential_decks: card.potential_decks,
+            }));
         }
-        let Some(response) = found else {
+        Ok(None)
+    }
+}
+
+impl EdhRecCallerAdapter {
+    /// Waits for its turn, then reads the page at `url`; `None` when EDHREC does not know it.
+    async fn get_page<T: serde::de::DeserializeOwned>(
+        &self,
+        url: &str,
+        card_name: &str,
+    ) -> Result<Option<T>, AppError> {
+        self.wait_for_turn().await;
+        let Some(response) = http::get_unless_not_found(&self.client, url).await? else {
             return Ok(None);
         };
-
-        let page: EdhRecCardPage = response.json().await.map_err(|e| {
+        let page = response.json().await.map_err(|e| {
             InfraError::CallError(format!("unexpected EDHREC page for '{card_name}': {e}"))
         })?;
-        let card = page.container.json_dict.card;
-
-        Ok(Some(InclusionRate {
-            num_decks: card.num_decks,
-            potential_decks: card.potential_decks,
-        }))
+        Ok(Some(page))
     }
 }
 
@@ -212,6 +231,101 @@ mod tests {
             result,
             Err(AppError::Infra(InfraError::CallError(_)))
         ));
+    }
+
+    fn redirect(slug: &str) -> ResponseTemplate {
+        ResponseTemplate::new(200).set_body_string(format!(r#"{{"redirect": "/cards/{slug}"}}"#))
+    }
+
+    #[tokio::test]
+    async fn a_double_faced_card_whose_front_face_page_redirects_is_read_on_the_target_page() {
+        let server = MockServer::start().await;
+        serve(
+            &server,
+            "/pages/cards/restricted-office.json",
+            redirect("restricted-office-lecture-hall"),
+        )
+        .await;
+        serve(
+            &server,
+            "/pages/cards/restricted-office-lecture-hall.json",
+            ResponseTemplate::new(200).set_body_string(page(7, 70)),
+        )
+        .await;
+
+        let rate = create_adapter(server.uri())
+            .get_inclusion_rate("Restricted Office // Lecture Hall".to_string())
+            .await
+            .unwrap();
+
+        assert_eq!(rate.map(|r| r.num_decks), Some(7));
+    }
+
+    #[tokio::test]
+    async fn a_redirect_on_a_redirected_page_is_an_error() {
+        let server = MockServer::start().await;
+        serve(&server, "/pages/cards/a.json", redirect("b")).await;
+        serve(&server, "/pages/cards/b.json", redirect("c")).await;
+
+        let result = create_adapter(server.uri())
+            .get_inclusion_rate("A".to_string())
+            .await;
+
+        assert!(matches!(
+            result,
+            Err(AppError::Infra(InfraError::CallError(_)))
+        ));
+    }
+
+    #[tokio::test]
+    async fn a_redirect_to_an_unknown_page_is_not_found() {
+        let server = MockServer::start().await;
+        serve(&server, "/pages/cards/a.json", redirect("b")).await;
+        serve(&server, "/pages/cards/b.json", ResponseTemplate::new(404)).await;
+
+        let rate = create_adapter(server.uri())
+            .get_inclusion_rate("A".to_string())
+            .await
+            .unwrap();
+
+        assert_eq!(rate, None);
+    }
+
+    #[tokio::test]
+    async fn a_redirect_costs_one_interval() {
+        let server = MockServer::start().await;
+        serve(&server, "/pages/cards/a.json", redirect("b")).await;
+        serve(
+            &server,
+            "/pages/cards/b.json",
+            ResponseTemplate::new(200).set_body_string(page(1, 2)),
+        )
+        .await;
+        let adapter = EdhRecCallerAdapter::new(server.uri(), Duration::from_millis(300));
+
+        let started = std::time::Instant::now();
+        adapter.get_inclusion_rate("A".to_string()).await.unwrap();
+
+        assert!(started.elapsed() >= Duration::from_millis(300));
+    }
+
+    #[tokio::test]
+    async fn a_split_card_whose_front_face_page_redirects_is_read_on_its_full_name_page() {
+        let server = MockServer::start().await;
+        serve(&server, "/pages/cards/fire.json", redirect("fire-ice")).await;
+        serve(
+            &server,
+            "/pages/cards/fire-ice.json",
+            ResponseTemplate::new(200).set_body_string(page(10, 100)),
+        )
+        .await;
+
+        let rate = create_adapter(server.uri())
+            .get_inclusion_rate("Fire // Ice".to_string())
+            .await
+            .unwrap();
+
+        assert_eq!(rate.map(|r| r.num_decks), Some(10));
     }
 
     #[tokio::test]

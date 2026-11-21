@@ -43,6 +43,15 @@ impl From<CardmarketPriceGuide> for FullPriceGuide {
     }
 }
 
+/// What `json.edhrec.com/pages/cards/<slug>.json` answers: the card page, or a redirect to the
+/// page EDHREC actually gives the card (`{"redirect": "/cards/<slug>"}`).
+#[derive(Debug, serde::Deserialize)]
+#[serde(untagged)]
+pub enum EdhRecPage {
+    Redirect { redirect: String },
+    Card(EdhRecCardPage),
+}
+
 /// A page of `json.edhrec.com/pages/cards/<slug>.json`: only what the inclusion rate needs.
 #[derive(Debug, serde::Deserialize)]
 pub struct EdhRecCardPage {
