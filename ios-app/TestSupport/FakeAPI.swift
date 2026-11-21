@@ -375,6 +375,15 @@ final class FakeAPI: APIProtocol, @unchecked Sendable {
         return try await onUpdateCardmarketIds(input)
     }
 
+    var onUpdateInclusionRates: (Operations.update_inclusion_rates.Input) async throws -> Operations.update_inclusion_rates.Output = { _ in
+        throw NotStubbed(operation: "update_inclusion_rates")
+    }
+
+    func update_inclusion_rates(_ input: Operations.update_inclusion_rates.Input) async throws -> Operations.update_inclusion_rates.Output {
+        record("update_inclusion_rates")
+        return try await onUpdateInclusionRates(input)
+    }
+
     var onSearchCards: (Operations.search_cards.Input) async throws -> Operations.search_cards.Output = { _ in
         throw NotStubbed(operation: "search_cards")
     }
