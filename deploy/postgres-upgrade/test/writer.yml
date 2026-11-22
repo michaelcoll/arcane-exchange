@@ -1,0 +1,16 @@
+# Synthetic writer standing in for the backend during the upgrade test. The stageN.yml files add its depends_on, the
+# same as the real backend has at that stage.
+services:
+  writer:
+    image: postgres:19
+    restart: "no"
+    environment:
+      PGHOST: ${WRITER_DB_HOST}
+      PGUSER: postgres
+      PGPASSWORD: password
+      PGDATABASE: postgres
+      WRITER_WAIT_FOR_GO: ${WRITER_WAIT_FOR_GO:-}
+    volumes:
+      - ./deploy/postgres-upgrade/test/writer.sh:/writer.sh:ro
+      - ${WRITER_CONTROL_DIR}:/control
+    command: ["sh", "/writer.sh"]

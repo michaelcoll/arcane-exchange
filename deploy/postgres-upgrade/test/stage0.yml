@@ -1,0 +1,4 @@
+# State before deploy 1: the old database without the wal_level override.
+services:
+  postgres:
+    command: !reset null

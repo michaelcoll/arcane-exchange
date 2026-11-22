@@ -1,0 +1,12 @@
+# Stage 1 = the repository's docker-compose.yml (deploy 1), tested as is: no host port, no backend/frontend.
+services:
+  postgres:
+    ports: !reset []
+  backend:
+    profiles: [disabled]
+  frontend:
+    profiles: [disabled]
+  writer:
+    depends_on:
+      postgres:
+        condition: service_healthy
