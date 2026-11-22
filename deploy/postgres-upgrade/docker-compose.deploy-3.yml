@@ -1,0 +1,94 @@
+# Deploy 3 (cleanup and rename) of the PostgreSQL 18 -> 19 upgrade. NOT applied yet: at deploy time, commit this file
+# as the repository's docker-compose.yml, keeping the backend and frontend image tags of the release in production.
+# DANGER: follow the runbook in README.md (stop the postgres19 and backend containers in Portainer first, then
+# "Pull and redeploy"); the pg-guard service is only a safety net.
+# `postgres` is now the 19 server on the ccpt/db folder; the 18 server, pg-cutover and the wal_level override are gone.
+services:
+  # Fails when the orphan `postgres19` container is still answering on the data directory used by `postgres`.
+  pg-guard:
+    image: postgres:19
+    restart: "no"
+    configs:
+      - source: pg-guard-script
+        target: /scripts/pg-guard.sh
+    command: ["sh", "/scripts/pg-guard.sh"]
+
+  postgres:
+    image: postgres:19
+    restart: unless-stopped
+    shm_size: 128mb
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: postgres
+    ports:
+      - "5432:5432"
+    depends_on:
+      pg-guard:
+        condition: service_completed_successfully
+    volumes:
+      - ${CCPT_DB_DIR:-/mnt/ssd/containers/config/ccpt/db}:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    image: ghcr.io/michaelcoll/arcane-exchange-backend:1.44.0
+    user: "${PUID:-65532}:${PGID:-65532}"
+    pull_policy: always
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "8080:8080"
+    environment:
+      DATABASE_URL: postgres://postgres:password@postgres:5432/postgres
+      BACKEND_PORT: 8080
+      CARDMARKET_PRICE_GUIDES_URL: https://downloads.s3.cardmarket.com/productCatalog/priceGuide/price_guide_1.json
+      EDHREC_BASE_URL: https://json.edhrec.com
+      SCRYFALL_BASE_URL: https://api.scryfall.com
+      CLERK_FRONTEND_API_URL: ${CLERK_FRONTEND_API_URL}
+      CARD_IMAGES_DIR: /data/card-images
+    volumes:
+      # Written by the backend only (ADR 0017); back it up with the database.
+      - ${CCPT_DATA_DIR:-/mnt/ssd/containers/config/ccpt}/card-images:/data/card-images
+
+  frontend:
+    image: ghcr.io/michaelcoll/arcane-exchange-frontend:1.44.0
+    pull_policy: always
+    restart: unless-stopped
+    ports:
+      - "9797:3000"
+    environment:
+      NUXT_PUBLIC_CLERK_PUBLISHABLE_KEY: ${CLERK_PUBLISHABLE_KEY}
+      NUXT_CLERK_SECRET_KEY: ${CLERK_SECRET_KEY}
+      CLERK_TELEMETRY_DISABLED: 1
+      CARD_IMAGES_DIR: /data/card-images
+    volumes:
+      # Served by Nitro under /card-images/**, read only.
+      - ${CCPT_DATA_DIR:-/mnt/ssd/containers/config/ccpt}/card-images:/data/card-images:ro
+    depends_on:
+      - backend
+
+# Inline script (no bind mount: Portainer clones the repository inside its own container). Compose interpolates
+# `content`, hence every dollar sign is doubled. Needs Docker Compose >= 2.23.
+configs:
+  pg-guard-script:
+    content: |
+      #!/bin/sh
+      # Deploy 3 of the PostgreSQL 18 -> 19 upgrade: refuses to let the renamed `postgres` service start while the
+      # orphan `postgres19` container still answers on the same data directory (two postmasters on one PGDATA
+      # corrupt it). Reliable because an orphan keeps its `postgres19` alias on the compose network.
+      set -eu
+
+      ORPHAN_HOST=$${ORPHAN_HOST:-postgres19}
+
+      if pg_isready -q -h "$$ORPHAN_HOST" -t 3; then
+        echo "[pg-guard] ERROR: $$ORPHAN_HOST is still running on the data directory the new postgres service uses."
+        echo "[pg-guard] Stop the postgres19 container, then redeploy the stack (Pull and redeploy)."
+        exit 1
+      fi
+      echo "[pg-guard] no $$ORPHAN_HOST answering, safe to start postgres"

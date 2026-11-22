@@ -9,24 +9,25 @@ The repository layout (one folder per app, shared files at the root) is describe
   Rust/iOS CLI tools, and exports the environment they rely on (`DATABASE_URL`, `BACKEND_PORT`, external API URLs).
   Run tasks through `mise run`, not `cargo`, `pnpm` or `sqlx` directly.
 - A stable **Rust** toolchain (edition 2024).
-- A **PostgreSQL 18** instance.
+- A **PostgreSQL 19** instance.
 - For the iOS app only: **Xcode 26**.
 
 ## Setup
 
 ```bash
-mise install                    # toolchains — the postinstall hook also installs the lefthook git hooks
-mise run setup                  # install dependencies
-cp .env.example .env            # then fill in your Clerk keys (see README › Configuration)
-docker compose up -d postgres   # or use your own PostgreSQL
-mise run migrate                # apply database migrations
+mise install                                            # toolchains — the postinstall hook also installs the lefthook git hooks
+mise run setup                                          # install dependencies
+cp .env.example .env                                    # then fill in your Clerk keys (see README › Configuration)
+docker compose -f ccpt_local/docker-compose.yml up -d   # or use your own PostgreSQL
+mise run migrate                                        # apply database migrations
 
-mise run back                   # API on http://localhost:8080
-mise run front                  # app on http://localhost:3000
+mise run back                                           # API on http://localhost:8080
+mise run front                                          # app on http://localhost:3000
 ```
 
-The `postgres` service in `docker-compose.yml` stores its data under `/mnt/ssd/…`; point that volume at a local
-folder if the path does not exist on your machine.
+`ccpt_local/docker-compose.yml` is the local database (PostgreSQL 19, data in a Docker volume). The root
+`docker-compose.yml` is the production stack: its folders under `/mnt/ssd/…` can be moved with `CCPT_DATA_DIR` and
+`CCPT_DB_DIR`.
 
 ### iOS app
 

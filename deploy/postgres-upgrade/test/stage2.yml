@@ -1,0 +1,14 @@
+# Stage 2 = docker-compose.deploy-2.yml, tested as is: no host port, no backend/frontend.
+services:
+  postgres:
+    ports: !reset []
+  backend:
+    profiles: [disabled]
+  frontend:
+    profiles: [disabled]
+  writer:
+    depends_on:
+      pg-cutover:
+        condition: service_completed_successfully
+      postgres19:
+        condition: service_healthy

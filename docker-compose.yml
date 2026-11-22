@@ -1,6 +1,9 @@
 services:
+  # --- PostgreSQL 18 -> 19 upgrade, deploy 1 of 3: see deploy/postgres-upgrade/README.md ---
+  # Old database, still the one the backend uses. wal_level=logical lets 19 subscribe to it.
   postgres:
     image: postgres:18
+    command: ["postgres", "-c", "wal_level=logical"]
     restart: unless-stopped
     shm_size: 128mb
     environment:
@@ -11,12 +14,50 @@ services:
     ports:
       - "5432:5432"
     volumes:
-      - /mnt/ssd/containers/config/ccpt:/var/lib/postgresql/data
+      - ${CCPT_DATA_DIR:-/mnt/ssd/containers/config/ccpt}:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres"]
       interval: 10s
       timeout: 5s
       retries: 5
+
+  # New database, fed by logical replication from `postgres`. 18+ image layout: the volume is
+  # /var/lib/postgresql and PGDATA is left to the image (/var/lib/postgresql/19/docker).
+  postgres19:
+    image: postgres:19
+    restart: unless-stopped
+    shm_size: 128mb
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: postgres
+    volumes:
+      - ${CCPT_DB_DIR:-/mnt/ssd/containers/config/ccpt/db}:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # One-shot and idempotent: copies the schema to 19 and creates the subscription.
+  pg-replicate:
+    image: postgres:19
+    restart: "no"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      postgres19:
+        condition: service_healthy
+    environment:
+      OLD_HOST: postgres
+      NEW_HOST: postgres19
+      PGUSER: postgres
+      PGPASSWORD: password
+      PGDATABASE: postgres
+    configs:
+      - source: pg-replicate-script
+        target: /scripts/pg-replicate.sh
+    command: ["sh", "/scripts/pg-replicate.sh"]
 
   backend:
     image: ghcr.io/michaelcoll/arcane-exchange-backend:1.44.0
@@ -38,7 +79,7 @@ services:
       CARD_IMAGES_DIR: /data/card-images
     volumes:
       # Written by the backend only (ADR 0017); back it up with the database.
-      - /mnt/ssd/containers/config/ccpt/card-images:/data/card-images
+      - ${CCPT_DATA_DIR:-/mnt/ssd/containers/config/ccpt}/card-images:/data/card-images
 
   frontend:
     image: ghcr.io/michaelcoll/arcane-exchange-frontend:1.44.0
@@ -53,6 +94,53 @@ services:
       CARD_IMAGES_DIR: /data/card-images
     volumes:
       # Served by Nitro under /card-images/**, read only.
-      - /mnt/ssd/containers/config/ccpt/card-images:/data/card-images:ro
+      - ${CCPT_DATA_DIR:-/mnt/ssd/containers/config/ccpt}/card-images:/data/card-images:ro
     depends_on:
       - backend
+
+# Inline script (no bind mount: Portainer clones the repository inside its own container). Compose interpolates
+# `content`, hence every dollar sign is doubled. Needs Docker Compose >= 2.23.
+configs:
+  pg-replicate-script:
+    content: |
+      #!/bin/sh
+      # Deploy 1 of the PostgreSQL 18 -> 19 upgrade: copies the schema to the new database and subscribes it to the
+      # old one. Idempotent. Connection settings come from the environment: OLD_HOST, NEW_HOST, PGUSER, PGPASSWORD,
+      # PGDATABASE. See deploy/postgres-upgrade/README.md.
+      set -eu
+
+      : "$${OLD_HOST:?}" "$${NEW_HOST:?}" "$${PGUSER:?}" "$${PGPASSWORD:?}" "$${PGDATABASE:?}"
+      SUBSCRIPTION=pg19_upgrade
+
+      log() { echo "[pg-replicate] $$*"; }
+      old() { psql -X -q -t -A -v ON_ERROR_STOP=1 -h "$$OLD_HOST" "$$@"; }
+      new() { psql -X -q -t -A -v ON_ERROR_STOP=1 -h "$$NEW_HOST" "$$@"; }
+
+      wal_level=$$(old -c "SHOW wal_level")
+      if [ "$$wal_level" != "logical" ]; then
+        log "ERROR: wal_level is '$$wal_level' on $$OLD_HOST, it must be 'logical' (is the 'command' override applied and the container restarted?)"
+        exit 1
+      fi
+
+      if [ "$$(new -c "SELECT count(*) FROM pg_subscription WHERE subname = '$$SUBSCRIPTION'")" != "0" ]; then
+        log "subscription $$SUBSCRIPTION already exists on $$NEW_HOST, nothing to do"
+        exit 0
+      fi
+
+      tables=$$(new -c "SELECT count(*) FROM pg_tables WHERE schemaname = 'public'")
+      if [ "$$tables" = "0" ]; then
+        log "$$NEW_HOST has no table: copying the schema from $$OLD_HOST"
+        pg_dump --schema-only --no-owner -h "$$OLD_HOST" | psql -X -q -v ON_ERROR_STOP=1 --single-transaction -h "$$NEW_HOST" -o /dev/null
+      else
+        log "ERROR: $$NEW_HOST already has $$tables public tables but no subscription $$SUBSCRIPTION: half-done state, a human must decide (empty the ccpt/db folder and relaunch, or finish by hand)"
+        exit 1
+      fi
+
+      if [ "$$(old -c "SELECT count(*) FROM pg_publication WHERE pubname = '$$SUBSCRIPTION'")" = "0" ]; then
+        log "creating publication $$SUBSCRIPTION on $$OLD_HOST"
+        old -c "CREATE PUBLICATION $$SUBSCRIPTION FOR ALL TABLES"
+      fi
+
+      log "creating subscription $$SUBSCRIPTION on $$NEW_HOST (the initial copy runs in the background)"
+      new -c "CREATE SUBSCRIPTION $$SUBSCRIPTION CONNECTION 'host=$$OLD_HOST dbname=$$PGDATABASE user=$$PGUSER password=$$PGPASSWORD' PUBLICATION $$SUBSCRIPTION"
+      log "done: follow the copy with the query in the README"
