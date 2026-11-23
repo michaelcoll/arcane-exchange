@@ -1,6 +1,7 @@
+# Deploy 2 (cutover) of the PostgreSQL 18 -> 19 upgrade. NOT applied yet: at deploy time, commit this file as the
+# repository's docker-compose.yml, keeping the backend and frontend image tags of the release in production.
+# Differences with deploy 1: pg-replicate is replaced by pg-cutover, the backend uses postgres19.
 services:
-  # --- PostgreSQL 18 -> 19 upgrade, deploy 1 of 3: see deploy/postgres-upgrade/README.md ---
-  # Old database, still the one the backend uses. wal_level=logical lets 19 subscribe to it.
   postgres:
     image: postgres:18
     command: ["postgres", "-c", "wal_level=logical"]
@@ -21,8 +22,6 @@ services:
       timeout: 5s
       retries: 5
 
-  # New database, fed by logical replication from `postgres`. 18+ image layout: the volume is
-  # /var/lib/postgresql and PGDATA is left to the image (/var/lib/postgresql/19/docker).
   postgres19:
     image: postgres:19
     restart: unless-stopped
@@ -39,8 +38,8 @@ services:
       timeout: 5s
       retries: 5
 
-  # One-shot and idempotent: copies the schema to 19 and creates the subscription.
-  pg-replicate:
+  # One-shot and idempotent: waits for the copy, freezes 18, checks the data, drops the replication.
+  pg-cutover:
     image: postgres:19
     restart: "no"
     depends_on:
@@ -55,9 +54,9 @@ services:
       PGPASSWORD: password
       PGDATABASE: postgres
     configs:
-      - source: pg-replicate-script
-        target: /scripts/pg-replicate.sh
-    command: ["sh", "/scripts/pg-replicate.sh"]
+      - source: pg-cutover-script
+        target: /scripts/pg-cutover.sh
+    command: ["sh", "/scripts/pg-cutover.sh"]
 
   backend:
     image: ghcr.io/michaelcoll/arcane-exchange-backend:1.44.0
@@ -65,12 +64,14 @@ services:
     pull_policy: always
     restart: unless-stopped
     depends_on:
-      postgres:
+      pg-cutover:
+        condition: service_completed_successfully
+      postgres19:
         condition: service_healthy
     ports:
       - "8080:8080"
     environment:
-      DATABASE_URL: postgres://postgres:password@postgres:5432/postgres
+      DATABASE_URL: postgres://postgres:password@postgres19:5432/postgres
       BACKEND_PORT: 8080
       CARDMARKET_PRICE_GUIDES_URL: https://downloads.s3.cardmarket.com/productCatalog/priceGuide/price_guide_1.json
       EDHREC_BASE_URL: https://json.edhrec.com
@@ -101,46 +102,102 @@ services:
 # Inline script (no bind mount: Portainer clones the repository inside its own container). Compose interpolates
 # `content`, hence every dollar sign is doubled. Needs Docker Compose >= 2.23.
 configs:
-  pg-replicate-script:
+  pg-cutover-script:
     content: |
       #!/bin/sh
-      # Deploy 1 of the PostgreSQL 18 -> 19 upgrade: copies the schema to the new database and subscribes it to the
-      # old one. Idempotent. Connection settings come from the environment: OLD_HOST, NEW_HOST, PGUSER, PGPASSWORD,
-      # PGDATABASE. See deploy/postgres-upgrade/README.md.
+      # Deploy 2 of the PostgreSQL 18 -> 19 upgrade: freezes the old database, waits for the new one to catch up,
+      # checks the data and drops the replication. Idempotent. Connection settings come from the environment:
+      # OLD_HOST, NEW_HOST, PGUSER, PGPASSWORD, PGDATABASE; optional SYNC_TIMEOUT_SECONDS (default 1800) and
+      # CATCHUP_TIMEOUT_SECONDS (default 300). See deploy/postgres-upgrade/README.md.
       set -eu
 
       : "$${OLD_HOST:?}" "$${NEW_HOST:?}" "$${PGUSER:?}" "$${PGPASSWORD:?}" "$${PGDATABASE:?}"
       SUBSCRIPTION=pg19_upgrade
+      SYNC_TIMEOUT_SECONDS=$${SYNC_TIMEOUT_SECONDS:-1800}
+      CATCHUP_TIMEOUT_SECONDS=$${CATCHUP_TIMEOUT_SECONDS:-300}
 
-      log() { echo "[pg-replicate] $$*"; }
+      log() { echo "[pg-cutover] $$*"; }
       old() { psql -X -q -t -A -v ON_ERROR_STOP=1 -h "$$OLD_HOST" "$$@"; }
       new() { psql -X -q -t -A -v ON_ERROR_STOP=1 -h "$$NEW_HOST" "$$@"; }
 
-      wal_level=$$(old -c "SHOW wal_level")
-      if [ "$$wal_level" != "logical" ]; then
-        log "ERROR: wal_level is '$$wal_level' on $$OLD_HOST, it must be 'logical' (is the 'command' override applied and the container restarted?)"
+      rollback_hint() {
+        log "$$OLD_HOST stays read-only and the backend does not start. To roll back: on $$OLD_HOST run"
+        log "  ALTER DATABASE $$PGDATABASE SET default_transaction_read_only = off;"
+        log "then restore the previous docker-compose.yml (backend on $$OLD_HOST)."
+      }
+
+      if [ "$$(new -c "SELECT count(*) FROM pg_subscription WHERE subname = '$$SUBSCRIPTION'")" = "0" ]; then
+        if [ "$$(new -c "SELECT to_regclass('public._sqlx_migrations') IS NOT NULL")" = "t" ]; then
+          log "no subscription $$SUBSCRIPTION and $$NEW_HOST has data: already cut over, nothing to do"
+          exit 0
+        fi
+        log "ERROR: no subscription $$SUBSCRIPTION and $$NEW_HOST has no data: pg-replicate never ran"
         exit 1
       fi
 
-      if [ "$$(new -c "SELECT count(*) FROM pg_subscription WHERE subname = '$$SUBSCRIPTION'")" != "0" ]; then
-        log "subscription $$SUBSCRIPTION already exists on $$NEW_HOST, nothing to do"
-        exit 0
-      fi
-
-      tables=$$(new -c "SELECT count(*) FROM pg_tables WHERE schemaname = 'public'")
-      if [ "$$tables" = "0" ]; then
-        log "$$NEW_HOST has no table: copying the schema from $$OLD_HOST"
-        pg_dump --schema-only --no-owner -h "$$OLD_HOST" | psql -X -q -v ON_ERROR_STOP=1 --single-transaction -h "$$NEW_HOST" -o /dev/null
-      else
-        log "ERROR: $$NEW_HOST already has $$tables public tables but no subscription $$SUBSCRIPTION: half-done state, a human must decide (empty the ccpt/db folder and relaunch, or finish by hand)"
+      # Checked before freezing the old database, so that a failure leaves it writable.
+      sequences=$$(old -c "SELECT count(*) FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace WHERE c.relkind = 'S' AND n.nspname NOT IN ('pg_catalog', 'information_schema') AND n.nspname !~ '^pg_toast'")
+      if [ "$$sequences" != "0" ]; then
+        log "ERROR: $$OLD_HOST has $$sequences sequence(s): logical replication does not copy their values, a setval sync would be needed first"
         exit 1
       fi
 
-      if [ "$$(old -c "SELECT count(*) FROM pg_publication WHERE pubname = '$$SUBSCRIPTION'")" = "0" ]; then
-        log "creating publication $$SUBSCRIPTION on $$OLD_HOST"
-        old -c "CREATE PUBLICATION $$SUBSCRIPTION FOR ALL TABLES"
+      log "waiting for the initial copy (every table of pg_subscription_rel in state 'r'), at most $${SYNC_TIMEOUT_SECONDS}s"
+      waited=0
+      while :; do
+        total=$$(new -c "SELECT count(*) FROM pg_subscription_rel")
+        pending=$$(new -c "SELECT count(*) FROM pg_subscription_rel WHERE srsubstate <> 'r'")
+        if [ "$$total" != "0" ] && [ "$$pending" = "0" ]; then break; fi
+        if [ "$$waited" -ge "$$SYNC_TIMEOUT_SECONDS" ]; then
+          log "ERROR: initial copy not finished after $${SYNC_TIMEOUT_SECONDS}s ($$pending of $$total tables pending); $$OLD_HOST was not frozen yet"
+          exit 1
+        fi
+        log "initial copy: $$pending of $$total tables pending"
+        sleep 10
+        waited=$$((waited + 10))
+      done
+      log "initial copy done ($$total tables)"
+
+      log "freezing $$OLD_HOST: database $$PGDATABASE read-only, client connections terminated"
+      old -c "ALTER DATABASE \"$$PGDATABASE\" SET default_transaction_read_only = on"
+      old -c "SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = '$$PGDATABASE' AND backend_type = 'client backend' AND pid <> pg_backend_pid()" >/dev/null
+
+      target=$$(old -c "SELECT pg_current_wal_lsn()")
+      log "waiting for the subscription to confirm WAL position $$target, at most $${CATCHUP_TIMEOUT_SECONDS}s"
+      waited=0
+      while :; do
+        caught_up=$$(old -c "SELECT coalesce(bool_or(confirmed_flush_lsn >= '$$target'::pg_lsn), false) FROM pg_replication_slots WHERE slot_name = '$$SUBSCRIPTION'")
+        if [ "$$caught_up" = "t" ]; then break; fi
+        if [ "$$waited" -ge "$$CATCHUP_TIMEOUT_SECONDS" ]; then
+          log "ERROR: subscription did not reach $$target after $${CATCHUP_TIMEOUT_SECONDS}s"
+          rollback_hint
+          exit 1
+        fi
+        sleep 1
+        waited=$$((waited + 1))
+      done
+      log "subscription caught up"
+
+      log "comparing row counts of the public tables"
+      mismatch=0
+      for table in $$(old -c "SELECT quote_ident(tablename) FROM pg_tables WHERE schemaname = 'public' ORDER BY 1"); do
+        on_old=$$(old -c "SELECT count(*) FROM public.$$table")
+        on_new=$$(new -c "SELECT count(*) FROM public.$$table")
+        if [ "$$on_old" = "$$on_new" ]; then
+          log "  $$table: $$on_old"
+        else
+          log "  MISMATCH $$table: $$on_old on $$OLD_HOST, $$on_new on $$NEW_HOST"
+          mismatch=1
+        fi
+      done
+      if [ "$$mismatch" != "0" ]; then
+        log "ERROR: row counts differ"
+        rollback_hint
+        exit 1
       fi
 
-      log "creating subscription $$SUBSCRIPTION on $$NEW_HOST (the initial copy runs in the background)"
-      new -c "CREATE SUBSCRIPTION $$SUBSCRIPTION CONNECTION 'host=$$OLD_HOST dbname=$$PGDATABASE user=$$PGUSER password=$$PGPASSWORD' PUBLICATION $$SUBSCRIPTION"
-      log "done: follow the copy with the query in the README"
+      log "dropping the subscription on $$NEW_HOST (and its slot on $$OLD_HOST), then the publication"
+      new -c "DROP SUBSCRIPTION $$SUBSCRIPTION"
+      # The database is read-only by default now: this one session must be allowed to write.
+      PGOPTIONS="-c default_transaction_read_only=off" old -c "DROP PUBLICATION IF EXISTS $$SUBSCRIPTION"
+      log "done: $$NEW_HOST is now the only writable database"
