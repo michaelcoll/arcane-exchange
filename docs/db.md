@@ -221,7 +221,7 @@ erDiagram
 ### card
 
 - check constraint `card_image_back_needs_source_check`: `CHECK (((image_source IS NOT NULL) OR (NOT image_has_back)))`
-- check constraint `card_image_source_check`: `CHECK (((image_source)::text = ANY ((ARRAY['gatherer_localized'::character varying, 'gatherer_en'::character varying, 'scryfall'::character varying])::text[])))`
+- check constraint `card_image_source_check`: `CHECK (((image_source)::text = ANY (ARRAY[('gatherer_localized'::character varying)::text, ('gatherer_en'::character varying)::text, ('scryfall'::character varying)::text])))`
 
 ### card_import
 
@@ -242,7 +242,7 @@ erDiagram
 ### collection_rarity_filters
 
 - check constraint `collection_rarity_filters_kept_copies_check`: `CHECK (((kept_copies >= 0) AND (kept_copies <= 4)))`
-- check constraint `collection_rarity_filters_rarity_check`: `CHECK (((rarity)::text = ANY ((ARRAY['C'::character varying, 'U'::character varying, 'R'::character varying, 'M'::character varying, 'S'::character varying])::text[])))`
+- check constraint `collection_rarity_filters_rarity_check`: `CHECK (((rarity)::text = ANY (ARRAY[('C'::character varying)::text, ('U'::character varying)::text, ('R'::character varying)::text, ('M'::character varying)::text, ('S'::character varying)::text])))`
 
 ### mv_card_prices
 
@@ -257,9 +257,9 @@ erDiagram
 
 - index `purchase_user_date_idx` (`user_id`, `purchased_on`, `created_at`)
 - check constraint `purchase_amount_positive`: `CHECK ((amount_cents > 0))`
-- check constraint `purchase_kind_check`: `CHECK (((kind)::text = ANY ((ARRAY['sealed_product'::character varying, 'single_card'::character varying])::text[])))`
+- check constraint `purchase_kind_check`: `CHECK (((kind)::text = ANY (ARRAY[('sealed_product'::character varying)::text, ('single_card'::character varying)::text])))`
 - check constraint `purchase_name_trimmed`: `CHECK (((name IS NULL) OR ((name = btrim(name)) AND (name <> ''::text))))`
-- check constraint `purchase_product_type_check`: `CHECK (((product_type)::text = ANY ((ARRAY['BOOSTER'::character varying, 'DISPLAY'::character varying, 'BUNDLE'::character varying, 'PRERELEASE_PACK'::character varying, 'PRECONSTRUCTED_DECK'::character varying])::text[])))`
+- check constraint `purchase_product_type_check`: `CHECK (((product_type)::text = ANY (ARRAY[('BOOSTER'::character varying)::text, ('DISPLAY'::character varying)::text, ('BUNDLE'::character varying)::text, ('PRERELEASE_PACK'::character varying)::text, ('PRECONSTRUCTED_DECK'::character varying)::text])))`
 - check constraint `purchase_sealed_product_check`: `CHECK (((((kind)::text = 'sealed_product'::text) AND (product_type IS NOT NULL) AND (set_code IS NOT NULL)) OR (((kind)::text = 'single_card'::text) AND (product_type IS NULL) AND (set_code IS NULL) AND (name IS NULL))))`
 
 ### purchase_content
@@ -281,4 +281,4 @@ erDiagram
 - index `idx_users_username_trgm` (expression)
 - unique index `users_username_unique` (`username`)
 - unique constraint `users_username_unique` (`username`)
-- check constraint `users_visibility_check`: `CHECK (((visibility)::text = ANY ((ARRAY['public'::character varying, 'trade'::character varying, 'private'::character varying])::text[])))`
+- check constraint `users_visibility_check`: `CHECK (((visibility)::text = ANY (ARRAY[('public'::character varying)::text, ('trade'::character varying)::text, ('private'::character varying)::text])))`
