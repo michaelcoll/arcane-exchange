@@ -315,11 +315,6 @@ description = "Tests the script that announces each release on Discord (node:tes
 dir = ".github/scripts/release-announcement"
 run = "node --test"
 
-# Not in `checks`: it needs Docker and the local dev database container, and takes minutes.
-[tasks.test-pg-upgrade]
-description = "Plays the PostgreSQL 18 -> 19 logical-replication upgrade end to end in Docker (own compose project, seeded from the ccpt_local database)"
-run = "bash deploy/postgres-upgrade/test/run.sh"
-
 [tasks.lint-ios]
 description = "Lints the iOS app"
 dir = "ios-app"
