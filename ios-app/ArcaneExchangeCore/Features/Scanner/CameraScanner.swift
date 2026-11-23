@@ -17,7 +17,7 @@ package enum CameraStatus: Equatable {
 /// straightens the strip of its printed line (perspective correction) and runs Vision text recognition on it.
 /// The text lines and the card found go to `onFrame`, on the capture queue.
 ///
-/// Glue only, taken over from the prototype `prototypes/ocr-collector-line`: no unit test, the camera does
+/// Glue only, taken over from the former OCR prototype: no unit test, the camera does
 /// not exist in the simulator. Everything it feeds is tested (`CardRecogniser`, `ReadingStabiliser`,
 /// `CardContour`, `ScanGuide`).
 package final class CameraScanner: NSObject, @unchecked Sendable {

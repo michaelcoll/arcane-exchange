@@ -1,6 +1,6 @@
 @testable import ArcaneExchangeCore
 
-/// SYNTHETIC FIXTURES, taken over from the prototype (`prototypes/ocr-collector-line`). No physical
+/// SYNTHETIC FIXTURES, taken over from the former OCR prototype. No physical
 /// card was available: these lines are written from the known printed formats of the printed line,
 /// with typical OCR confusions, NOT captured by Vision. Texts captured on real cards come in their
 /// own ticket.

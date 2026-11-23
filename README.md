@@ -17,7 +17,7 @@ collections, and trade them — card for card.
 
 - **On your iPhone too** — a native iOS app, with home-screen widgets for your collection and your ongoing trades.
 
-**Stack** — Rust (Axum, SQLx) · Nuxt 4 / Vue 3 / Tailwind · SwiftUI · PostgreSQL 18 · Clerk for authentication.
+**Stack** — Rust (Axum, SQLx) · Nuxt 4 / Vue 3 / Tailwind · SwiftUI · PostgreSQL 19 · Clerk for authentication.
 
 ## Quick start (Docker Compose)
 

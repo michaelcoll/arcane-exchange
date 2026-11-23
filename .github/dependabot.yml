@@ -31,7 +31,7 @@ updates:
       docker-compose-dependencies:
         patterns:
           - "*"
-    # A PostgreSQL major upgrade is a planned migration (deploy/postgres-upgrade/), never a plain bump.
+    # A PostgreSQL major upgrade is a planned migration, never a plain bump.
     ignore:
       - dependency-name: "postgres"
         update-types: ["version-update:semver-major"]
