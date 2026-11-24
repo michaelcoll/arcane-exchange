@@ -6,12 +6,22 @@ rustfmt, clippy, ESLint, Prettier, SwiftLint or SwiftFormat already reports is l
 ## Cross-cutting
 
 - **Language**: write code, comments and commit messages in English, and user-facing strings in French: the product
-  is French-only, the codebase is not.
+  is French-only, the codebase is not. A comment may quote a French UI label or glossary term as is (« Terminer »,
+  Vitrine).
 - **Naming**: name identifiers, DTOs and UI labels with the terms of [`GLOSSARY.md`](GLOSSARY.md), never with one it
   lists under _Avoid_ (a single occurrence in a diff is a deviation): one concept keeps one name from the database to
   the screen.
 - **Glossary term form**: write an identifier with the glossary's bold term when it is English (`Trade`, `CardId`) and
   with its English translation when it is French (`Rareté` → `Rarity`): the Language rule keeps French out of code.
+- **Comment content**: write a comment only for what the code cannot say (an intent, an external constraint, a trap,
+  an invariant, a unit), as short as what it brings. Never restate a name, a signature or the line below, nor label a
+  group of items or tests (`// --- Responses ---`, `// accept`): the names already say it, and a paraphrase is one
+  more thing to keep true.
+- **Comment durability**: never tell the story of the code in a comment (an issue or PR number, "used to", "now X
+  instead of Y", a removed prototype), and leave neither a `TODO` nor commented-out code: git keeps the history, an
+  issue keeps the work to do.
+- **Comment accuracy**: when changing code, reread the comments that describe it (its doc, those in its body, those
+  that name it elsewhere) and fix or delete them in the same diff: a false comment costs more than none.
 
 ## Backend
 
@@ -36,6 +46,9 @@ rustfmt, clippy, ESLint, Prettier, SwiftLint or SwiftFormat already reports is l
   type name, which already follows `#[serde(rename = "X")]` (`CardOfferResponse` → `CardOffer.ts`).
 - **`Option<Struct>` DTO field**: annotate it `#[schema(value_type = TheStruct, required = false)]`: otherwise utoipa
   emits a schema the Swift generator drops, and the field silently disappears from the iOS client.
+- **Contract docs**: write the `///` of a DTO or a `#[utoipa::path]` handler for the web and iOS clients, who read it
+  through `docs/openapi.yml`, the TS bindings and the Swift client: no server internals (adapter, test, compression),
+  and regenerate the contract with the change.
 - **Bruno request**: give every new route its request in `collection/<resource>/<action>.bru`, and update it when the
   route's path, parameters or body change: the collection is how the API is tried by hand.
 
