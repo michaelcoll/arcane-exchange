@@ -2,7 +2,7 @@
 
 /**
  * Status filter values for `GET /trades`, repeated for multiple statuses
- * (e.g. `?status=PENDING&status=CLOSED`), mirroring `RarityCodeParam` on `/search/card`.
+ * (e.g. `?status=PENDING&status=CLOSED`).
  */
 export type TradeStatusParam =
   'PENDING' | 'ONE_ACCEPTED' | 'FULLY_ACCEPTED' | 'COMPLETED' | 'CLOSED' | 'ABANDONED';

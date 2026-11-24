@@ -7,7 +7,6 @@ use uuid::Uuid;
 /// The most copies a Collection entry holds: the width of the quantity the API exposes.
 pub const MAX_ENTRY_QUANTITY: u32 = 255;
 
-/// Designates a Collection entry in the API.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct CollectionEntryId(pub Uuid);
 
@@ -23,7 +22,6 @@ impl From<Uuid> for CollectionEntryId {
     }
 }
 
-/// The binder an entry is stored in.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct EntryBinder {
     pub id: BinderId,
@@ -62,7 +60,6 @@ pub struct ReservedQuantities {
 }
 
 impl ReservedQuantities {
-    /// What is committed in the finish.
     pub fn of(&self, foil: bool) -> u32 {
         if foil { self.foil } else { self.normal }
     }

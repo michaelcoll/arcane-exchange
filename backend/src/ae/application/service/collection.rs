@@ -12,7 +12,6 @@ pub mod run_card_import;
 pub mod update_entry;
 pub mod validate_scan_batch;
 
-/// Test fixtures shared by the tests of the Collection entry use cases.
 #[cfg(test)]
 mod test_fixtures {
     use crate::application::repository::MockCardPricesRefreshRequester;
@@ -25,7 +24,6 @@ mod test_fixtures {
         CollectionEntryId(Uuid::from_u128(1))
     }
 
-    /// A card creation that hands back the card id with its collector number normalized.
     pub(super) fn creating_card(times: usize) -> MockCreateCardUseCase {
         let mut create_card = MockCreateCardUseCase::new();
         create_card
@@ -43,7 +41,6 @@ mod test_fixtures {
         create_card
     }
 
-    /// A refresh requester that expects to be asked exactly `times` times.
     pub(super) fn refresh(times: usize) -> MockCardPricesRefreshRequester {
         let mut refresh = MockCardPricesRefreshRequester::new();
         refresh

@@ -51,8 +51,6 @@ fn repository_error(message: &str) -> AppError {
     AppError::Infra(InfraError::RepositoryError(message.to_string()))
 }
 
-// --- Trigger price update ---
-
 #[tokio::test]
 async fn trigger_price_update_returns_no_content_on_success() {
     let mut mock_import_price = MockImportPriceUseCase::new();
@@ -129,8 +127,6 @@ async fn trigger_price_update_returns_error_on_failure() {
 
     assert_error(response, StatusCode::INTERNAL_SERVER_ERROR, "internal").await;
 }
-
-// --- Update CardMarket IDs ---
 
 #[tokio::test]
 async fn update_cardmarket_ids_returns_accepted_with_enqueued_count() {
@@ -210,8 +206,6 @@ async fn update_cardmarket_ids_can_be_called_multiple_times() {
     }
 }
 
-// --- Update card images ---
-
 #[tokio::test]
 async fn update_card_images_enqueues_only_cards_in_fallback_or_pending() {
     let mut mock_enqueue = MockEnqueueCardImageUpdateUseCase::new();
@@ -250,8 +244,6 @@ async fn update_card_images_returns_error_on_repository_error() {
     assert_error(response, StatusCode::INTERNAL_SERVER_ERROR, "internal").await;
 }
 
-// --- Update inclusion rates ---
-
 #[tokio::test]
 async fn update_inclusion_rates_enqueues_every_name_in_a_collection() {
     let mut mock_enqueue = MockEnqueueInclusionRateUpdateUseCase::new();
@@ -289,8 +281,6 @@ async fn update_inclusion_rates_returns_error_on_repository_error() {
 
     assert_error(response, StatusCode::INTERNAL_SERVER_ERROR, "internal").await;
 }
-
-// --- Update catalog ---
 
 #[tokio::test]
 async fn update_catalog_returns_no_content_without_authentication() {

@@ -33,7 +33,7 @@ pub struct PriceGuide {
     pub trend: Price,
 }
 
-/// Represents one day's aggregated price for a user's collection.
+/// One day's price guide, aggregated for a user's collection or taken for a single card.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct PriceHistoryEntry {
     pub date: NaiveDate,

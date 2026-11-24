@@ -87,7 +87,6 @@ mod tests {
         )
     }
 
-    /// The respondent already put `make_card_id()` on their side of the trade.
     fn respondent_card() -> TradeCard {
         TradeCard {
             card_id: make_card_id(),
@@ -96,7 +95,6 @@ mod tests {
         }
     }
 
-    /// A trade repository returning `trade`, holding `cards`.
     fn trade_repository_with(trade: Trade, cards: Vec<TradeCard>) -> MockTradeRepository {
         let mut mock_trade_repository = MockTradeRepository::new();
         mock_trade_repository
@@ -127,7 +125,6 @@ mod tests {
         mock_user_repository
     }
 
-    /// Initiator adds `make_card_id()` to the side of `owner_username`.
     async fn add_card_owned_by(
         owner_username: &str,
         trade_repository: MockTradeRepository,
@@ -143,7 +140,6 @@ mod tests {
             .await
     }
 
-    /// Initiator adds `make_card_id()` to the respondent's side.
     async fn add_respondent_card(
         trade_repository: MockTradeRepository,
         user_repository: MockUserRepository,

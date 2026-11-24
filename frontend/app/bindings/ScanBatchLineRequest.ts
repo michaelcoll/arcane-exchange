@@ -12,9 +12,6 @@ export type ScanBatchLineRequest = {
    * Collector number of the catalog card.
    */
   collector_number: string;
-  /**
-   * Language of the copies.
-   */
   language_code: string;
   foil: boolean;
   /**

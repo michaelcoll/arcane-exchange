@@ -96,12 +96,10 @@ impl Pagination {
         self.page_size
     }
 
-    /// Number of items to skip, i.e. `page * page_size`.
     pub fn offset(&self) -> u32 {
         self.offset
     }
 
-    /// Maximum number of items to return, i.e. `page_size`.
     pub fn limit(&self) -> u32 {
         self.page_size
     }

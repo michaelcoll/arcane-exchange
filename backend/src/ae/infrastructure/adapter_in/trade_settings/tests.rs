@@ -23,10 +23,6 @@ fn db_error() -> AppError {
     AppError::Infra(InfraError::RepositoryError("DB error".to_string()))
 }
 
-// ============================================================
-// visibility
-// ============================================================
-
 #[tokio::test]
 async fn get_trade_visibility_returns_value_on_success() {
     let mut mock_uc = MockGetCollectionVisibilityUseCase::new();
@@ -108,10 +104,6 @@ async fn set_trade_visibility_propagates_user_not_found() {
 
     assert_error(response, StatusCode::NOT_FOUND, "user_not_found").await;
 }
-
-// ============================================================
-// binders
-// ============================================================
 
 #[tokio::test]
 async fn get_trade_binders_returns_binders_on_success() {
@@ -268,10 +260,6 @@ async fn remove_trade_binder_propagates_use_case_error() {
 
     assert_error(response, StatusCode::INTERNAL_SERVER_ERROR, "internal").await;
 }
-
-// ============================================================
-// rarities
-// ============================================================
 
 #[tokio::test]
 async fn get_trade_rarity_filters_returns_filters_from_use_case() {
@@ -431,10 +419,6 @@ async fn set_trade_rarity_filter_propagates_error_from_use_case() {
     assert_error(response, StatusCode::BAD_REQUEST, "wrong_format").await;
 }
 
-// ============================================================
-// receiving binder
-// ============================================================
-
 const BINDER_ID: &str = "11111111-1111-1111-1111-111111111111";
 
 #[tokio::test]
@@ -575,10 +559,6 @@ async fn set_receiving_binder_propagates_binder_not_found() {
 
     assert_error(response, StatusCode::NOT_FOUND, "binder_not_found").await;
 }
-
-// ============================================================
-// authentication
-// ============================================================
 
 #[tokio::test]
 async fn every_route_refuses_an_anonymous_request() {

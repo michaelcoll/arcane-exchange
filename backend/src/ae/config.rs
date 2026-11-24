@@ -63,11 +63,10 @@ where
 mod tests {
     use super::*;
 
-    // DATABASE_URL est délibérément absente de cette liste : des dizaines de tests `#[sqlx::test]`
-    // dans tout le crate la lisent en parallèle pour ouvrir leur propre connexion. La faire
-    // disparaître même brièvement ici les fait paniquer ("DATABASE_URL must be set"). Les autres
-    // clés ci-dessous ne sont lues que par `Config::from_env` / `create_infra`, donc sans risque
-    // similaire.
+    // DATABASE_URL is deliberately left out of this list: dozens of `#[sqlx::test]` tests across
+    // the crate read it in parallel to open their own connection, and removing it even briefly
+    // makes them panic ("DATABASE_URL must be set"). The other keys below are only read by
+    // `Config::from_env` / `create_infra`, so they carry no such risk.
     const ENV_VARS: &[&str] = &[
         "DATABASE_MAX_CONNECTIONS",
         "BACKEND_PORT",
@@ -80,8 +79,8 @@ mod tests {
         "CARD_IMAGES_DIR",
     ];
 
-    // Les variables d'env sont un état global du process : chaque test repart d'un état propre
-    // pour ne pas dépendre de l'ordre d'exécution des autres tests de ce module.
+    // Environment variables are process-global state: each test starts from a clean one so it
+    // does not depend on the order of the other tests in this module.
     fn reset_env() {
         for key in ENV_VARS {
             unsafe { env::remove_var(key) };
@@ -92,9 +91,9 @@ mod tests {
         unsafe { env::set_var(key, value) };
     }
 
-    // Un seul test regroupant tous les scénarios : les variables d'env sont un état global du
-    // process, donc plusieurs tests `#[test]` mutant les mêmes clés en parallèle se corrompent
-    // mutuellement. Les exécuter séquentiellement dans un seul test évite la course.
+    // A single test holding every scenario: environment variables are process-global, so several
+    // `#[test]` functions mutating the same keys in parallel would corrupt each other. Running
+    // them sequentially in one test avoids the race.
     #[test]
     fn from_env_reads_and_validates_configuration() {
         reset_env();
@@ -103,8 +102,8 @@ mod tests {
 
         let config = Config::from_env();
 
-        // DATABASE_URL n'est jamais touchée par ce test (voir le commentaire sur `ENV_VARS`) ; on
-        // vérifie donc le même calcul de fallback plutôt qu'une valeur fixe.
+        // This test never touches DATABASE_URL (see the comment on `ENV_VARS`), so check the same
+        // fallback computation rather than a fixed value.
         let expected_database_url = env::var("DATABASE_URL")
             .unwrap_or_else(|_| "postgres://postgres:password@localhost/postgres".to_string());
         assert_eq!(config.database_url, expected_database_url);
@@ -154,7 +153,7 @@ mod tests {
         let message = *result.unwrap_err().downcast::<String>().unwrap();
         assert!(message.contains("Invalid BACKEND_PORT"));
 
-        // Ne pas laisser BACKEND_PORT="not-a-port" fuiter vers les autres tests du binaire.
+        // Do not let BACKEND_PORT="not-a-port" leak into the other tests of the binary.
         reset_env();
     }
 }

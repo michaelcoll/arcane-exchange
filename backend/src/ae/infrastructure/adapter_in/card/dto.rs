@@ -6,7 +6,6 @@ use serde::{Deserialize, Serialize};
 use ts_rs::TS;
 use utoipa::ToSchema;
 
-// --- Price history ---
 /// Params for `/collection/price-history`; both dates are optional and defaulted by the use case
 /// (last 30 days when absent).
 #[derive(Deserialize, TS)]
@@ -45,8 +44,6 @@ pub struct PriceHistoryEntryResponse {
     pub trend: i64,
     pub avg: i64,
 }
-
-// --- Offers ---
 
 #[derive(Deserialize, Default, TS, ToSchema)]
 #[serde(rename = "CardOffersSortBy", rename_all = "snake_case")]

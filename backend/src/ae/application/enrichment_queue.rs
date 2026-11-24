@@ -48,7 +48,6 @@ pub struct EnrichmentQueue<E: Enricher> {
 }
 
 impl<E: Enricher> EnrichmentQueue<E> {
-    /// Creates the queue and spawns its worker on the Tokio runtime.
     pub fn spawn(enricher: E, card_prices_view: Arc<dyn CardPricesViewRepository>) -> Arc<Self> {
         let (queue, worker) = Self::new(enricher, card_prices_view);
         tokio::spawn(worker.run());

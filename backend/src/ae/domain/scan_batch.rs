@@ -22,7 +22,6 @@ pub struct ScanBatchCopies {
     pub quantity: u8,
 }
 
-/// What a validation of a scan batch answers.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct ScanBatchOutcome {
     /// Copies the batch holds, whether this call wrote them or the first one did.

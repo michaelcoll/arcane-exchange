@@ -52,8 +52,6 @@ fn empty_page() -> Paginated<TradeSummary> {
     }
 }
 
-// --- create_trade ---
-
 fn create_trade_app(create_trade_use_case: MockCreateTradeUseCase) -> axum::Router {
     create_router(AppState {
         create_trade_use_case: Arc::new(create_trade_use_case),
@@ -130,8 +128,6 @@ async fn create_trade_propagates_self_trade_from_use_case() {
 
     assert_error(response, StatusCode::BAD_REQUEST, "self_trade").await;
 }
-
-// --- add_trade_card ---
 
 fn add_trade_card_app(add_trade_card_use_case: MockAddTradeCardUseCase) -> axum::Router {
     create_router(AppState {
@@ -263,8 +259,6 @@ async fn add_trade_card_propagates_trade_not_modifiable_from_use_case() {
     assert_error(response, StatusCode::CONFLICT, "trade_not_modifiable").await;
 }
 
-// --- remove_trade_card ---
-
 fn remove_trade_card_app(remove_trade_card_use_case: MockRemoveTradeCardUseCase) -> axum::Router {
     create_router(AppState {
         remove_trade_card_use_case: Arc::new(remove_trade_card_use_case),
@@ -343,8 +337,6 @@ async fn remove_trade_card_propagates_trade_not_modifiable_from_use_case() {
     assert_error(response, StatusCode::CONFLICT, "trade_not_modifiable").await;
 }
 
-// --- accept_trade ---
-
 fn accept_trade_app(accept_trade_use_case: MockAcceptTradeUseCase) -> axum::Router {
     create_router(AppState {
         accept_trade_use_case: Arc::new(accept_trade_use_case),
@@ -416,8 +408,6 @@ async fn accept_trade_propagates_trade_not_acceptable_from_use_case() {
     assert_error(response, StatusCode::CONFLICT, "trade_not_acceptable").await;
 }
 
-// --- abandon_trade ---
-
 fn abandon_trade_app(abandon_trade_use_case: MockAbandonTradeUseCase) -> axum::Router {
     create_router(AppState {
         abandon_trade_use_case: Arc::new(abandon_trade_use_case),
@@ -481,8 +471,6 @@ async fn abandon_trade_propagates_trade_already_finalized_from_use_case() {
 
     assert_error(response, StatusCode::CONFLICT, "trade_already_finalized").await;
 }
-
-// --- confirm_trade ---
 
 fn confirm_trade_app(confirm_trade_use_case: MockConfirmTradeUseCase) -> axum::Router {
     create_router(AppState {
@@ -554,8 +542,6 @@ async fn confirm_trade_propagates_trade_not_fully_accepted_from_use_case() {
 
     assert_error(response, StatusCode::CONFLICT, "trade_not_fully_accepted").await;
 }
-
-// --- rate_trade ---
 
 fn rate_trade_app(rate_trade_use_case: MockRateTradeUseCase) -> axum::Router {
     create_router(AppState {
@@ -661,8 +647,6 @@ async fn rate_trade_propagates_trade_not_completed_from_use_case() {
 
     assert_error(response, StatusCode::CONFLICT, "trade_not_completed").await;
 }
-
-// --- get_trade ---
 
 fn get_trade_app(get_trade_use_case: MockGetTradeUseCase) -> axum::Router {
     create_router(AppState {
@@ -876,8 +860,6 @@ async fn get_trade_response_has_no_inclusion_rate_when_no_deck_could_play_the_ca
     assert!(card.get("inclusion_rate").is_none());
 }
 
-// --- list_trades ---
-
 fn list_trades_app(list_trades_use_case: MockListTradesUseCase) -> axum::Router {
     create_router(AppState {
         list_trades_use_case: Arc::new(list_trades_use_case),
@@ -1068,8 +1050,6 @@ async fn list_trades_rejects_an_unknown_status() {
 
     assert_error(response, StatusCode::BAD_REQUEST, "invalid_request").await;
 }
-
-// --- authentication ---
 
 #[tokio::test]
 async fn every_route_refuses_an_anonymous_request() {

@@ -20,7 +20,6 @@ use std::sync::Arc;
 /// `TradeAlreadyAccepted` after a double submission).
 const TRANSITION_ATTEMPTS: usize = 3;
 
-/// Loads `trade_id` and resolves which of its parties `caller_id` is.
 async fn find_as_party(
     trade_repository: &Arc<dyn TradeRepository>,
     trade_id: TradeId,
@@ -71,7 +70,6 @@ where
     Err(FunctionalError::TradeConcurrentlyModified.into())
 }
 
-/// Resolves `owner_username` to a `User` who must be a party to `trade`.
 async fn resolve_owner(
     user_repository: &Arc<dyn UserRepository>,
     trade: &Trade,
@@ -89,7 +87,6 @@ async fn resolve_owner(
     Ok(owner.id)
 }
 
-/// Test fixtures shared by the tests of the Trade use cases.
 #[cfg(test)]
 mod test_fixtures {
     use crate::application::repository::MockTradeRepository;

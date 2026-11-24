@@ -50,7 +50,6 @@ pub trait ScryfallCaller: Send + Sync {
 pub type ScryfallBulkCardStream =
     Pin<Box<dyn Stream<Item = Result<ScryfallBulkCard, AppError>> + Send>>;
 
-/// An object of the Scryfall bulk, as decoded.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct ScryfallBulkCard {
     pub scryfall_id: Uuid,
@@ -62,7 +61,6 @@ pub struct ScryfallBulkCard {
     pub language: String,
     pub layout: String,
     pub rarity: String,
-    /// The date this object was released.
     pub released_at: NaiveDate,
     /// The English name.
     pub name: String,
@@ -77,7 +75,6 @@ pub struct ScryfallBulkCard {
     pub image_url: Option<String>,
 }
 
-/// A face of a multi-face object of the Scryfall bulk.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct ScryfallBulkCardFace {
     /// The English name of the face.
@@ -86,7 +83,6 @@ pub struct ScryfallBulkCardFace {
     pub printed_name: Option<String>,
 }
 
-/// What Gatherer answered for a card in one language.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum GathererLookup {
     /// The images as served by Gatherer (WebP), whatever their size.

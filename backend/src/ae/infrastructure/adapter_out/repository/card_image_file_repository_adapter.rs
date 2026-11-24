@@ -74,7 +74,6 @@ mod tests {
     use super::*;
     use crate::domain::language_code::LanguageCode;
 
-    /// A fresh folder under the system temp dir, removed on drop.
     struct TempDir(PathBuf);
 
     impl TempDir {

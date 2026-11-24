@@ -7,7 +7,6 @@ use async_trait::async_trait;
 use sqlx::{Pool, Postgres};
 use uuid::Uuid;
 
-/// Postgres error code for `unique_violation`.
 const UNIQUE_VIOLATION: &str = "23505";
 
 pub struct BinderRepositoryAdapter {

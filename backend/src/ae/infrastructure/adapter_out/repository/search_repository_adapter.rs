@@ -94,7 +94,6 @@ struct Filters<'a> {
     price_max: Option<u32>,
 }
 
-/// The SQL of [`Filters::bind`].
 struct Clauses {
     /// The joins the filters (and, for the rows, the result) need.
     joins: String,
@@ -517,8 +516,6 @@ mod tests {
         .await;
     }
 
-    // --- Catalogue domain ---
-
     #[sqlx::test]
     async fn an_impression_nobody_owns_is_a_result(pool: PgPool) {
         insert_set(&pool, "TST").await;
@@ -556,8 +553,6 @@ mod tests {
         assert_eq!(result.total, 0);
         assert!(result.items.is_empty());
     }
-
-    // --- Text ---
 
     #[sqlx::test]
     async fn a_french_name_finds_the_impression(pool: PgPool) {
@@ -628,8 +623,6 @@ mod tests {
 
         assert_eq!(names(&result), vec!["Sol Ring", "Sol Ringleader"]);
     }
-
-    // --- Offre axis ---
 
     #[sqlx::test]
     async fn the_offered_axis_keeps_what_players_offer(pool: PgPool) {
@@ -828,8 +821,6 @@ mod tests {
         assert_eq!(result.total, 0);
     }
 
-    // --- Possession axis and owned quantity ---
-
     #[sqlx::test]
     async fn the_owned_quantity_sums_every_language_and_finish(pool: PgPool) {
         catalog(&pool, "TST", "1", "Sol Ring").await;
@@ -926,8 +917,6 @@ mod tests {
         assert_eq!(missing.total, 1);
     }
 
-    // --- reserved ---
-
     async fn reserve(pool: &PgPool, owner: &str, number: &str, language: &str) {
         let trade_id = Uuid::new_v4();
         insert_trade(pool, trade_id, owner, "userZ", "FULLY_ACCEPTED").await;
@@ -971,8 +960,6 @@ mod tests {
 
         assert_eq!(result.items[0].reserved, Some(false));
     }
-
-    // --- Reference price: sort and filter ---
 
     async fn foil_only(pool: &PgPool, number: &str, name: &str, product: i32, trend_foil: i32) {
         insert_set_once(pool, "TST").await;
@@ -1099,8 +1086,6 @@ mod tests {
             Some(300)
         );
     }
-
-    // --- Other filters and pagination ---
 
     #[sqlx::test]
     async fn the_rarity_and_set_filters_narrow_the_result(pool: PgPool) {
@@ -1264,8 +1249,6 @@ mod tests {
         assert_eq!(numbers(&result), vec!["3", "4"]);
     }
 
-    // --- Image ---
-
     async fn downloaded(pool: &PgPool, language: &str, source: &str, has_back: bool) {
         sqlx::query(
             "UPDATE card SET image_source = $1, image_has_back = $2 WHERE language_code = $3",
@@ -1377,8 +1360,6 @@ mod tests {
             ))
         );
     }
-
-    // --- Sets facet ---
 
     async fn sets(pool: &PgPool, scope: SearchScope) -> Vec<String> {
         sets_as(pool, "nobody", scope).await

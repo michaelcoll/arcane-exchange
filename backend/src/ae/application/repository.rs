@@ -43,7 +43,7 @@ pub trait CardRepository: Send + Sync {
     async fn get_all_in_fallback_or_pending(
         &self,
     ) -> Result<Vec<(CardId, CardImageLookup)>, AppError>;
-    /// Returns `cardmarket_id` for the card matching `scryfall_id`, if any.
+    /// Outer `None`: no card has this `scryfall_id`; inner `None`: the card has no `cardmarket_id`.
     async fn find_by_scryfall_id(
         &self,
         scryfall_id: uuid::Uuid,
@@ -324,7 +324,6 @@ pub trait TradingBinderRepository: Send + Sync {
     /// is a no-op.
     async fn remove(&self, user_id: &UserId, binder_name: &str) -> Result<(), AppError>;
 
-    /// `true` if `user_id` has a binder named `binder_name`.
     async fn binder_exists(&self, user_id: &UserId, binder_name: &str) -> Result<bool, AppError>;
 
     /// Deletes `user_id`'s binders that no `collection_entry` row refers to, with their trade
@@ -440,7 +439,6 @@ pub trait RarityTradeFilterRepository: Send + Sync {
     /// still proposable under that rule. Ordered `M, R, U, C, S`.
     async fn list_with_counts(&self, user_id: &UserId) -> Result<Vec<RarityTradeFilter>, AppError>;
 
-    /// Creates or updates `user_id`'s trade rule for `rule.rarity`.
     async fn upsert(&self, user_id: &UserId, rule: &RarityTradeFilterRule) -> Result<(), AppError>;
 }
 
@@ -467,10 +465,8 @@ pub trait TradeRepository: Send + Sync {
         respondent_id: &UserId,
     ) -> Result<TradeId, AppError>;
 
-    /// Fetches a trade by its id, if it exists.
     async fn find_by_id(&self, id: TradeId) -> Result<Option<Trade>, AppError>;
 
-    /// Fetches every card offered in a trade.
     async fn find_trade_cards(&self, trade_id: TradeId) -> Result<Vec<TradeCard>, AppError>;
 
     /// Fetches every card offered in a trade, enriched with name/price/image ids for display.

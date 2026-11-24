@@ -19,7 +19,6 @@ use uuid::Uuid;
 /// reception. Its name is compared as the binders' uniqueness rule does.
 const DEFAULT_RECEIVING_BINDER: &str = "trades";
 
-/// A card of the Trade, as the Transfer moves it.
 struct TransferredCard {
     card_id: CardId,
     foil: bool,
@@ -211,7 +210,6 @@ mod tests {
         Utc.with_ymd_and_hms(2026, 1, day, 0, 0, 0).unwrap()
     }
 
-    /// An entry of the test card, as found in the Collection.
     #[derive(Debug, PartialEq, Eq, sqlx::FromRow)]
     struct Held {
         binder: Option<String>,

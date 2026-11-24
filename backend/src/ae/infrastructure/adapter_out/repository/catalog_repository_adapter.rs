@@ -154,7 +154,8 @@ impl CatalogRepository for CatalogRepositoryAdapter {
         fields(sentry.op = "db")
     )]
     async fn scan_index_entries(&self) -> Result<Vec<ScanIndexEntry>, AppError> {
-        // The numeric order of the numbers: the cast is safe, the filter keeps up to 10 digits.
+        // Numeric order of the numbers: the BIGINT cast is safe, as the filter keeps only digits
+        // and the column holds at most 10 characters.
         let rows = sqlx::query!(
             r#"SELECT set_code, collector_number, rarity, name, french_name
                FROM catalog_card
@@ -528,8 +529,6 @@ mod tests {
 
         assert_eq!(count(&pool, Table::CatalogCard).await, 12_000);
     }
-
-    // ---- trend_prices ----
 
     async fn price(pool: &PgPool, id_produit: i32, date: &str, trend: i32, trend_foil: i32) {
         sqlx::query(

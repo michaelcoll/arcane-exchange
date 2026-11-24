@@ -83,7 +83,6 @@ pub struct PurchasedCard {
     pub image: Option<CardImage>,
 }
 
-/// What a Purchase bought.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum PurchaseKind {
     SealedProduct {
@@ -103,7 +102,6 @@ pub enum PurchaseKind {
 /// added, dated the day they are.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct NewSingleCardPurchase {
-    /// The purchase price of each copy.
     pub price_per_copy: PurchaseAmount,
     /// What the Purchase cost: the price of a copy times the copies.
     pub amount: PurchaseAmount,
@@ -132,7 +130,6 @@ impl NewSingleCardPurchase {
     }
 }
 
-/// What a player bought, on a given day.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Purchase {
     pub id: PurchaseId,
@@ -163,7 +160,6 @@ pub struct PurchaseEditRequest {
     pub name: Option<String>,
 }
 
-/// A sealed product to record.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct NewSealedProduct {
     pub product_type: SealedProductType,
@@ -197,7 +193,6 @@ pub struct PurchaseContentLine {
     pub trend_cents: Option<u32>,
 }
 
-/// A Purchase with what it contained.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct PurchaseDetail {
     pub purchase: Purchase,

@@ -10,8 +10,6 @@ public import Foundation
 extension Components {
     /// Types generated from the `#/components/schemas` section of the OpenAPI document.
     public enum Schemas {
-        /// A copy to add to the collection.
-        ///
         /// - Remark: Generated from `#/components/schemas/AddCollectionEntryRequest`.
         public struct AddCollectionEntryRequest: Codable, Hashable, Sendable {
             /// Binder to store the copies in; absent for none.
@@ -684,8 +682,6 @@ extension Components {
             case trade = "trade"
             case _private = "private"
         }
-        /// A sealed product to record.
-        ///
         /// - Remark: Generated from `#/components/schemas/CreateSealedProductRequest`.
         public struct CreateSealedProductRequest: Codable, Hashable, Sendable {
             /// Amount paid, in cents. Signed so an amount that is not strictly positive fails with
@@ -1196,8 +1192,6 @@ extension Components {
                 case trend_cents
             }
         }
-        /// A Purchase with its content and its profitability.
-        ///
         /// - Remark: Generated from `#/components/schemas/PurchaseDetailResponse`.
         public struct PurchaseDetailResponse: Codable, Hashable, Sendable {
             /// - Remark: Generated from `#/components/schemas/PurchaseDetailResponse/content`.
@@ -1254,8 +1248,6 @@ extension Components {
                 case purchase
             }
         }
-        /// What a Purchase bought.
-        ///
         /// - Remark: Generated from `#/components/schemas/PurchaseKindResponse`.
         @frozen public enum PurchaseKindResponse: String, Codable, Hashable, Sendable, CaseIterable {
             case sealed_product = "sealed_product"
@@ -1348,8 +1340,6 @@ extension Components {
                 case set
             }
         }
-        /// The card a single card Purchase bought.
-        ///
         /// - Remark: Generated from `#/components/schemas/PurchasedCardResponse`.
         public struct PurchasedCardResponse: Codable, Hashable, Sendable {
             /// - Remark: Generated from `#/components/schemas/PurchasedCardResponse/collector_number`.
@@ -1506,8 +1496,6 @@ extension Components {
                 case name
             }
         }
-        /// The receiving binder setting as stored.
-        ///
         /// - Remark: Generated from `#/components/schemas/ReceivingBinderSettingResponse`.
         public struct ReceivingBinderSettingResponse: Codable, Hashable, Sendable {
             /// Absent while the player chose none: their received cards go into a binder named `trades`.
@@ -1601,8 +1589,6 @@ extension Components {
             public var collector_number: Swift.String
             /// - Remark: Generated from `#/components/schemas/ScanBatchLineRequest/foil`.
             public var foil: Swift.Bool
-            /// Language of the copies.
-            ///
             /// - Remark: Generated from `#/components/schemas/ScanBatchLineRequest/language_code`.
             public var language_code: Swift.String
             /// Copies of the line, 1 to 255. Signed so an out-of-range value fails with
@@ -1619,7 +1605,7 @@ extension Components {
             /// - Parameters:
             ///   - collector_number: Collector number of the catalog card.
             ///   - foil:
-            ///   - language_code: Language of the copies.
+            ///   - language_code:
             ///   - quantity: Copies of the line, 1 to 255. Signed so an out-of-range value fails with
             ///   - set_code: Set code of the catalog card.
             public init(
@@ -1660,11 +1646,8 @@ extension Components {
                 case copies_added
             }
         }
-        /// One entry of the scan index, keyed by set and collector number.
-        ///
-        /// The body of `GET /catalog/scan-index` is a JSON array of these; it is built and gzipped once
-        /// per catalog load by the `ScanIndexUseCase` from the serialization of `ScanIndexEntry`, this
-        /// type only documents its shape (a controller test decodes the served body as this type).
+        /// One entry of the scan index, keyed by set and collector number. The body of
+        /// `GET /catalog/scan-index` is a JSON array of these.
         ///
         /// - Remark: Generated from `#/components/schemas/ScanIndexEntryResponse`.
         public struct ScanIndexEntryResponse: Codable, Hashable, Sendable {
@@ -2209,7 +2192,7 @@ extension Components {
             }
         }
         /// Status filter values for `GET /trades`, repeated for multiple statuses
-        /// (e.g. `?status=PENDING&status=CLOSED`), mirroring `RarityCodeParam` on `/search/card`.
+        /// (e.g. `?status=PENDING&status=CLOSED`).
         ///
         /// - Remark: Generated from `#/components/schemas/TradeStatusParam`.
         @frozen public enum TradeStatusParam: String, Codable, Hashable, Sendable, CaseIterable {

@@ -1079,8 +1079,6 @@ mod tests {
         find(repository, trade_id).await.modify().unwrap()
     }
 
-    // --- create_or_find_active ---
-
     async fn count_active_trades(pool: &PgPool) -> i64 {
         sqlx::query_scalar::<_, i64>(
             "SELECT COUNT(*) FROM trade WHERE status IN ('PENDING', 'ONE_ACCEPTED', 'FULLY_ACCEPTED')",
@@ -1258,8 +1256,6 @@ mod tests {
         assert_eq!(status_of(newest_accepted).await, TradeStatus::Abandoned);
         assert_eq!(status_of(finished).await, TradeStatus::Closed);
     }
-
-    // --- add_card_to_trade ---
 
     /// Adds `make_card_id()` owned by `user_b`, who is first given more than enough copies of it
     /// for the availability check to stay out of the way.
@@ -1488,7 +1484,7 @@ mod tests {
 
     #[sqlx::test]
     async fn add_card_to_trade_leaves_a_present_card_untouched(pool: PgPool) {
-        // A quantity above one predates the idempotent addition and stays as is.
+        // A quantity above one already in the trade stays as is.
         let trade_id = setup_trade_with_offered_copies(&pool, 1).await;
         insert_trade_card(&pool, trade_id, "FDN", "87", "FR", false, "user_b", 2).await;
         let repository = TradeRepositoryAdapter::new(pool);
@@ -1668,8 +1664,6 @@ mod tests {
 
         assert!(after > before);
     }
-
-    // --- remove_card_from_trade ---
 
     #[sqlx::test]
     async fn remove_card_from_trade_removes_matching_card_entirely(pool: PgPool) {
@@ -1851,8 +1845,6 @@ mod tests {
             .unwrap();
         assert!(trade_cards.is_empty());
     }
-
-    // --- apply_transition ---
 
     /// Takes a transition on the trade's current state, as the services do, then applies it.
     async fn apply(
@@ -2065,8 +2057,6 @@ mod tests {
         assert_eq!(trade.initiator_accepted_at, None);
     }
 
-    // --- accept ---
-
     #[sqlx::test]
     async fn accept_from_pending_by_initiator_moves_to_one_accepted(pool: PgPool) {
         insert_user(&pool, "user_a", "alice").await;
@@ -2228,8 +2218,6 @@ mod tests {
         assert_eq!(other_trade.status, TradeStatus::Pending);
     }
 
-    // --- abandon ---
-
     #[sqlx::test]
     async fn abandon_from_pending_returns_true_and_sets_abandoned(pool: PgPool) {
         insert_user(&pool, "user_a", "alice").await;
@@ -2310,8 +2298,6 @@ mod tests {
         assert!(!other_trade.party_state(Party::Respondent).abandoned);
     }
 
-    // --- confirm ---
-
     #[sqlx::test]
     async fn confirm_first_party_from_fully_accepted_stays_fully_accepted(pool: PgPool) {
         insert_user(&pool, "user_a", "alice").await;
@@ -2351,8 +2337,6 @@ mod tests {
         assert!(trade.respondent_confirmed_at.is_some());
     }
 
-    // --- rate ---
-
     #[sqlx::test]
     async fn rate_first_party_from_completed_stays_completed(pool: PgPool) {
         insert_user(&pool, "user_a", "alice").await;
@@ -2391,8 +2375,6 @@ mod tests {
         assert_eq!(trade.initiator_rating, Some(5));
         assert_eq!(trade.respondent_rating, Some(3));
     }
-
-    // --- find_trade_cards_with_details ---
 
     #[sqlx::test]
     async fn find_trade_cards_with_details_returns_name_and_price_for_each_card(pool: PgPool) {
@@ -2618,8 +2600,6 @@ mod tests {
             Some(200)
         );
     }
-
-    // --- list_trades ---
 
     #[sqlx::test]
     async fn list_trades_returns_trades_where_caller_is_initiator_or_respondent(pool: PgPool) {

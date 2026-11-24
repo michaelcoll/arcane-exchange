@@ -5,7 +5,8 @@ use chrono::{Days, NaiveDate, Utc};
 /// Resolves an optional `(start_date, end_date)` pair into concrete dates.
 ///
 /// `end_date` defaults to today, `start_date` defaults to `end_date` minus 30 days. Returns
-/// `AppError::WrongFormat` if the resolved `start_date` is after the resolved `end_date`.
+/// `FunctionalError::WrongFormat` (in `AppError::Functional`) if the resolved `start_date` is
+/// after the resolved `end_date`.
 pub(crate) fn resolve_date_range(
     start_date: Option<NaiveDate>,
     end_date: Option<NaiveDate>,

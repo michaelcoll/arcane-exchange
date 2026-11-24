@@ -15,12 +15,10 @@ use serde_json::Value;
 use sqlx::PgPool;
 use std::sync::Arc;
 
-/// A rare card, `FDN` + `number`, in English.
 async fn insert_rare(pool: &PgPool, number: &str, cardmarket_id: i32) {
     insert_card_with_rarity(pool, "FDN", number, "EN", "Rare", cardmarket_id, "R").await;
 }
 
-/// `quantity` non-foil copies of the rare `FDN` + `number` in `binder` of `user_id`.
 async fn insert_copies(
     pool: &PgPool,
     user_id: &str,

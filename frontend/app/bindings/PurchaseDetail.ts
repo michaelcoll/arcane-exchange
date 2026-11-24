@@ -2,9 +2,6 @@
 import type { Purchase } from './Purchase';
 import type { PurchaseContentLine } from './PurchaseContentLine';
 
-/**
- * A Purchase with its content and its profitability.
- */
 export type PurchaseDetail = {
   purchase: Purchase;
   content: Array<PurchaseContentLine>;

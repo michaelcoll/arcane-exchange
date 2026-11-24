@@ -52,7 +52,6 @@ fn make_card(set_code: &str, collector_number: &str) -> SearchCard {
     }
 }
 
-/// A search mock that answers `card` as the only result.
 fn answering(card: SearchCard) -> MockSearchCardsUseCase {
     let mut mock = MockSearchCardsUseCase::new();
     mock.expect_search_cards().times(1).returning(move |_, _| {

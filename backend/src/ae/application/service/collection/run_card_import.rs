@@ -113,11 +113,9 @@ impl RunCardImportUseCase for RunCardImportService {
 
         let outcome = self.run_inner(&import_id, &user, &cards).await;
 
-        // `finish` is the only way out of `running` short of a server restart (`fail_all_active`
-        // at boot) — if it fails itself, that would otherwise silently strand the import (and,
-        // with it, the user's one-active-import slot) until then. Log it explicitly rather than
-        // propagate it and lose the original outcome, which is what the caller (and the row, had
-        // `finish` succeeded) actually needs to reflect.
+        // A failing `finish` is logged rather than propagated, to keep the original outcome. The
+        // import then stays `running`, holding the user's one active import slot, until
+        // `fail_all_active` at the next boot.
         let (status, error) = match &outcome {
             Ok(()) => (CardImportStatus::Completed, None),
             Err(e) => {

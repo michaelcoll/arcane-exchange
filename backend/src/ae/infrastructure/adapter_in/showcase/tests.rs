@@ -50,7 +50,6 @@ async fn set_image_source(pool: &PgPool, number: &str, language: &str, source: &
     .unwrap();
 }
 
-/// `user_id` holds `quantity` copies of a card of `TST` in one finish.
 async fn seed_held_copies(
     pool: &PgPool,
     user_id: &str,

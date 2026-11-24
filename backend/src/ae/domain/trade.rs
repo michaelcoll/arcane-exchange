@@ -361,7 +361,6 @@ pub struct TradeCardDetail {
     pub inclusion_rate: Option<InclusionRate>,
 }
 
-/// One party's acceptance/confirmation/rating/abandon state on a trade.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct TradePartyState {
     pub accepted: bool,
@@ -437,8 +436,6 @@ mod tests {
     fn trade_id_new_produces_different_ids() {
         assert_ne!(TradeId::new(), TradeId::new());
     }
-
-    // --- State machine ---
 
     const ALL_STATUSES: [TradeStatus; 6] = [
         TradeStatus::Pending,
@@ -566,8 +563,6 @@ mod tests {
         assert_eq!(transition.trade_id(), trade.id);
     }
 
-    // modify
-
     #[test]
     fn modify_keeps_a_pending_trade_unchanged() {
         let trade = make_trade(TradeStatus::Pending);
@@ -605,8 +600,6 @@ mod tests {
             );
         }
     }
-
-    // add_card
 
     #[test]
     fn adding_an_absent_card_is_a_modification() {
@@ -647,8 +640,6 @@ mod tests {
             );
         }
     }
-
-    // accept
 
     #[test]
     fn first_acceptance_moves_to_one_accepted_and_reserves_cards() {
@@ -718,8 +709,6 @@ mod tests {
         }
     }
 
-    // confirm
-
     #[test]
     fn first_confirmation_stays_fully_accepted() {
         for party in BOTH_PARTIES {
@@ -779,8 +768,6 @@ mod tests {
             );
         }
     }
-
-    // rate
 
     #[test]
     fn first_rating_stays_completed() {
@@ -892,8 +879,6 @@ mod tests {
             );
         }
     }
-
-    // abandon
 
     #[test]
     fn abandon_is_allowed_before_the_exchange_is_confirmed() {

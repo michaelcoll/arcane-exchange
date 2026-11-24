@@ -53,7 +53,6 @@ impl ClerkTokenValidatorAdapter {
         })
     }
 
-    /// Finds a JWK (JSON Web Key) by its key ID in the JWKS set
     fn find_jwk(&self, kid: &str) -> Option<&jsonwebtoken::jwk::Jwk> {
         self.jwks
             .keys
@@ -278,7 +277,6 @@ mod tests {
         assert!(result.is_none());
     }
 
-    // Tests for ClerkTokenValidatorAdapter::new
     #[tokio::test]
     async fn new_successfully_creates_service_with_valid_jwks() {
         let server = MockServer::start().await;
@@ -360,7 +358,6 @@ mod tests {
         assert!(service.find_jwk("key-2").is_some());
     }
 
-    // Tests for JWK decoding errors
     #[tokio::test]
     async fn rejects_token_with_invalid_jwk_format() {
         let jwks_json = r#"{
@@ -434,7 +431,6 @@ mod tests {
         }
     }
 
-    // Tests for token decoding errors
     #[tokio::test]
     async fn rejects_token_with_missing_kid_in_header() {
         let jwks_json = r#"{ "keys": [] }"#;
