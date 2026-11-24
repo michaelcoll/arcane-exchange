@@ -2,7 +2,6 @@ import ArcaneExchangeCore
 import ClerkKit
 import SwiftUI
 
-/// The Réglages screen's "Compte" section: the avatar, the `@handle` and the Clerk badge.
 struct AccountSection: View {
     @Environment(Clerk.self) private var clerk
 

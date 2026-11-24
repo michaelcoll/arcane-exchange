@@ -6,7 +6,7 @@ import SwiftUI
 /// Réglages (`ScrProfile` in the iOS mockup), presented from the nav-bar avatar: the account
 /// card, one row per trade setting — each opening its own drawer — and sign-out.
 struct AccountSettingsView: View {
-    /// The sub-drawers, exactly the mockup's three `ISheet`s.
+    /// The sub-drawers opened from the Réglages rows.
     private enum Drawer: String, Identifiable {
         case visibility
         case binders

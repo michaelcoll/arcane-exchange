@@ -2,7 +2,6 @@
     import ArcaneExchangeCore
     import Foundation
 
-    /// Fixtures shared by the card-detail previews.
     extension PricePoint {
         /// Thirty days of a gently rising trend, with a low/avg band around it.
         static let previewSeries: [PricePoint] = {

@@ -323,8 +323,8 @@ struct TradeRailPivot: View {
 
                 TradeRailPivot(isReserved: false)
 
-                // Rien à demander pour l'instant : le créneau d'ajout suffit à l'expliquer,
-                // pas de tuile fantôme à côté.
+                // Nothing to ask for yet: the add slot explains the gap on its own, so no ghost
+                // tile beside it.
                 TradeCardRail(
                     owner: "mizzix_42",
                     side: .receive,
@@ -350,8 +350,8 @@ struct TradeRailPivot: View {
 
                 TradeRailPivot(isReserved: true)
 
-                // Le côté de l'utilisateur, vide : personne d'autre à composer, donc pas de
-                // créneau d'ajout — la tuile fantôme porte seule l'explication (en VoiceOver).
+                // The user's own side, empty: nobody else composes it, so there is no add slot and
+                // the ghost tile alone carries the explanation (for VoiceOver).
                 TradeCardRail(
                     owner: nil,
                     side: .give,

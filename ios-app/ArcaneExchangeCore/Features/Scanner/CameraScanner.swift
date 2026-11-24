@@ -3,7 +3,6 @@ import CoreImage
 import Foundation
 import Vision
 
-/// Whether the camera can be used, as the Scanner tab needs to tell the player.
 package enum CameraStatus: Equatable {
     case starting
     case running
@@ -17,9 +16,8 @@ package enum CameraStatus: Equatable {
 /// straightens the strip of its printed line (perspective correction) and runs Vision text recognition on it.
 /// The text lines and the card found go to `onFrame`, on the capture queue.
 ///
-/// Glue only, taken over from the former OCR prototype: no unit test, the camera does
-/// not exist in the simulator. Everything it feeds is tested (`CardRecogniser`, `ReadingStabiliser`,
-/// `CardContour`, `ScanGuide`).
+/// Glue only: no unit test, the camera does not exist in the simulator. Everything it feeds is
+/// tested (`CardRecogniser`, `ReadingStabiliser`, `CardContour`, `ScanGuide`).
 package final class CameraScanner: NSObject, @unchecked Sendable {
     package let session = AVCaptureSession()
     /// Receives the text lines Vision read in the card strip of one frame (empty when no card was

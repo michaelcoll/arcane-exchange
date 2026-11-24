@@ -72,7 +72,7 @@ struct ShowcaseModelTests {
         #expect(platform.downloaded.isEmpty)
     }
 
-    /// Before DeviceMemory the paths were a native string array, unreadable as JSON.
+    /// Legacy format: the paths used to be stored as a native string array, unreadable as JSON.
     @Test func aShowcaseRememberedInTheOldFormatReadsAsNothing() async {
         defaults.set(["/card-images/a.webp"], forKey: "showcase_image_paths")
         platform.cached["/card-images/a.webp"] = UIImage()

@@ -10,7 +10,6 @@ package enum CardLanguage: String, CaseIterable, Codable, Identifiable {
     case japanese = "JA"
     case spanish = "SP"
 
-    /// The language picked when the player has not chosen one yet.
     package static let `default` = CardLanguage.french
 
     package var id: String {

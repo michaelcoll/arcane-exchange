@@ -61,7 +61,6 @@ package final class ShowcaseModel {
         await show(source.images(urls), fadesIn: true)
     }
 
-    /// The image paths of the current showcase, `nil` when it cannot be read.
     private func currentPaths() async -> [String]? {
         try? await api.get_showcase().ok.body.json
     }

@@ -56,7 +56,6 @@ package struct CollectionSnapshot: Codable, Equatable {
     }
 }
 
-/// How much the collection value moved over the period.
 package struct ValueVariation: Equatable {
     package let deltaCents: Int
     package let percent: Double

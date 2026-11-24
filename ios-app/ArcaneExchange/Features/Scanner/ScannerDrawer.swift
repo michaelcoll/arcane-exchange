@@ -21,7 +21,6 @@ struct ScannerDrawer: View {
     let scanner: ScannerViewModel
     let validation: ScanValidationViewModel
     @Binding var detent: PresentationDetent
-    /// Leaves the scanner.
     let onClose: () -> Void
     @Environment(\.api) private var api
     @State private var correction: ScanCorrectionTarget?

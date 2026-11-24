@@ -7,10 +7,9 @@ package enum HomeWidgetKind: String, CaseIterable {
     case trades = "TradesWidget"
 }
 
-/// What a widget has to display.
 package enum HomeWidgetContent<Snapshot: Equatable>: Equatable {
     case snapshot(Snapshot)
-    /// Nobody is signed in to the app.
+    /// Nobody is signed in, or the session expired.
     case signedOut
     /// The call failed and no earlier snapshot is on the device.
     case unavailable

@@ -93,7 +93,6 @@ struct SearchView: View {
 
     // MARK: Carte
 
-    /// A blank field shows the recent searches; as soon as it holds text, the live grid.
     @ViewBuilder private var cardMode: some View {
         let typing = !searchText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
 

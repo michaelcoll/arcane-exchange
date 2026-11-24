@@ -6,7 +6,6 @@ import SwiftUI
 /// first, a form to record a sealed product, and the edition and deletion of a purchase.
 /// Deleting one never removes a card from the collection.
 struct PurchasesView: View {
-    /// The form on screen: a creation, or the edition of one purchase.
     private enum FormTarget: Identifiable {
         case create
         case edit(Purchase)

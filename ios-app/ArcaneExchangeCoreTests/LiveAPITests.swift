@@ -102,7 +102,6 @@ private enum MutationCall: String, CaseIterable, CustomTestStringConvertible {
         rawValue
     }
 
-    /// The status of a successful answer.
     var successStatus: Int {
         switch self {
         case .createTrade, .createBinder, .addCollectionEntry: 201

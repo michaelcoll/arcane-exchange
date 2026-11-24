@@ -24,7 +24,6 @@ final class FakeAPI: APIProtocol, @unchecked Sendable {
     private let lock = NSLock()
     private var recorded: [String] = []
 
-    /// The operations received so far, by generated name, in call order.
     var calls: [String] {
         lock.withLock { recorded }
     }

@@ -68,7 +68,6 @@ struct ScannerView: View {
         }
         .padding()
         .animation(.snappy, value: scanner.undoOffer)
-        // A few seconds after each addition, the offer goes away.
         .task(id: scanner.recognitionCount) {
             try? await Task.sleep(for: .seconds(3))
             if !Task.isCancelled {
@@ -132,13 +131,11 @@ struct ScannerView: View {
     }
 }
 
-/// What decides whether the camera runs: the scan index, and the drawer covering it.
 private struct CameraDemand: Equatable {
     let isIndexReady: Bool
     let isHidden: Bool
 }
 
-/// The toast that follows each addition: the card added, and the way to take it off.
 private struct UndoToast: View {
     let card: RecognisedCard
     let onUndo: () -> Void

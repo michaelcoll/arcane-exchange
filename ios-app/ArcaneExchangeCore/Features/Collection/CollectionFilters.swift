@@ -1,8 +1,6 @@
 import APIClient
 import Foundation
 
-/// Short names for the generated schema types this screen works with — the fully qualified
-/// `Components.Schemas.…` spelling is unreadable inside SwiftUI bodies.
 package typealias CollectionCard = Components.Schemas.CollectionCardResponse
 package typealias RarityCode = Components.Schemas.RarityCodeParam
 package typealias SetInfo = Components.Schemas.SetInfoResponse

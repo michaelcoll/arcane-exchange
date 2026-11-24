@@ -32,7 +32,6 @@ package enum ScanGuide {
         return CGRect(x: (size.width - width) / 2, y: (size.height - height) / 2, width: width, height: height)
     }
 
-    /// The card outline.
     package static var card: CGRect {
         let height = widthFraction * imageAspect / cardAspect
         return CGRect(x: (1 - widthFraction) / 2, y: topFraction, width: widthFraction, height: height)

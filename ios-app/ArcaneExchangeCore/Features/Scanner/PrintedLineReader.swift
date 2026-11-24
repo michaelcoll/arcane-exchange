@@ -27,11 +27,11 @@ package struct PrintedLineReading: Hashable, Sendable {
 /// otherwise nil. The rarity letter is kept, not judged: a token (`T`) is dropped later by
 /// `CardRecogniser`, which compares it with the scan index.
 package enum PrintedLineReader {
-    /// The regexes are immutable once built and read from the camera queue: `nonisolated(unsafe)` only
-    /// tells Swift 6 what is true.
     /// "•" is often recognised as "*", "·" or "-". Digits may come out as O, I or l.
     private static let digit = "[0-9OIl]"
     // swiftlint:disable force_try
+    // The regexes are immutable once built and read from the camera queue: `nonisolated(unsafe)` only
+    // tells Swift 6 what is true.
     private nonisolated(unsafe) static let oldNumber = try! Regex(
         "\\b(\(digit){3,4})\\s*/\\s*\(digit){3,4}\\s*([A-Z])?(?![a-z])"
     )

@@ -80,7 +80,7 @@ struct CollectionFiltersTests {
         #expect(CollectionFiltersStore(defaults: defaults).load() == CollectionFilters())
     }
 
-    /// Filters saved by the previous version, before `DeviceMemory`, must still be restored.
+    /// The persisted JSON shape must keep being restored as is.
     @Test func readsFiltersWrittenInTheCurrentFormat() {
         let defaults = isolatedDefaults()
         let json = #"{"rarities":["R"],"sets":["MH3"],"sortBy":"added_at","sortDir":"asc"}"#

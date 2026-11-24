@@ -106,7 +106,6 @@ struct TradeDetailView: View {
         }
     }
 
-    /// The partner, in the trade's other-player role.
     private var partnerHandle: String {
         "@\(model.partnerUsername.isEmpty ? route.partnerUsername : model.partnerUsername)"
     }

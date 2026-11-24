@@ -66,7 +66,6 @@ struct CatalogSearchView: View {
         }
     }
 
-    /// The optional restriction to a set, under the name search field.
     private var setField: some View {
         TextField("Set (ex. FDN)", text: $model.setCode)
             .textInputAutocapitalization(.characters)

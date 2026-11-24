@@ -44,7 +44,6 @@ package final class Paginator<Item: Equatable> {
         case content
     }
 
-    /// Number of items asked for per page.
     package static var pageSize: Int32 {
         20
     }

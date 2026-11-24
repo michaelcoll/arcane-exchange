@@ -14,7 +14,6 @@ package final class AddCollectionEntryViewModel {
     package var language: CardLanguage
     package var foil = false
     package var quantity = 1
-    /// The binder to store the copies in; `nil` for none.
     package var binderID: String?
     /// The sealed product the copies come from; `nil` for none. Set by `chooseSealedProduct(_:)`.
     package private(set) var sealedProductID: String?

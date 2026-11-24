@@ -49,7 +49,6 @@ struct ArtworkPipelineTests {
     }
 }
 
-/// A network that answers nothing and remembers what it was asked.
 private final class RecordingDataLoader: DataLoading, @unchecked Sendable {
     private let lock = NSLock()
     private var urls = [URL]()

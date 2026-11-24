@@ -48,7 +48,6 @@ struct CatalogCardImage: View {
     }
 }
 
-/// The set symbol tinted by rarity, the set name and the collector number.
 struct CatalogCardSetLine: View {
     let card: SearchCard
 

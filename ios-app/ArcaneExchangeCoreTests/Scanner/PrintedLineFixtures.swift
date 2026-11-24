@@ -1,9 +1,7 @@
 @testable import ArcaneExchangeCore
 
-/// SYNTHETIC FIXTURES, taken over from the former OCR prototype. No physical
-/// card was available: these lines are written from the known printed formats of the printed line,
-/// with typical OCR confusions, NOT captured by Vision. Texts captured on real cards come in their
-/// own ticket.
+/// Synthetic fixtures: written from the known printed formats with typical OCR confusions, not
+/// captured by Vision.
 struct PrintedLineFixture: Sendable {
     let name: String
     let lines: [String]
@@ -82,7 +80,6 @@ enum PrintedLineFixtures {
         .init(name: "Spanish printed code",
               lines: ["R 0123", "MOM • SP"],
               expected: reading("MOM", "123", .spanish, "R")),
-        // Not readable: no reading.
         .init(name: "non numeric collector number",
               lines: ["R H013", "MOM • EN"],
               expected: nil),

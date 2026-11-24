@@ -31,7 +31,6 @@ package struct ScanBatchLine: Codable, Hashable, Identifiable, Sendable {
         Key(set: set, number: number, language: language, foil: foil)
     }
 
-    /// The name in the card's language (see `CardLanguage.displayName(name:frenchName:)`).
     package var displayName: String {
         language.displayName(name: name, frenchName: frenchName)
     }
@@ -44,7 +43,6 @@ private extension ScanBatchLine {
                   rarity: card.rarity, name: card.name, frenchName: card.frenchName)
     }
 
-    /// The same line in another language and/or finish.
     func with(language: CardLanguage? = nil, foil: Bool? = nil) -> ScanBatchLine {
         ScanBatchLine(set: set, number: number, language: language ?? self.language, foil: foil ?? self.foil,
                       quantity: quantity, rarity: rarity, name: name, frenchName: frenchName)

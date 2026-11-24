@@ -8,7 +8,6 @@ import Foundation
 package final class PurchasesViewModel {
     private let api: any APIProtocol
 
-    /// The loaded purchases and their loading state.
     package let paginator: Paginator<Purchase>
 
     /// Set when a deletion failed: the list is intact. French message, ready to show.
