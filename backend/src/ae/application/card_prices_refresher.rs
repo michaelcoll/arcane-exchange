@@ -15,7 +15,6 @@ pub struct CardPricesRefresher {
 }
 
 impl CardPricesRefresher {
-    /// Creates the refresher and spawns its worker on the Tokio runtime.
     pub fn spawn(card_prices_view: Arc<dyn CardPricesViewRepository>) -> Arc<Self> {
         let (refresher, worker) = Self::new(card_prices_view);
         tokio::spawn(worker.run());

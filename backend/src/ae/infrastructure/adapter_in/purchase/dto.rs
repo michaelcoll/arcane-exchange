@@ -45,7 +45,6 @@ impl From<SealedProductType> for SealedProductTypeParam {
     }
 }
 
-/// What a Purchase bought.
 #[derive(Debug, Serialize, TS, ToSchema)]
 #[serde(rename = "PurchaseKind", rename_all = "snake_case")]
 #[ts(export)]
@@ -54,7 +53,6 @@ pub enum PurchaseKindResponse {
     SingleCard,
 }
 
-/// The card a single card Purchase bought.
 #[derive(Debug, Serialize, TS, ToSchema)]
 #[serde(rename = "PurchasedCard")]
 #[ts(export)]
@@ -190,7 +188,6 @@ impl From<PurchaseContentLine> for PurchaseContentLineResponse {
     }
 }
 
-/// A Purchase with its content and its profitability.
 #[derive(Debug, Serialize, TS, ToSchema)]
 #[serde(rename = "PurchaseDetail")]
 #[ts(export)]
@@ -240,7 +237,6 @@ pub(crate) struct PurchasesParams {
     pub(crate) page_size: u32,
 }
 
-/// A sealed product to record.
 #[derive(Debug, Deserialize, TS, ToSchema)]
 #[serde(rename = "CreateSealedProductRequest")]
 #[ts(export)]

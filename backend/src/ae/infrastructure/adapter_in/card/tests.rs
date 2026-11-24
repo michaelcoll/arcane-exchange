@@ -34,8 +34,6 @@ fn offers_app(mock: MockGetCardOffersUseCase) -> axum::Router {
 const OFFERS_URI: &str =
     "/card/offers?set_code=FDN&collector_number=87&language_code=FR&foil=false&page=0&page_size=20";
 
-// --- Price history ---
-
 #[tokio::test]
 async fn get_card_price_history_returns_entries() {
     let scryfall_id = Uuid::new_v4();
@@ -145,8 +143,6 @@ async fn get_card_price_history_rejects_missing_foil_with_bad_request() {
 
     assert_error(response, StatusCode::BAD_REQUEST, "invalid_request").await;
 }
-
-// --- Offers ---
 
 #[tokio::test]
 async fn get_card_offers_returns_paginated_offers() {
@@ -323,8 +319,6 @@ async fn get_card_offers_rejects_non_numeric_page_size_with_bad_request() {
     assert_error(response, StatusCode::BAD_REQUEST, "invalid_request").await;
 }
 
-// --- Authentication ---
-
 #[tokio::test]
 async fn every_route_refuses_an_anonymous_request() {
     let price_history_uri = format!("/card/{}/price-history?foil=false", Uuid::new_v4());
@@ -335,8 +329,6 @@ async fn every_route_refuses_an_anonymous_request() {
 
     assert_routes_refuse_anonymous(|| create_router(AppState::for_testing()), &routes).await;
 }
-
-// --- Unit tests for dto.rs ---
 
 #[test]
 fn card_offers_params_deserializes_with_all_fields() {
@@ -355,7 +347,6 @@ fn card_offers_params_deserializes_with_all_fields() {
     assert_eq!(params.collector_number, "87");
     assert_eq!(params.language_code, "FR");
     assert!(params.foil);
-    // sort_by deserialized from "selling_price" via serde(rename)
     let sorted: CardOfferSortField = params.sort_by.into();
     assert!(matches!(sorted, CardOfferSortField::SellingPrice));
     assert_eq!(params.page, 2);

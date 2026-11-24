@@ -34,7 +34,6 @@ pub mod user;
 /// are imported every 12 hours, and half that keeps an answer at most one import late.
 pub(crate) const PRICE_BOUND_CACHE_CONTROL: &str = "public, max-age=21600";
 
-/// Default `page_size` of the paginated routes.
 pub(crate) fn default_page_size() -> u32 {
     crate::domain::pagination::DEFAULT_PAGE_SIZE
 }

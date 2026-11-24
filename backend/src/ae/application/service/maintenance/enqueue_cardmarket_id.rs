@@ -10,7 +10,6 @@ use async_trait::async_trait;
 use std::sync::Arc;
 use uuid::Uuid;
 
-/// Resolves a card's Cardmarket id from its Scryfall id.
 pub struct CardMarketIdEnricher {
     card_repository: Arc<dyn CardRepository>,
     scryfall_caller: Arc<dyn ScryfallCaller>,

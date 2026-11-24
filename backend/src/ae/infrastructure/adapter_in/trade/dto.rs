@@ -188,7 +188,7 @@ pub struct PaginatedTradesResponse {
 }
 
 /// Status filter values for `GET /trades`, repeated for multiple statuses
-/// (e.g. `?status=PENDING&status=CLOSED`), mirroring `RarityCodeParam` on `/search/card`.
+/// (e.g. `?status=PENDING&status=CLOSED`).
 #[derive(Deserialize, Debug, PartialEq, TS, ToSchema)]
 #[serde(rename = "TradeStatusParam", rename_all = "SCREAMING_SNAKE_CASE")]
 #[ts(export)]

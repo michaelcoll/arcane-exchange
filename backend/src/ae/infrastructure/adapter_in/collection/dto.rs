@@ -18,7 +18,6 @@ pub struct MessageResponse {
     pub message: String,
 }
 
-// --- Card import ---
 #[derive(Serialize, Debug, TS, ToSchema)]
 #[serde(rename = "CardImportStarted")]
 #[ts(export)]
@@ -93,7 +92,6 @@ impl From<CardImport> for CardImportResponse {
     }
 }
 
-// --- Collection stats ---
 #[derive(Serialize, Debug, TS, ToSchema)]
 #[serde(rename = "BinderInfo")]
 #[ts(export)]
@@ -138,7 +136,6 @@ impl From<CollectionStats> for CollectionStatsResponse {
     }
 }
 
-// --- Query params ---
 #[derive(Deserialize, Default, Debug, PartialEq, TS, ToSchema)]
 #[serde(rename = "SortBy", rename_all = "snake_case")]
 #[ts(export)]
@@ -266,7 +263,6 @@ impl Default for CollectionParams {
     }
 }
 
-// --- Réponses ---
 #[derive(Serialize, TS, ToSchema)]
 #[serde(rename = "PriceGuide")]
 #[ts(export)]
@@ -286,7 +282,6 @@ impl From<PriceGuide> for PriceGuideResponse {
     }
 }
 
-// --- Collection entries of a card ---
 #[derive(Serialize, Debug, TS, ToSchema)]
 #[serde(rename = "EntryBinder")]
 #[ts(export)]
@@ -371,7 +366,6 @@ impl From<CardEntries> for CardEntriesResponse {
     }
 }
 
-/// A copy to add to the collection.
 #[derive(Deserialize, Debug, TS, ToSchema)]
 #[serde(rename = "AddCollectionEntryRequest")]
 #[ts(export)]
@@ -415,7 +409,6 @@ pub(crate) struct ScanBatchLineRequest {
     pub(crate) set_code: String,
     /// Collector number of the catalog card.
     pub(crate) collector_number: String,
-    /// Language of the copies.
     pub(crate) language_code: String,
     pub(crate) foil: bool,
     /// Copies of the line, 1 to 255. Signed so an out-of-range value fails with

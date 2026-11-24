@@ -144,7 +144,6 @@ pub mod adapter_out;
 #[cfg(test)]
 mod testing;
 
-// ---- AppState ----
 #[derive(Clone)]
 pub struct AppState {
     pub import_card_use_case: Arc<dyn ImportCardUseCase>,
@@ -206,7 +205,6 @@ pub struct AppState {
     pub trend_prices_use_case: Arc<dyn TrendPricesUseCase>,
 }
 
-// ---- Repositories ----
 struct Repositories {
     card: Arc<CardRepositoryAdapter>,
     set_name: Arc<SetNameRepositoryAdapter>,
@@ -259,7 +257,6 @@ fn create_repositories(pool: &Pool<Postgres>) -> Repositories {
     }
 }
 
-// ---- Callers ----
 /// EDHREC is a free service without an official API: at most five requests per second, half of
 /// what was measured without a refusal.
 const EDH_REC_MIN_INTERVAL: Duration = Duration::from_millis(200);
@@ -300,9 +297,8 @@ async fn create_token_validator(config: &Config) -> Arc<dyn TokenValidator> {
     )
 }
 
-// ---- Background workers ----
-// Canal non borné consommé en série par un unique worker : au plus un import actif par
-// utilisateur (contrainte portée par la base), donc pas de besoin de parallélisme ici.
+// Unbounded channel drained serially by a single worker: at most one import is active per user
+// (constraint enforced by the database), so no parallelism is needed here.
 fn spawn_card_import_worker(
     repos: &Repositories,
     enqueue_cardmarket_id_use_case: Arc<dyn EnqueueCardMarketIdUpdateUseCase>,
@@ -330,7 +326,6 @@ fn spawn_card_import_worker(
     sender
 }
 
-// ---- App state assembly ----
 #[allow(clippy::too_many_arguments)]
 fn create_app_state(
     repos: Repositories,

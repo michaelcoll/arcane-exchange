@@ -195,8 +195,6 @@ async fn the_catalog_routes_require_a_token() {
     .await;
 }
 
-// ---- POST /catalog/trend-prices ----
-
 fn trend_prices_app(mock: MockTrendPricesUseCase) -> axum::Router {
     create_router(AppState {
         trend_prices_use_case: Arc::new(mock),

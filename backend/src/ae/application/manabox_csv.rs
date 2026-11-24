@@ -15,7 +15,7 @@ use uuid::Uuid;
 /// Result of parsing a ManaBox collection CSV: the cards that could be read, the errors
 /// encountered on individual lines (which do not prevent the rest of the file from being
 /// parsed), and the number of data lines read (before the "Tokens" set filter and
-/// deduplication — used as the source-of-truth count for the import's compte-rendu).
+/// deduplication — used as the source-of-truth count for the import's report).
 pub struct ParsedCollection {
     pub cards: Vec<ImportedCard>,
     pub errors: Vec<CardImportLineError>,
@@ -48,7 +48,6 @@ const COLLECTION_HEADERS: [&str; 20] = [
     "Added",
 ];
 
-/// Position, in the file, of each column the parser reads.
 struct Columns {
     binder_name: usize,
     name: usize,
@@ -142,7 +141,7 @@ pub fn parse_cards(csv: &str) -> Result<ParsedCollection, AppError> {
     let mut source_lines = 0usize;
 
     for (index, result) in reader.records().enumerate() {
-        let line_number = index + 1 + 1; // +1 car lignes humaines, +1 car header
+        let line_number = index + 1 + 1; // +1 because human line numbers start at 1, +1 for the header
 
         let record = result.map_err(|e| FunctionalError::MalformedCsv(e.to_string()))?;
         let field_refs: Vec<&str> = record.iter().collect();

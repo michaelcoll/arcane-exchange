@@ -2075,7 +2075,6 @@ components:
   schemas:
     AddCollectionEntryRequest:
       type: object
-      description: A copy to add to the collection.
       required:
       - set_code
       - collector_number
@@ -2466,7 +2465,6 @@ components:
       - private
     CreateSealedProductRequest:
       type: object
-      description: A sealed product to record.
       required:
       - product_type
       - set_code
@@ -2776,7 +2774,6 @@ components:
           minimum: 0
     PurchaseDetailResponse:
       type: object
-      description: A Purchase with its content and its profitability.
       required:
       - purchase
       - content
@@ -2813,7 +2810,6 @@ components:
           $ref: '#/components/schemas/PurchaseResponse'
     PurchaseKindResponse:
       type: string
-      description: What a Purchase bought.
       enum:
       - sealed_product
       - single_card
@@ -2866,7 +2862,6 @@ components:
           description: Sealed product only.
     PurchasedCardResponse:
       type: object
-      description: The card a single card Purchase bought.
       required:
       - set
       - collector_number
@@ -2957,7 +2952,6 @@ components:
           type: string
     ReceivingBinderSettingResponse:
       type: object
-      description: The receiving binder setting as stored.
       properties:
         binder:
           $ref: '#/components/schemas/ReceivingBinderResponse'
@@ -3013,7 +3007,6 @@ components:
           type: boolean
         language_code:
           type: string
-          description: Language of the copies.
         quantity:
           type: integer
           format: int32
@@ -3036,11 +3029,8 @@ components:
     ScanIndexEntryResponse:
       type: object
       description: |-
-        One entry of the scan index, keyed by set and collector number.
-
-        The body of `GET /catalog/scan-index` is a JSON array of these; it is built and gzipped once
-        per catalog load by the `ScanIndexUseCase` from the serialization of `ScanIndexEntry`, this
-        type only documents its shape (a controller test decodes the served body as this type).
+        One entry of the scan index, keyed by set and collector number. The body of
+        `GET /catalog/scan-index` is a JSON array of these.
       required:
       - set_code
       - collector_number
@@ -3363,7 +3353,7 @@ components:
       type: string
       description: |-
         Status filter values for `GET /trades`, repeated for multiple statuses
-        (e.g. `?status=PENDING&status=CLOSED`), mirroring `RarityCodeParam` on `/search/card`.
+        (e.g. `?status=PENDING&status=CLOSED`).
       enum:
       - PENDING
       - ONE_ACCEPTED

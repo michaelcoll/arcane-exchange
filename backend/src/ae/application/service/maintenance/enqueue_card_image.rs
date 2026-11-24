@@ -44,7 +44,6 @@ impl CardImageEnricher {
         }
     }
 
-    /// Cards in fallback, and pending cards.
     async fn in_fallback_or_pending(&self) -> Result<Vec<(CardId, CardImageLookup)>, AppError> {
         self.card_repository.get_all_in_fallback_or_pending().await
     }
@@ -78,7 +77,6 @@ impl CardImageEnricher {
         }
     }
 
-    /// Stores the card's own image, in its language.
     async fn store_own(&self, card_id: &CardId, images: CardImages) -> Result<(), AppError> {
         self.card_image_repository.save(card_id, &images).await?;
         self.card_repository
@@ -137,7 +135,6 @@ impl CardImageEnricher {
 enum Skipped {
     Gatherer(LanguageCode, GathererMiss),
     TooSmall(LanguageCode, FaceWidths),
-    /// The English image already stored was reused as it is.
     Reused(ImageOrigin),
     ScryfallNotFound,
 }
@@ -388,10 +385,7 @@ mod tests {
     /// What the card ends up recorded with.
     enum Recorded {
         Nothing,
-        /// Its own image.
-        Own {
-            has_back: bool,
-        },
+        Own { has_back: bool },
         English(EnglishImage),
     }
 

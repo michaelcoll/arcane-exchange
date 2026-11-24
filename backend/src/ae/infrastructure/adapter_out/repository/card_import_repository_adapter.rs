@@ -9,7 +9,6 @@ use chrono::{DateTime, Utc};
 use sqlx::types::Json;
 use sqlx::{Pool, Postgres};
 
-/// Postgres error code for `unique_violation`.
 const UNIQUE_VIOLATION: &str = "23505";
 
 /// JSON shape stored in the `line_errors` JSONB column. Kept private to this adapter rather than

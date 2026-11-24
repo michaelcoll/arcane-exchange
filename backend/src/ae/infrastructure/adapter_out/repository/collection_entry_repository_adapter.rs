@@ -30,7 +30,6 @@ impl CollectionEntryRepositoryAdapter {
     }
 }
 
-/// An entry of the card being edited, read under lock.
 pub(super) struct LockedEntry {
     pub(super) id: Uuid,
     pub(super) foil: bool,
@@ -71,13 +70,11 @@ impl LockedCard {
             .sum()
     }
 
-    /// The entry of the finish and binder, if there is one.
     fn find(&self, foil: bool, binder_id: Option<Uuid>) -> Option<&LockedEntry> {
         find_entry(&self.entries, foil, binder_id)
     }
 }
 
-/// The entry of the finish and binder among `entries`, if there is one.
 pub(super) fn find_entry(
     entries: &[LockedEntry],
     foil: bool,
@@ -92,14 +89,12 @@ fn corrupt(what: &str) -> AppError {
     InfraError::RepositoryError(format!("collection_entry holds an out-of-range {what}")).into()
 }
 
-/// A purchase price as the domain holds it, from its column.
 fn purchase_price_from_column(price: Option<i32>) -> Result<Option<u32>, AppError> {
     price
         .map(|price| u32::try_from(price).map_err(|_| corrupt("purchase price")))
         .transpose()
 }
 
-/// A purchase price as its column holds it.
 fn purchase_price_to_column(price: Option<u32>) -> Result<Option<i32>, AppError> {
     price
         .map(|price| i32::try_from(price).map_err(|_| corrupt("purchase price")))
@@ -150,7 +145,6 @@ async fn recorded_scan_batch(
         .transpose()
 }
 
-/// The three parts of a card's identity, as the columns hold them.
 fn card_columns(card_id: &CardId) -> (String, &str, String) {
     (
         card_id.set_code.to_string(),
@@ -705,7 +699,6 @@ impl CollectionEntryRepository for CollectionEntryRepositoryAdapter {
         }
         let target_binder = binder_id.map(|binder| binder.0);
 
-        // Moving into the binder the entry already is in leaves everything as it is.
         if target_binder != entry.binder_id {
             let target = locked.find(entry.foil, target_binder);
             let moved_copies = EntryCopies {
@@ -870,8 +863,6 @@ mod tests {
             ..EntryUpdate::default()
         }
     }
-
-    // ---- add_scan_batch ----
 
     fn batch_id() -> ScanBatchId {
         ScanBatchId(Uuid::from_u128(42))
@@ -1264,8 +1255,6 @@ mod tests {
         assert_eq!(count(&pool, "scan_batch").await, 0);
     }
 
-    // ---- find_by_card ----
-
     #[sqlx::test]
     async fn find_by_card_lists_both_finishes_with_their_binder(pool: PgPool) {
         seed(&pool).await;
@@ -1321,8 +1310,6 @@ mod tests {
 
         assert!(found.entries.is_empty());
     }
-
-    // ---- add ----
 
     #[sqlx::test]
     async fn add_writes_a_new_entry_without_purchase_price(pool: PgPool) {
@@ -1467,8 +1454,6 @@ mod tests {
         assert_eq!(entries.entries.len(), 1);
         assert_eq!(entries.entries[0].quantity, 1);
     }
-
-    // ---- add: with a purchase ----
 
     fn single_card_purchase(price: i32, quantity: u8) -> NewSingleCardPurchase {
         NewSingleCardPurchase::try_new(
@@ -1623,8 +1608,6 @@ mod tests {
         assert_eq!(entries, 0);
     }
 
-    // ---- update: quantity ----
-
     #[sqlx::test]
     async fn update_changes_the_quantity_and_returns_the_entries(pool: PgPool) {
         seed(&pool).await;
@@ -1707,8 +1690,6 @@ mod tests {
 
         assert_eq!(entries.entries[0].quantity, 2);
     }
-
-    // ---- update: finish ----
 
     #[sqlx::test]
     async fn update_turns_an_entry_into_the_other_finish(pool: PgPool) {
@@ -1905,8 +1886,6 @@ mod tests {
         assert_eq!(entries.entries.len(), 2);
     }
 
-    // ---- isolation, absence ----
-
     #[sqlx::test]
     async fn update_and_remove_treat_another_players_entry_as_absent(pool: PgPool) {
         seed(&pool).await;
@@ -1943,8 +1922,6 @@ mod tests {
         assert_eq!(update.code(), "collection_entry_not_found");
         assert_eq!(removal.code(), "collection_entry_not_found");
     }
-
-    // ---- remove ----
 
     #[sqlx::test]
     async fn remove_removes_only_the_entry(pool: PgPool) {
@@ -1992,8 +1969,6 @@ mod tests {
 
         assert!(result.is_ok());
     }
-
-    // ---- move_to_binder ----
 
     #[sqlx::test]
     async fn move_all_into_an_empty_binder_keeps_the_entry(pool: PgPool) {

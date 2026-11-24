@@ -118,7 +118,6 @@ mod tests {
         }
     }
 
-    /// A catalog holding `catalog_card` only.
     fn catalog_with(catalog_card: Option<CatalogCard>) -> MockCatalogRepository {
         let mut catalog = MockCatalogRepository::new();
         catalog.expect_find().returning(move |set_code, number| {
@@ -130,7 +129,6 @@ mod tests {
         catalog
     }
 
-    /// A card repository that creates (or finds already there) every card, and records nothing else.
     fn cards(created: bool) -> MockCardRepository {
         let mut cards = MockCardRepository::new();
         cards
@@ -139,7 +137,6 @@ mod tests {
         cards
     }
 
-    /// The cards already in base: none, or exactly `existing`.
     fn known_cards(existing: Option<CardId>) -> MockCardPricesViewRepository {
         let mut known = MockCardPricesViewRepository::new();
         known.expect_exists().returning(move |card_id| {

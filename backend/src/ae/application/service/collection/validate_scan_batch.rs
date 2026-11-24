@@ -113,7 +113,6 @@ mod tests {
         }
     }
 
-    /// A repository that knows no batch and accepts any destination.
     fn repository() -> MockCollectionEntryRepository {
         let mut repository = MockCollectionEntryRepository::new();
         repository

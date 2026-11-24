@@ -99,10 +99,6 @@ fn expecting_collection(
     mock
 }
 
-// ============================================================
-// Authentication
-// ============================================================
-
 #[tokio::test]
 async fn every_route_refuses_an_anonymous_request() {
     let routes = [
@@ -134,10 +130,6 @@ async fn every_route_refuses_an_anonymous_request() {
 
     assert_routes_refuse_anonymous(|| create_router(AppState::for_testing()), &routes).await;
 }
-
-// ============================================================
-// GET /collection
-// ============================================================
 
 #[tokio::test]
 async fn get_collection_returns_empty_response_when_collection_is_empty() {
@@ -609,10 +601,6 @@ async fn get_collection_decodes_a_plus_as_a_space_and_keeps_the_other_defaults()
     assert_eq!(response.status(), StatusCode::OK);
 }
 
-// ============================================================
-// POST /collection/import
-// ============================================================
-
 fn import_request(body: impl Into<Body>) -> Request<Body> {
     Request::builder()
         .method(Method::POST)
@@ -623,7 +611,6 @@ fn import_request(body: impl Into<Body>) -> Request<Body> {
         .unwrap()
 }
 
-/// An import app whose use case expects exactly one `start_import` of `csv` for the caller.
 fn import_app_expecting(csv: &str) -> axum::Router {
     let expected = csv.to_string();
     let mut mock = MockImportCardUseCase::new();
@@ -710,10 +697,6 @@ async fn import_cards_returns_conflict_when_already_running() {
 
     assert_error(response, StatusCode::CONFLICT, "import_already_running").await;
 }
-
-// ============================================================
-// GET /collection/import/{id}
-// ============================================================
 
 fn sample_card_import() -> CardImport {
     CardImport {
@@ -803,10 +786,6 @@ async fn get_card_import_returns_not_found_for_unknown_or_foreign_import() {
     assert_error(response, StatusCode::NOT_FOUND, "import_not_found").await;
 }
 
-// ============================================================
-// GET /collection/import
-// ============================================================
-
 #[tokio::test]
 async fn list_card_imports_returns_the_callers_imports() {
     let import = sample_card_import();
@@ -833,10 +812,6 @@ async fn list_card_imports_returns_the_callers_imports() {
     assert_eq!(body.as_array().unwrap().len(), 1);
     assert_eq!(body[0]["id"], import_id.to_string());
 }
-
-// ============================================================
-// GET /collection/stats
-// ============================================================
 
 #[tokio::test]
 async fn get_collection_stats_returns_stats_from_use_case() {
@@ -919,10 +894,6 @@ async fn get_collection_stats_propagates_error_from_use_case() {
 
     assert_error(response, StatusCode::INTERNAL_SERVER_ERROR, "internal").await;
 }
-
-// ============================================================
-// GET /collection/price-history
-// ============================================================
 
 #[tokio::test]
 async fn get_collection_price_history_returns_entries() {
@@ -1026,10 +997,6 @@ async fn get_collection_price_history_passes_missing_dates_through_to_use_case()
     assert_eq!(response.status(), StatusCode::OK);
 }
 
-// ============================================================
-// Unit tests for dto.rs conversions & deserialisation
-// ============================================================
-
 #[test]
 fn sort_by_param_from_mapping_is_complete() {
     assert_eq!(
@@ -1087,10 +1054,6 @@ fn collection_params_default_values() {
     assert!(params.price_min.is_none());
     assert!(params.price_max.is_none());
 }
-
-// ============================================================
-// Collection entries of a card
-// ============================================================
 
 mod entries {
     use super::*;
@@ -1744,10 +1707,6 @@ mod entries {
         assert_error(response, StatusCode::CONFLICT, "reserved_quantity_exceeded").await;
     }
 }
-
-// ============================================================
-// POST /collection/scan-batches
-// ============================================================
 
 mod scan_batches {
     use super::*;

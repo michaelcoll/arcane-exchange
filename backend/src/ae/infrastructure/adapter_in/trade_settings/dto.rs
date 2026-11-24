@@ -5,7 +5,6 @@ use serde::{Deserialize, Serialize};
 use ts_rs::TS;
 use utoipa::ToSchema;
 
-// --- Collection visibility ---
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, TS, ToSchema)]
 #[serde(rename = "CollectionVisibility", rename_all = "snake_case")]
 #[ts(export)]
@@ -48,7 +47,6 @@ pub(crate) struct SetVisibilityRequest {
     pub(crate) visibility: CollectionVisibilityParam,
 }
 
-// --- Receiving binder ---
 #[derive(Debug, Serialize, TS, ToSchema)]
 #[serde(rename = "ReceivingBinder")]
 #[ts(export)]
@@ -66,7 +64,6 @@ impl From<ReceivingBinder> for ReceivingBinderResponse {
     }
 }
 
-/// The receiving binder setting as stored.
 #[derive(Debug, Serialize, TS, ToSchema)]
 #[serde(rename = "ReceivingBinderSetting")]
 #[ts(export)]
@@ -94,7 +91,6 @@ pub(crate) struct SetReceivingBinderRequest {
     pub(crate) binder_id: Option<String>,
 }
 
-// --- Binders open for trade ---
 #[derive(Debug, Serialize, TS, ToSchema)]
 #[ts(export)]
 pub struct TradeBindersResponse {
@@ -107,7 +103,6 @@ pub(crate) struct AddTradeBinderRequest {
     pub(crate) binder_name: String,
 }
 
-// --- Rarity trade filters ---
 #[derive(Serialize, Debug, TS, ToSchema)]
 #[serde(rename = "RarityFilter")]
 #[ts(export)]

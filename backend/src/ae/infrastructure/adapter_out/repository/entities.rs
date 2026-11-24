@@ -396,7 +396,6 @@ impl TryFrom<TradeCardDetailEntity> for TradeCardDetail {
     }
 }
 
-/// Row for [`TradeRepository::list_trades`].
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct TradeSummaryEntity {
     pub id: Uuid,
@@ -422,7 +421,6 @@ impl TryFrom<TradeSummaryEntity> for TradeSummary {
     }
 }
 
-/// Flat price guide data as stored in the database (3 optional price fields).
 #[derive(sqlx::FromRow, Clone, Debug, PartialEq, Eq)]
 pub struct PriceGuideEntity {
     pub low: Option<i32>,
@@ -819,8 +817,6 @@ mod tests {
         );
     }
 
-    // --- TradeStatus / CollectionVisibility ↔ database strings ---
-
     #[test]
     fn trade_status_round_trips_through_db_str() {
         for status in [
@@ -950,8 +946,6 @@ mod tests {
         assert_eq!(entity.foil.avg, Some(200));
     }
 
-    // --- CardImageLookupEntity ---
-
     #[test]
     fn card_image_lookup_entity_converts_to_card_id_and_lookup() {
         let scryfall_id = Uuid::new_v4();
@@ -987,8 +981,6 @@ mod tests {
 
         assert!(<(CardId, CardImageLookup)>::try_from(entity).is_err());
     }
-
-    // --- InclusionRateLookupEntity ---
 
     #[test]
     fn inclusion_rate_lookup_entity_converts_to_card_id_and_lookup() {
@@ -1028,8 +1020,6 @@ mod tests {
         assert_eq!(deck_count_to_db("num_decks", 7).unwrap(), 7);
     }
 
-    // --- UserEntity ---
-
     #[test]
     fn user_entity_converts_to_user() {
         let entity = UserEntity {
@@ -1047,8 +1037,6 @@ mod tests {
             Some("https://img.example.com/avatar.png".to_string())
         );
     }
-
-    // --- TradeEntity ---
 
     #[test]
     fn trade_entity_converts_to_trade_with_all_fields() {
@@ -1137,8 +1125,6 @@ mod tests {
         );
     }
 
-    // --- TradeCardEntity ---
-
     #[test]
     fn trade_card_entity_converts_to_trade_card() {
         let entity = TradeCardEntity {
@@ -1210,8 +1196,6 @@ mod tests {
         );
     }
 
-    // --- CardWithPriceEntity ---
-
     #[test]
     fn card_with_price_entity_converts_to_mine_entry() {
         let entity = CardWithPriceEntity {
@@ -1245,8 +1229,6 @@ mod tests {
             _ => panic!("expected CollectionEntry::Mine"),
         }
     }
-
-    // --- SearchCardEntity ---
 
     fn search_card_entity() -> SearchCardEntity {
         SearchCardEntity {
@@ -1382,8 +1364,6 @@ mod tests {
         assert!(card.price_guide.is_none());
     }
 
-    // --- CardMarketPriceEntity → FullPriceGuide ---
-
     #[test]
     fn card_market_price_entity_converts_to_full_price_guide() {
         let entity = CardMarketPriceEntity {
@@ -1412,8 +1392,6 @@ mod tests {
         assert_eq!(full.foil.trend.value, Some(1500));
     }
 
-    // --- CollectionPriceHistoryEntity ---
-
     #[test]
     fn collection_price_history_entity_converts_to_price_history_entry() {
         let entity = CollectionPriceHistoryEntity {
@@ -1431,8 +1409,6 @@ mod tests {
         assert_eq!(entry.price_guide.avg.value, Some(150));
     }
 
-    // --- CardMarketPriceHistoryEntity ---
-
     #[test]
     fn card_market_price_history_entity_converts_to_price_history_entry() {
         let entity = CardMarketPriceHistoryEntity {
@@ -1449,8 +1425,6 @@ mod tests {
         assert_eq!(entry.price_guide.trend.value, None);
         assert_eq!(entry.price_guide.avg.value, Some(150));
     }
-
-    // --- CardOfferEntity ---
 
     #[test]
     fn card_offer_entity_converts_to_owned_entry() {
@@ -1519,8 +1493,6 @@ mod tests {
         }
     }
 
-    // --- Price From<i32> ---
-
     #[test]
     fn price_from_i32_creates_price_with_cents() {
         let price: Price = 199i32.into();
@@ -1528,8 +1500,6 @@ mod tests {
         let price: Price = 0i32.into();
         assert_eq!(price.value, Some(0));
     }
-
-    // --- Price From<Option<i32>> ---
 
     #[test]
     fn price_from_some_i32() {

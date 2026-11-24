@@ -3,11 +3,8 @@ use serde::{Deserialize, Serialize};
 use ts_rs::TS;
 use utoipa::ToSchema;
 
-/// One entry of the scan index, keyed by set and collector number.
-///
-/// The body of `GET /catalog/scan-index` is a JSON array of these; it is built and gzipped once
-/// per catalog load by the `ScanIndexUseCase` from the serialization of `ScanIndexEntry`, this
-/// type only documents its shape (a controller test decodes the served body as this type).
+/// One entry of the scan index, keyed by set and collector number. The body of
+/// `GET /catalog/scan-index` is a JSON array of these.
 #[derive(Serialize, Debug, ToSchema)]
 #[cfg_attr(test, derive(serde::Deserialize), serde(deny_unknown_fields))]
 pub struct ScanIndexEntryResponse {

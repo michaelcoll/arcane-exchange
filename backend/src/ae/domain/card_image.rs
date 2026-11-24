@@ -36,7 +36,6 @@ impl CardImageSource {
         .find(|source| source.as_str() == value)
     }
 
-    /// Where the image file itself comes from.
     pub fn origin(&self) -> ImageOrigin {
         match self {
             CardImageSource::GathererLocalized | CardImageSource::GathererEn => {
@@ -84,7 +83,6 @@ impl ImageOrigin {
     }
 }
 
-/// The image stored for a card: where it comes from, and whether it has a back.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct CardImage {
     pub source: CardImageSource,
@@ -187,7 +185,6 @@ pub fn webp_width(bytes: &[u8]) -> Option<u32> {
     }
 }
 
-/// A face of a card.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum CardFace {
     Front,

@@ -194,7 +194,7 @@ mod tests {
             Some("https://img.example.com/avatar.png".to_string())
         );
 
-        // Login sans claim image_url : la valeur existante est conservée.
+        // Login without an image_url claim: the existing value is kept.
         adapter.upsert(&make_user("user_4", "carol")).await.unwrap();
         let user = adapter
             .find_by_id(&UserId::new("user_4"))
@@ -206,7 +206,7 @@ mod tests {
             Some("https://img.example.com/avatar.png".to_string())
         );
 
-        // Un nouveau claim remplace la valeur.
+        // A new claim replaces the value.
         let new_avatar = User::new(
             "user_4".to_string(),
             None,
@@ -241,8 +241,6 @@ mod tests {
         }
     }
 
-    // --- find_by_username ---
-
     #[sqlx::test]
     async fn find_by_username_returns_user_on_exact_case_match(pool: PgPool) {
         insert_user(&pool, "user_bob", "bob").await;
@@ -270,8 +268,6 @@ mod tests {
 
         assert!(result.is_none());
     }
-
-    // --- autocomplete ---
 
     #[sqlx::test]
     async fn autocomplete_returns_users_matching_substring(pool: PgPool) {
@@ -570,8 +566,6 @@ mod tests {
         assert_eq!(result.len(), 1);
         assert_eq!(result[0].card_count, 40);
     }
-
-    // --- get_visibility / set_visibility ---
 
     #[sqlx::test]
     async fn get_visibility_returns_default_private_for_newly_inserted_user(pool: PgPool) {

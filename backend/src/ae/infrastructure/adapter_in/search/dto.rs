@@ -7,8 +7,6 @@ use serde::{Deserialize, Serialize};
 use ts_rs::TS;
 use utoipa::ToSchema;
 
-/// The Possession axis of the query: `owned=true` keeps the owned impressions, `owned=false` the
-/// others, no `owned` all of them.
 pub(crate) fn possession_of(owned: Option<bool>) -> Possession {
     match owned {
         Some(true) => Possession::Owned,

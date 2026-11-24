@@ -24,7 +24,6 @@ pub struct EdhRecCallerAdapter {
 
 struct Schedule {
     interval: Duration,
-    /// When the next request may start.
     next_request_at: Instant,
 }
 
