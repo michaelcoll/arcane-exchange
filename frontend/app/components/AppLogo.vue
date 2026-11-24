@@ -1,5 +1,5 @@
-<!-- Le glyphe de la marque : deux losanges entrelacés, primary et secondary. Taille et épaisseur
-     du trait se règlent depuis le parent (`class`, `stroke-width`). -->
+<!-- The brand glyph: two interlaced diamonds, primary and secondary. Size and stroke width are
+     set by the parent (`class`, `stroke-width`). -->
 <template>
   <svg
     viewBox="0 0 28 28"

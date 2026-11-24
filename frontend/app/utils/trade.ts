@@ -2,18 +2,18 @@ import type { TradeCard } from '~/bindings/TradeCard';
 import type { TradeStatusParam } from '~/bindings/TradeStatusParam';
 import formatPrice from './format-price';
 
-/* Le statut d'un échange est typé par le contrat généré (`TradeStatusParam`, seule union de
- * statuts que ts-rs émet) : un statut ajouté côté backend casse la compilation de
- * `TRADE_STATUS_META`. Voir .claude/instructions/trade-workflow.instructions.md. */
+/* A Trade status is typed by the generated contract (`TradeStatusParam`, the only status union
+ * ts-rs emits): a status added in the backend breaks the compilation of `TRADE_STATUS_META`. See
+ * .claude/instructions/trade-workflow.instructions.md. */
 
-/** Valide et rétrécit le `status: string` de `TradeDetail` / `TradeSummary` vers le statut du
- * contrat, repli sur `PENDING`. */
+/** Narrows the `status: string` of `TradeDetail` / `TradeSummary` to the contract status, falling
+ * back to `PENDING`. */
 export const toTradeStatus = (raw: string): TradeStatusParam =>
   Object.hasOwn(TRADE_STATUS_META, raw) ? (raw as TradeStatusParam) : 'PENDING';
 
 export type TradeTone = 'primary' | 'secondary' | 'good' | 'down' | 'muted';
 
-/** Bordure, fond et texte d'une pastille (`Trade/StatusPill`, fraîcheur des prix du footer). */
+/** Border, background and text of a pill (`Trade/StatusPill`, footer price freshness). */
 export const TRADE_TONE_CLASSES: Record<TradeTone, string> = {
   primary: 'border-primary/30 bg-primary/10 text-primary-ink',
   secondary: 'border-secondary/30 bg-secondary/10 text-secondary-ink',
@@ -23,19 +23,16 @@ export const TRADE_TONE_CLASSES: Record<TradeTone, string> = {
     'border-slate-300 bg-slate-100 text-slate-500 dark:border-white/15 dark:bg-white/5 dark:text-slate-400',
 };
 
-/** Note laissée au partenaire : 1 à 5 étoiles, 0 si la notation a été passée, `null` tant que
- * non renseignée. */
+/** Rating left to the partner: 1 to 5 stars, 0 if the rating was skipped, `null` while not given. */
 export type TradeRating = number | null;
 
-/** Valeur d'une ligne de carte, en centimes : prix trend × quantité, 0 si le prix est inconnu. */
+/** Value of a card line in cents: trend price × quantity, 0 when the price is unknown. */
 export const tradeCardValue = (card: TradeCard): number =>
   (card.price_guide?.trend ?? 0) * card.quantity;
 
-/** Clé d'une ligne de carte dans un côté de l'échange : son CardId et sa Finition. */
 export const tradeCardKey = (card: TradeCard): string =>
   `${card.set_code}-${card.collector_number}-${card.language_code}-${card.foil}`;
 
-/** Somme des valeurs de toutes les lignes, en centimes. */
 export const tradeCardsTotal = (cards: TradeCard[]): number =>
   cards.reduce((s, c) => s + tradeCardValue(c), 0);
 
@@ -64,14 +61,13 @@ export const tradeInclusionAverageLabel = (cards: TradeCard[]): string => {
   return `moy. ${formatInclusionRate(average)}`;
 };
 
-/** Ce qu'un statut donne à lire : son libellé et son ton. */
 export interface TradeStatusPresentation {
   label: string;
   tone: TradeTone;
 }
 
-/** Seul mapping statut → libellé et ton du web : la pastille et l'indicateur à points en tirent
- * leur couleur. */
+/** Single status to label and tone mapping of the web app: the pill and the dot indicator take
+ * their color from it. */
 export const TRADE_STATUS_META: Record<TradeStatusParam, TradeStatusPresentation> = {
   PENDING: { label: 'En négociation', tone: 'primary' },
   ONE_ACCEPTED: { label: '1 acceptation', tone: 'primary' },
@@ -81,21 +77,17 @@ export const TRADE_STATUS_META: Record<TradeStatusParam, TradeStatusPresentation
   ABANDONED: { label: 'Abandonnée', tone: 'down' },
 };
 
-/** L'échange peut encore être modifié (ajout/retrait de cartes). */
 export const isTradeEditable = (status: TradeStatusParam) =>
   status === 'PENDING' || status === 'ONE_ACCEPTED';
 
-/** Les cartes des deux côtés sont réservées. */
 export const isTradeReserved = (status: TradeStatusParam) =>
   status === 'ONE_ACCEPTED' || status === 'FULLY_ACCEPTED';
 
-/** L'échange peut encore être abandonné : à tout moment avant COMPLETED. */
 export const isTradeAbandonable = (status: TradeStatusParam) =>
   isTradeEditable(status) || status === 'FULLY_ACCEPTED';
 
-/** Les cinq étapes du parcours nominal (ABANDONED en est exclu), seule liste d'étapes du web —
- * mêmes textes que `TradeSteps` côté iOS. La vue du Trade (`useTradeView`) les situe par rapport
- * au statut. */
+/** The five steps of the nominal path (ABANDONED excluded), the web app's only step list, same
+ * texts as iOS `TradeSteps`; `useTradeView` positions them against the status. */
 export const TRADE_STEPS: { status: TradeStatusParam; title: string; detail: string }[] = [
   {
     status: 'PENDING',
@@ -129,22 +121,22 @@ export const TRADE_STEPS: { status: TradeStatusParam; title: string; detail: str
   },
 ];
 
-/** En dessous de 3 €, l'échange est considéré équilibré. */
+/** Below 3 EUR (300 cents), a Trade counts as balanced. */
 const EVEN_THRESHOLD = 300;
 
-/** L'écart de valeur est trop faible pour appeler un règlement. `diff` = total reçu − total
- * donné, en centimes. */
+/** The value gap is too small to call for a settlement. `diff` = total received minus total
+ * given, in cents. */
 export const isTradeBalanced = (diff: number): boolean => Math.abs(diff) < EVEN_THRESHOLD;
 
-/** Moitié « règlement » du bouton d'acceptation : « payer 21 € », « recevoir 4 € », `null` si
- * l'échange est équilibré. `diff` = total reçu − total donné, en centimes. */
+/** Settlement half of the accept button: "payer 21 €", "recevoir 4 €", `null` when balanced.
+ * `diff` = total received minus total given, in cents. */
 export const tradeSettlementLabel = (diff: number): string | null => {
   if (isTradeBalanced(diff)) return null;
   const amount = formatPrice(Math.abs(diff));
   return diff > 0 ? `payer ${amount}` : `recevoir ${amount}`;
 };
 
-/** « Accepter et payer 21 € » : le montant fait partie de l'engagement, il va sur le bouton. */
+/** "Accepter et payer 21 €": the amount is part of the commitment, so it goes on the button. */
 export const tradeAcceptLabel = (diff: number) => {
   const settlement = tradeSettlementLabel(diff);
   return settlement ? `Accepter et ${settlement}` : "Accepter l'échange";
@@ -152,8 +144,8 @@ export const tradeAcceptLabel = (diff: number) => {
 
 export type TradeConfirmationKind = 'accept' | 'abandon' | 'modify';
 
-/** Textes des confirmations avant une étape verrouillante ou irréversible — identiques à
- * `TradeConfirmation` côté iOS. `diff` ne sert qu'à l'acceptation. */
+/** Texts of the confirmations before a locking or irreversible step, identical to iOS
+ * `TradeConfirmation`. `diff` is only used for acceptance. */
 export const tradeConfirmation = (
   kind: TradeConfirmationKind,
   diff: number,

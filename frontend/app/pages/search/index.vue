@@ -22,7 +22,6 @@ const modeLabels: Record<SearchMode, { label: string; tone: string; kbd: string 
 };
 const modeOptions = SEARCH_MODES.map((value) => ({ value, ...modeLabels[value] }));
 
-/* ---------- MODE: PAR NOM ---------- */
 const q = ref(search.q ?? '');
 watchDebounced(q, (v) => (search.q = v), { debounce: 300 });
 
@@ -37,7 +36,6 @@ const focusSearchField = () => {
   el?.focus({ preventScroll: true });
 };
 
-/* ---------- AXES: POSSESSION ET OFFRE ---------- */
 const possessionOptions = [
   { value: 'any', label: 'Toutes', tone: 'primary' },
   { value: 'owned', label: 'Que je possède', tone: 'primary' },
@@ -64,7 +62,6 @@ const size = usePreference(CARD_SIZE_PREF);
 const isDesktop = useMediaQuery('(min-width: 768px)');
 const pageSize = useCardPageSize(size, isDesktop);
 
-/* ---------- MODE: PAR JOUEUR ---------- */
 const playerFilterQ = ref(search.filter ?? '');
 watchDebounced(playerFilterQ, (v) => (search.filter = v), { debounce: 300 });
 
@@ -221,7 +218,6 @@ const sizeOptions = [
         </div>
       </div>
 
-      <!-- Filter bar (mode: par joueur) -->
       <div v-else class="mb-5 flex flex-wrap items-center gap-3">
         <div
           class="0 focus-within:border-primary/40 focus-within:ring-primary/20 flex min-w-[240px] flex-1 items-center gap-2.5 rounded-2xl border border-slate-400/50 bg-black/5 py-2 pr-4 pl-4 transition-all duration-200 focus-within:bg-black/5 focus-within:ring-4 dark:border-white/15 dark:bg-black/30"
@@ -329,7 +325,7 @@ const sizeOptions = [
       <CardDetailModal v-if="detailCard" :card="detailCard" @close="detail = null" />
     </div>
 
-    <!-- MODE: PAR JOUEUR (pas encore de joueur choisi) -->
+    <!-- Player mode, no player chosen yet -->
     <div
       v-else-if="search.mode === 'player'"
       ref="searchAreaRef"

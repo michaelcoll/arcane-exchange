@@ -65,7 +65,6 @@ const spreadTagClass = computed(() => {
           <template v-if="price != null">{{ formatPrice(price) }}</template>
         </span>
 
-        <!-- compare: trend price + unit crossed out + % badge -->
         <template v-else-if="spread">
           <span
             v-if="spread.kind === 'par'"

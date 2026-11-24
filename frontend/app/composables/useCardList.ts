@@ -5,13 +5,11 @@ import type { SortBy } from '~/bindings/SortBy';
 import type { SortDir } from '~/bindings/SortDir';
 import type { CriteriaContext } from '~/utils/card-criteria-url';
 
-/** One page of a card list, as its endpoint answers it. */
 export interface CardListPage<T> {
   items: T[];
   total: number;
 }
 
-/** The criteria and the pagination of a request, in the shape of the API parameters. */
 export interface CardListParams {
   sort_by: SortBy;
   sort_dir: SortDir;
@@ -36,7 +34,6 @@ export interface CardListScope<S> {
 export interface CardListOptions<T, S> {
   /** The sorts offered, the default one and how deep the endpoint paginates. */
   context: MaybeRefOrGetter<CriteriaContext>;
-  /** The page adapter: fetches one page of cards. */
   fetchPage: (params: CardListParams & S) => Promise<CardListPage<T>>;
   scope: MaybeRefOrGetter<CardListScope<S>>;
   pageSize: MaybeRefOrGetter<number>;

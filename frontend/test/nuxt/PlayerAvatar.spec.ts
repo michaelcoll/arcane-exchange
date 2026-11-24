@@ -94,7 +94,7 @@ describe('PlayerAvatar', () => {
 
     await wrapper.setProps({ username: 'eve' });
 
-    // Pendant la requête du nouveau joueur : initiales, jamais l’ancienne image.
+    // While the new player's request is pending: initials, never the previous image.
     expect(wrapper.find('img').exists()).toBe(false);
     expect(wrapper.text()).toBe('EV');
 

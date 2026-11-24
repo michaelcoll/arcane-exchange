@@ -3,7 +3,6 @@ import { apiErrorMessage } from './api-error';
 
 const GENERIC_IMPORT_MESSAGE = "L'import a échoué.";
 
-/** French label of each field a line error can name. */
 const FIELD_LABELS: Record<string, string> = {
   set_code: 'set',
   collector_number: 'numéro de collection',

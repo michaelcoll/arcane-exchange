@@ -26,14 +26,12 @@ export interface TradeViewServices {
   confirmExchange: () => Promise<unknown>;
   /** Rating from 1 to 5, 0 for a skipped rating. */
   rate: (rating: number) => Promise<unknown>;
-  /** Removes a card I receive. */
   removeCard: (card: TradeCard) => Promise<unknown>;
   reload: () => Promise<unknown>;
   /** Reports a refused action, with the message to show the player. */
   reportRefusal: (message: string) => void;
 }
 
-/** A party of the Trade, me or the partner. */
 export interface TradeViewParty {
   accepted: boolean;
   confirmed: boolean;
@@ -57,7 +55,6 @@ export type TradePrimaryAction =
 export interface TradeViewRating {
   /** The rating is shown in `COMPLETED` and `CLOSED`. */
   visible: boolean;
-  /** I can still rate or skip the rating. */
   canRate: boolean;
   mine: TradeRating;
   partner: TradeRating;
@@ -65,7 +62,6 @@ export interface TradeViewRating {
 
 export type TradeStepState = 'done' | 'current' | 'upcoming';
 
-/** A step of the nominal path, located relative to the status of the Trade. */
 export interface TradeViewStep {
   status: TradeStatusParam;
   title: string;
@@ -82,7 +78,6 @@ export interface TradeViewSteps {
   currentIndex: number | null;
 }
 
-/** An open confirmation, awaiting the player's decision. */
 export interface TradeViewConfirmation {
   kind: TradeConfirmationKind;
   title: string;
@@ -94,22 +89,18 @@ export interface TradeViewConfirmation {
 /** Everything the Trade screen tells the player, from the "me / partner" point of view (ADR 0005). */
 export interface TradeView {
   status: TradeStatusParam;
-  /** The label and the tone of the status. */
   presentation: TradeStatusPresentation;
   partnerUsername: string;
   me: TradeViewParty;
   partner: TradeViewParty;
   give: TradeViewSide;
   receive: TradeViewSide;
-  /** Cards can still be added or removed. */
   editable: boolean;
-  /** The cards of both sides are reserved. */
   reserved: boolean;
   abandonable: boolean;
   primaryAction: TradePrimaryAction;
   rating: TradeViewRating;
   steps: TradeViewSteps;
-  /** An action is running: the actions are to be disabled. */
   busy: boolean;
   confirmation: TradeViewConfirmation | null;
 }
@@ -225,17 +216,14 @@ export const useTradeView = (
     }
   };
 
-  /** Opens the acceptance confirmation. */
   const requestAccept = (): void => {
     if (view.value) pending.value = { kind: 'accept' };
   };
 
-  /** Opens the abandon confirmation. */
   const requestAbandon = (): void => {
     if (view.value) pending.value = { kind: 'abandon' };
   };
 
-  /** Validates the open confirmation and runs what it was guarding. */
   const confirmPending = async (): Promise<void> => {
     const current = pending.value;
     pending.value = null;
@@ -250,7 +238,6 @@ export const useTradeView = (
     }
   };
 
-  /** Closes the open confirmation without running anything. */
   const cancelPending = (): void => {
     pending.value = null;
   };
@@ -267,7 +254,6 @@ export const useTradeView = (
     await run(() => services.removeCard(card));
   };
 
-  /** Declares the physical exchange done. */
   const confirmExchange = async (): Promise<void> => {
     if (view.value) await run(services.confirmExchange);
   };

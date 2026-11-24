@@ -4,7 +4,7 @@ const props = withDefaults(
     title: string;
     body: string;
     confirmLabel: string;
-    /** `down` pour une action destructrice (modification / abandon), `primary` sinon. */
+    /** `down` for a destructive action (edit / abandon), `primary` otherwise. */
     tone?: 'primary' | 'down';
   }>(),
   { tone: 'primary' },

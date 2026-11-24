@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { TradeCard } from '~/bindings/TradeCard';
 
-// Écran d'engagement : sur mobile, la barre d'action remplace la nav du bas (lu par app.vue).
+// Commitment screen: on mobile the action bar replaces the bottom nav (read by app.vue).
 definePageMeta({ middleware: 'auth', hideBottomNav: true });
 
 const route = useRoute();
@@ -25,8 +25,8 @@ const errorTitle = computed(() => {
   return 'Impossible de charger cet échange';
 });
 
-/* La vue du Trade côté joueur décide de tout ce que l'écran dit et permet ; la page ne fait que
- * la câbler aux services et l'afficher. */
+/* The player-side Trade view decides everything the screen says and allows; the page only wires
+ * it to the services and displays it. */
 const {
   view,
   valueMode,
@@ -55,11 +55,9 @@ const {
   reportRefusal: (message) => showError('Action refusée', message),
 });
 
-/* The page bar's "…" menu (mobile) and the steps sheet (both regions). */
 const menuOpen = ref(false);
 const stepsOpen = ref(false);
 
-/* The card whose detail modal is open, from either side and either region. */
 const detail = ref<TradeCard | null>(null);
 
 const openSteps = () => {
@@ -106,7 +104,7 @@ const addGet = () =>
     </div>
 
     <template v-else-if="view">
-      <!-- MOBILE (< md) : design de l'écran de trade iOS -->
+      <!-- Mobile (< md): layout of the iOS trade screen -->
       <div data-part="mobile" class="flex flex-col gap-5 md:hidden">
         <div class="relative grid [grid-template-columns:2.25rem_1fr_2.25rem] items-center gap-2">
           <button
@@ -218,7 +216,6 @@ const addGet = () =>
         />
       </div>
 
-      <!-- DESKTOP (≥ md) -->
       <div data-part="desktop" class="flex flex-col gap-4 max-md:hidden">
         <div class="flex flex-wrap items-center justify-between gap-3.5">
           <div class="flex min-w-0 items-center gap-3">

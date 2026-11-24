@@ -7,15 +7,15 @@ const props = withDefaults(
   { size: 'sm' },
 );
 
-// Getter prop : le composable suit les changements de joueur (watch interne)
-// et repasse par les initiales à chaque nouveau username.
+// Getter prop: the composable follows player changes (internal watch) and falls back to
+// initials for each new username.
 const { avatar, load } = useUserAvatar(() => props.username);
 const initials = computed(() => props.username.slice(0, 2).toUpperCase());
 const imageFailed = ref(false);
 const showImage = computed(() => Boolean(avatar.value) && !imageFailed.value);
 
-// Changement de joueur : on retente l'image, sinon l'échec du joueur
-// précédent resterait figé sur les initiales pour tous les suivants.
+// On player change, retry the image; otherwise one player's failure would leave every following
+// player on initials.
 watch(
   () => props.username,
   () => {

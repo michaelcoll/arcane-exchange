@@ -3,8 +3,6 @@ import type { RarityFilters } from '~/bindings/RarityFilters';
 import type { TradeBindersResponse } from '~/bindings/TradeBindersResponse';
 import type { VisibilityResponse } from '~/bindings/VisibilityResponse';
 
-/* Réglages de mise à l'échange : visibilité de collection, binders ouverts à l'échange et
- * filtres de rareté. */
 export const useTradeSettingsService = () => {
   const { apiCall } = useApi();
 

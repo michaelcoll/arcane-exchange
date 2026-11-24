@@ -179,7 +179,6 @@ const stepperBtnClass =
       l'échange.
     </div>
 
-    <!-- MATRICE DES RARETÉS -->
     <div
       v-else
       class="rounded-2xl border border-slate-200 bg-white/60 px-1.5 pt-3.5 pb-1.5 shadow-lg backdrop-blur-md dark:border-white/10 dark:bg-zinc-900/60"
@@ -302,7 +301,6 @@ const stepperBtnClass =
 
       <div class="mx-3.5 my-1.5 h-px bg-slate-200 dark:bg-white/10" />
 
-      <!-- RÉPARTITION -->
       <div class="flex flex-col gap-2.5 px-3.5 pt-2 pb-3.5">
         <div
           class="flex h-2.5 overflow-hidden rounded-full border border-slate-200 bg-slate-200/70 dark:border-white/5 dark:bg-zinc-800"

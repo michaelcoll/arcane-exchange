@@ -85,7 +85,6 @@ const navigateToSearch = (searchQ: string, searchMode: SearchMode) => {
 
 <template>
   <div class="mx-auto max-w-[1180px] px-5 pt-7 pb-10 max-md:px-4 max-md:pt-5 max-md:pb-8">
-    <!-- ── HERO ── -->
     <div class="flex flex-col items-center gap-6 pt-10 pb-8 text-center">
       <div class="flex flex-col items-center gap-2.5">
         <div class="flex items-center gap-[clamp(12px,2.4vw,20px)]">
@@ -205,27 +204,21 @@ const navigateToSearch = (searchQ: string, searchMode: SearchMode) => {
       </div>
     </div>
 
-    <!-- ── SECONDARY DISCOVERY ── -->
     <div class="mt-7 flex flex-wrap gap-4">
-      <!-- Collection panel — immersive tile -->
       <div
         class="relative min-h-[206px] min-w-[260px] flex-1 overflow-hidden rounded-2xl border border-slate-200 bg-white/60 shadow-lg backdrop-blur-md dark:border-white/10 dark:bg-zinc-900/60"
       >
-        <!-- graph background -->
         <div class="absolute inset-0">
           <PriceTrendGraph :entries="collectionHistory" :pending="collectionHistoryPending" />
         </div>
 
-        <!-- scrim -->
         <div
           class="pointer-events-none absolute inset-0 z-[1] bg-gradient-to-b from-white/95 via-white/55 to-transparent dark:from-zinc-900/95 dark:via-zinc-900/55"
         />
-        <!-- bottom scrim — darkens the graph behind the meta line and CTA button -->
         <div
           class="pointer-events-none absolute inset-x-0 bottom-0 z-[2] h-24 bg-gradient-to-t from-white/95 to-transparent dark:from-zinc-900/95"
         />
 
-        <!-- top: KPIs -->
         <div class="absolute inset-x-0 top-0 z-[3] flex flex-col gap-1.5 px-[18px] py-[18px]">
           <span
             class="text-2xs font-mono font-medium tracking-widest whitespace-nowrap text-slate-400 uppercase dark:text-slate-500"

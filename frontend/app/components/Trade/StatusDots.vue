@@ -2,9 +2,9 @@
 import type { TradeStepState, TradeViewSteps } from '~/composables/useTradeView';
 import type { TradeStatusPresentation, TradeTone } from '~/utils/trade';
 
-/* Où en est l'échange, comme `TradeStatusIndicator` côté iOS : les étapes de la vue du Trade en
- * points, celle en cours gonflée en pastille à sa propre place. Sans étape en cours (Trade
- * abandonné, hors parcours) : points éteints, pastille en fin de ligne, sans « n/5 ». */
+/* Where the Trade stands, like the iOS `TradeStatusIndicator`: the steps as dots, the current one
+ * swollen into a pill. With no current step (abandoned Trade) the dots are dimmed, the pill is at
+ * the end and has no n/5. */
 const props = defineProps<{ presentation: TradeStatusPresentation; steps: TradeViewSteps }>();
 
 const emit = defineEmits<{ help: [] }>();
@@ -14,8 +14,6 @@ const count = computed(() => props.steps.list.length);
 type Part =
   { kind: Exclude<TradeStepState, 'current'>; key: string } | { kind: 'pill'; key: string };
 
-/* Étapes franchies, pastille, étapes à venir — ou, hors parcours, les points éteints puis la
- * pastille. */
 const parts = computed<Part[]>(() => {
   const pill: Part = { kind: 'pill', key: 'pill' };
   const dots = props.steps.list.map((step): Part => {
@@ -25,14 +23,13 @@ const parts = computed<Part[]>(() => {
   return props.steps.currentIndex === null ? [...dots, pill] : dots;
 });
 
-/* « NÉGOCIATION · 1/5 », ou « ABANDONNÉ » hors parcours. */
 const pillLabel = computed(() => {
   const index = props.steps.currentIndex;
   if (index === null) return 'ABANDONNÉ';
   return `${props.steps.list[index]!.title} · ${index + 1}/${count.value}`.toUpperCase();
 });
 
-/* La pastille prend le ton du statut, un cran plus soutenu que `Trade/StatusPill`. */
+/* The pill takes the status tone, one notch stronger than `Trade/StatusPill`. */
 const pillClasses: Record<TradeTone, string> = {
   primary: 'border-primary/40 bg-primary/15 text-primary-ink',
   secondary: 'border-secondary/40 bg-secondary/15 text-secondary-ink',
@@ -63,7 +60,7 @@ const accessibleLabel = computed(() => {
           ]"
           >{{ pillLabel }}</span
         >
-        <!-- Le chemin parcouru reste primary quel que soit le ton du statut courant. -->
+        <!-- The travelled path stays primary whatever the tone of the current status. -->
         <span
           v-else
           :data-dot="part.kind"

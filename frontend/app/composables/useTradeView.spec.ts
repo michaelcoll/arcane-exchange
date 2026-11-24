@@ -55,7 +55,6 @@ const makeServices = (overrides: Partial<TradeViewServices> = {}): TradeViewServ
   ...overrides,
 });
 
-/** The view of an already loaded Trade, with its fake services. */
 const setup = (
   tradeOverrides: Partial<TradeDetail> = {},
   serviceOverrides: Partial<TradeViewServices> = {},
@@ -497,7 +496,6 @@ describe('useTradeView', () => {
   });
 
   describe("le cycle d'une action", () => {
-    /** A promise the test resolves or rejects itself. */
     const deferred = () => {
       let resolve!: () => void;
       let reject!: (reason: unknown) => void;

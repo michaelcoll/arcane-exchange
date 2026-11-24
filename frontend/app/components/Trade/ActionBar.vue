@@ -1,18 +1,13 @@
 <script setup lang="ts">
 import type { TradePrimaryAction } from '~/composables/useTradeView';
 
-/* The Trade action bar, like the iOS `TradeActionBar`: one decision per status, never a wall of
- * buttons. It renders the primary action the Trade view chose, without deciding anything again;
- * no bar once there is no action left.
- * On mobile, it sticks to the bottom and abandoning lives in the page bar's "…" menu. On desktop,
- * it sits inline under the sides and carries an × abandon button. */
+/* Renders the primary action the Trade view chose, without deciding again. Sticky on mobile
+ * (abandon lives in the page bar menu), inline on desktop with an × abandon button. */
 const props = withDefaults(
   defineProps<{
     action: TradePrimaryAction;
     partner: string;
     busy: boolean;
-    /** `sticky`: stuck to the bottom of the screen (mobile); `inline`: inline under the sides,
-     * with the × abandon button (desktop). */
     layout?: 'sticky' | 'inline';
     /** The Trade can still be abandoned: only the `inline` layout uses it. */
     abandonable?: boolean;

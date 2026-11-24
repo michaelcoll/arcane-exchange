@@ -13,7 +13,6 @@ export const useSearchService = () => {
   const getSearch = ({ sort_by: _sortBy, ...params }: SearchParams & { sort_by?: string }) =>
     apiCall<PaginatedSearch>('/search/card', { query: params });
 
-  /** The sets of the cards a search scope can return (see `useSearchSets`). */
   const getSearchSets = (scope: SearchSetsParams) =>
     apiCall<SetInfo[]>('/search/card/sets', { query: scope });
 

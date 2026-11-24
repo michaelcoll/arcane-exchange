@@ -1,13 +1,13 @@
 <script setup lang="ts">
 import type { TradeStepState, TradeViewSteps } from '~/composables/useTradeView';
 
-/* « Les étapes d'un échange » en bottom sheet, contenu de `TradeStepsView` côté iOS : les étapes
- * de la vue du Trade, l'étape courante mise en avant. */
+/* The Trade steps as a bottom sheet, content of the iOS `TradeStepsView`: the steps of the Trade
+ * view with the current one highlighted. */
 const props = defineProps<{ steps: TradeViewSteps; partner: string }>();
 
 const emit = defineEmits<{ close: [] }>();
 
-/* `null` pour un échange abandonné : aucune étape n'est alors « en cours ». */
+/* `null` for an abandoned Trade: no step is current then. */
 const current = computed(() => props.steps.currentIndex);
 
 const nodeClasses: Record<TradeStepState, string> = {

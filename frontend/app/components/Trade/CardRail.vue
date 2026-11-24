@@ -3,25 +3,20 @@ import type { TradeCard } from '~/bindings/TradeCard';
 import type { TradeViewSide } from '~/composables/useTradeView';
 import type { TradeValueMode } from '~/utils/trade';
 
-/* Un côté de l'échange en « table de jeu », comme `TradeCardRail` côté iOS : un en-tête qui dit
- * qui pose quoi et pour combien, puis les cartes face visible, côte à côte, en grand. */
+/* One side of the Trade as a game table, like the iOS `TradeCardRail`: a header saying who lays
+ * down what and for how much, then the cards face up. */
 const props = withDefaults(
   defineProps<{
-    /** Username de celui qui pose ces cartes ; `null` pour moi (« JE POSE »). */
+    /** Username of whoever lays down these cards; `null` for me. */
     owner: string | null;
-    /** `receive` (le partenaire, en secondary) ou `give` (moi, neutre). */
     direction: 'give' | 'receive';
-    /** Le côté tel que la vue du Trade l'expose : ses cartes et leur total, déjà calculé. */
     side: TradeViewSide;
-    /** Les cartes de l'échange sont réservées. */
     reserved: boolean;
-    /** Chaque tuile porte un badge « − » de retrait. */
     removable: boolean;
-    /** Une action est en cours : le retrait est désactivé. */
     busy?: boolean;
-    /** Porté en `aria-label` par la tuile fantôme d'un côté vide qu'on ne peut pas remplir. */
+    /** Used as `aria-label` by the ghost tile of an empty side that cannot be filled. */
     emptyMessage: string;
-    /** Emplacement pointillé de fin de rail, affiché seulement si fourni. */
+    /** Dashed end-of-rail slot, shown only when provided. */
     addLabel?: string;
     /** `rail`: the tiles scroll on one line (mobile); `grid`: they wrap onto new lines
      * (desktop). Only the layout changes. */
@@ -34,7 +29,6 @@ const props = withDefaults(
 
 const emit = defineEmits<{ remove: [card: TradeCard]; add: []; open: [card: TradeCard] }>();
 
-/** How each mode shows a card, a side's total, and in which tone. */
 const VALUE_DISPLAYS: Record<
   TradeValueMode,
   {
@@ -60,7 +54,7 @@ const valueClass = computed(() => display.value.tone(props.direction));
 const totalLabel = computed(() => display.value.total(props.side));
 const cardLabel = (c: TradeCard) => display.value.card(c);
 
-/* Une carte verrouillée est atténuée, pas masquée : c'est toujours la carte échangée. */
+/* A locked card is dimmed, not hidden: it is still the traded card. */
 const dimmed = computed(() => props.reserved && !props.removable);
 
 /* In the grid, the tiles take the collection's default ("md") size: they fill columns of at least
@@ -93,7 +87,7 @@ const badge =
       >
     </div>
 
-    <!-- Le padding haut/gauche laisse la place aux badges qui débordent du coin des tuiles. -->
+    <!-- Top and left padding leave room for the badges overflowing the tile corners. -->
     <div
       data-part="tiles"
       :data-layout="layout"
@@ -151,7 +145,7 @@ const badge =
         }}</span>
       </div>
 
-      <!-- Sans emplacement d'ajout, un côté vide garde sa place avec une tuile fantôme muette. -->
+      <!-- Without an add slot, an empty side keeps its place with a mute ghost tile. -->
       <div
         v-if="!side.cards.length && !addLabel"
         data-part="ghost"

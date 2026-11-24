@@ -120,7 +120,6 @@ export const parseCardCriteria = (query: LocationQuery, context: CriteriaContext
   return criteria;
 };
 
-/** Builds the URL query of the criteria, the inverse of `parseCardCriteria`. */
 export const toCardCriteriaQuery = (
   criteria: CardCriteria,
   context: CriteriaContext,

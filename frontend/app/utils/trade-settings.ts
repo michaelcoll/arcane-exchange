@@ -1,6 +1,5 @@
-/* Réglages de mise à l'échange (écran Profil).
- * Les binders viennent de /collection/binders (vides compris), la sélection de binders et les
- * filtres de rareté de /collection/trade-settings. */
+/* Trade settings (Profile screen). Binders come from /collection/binders (empty ones included);
+ * the binder selection and rarity filters from /collection/trade-settings. */
 
 export const MAX_KEPT_COPIES = 4;
 
