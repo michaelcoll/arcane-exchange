@@ -1,6 +1,5 @@
 import APIClient
 
-/// Short names for the schema types the trade settings work with.
 package typealias CollectionVisibility = Components.Schemas.CollectionVisibilityParam
 package typealias RarityFilter = Components.Schemas.RarityFilterResponse
 package typealias ReceivingBinder = Components.Schemas.ReceivingBinderResponse

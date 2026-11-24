@@ -8,7 +8,6 @@ import Foundation
 @MainActor
 @Observable
 package final class CatalogSearchViewModel {
-    /// Delay the search waits out before hitting the network.
     private static let debounce: Duration = .milliseconds(300)
 
     package var query = ""

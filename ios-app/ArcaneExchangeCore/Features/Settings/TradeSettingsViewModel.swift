@@ -38,7 +38,7 @@ package final class TradeSettingsViewModel {
         TradeRatio(rarities: rarities)
     }
 
-    /// Only the rules screen's own data is worth blocking on; the four requests are
+    /// Only the rules screen's own data is worth blocking on; the five requests are
     /// independent, so they go out together.
     package func load() async {
         isLoading = true

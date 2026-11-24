@@ -20,7 +20,6 @@ package final class PurchaseFormViewModel {
     /// The day of the purchase: today for a creation.
     package var date: Date
 
-    /// The sets the player picks from.
     package private(set) var sets: [SetInfo] = []
     /// Set when the sets could not be loaded. French message, ready to show.
     package private(set) var loadError: String?
@@ -42,7 +41,6 @@ package final class PurchaseFormViewModel {
         editing != nil
     }
 
-    /// The chosen set, shown by name.
     package var selectedSet: SetInfo? {
         sets.first { $0.code == setCode } ?? editing?.set.flatMap { $0.code == setCode ? $0 : nil }
     }

@@ -11,7 +11,6 @@ struct ScannerResultCard: View {
     /// What one copy is worth in that finish; nil shows a dash.
     var unitCents: Int?
 
-    /// The height of the frame.
     private static let height: CGFloat = 76
     private static let shape = RoundedRectangle(cornerRadius: 16, style: .continuous)
 

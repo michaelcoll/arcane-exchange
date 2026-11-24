@@ -94,7 +94,6 @@ package final class ScannerViewModel {
         }
     }
 
-    /// Takes off the copy the camera just added.
     package func undoLastAdd() {
         guard undoOffer != nil else { return }
         batch.undoLastCameraAdd()

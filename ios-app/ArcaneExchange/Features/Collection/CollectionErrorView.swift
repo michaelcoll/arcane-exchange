@@ -1,7 +1,6 @@
 import ArcaneExchangeCore
 import SwiftUI
 
-/// Full-screen placeholder shown instead of the grid when the collection failed to load.
 struct CollectionErrorView: View {
     let message: String
     let onRetry: () -> Void

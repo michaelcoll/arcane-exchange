@@ -12,7 +12,6 @@ package extension UserSuggestion {
     }
 }
 
-/// The two search modes the segmented control offers.
 package enum SearchMode: String, CaseIterable, Identifiable {
     case card
     case player
@@ -39,8 +38,8 @@ package enum SearchMode: String, CaseIterable, Identifiable {
 /// A submitted search, pushed onto the Rechercher tab's stack.
 package struct SearchResultsRoute: Hashable {
     package enum Target: Hashable {
-        /// Free-text search on the English or French card name, among the cards offered by any
-        /// player (`GET /search/card?q=&offered=true`).
+        /// Free-text search on the English or French card name (`GET /search/card?q=`), among the
+        /// cards offered by any player or the whole Catalogue, per the Offre axis.
         case card(query: String)
         /// The cards one player offers (`GET /search/card?offered_by=`).
         ///

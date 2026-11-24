@@ -26,7 +26,6 @@ package struct RecognisedCard: Hashable, Sendable {
         self.frenchName = frenchName
     }
 
-    /// The name in the card's language (see `CardLanguage.displayName(name:frenchName:)`).
     package var displayName: String {
         language.displayName(name: name, frenchName: frenchName)
     }

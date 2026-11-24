@@ -82,7 +82,6 @@ package final class SearchResultsViewModel {
         await loadSetsIfNeeded()
     }
 
-    /// How long `search(_:)` waits for the next keystroke before hitting the network.
     private static let debounce: Duration = .milliseconds(300)
 
     /// What the loaded pages were fetched for. Filters and axes can change while the tab shows

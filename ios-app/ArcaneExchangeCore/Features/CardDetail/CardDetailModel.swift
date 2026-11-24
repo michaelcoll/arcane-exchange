@@ -1,7 +1,6 @@
 import APIClient
 import Foundation
 
-/// Short names for the generated schema types the card-detail screens work with.
 package typealias PriceHistoryEntry = Components.Schemas.PriceHistoryEntryResponse
 package typealias CardOffer = Components.Schemas.CardOfferResponse
 package typealias CollectionEntry = Components.Schemas.CollectionEntryResponse
@@ -69,7 +68,6 @@ package enum PriceHistorySeries {
         return bottom ... top
     }
 
-    /// The point nearest a scrub position, for the selection tooltip.
     package static func nearest(to date: Date, in points: [PricePoint]) -> PricePoint? {
         points.min {
             abs($0.date.timeIntervalSince(date)) < abs($1.date.timeIntervalSince(date))

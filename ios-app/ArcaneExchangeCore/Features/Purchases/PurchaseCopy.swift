@@ -32,13 +32,10 @@ package enum PurchaseCopy {
             .joined(separator: " · ")
     }
 
-    /// The set of a purchase: the sealed product's, or the single card's.
     package static func set(of purchase: Purchase) -> SetInfo? {
         purchase.set ?? purchase.card?.set
     }
 
-    /// The card of a single card purchase, else the name the player gave the sealed product,
-    /// else "Type · Set".
     package static func title(of purchase: Purchase) -> String {
         purchase.card?.name ?? purchase.name ?? kind(of: purchase)
     }

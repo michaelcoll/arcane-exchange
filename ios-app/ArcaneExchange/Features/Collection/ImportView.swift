@@ -4,7 +4,7 @@ import SwiftUI
 import UniformTypeIdentifiers
 
 /// Sheet for importing a ManaBox collection export: pick a `.csv`, follow the async import's
-/// progress, then show the compte-rendu (cards imported, line errors).
+/// progress, then show the report (cards imported, line errors).
 struct ImportView: View {
     @State private var model: ImportViewModel
     @State private var pickError: String?

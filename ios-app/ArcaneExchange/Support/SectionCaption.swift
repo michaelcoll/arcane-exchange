@@ -1,7 +1,5 @@
 import SwiftUI
 
-/// The small-caps section title used throughout the app for the mockup's `IGroup` header: an
-/// uppercase caption, secondary-colored.
 struct SectionCaptionStyle: ViewModifier {
     func body(content: Content) -> some View {
         content

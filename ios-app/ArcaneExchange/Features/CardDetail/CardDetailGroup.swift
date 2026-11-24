@@ -19,7 +19,6 @@ struct CardDetailGroup<Content: View>: View {
     }
 }
 
-/// One row of a `CardDetailGroup`: a label on the left, a figure on the right.
 struct CardDetailRow<Trailing: View>: View {
     let title: String
     @ViewBuilder let trailing: Trailing

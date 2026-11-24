@@ -6,7 +6,6 @@ enum KeyruneCodepoints {
     static let all: [String: UInt32] = firstHalf.merging(secondHalf) { first, _ in first }
 }
 
-/// Set codes from `10e` through `me2`.
 extension KeyruneCodepoints {
     static let firstHalf: [String: UInt32] = [
         "10e": 0xE60B,

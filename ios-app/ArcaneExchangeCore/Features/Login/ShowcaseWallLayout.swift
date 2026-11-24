@@ -1,4 +1,3 @@
-/// How the cards of the showcase are spread over the columns of the wall.
 package enum ShowcaseWallLayout {
     /// `items` dealt out in order over `count` columns, each at least `minimumPerColumn` long:
     /// a showcase too small for that repeats its cards. No column at all without items.

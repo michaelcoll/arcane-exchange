@@ -106,7 +106,6 @@ struct TradeStepsView: View {
     }
 }
 
-/// Where a step sits relative to the trade's own position.
 enum TradeStepState {
     case done
     case current
@@ -121,8 +120,6 @@ enum TradeStepState {
     }
 }
 
-/// The numbered dot on the rail: a green tick once passed, a filled disc with a halo for the
-/// step in progress, an outlined number for the ones still ahead.
 struct TradeStepNode: View {
     static let size: CGFloat = 26
 
@@ -181,7 +178,6 @@ struct TradeStepNode: View {
     }
 }
 
-/// "ÉTAPE EN COURS" — the small monospaced capsule the mockup pins under the live step.
 struct TradeCurrentStepBadge: View {
     let status: TradeStatus
 

@@ -24,7 +24,6 @@ package struct HomeWidgetContainer<Snapshot: Equatable, Tile: View>: View {
     }
 }
 
-/// The two states a widget can be in without data.
 @MainActor
 private enum HomeWidgetMessage {
     static var signedOut: some View {

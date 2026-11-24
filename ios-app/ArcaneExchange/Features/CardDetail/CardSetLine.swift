@@ -1,8 +1,6 @@
 import ArcaneExchangeCore
 import SwiftUI
 
-/// The set line under a card's name (`csub` in the mockup): the set's Keyrune symbol tinted
-/// by rarity, the set name, then the collector number.
 struct CardSetLine: View {
     let card: CollectionCard
     let setName: String

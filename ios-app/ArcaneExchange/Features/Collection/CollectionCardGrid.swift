@@ -1,8 +1,6 @@
 import ArcaneExchangeCore
 import SwiftUI
 
-/// The collection's main scrollable content once cards are loaded: filter rail, summary line,
-/// and the card grid itself, with a "load more" spinner at the bottom.
 struct CollectionCardGrid: View {
     let cards: [CollectionCard]
     let isLoadingMore: Bool

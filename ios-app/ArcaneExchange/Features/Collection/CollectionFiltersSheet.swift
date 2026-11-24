@@ -7,7 +7,6 @@ import SwiftUI
 /// Edits go straight to the bound filters, so the grid behind the drawer reloads while it is
 /// still open.
 struct CollectionFiltersSheet: View {
-    /// The sub-drawers, one per facet.
     private enum Drawer: String, Identifiable {
         case sets
         case rarities

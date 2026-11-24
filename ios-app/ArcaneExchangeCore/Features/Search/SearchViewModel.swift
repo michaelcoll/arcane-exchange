@@ -6,7 +6,6 @@ import Foundation
 @MainActor
 @Observable
 package final class SearchViewModel {
-    /// Delay the player lookup waits out before hitting the network.
     private static let debounce: Duration = .milliseconds(300)
 
     /// Waits out the debounce window from a `.task(id:)` context. Returns `false` when a newer

@@ -6,7 +6,6 @@ import SwiftUI
 /// create one, to rename one, and the deletion of an empty one. Opening a binder to trade is
 /// not done here, it stays in the trade settings.
 struct BindersView: View {
-    /// The name form: a creation, or the renaming of one binder.
     private enum NameForm: Identifiable {
         case create
         case rename(Binder)

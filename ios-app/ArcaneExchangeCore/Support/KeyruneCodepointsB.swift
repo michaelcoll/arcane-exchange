@@ -1,6 +1,5 @@
 import Foundation
 
-/// Set codes from `me3` through `znr` — the other half of `KeyruneCodepointsA.swift`.
 extension KeyruneCodepoints {
     static let secondHalf: [String: UInt32] = [
         "me3": 0xE68F,

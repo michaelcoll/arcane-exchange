@@ -77,7 +77,6 @@ struct PurchaseFormView: View {
     }
 }
 
-/// The searchable list of sets a sealed product can belong to.
 private struct SealedProductSetPicker: View {
     let model: PurchaseFormViewModel
 

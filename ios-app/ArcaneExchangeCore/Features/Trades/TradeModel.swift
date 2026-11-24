@@ -1,7 +1,6 @@
 import APIClient
 import SwiftUI
 
-/// Short names for the generated schema types the Échanges screens work with.
 package typealias TradeSummary = Components.Schemas.TradeSummaryResponse
 package typealias TradeDetail = Components.Schemas.TradeDetailResponse
 package typealias TradeCard = Components.Schemas.TradeCardResponse

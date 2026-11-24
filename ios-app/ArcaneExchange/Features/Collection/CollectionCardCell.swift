@@ -1,8 +1,7 @@
 import ArcaneExchangeCore
 import SwiftUI
 
-/// One tile of the collection grid: artwork first, figures second — the mockup's
-/// "la carte se lit d'abord, le chiffre ensuite".
+/// One tile of the collection grid: artwork first, figures second.
 struct CollectionCardCell: View {
     let card: CollectionCard
 
