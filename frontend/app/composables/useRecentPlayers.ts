@@ -27,7 +27,7 @@ export function saveRecentPlayers(key: string, players: UserSuggestion[]): void 
   try {
     localStorage.setItem(key, JSON.stringify(players.slice(0, MAX_RECENTS)));
   } catch {
-    // localStorage désactivé — silently ignore
+    // localStorage unavailable: ignore silently
   }
 }
 

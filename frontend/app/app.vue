@@ -71,8 +71,8 @@ const bottomNavLinkClass = (path: string) => [
 </script>
 
 <template>
-  <!-- Sur mobile, la nav du bas (ou la barre d'action d'une page qui la masque) est fixe :
-       la marge du bas garde le footer hors de sa portée. -->
+  <!-- On mobile the bottom nav (or the action bar of a page that hides it) is fixed: the bottom
+       margin keeps the footer out of its reach. -->
   <div
     :class="[
       'flex min-h-screen flex-col',
@@ -146,7 +146,7 @@ const bottomNavLinkClass = (path: string) => [
 
     <AppToast />
 
-    <!-- Une page peut masquer la nav du bas (meta `hideBottomNav`) pour sa propre barre d'action. -->
+    <!-- A page can hide the bottom nav (meta `hideBottomNav`) for its own action bar. -->
     <nav
       v-if="isLoaded && isSignedIn && !route.meta.hideBottomNav"
       class="hidden max-md:fixed max-md:right-0 max-md:bottom-0 max-md:left-0 max-md:z-50 max-md:flex max-md:border-t max-md:border-slate-200 max-md:bg-slate-100/80 max-md:px-2 max-md:pt-2 max-md:pb-[calc(0.5rem+env(safe-area-inset-bottom))] max-md:backdrop-blur-md dark:max-md:border-white/10 dark:max-md:bg-zinc-950/80"

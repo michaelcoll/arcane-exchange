@@ -2,7 +2,6 @@
 const props = defineProps<{
   /** The card's stored image (`image_url`), `null` while it is pending. */
   imageUrl?: string | null;
-  /** The back of a double-faced card (`image_back_url`). */
   imageBackUrl?: string | null;
   /** Offers to flip a double-faced card to its back. */
   flippable?: boolean;
@@ -140,7 +139,6 @@ onUnmounted(() => {
       <Icon name="lucide:refresh-cw" :size="16" />
     </button>
 
-    <!-- foil holographic overlay -->
     <span v-if="foil" class="foil-fx" aria-hidden="true" />
   </div>
 </template>

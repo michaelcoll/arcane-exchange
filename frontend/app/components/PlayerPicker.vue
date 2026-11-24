@@ -1,6 +1,6 @@
 <script setup lang="ts">
-// Sélecteur de joueur — champ de recherche + panneau enrichi (avatar, nb cartes, note).
-// Branché sur GET /autocomplete/user (fuzzy trigram, public, max 10 résultats).
+// Player picker: search field plus enriched panel (avatar, card count, rating).
+// Backed by GET /autocomplete/user (fuzzy trigram, public, max 10 results).
 import type { UserSuggestion } from '~/bindings/UserSuggestion';
 
 type Player = UserSuggestion;
@@ -39,7 +39,7 @@ const isEmptyQuery = computed(() => query.value.trim().length === 0);
 
 const recentUsernameSet = computed(() => new Set(recentPlayers.value.map((p) => p.username)));
 
-// Résultats de recherche répartis entre "récents" (déjà cherchés) et "autres joueurs".
+// Search results split between recent (already searched) and other players.
 const recents = computed(() =>
   results.value.filter((p) => recentUsernameSet.value.has(p.username)),
 );
@@ -48,9 +48,9 @@ const others = computed(() =>
 );
 const ordered = computed(() => [...recents.value, ...others.value]);
 
-// Liste unifiée pour la navigation clavier — diffère selon l'état (query vide vs recherche active).
-// Les joueurs récents sont stockés en entier (localStorage) : même affichage et même sélection
-// immédiate que pour un résultat de recherche classique.
+// Single list for keyboard navigation, depending on the state (empty query or active search).
+// Recent players are stored in full (localStorage): same display and immediate selection as a
+// search result.
 const navItems = computed<Player[]>(() =>
   isEmptyQuery.value ? recentPlayers.value : ordered.value,
 );
@@ -154,7 +154,6 @@ watch([highlighted, open, navActive], () => {
 
 <template>
   <div ref="wrapRef" class="relative w-full">
-    <!-- Selected state -->
     <div
       v-if="props.modelValue"
       class="border-secondary/40 bg-secondary/10 flex min-h-[62px] items-center gap-2.5 rounded-2xl border py-2 pr-2 pl-3"
@@ -184,7 +183,6 @@ watch([highlighted, open, navActive], () => {
       </button>
     </div>
 
-    <!-- Search state -->
     <div
       v-else
       class="border-secondary/40 focus-within:border-secondary/50 focus-within:ring-secondary/10 dark:border-secondary/25 dark:focus-within:border-secondary/50 flex min-h-[62px] items-center gap-2.5 rounded-2xl border border-solid bg-slate-200/75 py-2 pr-3 pl-4 transition-all duration-200 focus-within:ring-4 dark:bg-black/20"
@@ -208,7 +206,7 @@ watch([highlighted, open, navActive], () => {
       class="absolute inset-x-0 top-[calc(100%+8px)] z-20 overflow-hidden rounded-2xl border border-slate-200 bg-white/95 shadow-xl backdrop-blur-md dark:border-white/10 dark:bg-zinc-900/95"
     >
       <div ref="listRef" class="max-h-[280px] overflow-y-auto p-1.5" @mousemove="navActive = false">
-        <!-- État query vide : joueurs récemment recherchés (localStorage), affichage identique -->
+        <!-- Empty query state: recently searched players (localStorage), same display -->
         <template v-if="isEmptyQuery">
           <div
             v-if="recentPlayers.length > 0"
@@ -252,7 +250,7 @@ watch([highlighted, open, navActive], () => {
           </div>
         </template>
 
-        <!-- État recherche active (>= 2 caractères) -->
+        <!-- Active search state (2 characters or more) -->
         <template v-else>
           <div
             v-if="loading"

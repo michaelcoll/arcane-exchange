@@ -172,9 +172,9 @@ export default defineNuxtConfig({
     headers: {
       contentSecurityPolicy: {
         'img-src': [
+          // Card images are served by the frontend itself (/card-images).
           "'self'",
           'data:',
-          // Card images are served by the frontend itself (/card-images).
           // Clerk-hosted avatars and OAuth provider icons on the sign-in/profile UI.
           'https://img.clerk.com',
         ],

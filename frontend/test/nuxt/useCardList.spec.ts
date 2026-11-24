@@ -22,14 +22,9 @@ const openAt = (query: Record<string, string> = {}) => useRouter().replace({ pat
 const expectUrl = (query: Record<string, string>) =>
   vi.waitFor(() => expect(useRouter().currentRoute.value.query).toEqual(query));
 
-/** `count` card names, numbered from `start`. */
 const names = (start: number, count: number) =>
   Array.from({ length: count }, (_, i) => `card-${start + i}`);
 
-/**
- * A fake page adapter over a collection of `total` cards: it records the parameters it receives
- * and answers the requested page.
- */
 const fakeAdapter = (total: number) =>
   vi.fn<Options['fetchPage']>(async ({ page, page_size }) => ({
     items: names(page * page_size, Math.max(0, Math.min(page_size, total - page * page_size))),

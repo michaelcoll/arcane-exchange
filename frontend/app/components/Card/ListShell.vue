@@ -16,9 +16,7 @@ import type { CardSize } from '~/composables/useCardPageSize';
  * The page brings its toolbar, its card cell, its empty state and the text of its limit message.
  */
 const props = defineProps<{
-  /** The card list of the page. */
   list: CardList<T>;
-  /** The sets offered by the filters. */
   setList: SetInfo[];
   /** The ends of the price slider, in euros. */
   priceMin: number;
@@ -51,7 +49,6 @@ watchEffect(() => {
   bodyScrollLocked.value = sheet.value || !!props.overlayOpen;
 });
 
-// The filters name what they toggle by kind.
 const filters = computed(() => ({
   active: { rar: [...props.list.criteria.rarity], sets: [...props.list.criteria.sets] },
   setList: props.setList,

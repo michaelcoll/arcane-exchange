@@ -1,7 +1,7 @@
 <script setup lang="ts">
-/* Footer du site, d'après le `SiteFooter` de la maquette. Sous 860px, la navigation, les
- * attributions et le lien vers le code source disparaissent (`data-desktop-only`) : il ne reste que
- * la marque, la mention Fan Content Policy, la carte Discord et le copyright. */
+/* Site footer, after the mockup's `SiteFooter`. Below 860px the navigation, attributions and
+ * source link are hidden (`data-desktop-only`): only the brand, the Fan Content Policy notice, the
+ * Discord card and the copyright remain. */
 const DISCORD_URL = 'https://discord.gg/kd2Wwgc2w';
 const FCP_URL = 'https://company.wizards.com/fr/legal/fancontentpolicy';
 const SOURCE_URL = 'https://github.com/michaelcoll/arcane-exchange';

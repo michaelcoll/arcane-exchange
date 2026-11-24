@@ -77,7 +77,6 @@ const mountTrade = async (detail: TradeDetail) => {
   return wrapper;
 };
 
-/** The headers of the sides of a region, in document order. */
 const sideHeaders = (region: Pick<DOMWrapper<Element>, 'findAll'>) =>
   region.findAll('[data-part="header"]').map((h) => h.text());
 

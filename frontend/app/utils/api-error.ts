@@ -123,7 +123,6 @@ export const readApiError = (value: unknown): ApiError => {
     status,
     technicalMessage,
     statusCode: status,
-    // The response body as received, plus the technical message of a failure that has no body.
     data: { ...body, technicalMessage },
   });
 };

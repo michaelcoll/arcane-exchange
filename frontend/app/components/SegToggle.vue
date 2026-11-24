@@ -5,7 +5,7 @@ interface Option {
   icon?: string;
   tone?: string;
   title?: string;
-  kbd?: string; // touche brute (1, 2 … K), le modificateur s'ajoute selon l'OS
+  kbd?: string; // raw key (1, 2 ... K); the modifier is added according to the OS
 }
 
 const props = withDefaults(
@@ -13,7 +13,7 @@ const props = withDefaults(
     modelValue: string;
     options: Option[];
     size?: 'sm';
-    shortcuts?: boolean; // active les raccourcis clavier (déf. false)
+    shortcuts?: boolean;
   }>(),
   { shortcuts: false },
 );
@@ -24,7 +24,6 @@ const containerRef = ref<HTMLElement | null>(null);
 const thumb = ref({ left: 3, width: 0, opacity: 0 });
 const currentIndex = computed(() => props.options.findIndex((o) => o.value === props.modelValue));
 
-/* ---------- OS detection (⌥ sur Mac, Alt ailleurs) ---------- */
 const isMac = computed(() => {
   const ua = navigator as Navigator & { userAgentData?: { platform: string } };
   if (ua.userAgentData?.platform.startsWith('Mac')) return true;
@@ -70,13 +69,8 @@ const kbdClasses = (o: Option) =>
     ? 'border-[var(--line-2)] bg-[var(--surface)] text-[var(--ink)] dark:border-[color-mix(in_oklch,white_9%,transparent)] dark:bg-[color-mix(in_srgb,black_22%,transparent)] dark:text-[oklch(0.55_0.006_250)]'
     : 'border-[var(--line)] bg-[var(--surface)] text-[var(--ink-2)] dark:border-[color-mix(in_oklch,white_14%,transparent)] dark:bg-[color-mix(in_srgb,black_22%,transparent)] dark:text-[oklch(0.42_0.006_250)]';
 
-/* ---------- Keyboard shortcuts ----------
- * Alt+1..9 → sélectionne l'option n°N  (⌥ sur Mac)
- * Alt+K    → cycle vers l'option suivante
- * alt seul comme modérateur (Cmd/Ctrl+chiffre = onglets navigateur)
- * on utilise e.code car Alt+chiffre sur Mac produit des caractères accentués
- * les raccourcis sont désactivables via le prop `shortcuts`
- */
+/* Alt is the only modifier (Cmd/Ctrl+digit switch browser tabs). Uses e.code because Alt+digit on
+ * Mac produces accented characters. */
 const handleKeydown = (e: KeyboardEvent) => {
   if (!e.altKey || e.metaKey || e.ctrlKey) return;
 

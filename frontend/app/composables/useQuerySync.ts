@@ -1,7 +1,6 @@
 import { useRoute, useRouter } from 'nuxt/app';
 import type { LocationQuery } from 'vue-router';
 
-/** Whether the current route query already holds exactly `expected`. */
 export const isSameQuery = (current: LocationQuery, expected: Record<string, string>) =>
   Object.keys(current).length === Object.keys(expected).length &&
   Object.entries(expected).every(([k, v]) => current[k] === v);

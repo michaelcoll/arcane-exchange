@@ -66,7 +66,6 @@ export const parseSearchQuery = (query: LocationQuery): SearchUrlState => {
   return { mode: 'player' };
 };
 
-/** Builds the URL query of a search, the inverse of `parseSearchQuery`. */
 export const toSearchQuery = (state: SearchUrlState): Record<string, string> => {
   const query: Record<string, string> = { mode: state.mode };
   const q = nonBlankString(state.q);
@@ -84,13 +83,11 @@ export const toSearchQuery = (state: SearchUrlState): Record<string, string> => 
   return query;
 };
 
-/** The route of a search, for the links to `/search` from the other pages. */
 export const searchRoute = (state: SearchUrlState) => ({
   path: '/search',
   query: toSearchQuery(state),
 });
 
-/** What a search adds to the request of its card list, next to the criteria. */
 export type SearchListParams = Pick<SearchParams, 'q' | 'owned' | 'offered' | 'offered_by'>;
 
 /**

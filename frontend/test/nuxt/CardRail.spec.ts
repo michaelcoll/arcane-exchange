@@ -29,7 +29,7 @@ const cards: TradeCard[] = [
   }),
 ];
 
-// Le total vient de la vue : volontairement différent de la somme des cartes (5200).
+// The total comes from the view: deliberately different from the sum of the cards (5200).
 const side: TradeViewSide = { cards, total: 9900 };
 const emptySide: TradeViewSide = { cards: [], total: 0 };
 

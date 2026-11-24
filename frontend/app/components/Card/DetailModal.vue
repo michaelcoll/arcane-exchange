@@ -246,7 +246,6 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
             </dl>
           </div>
 
-          <!-- sellers -->
           <div class="mt-auto flex flex-col gap-2.5">
             <span class="text-sm text-slate-400 dark:text-slate-500">
               <template v-if="cardOffersPending">Chargement…</template>

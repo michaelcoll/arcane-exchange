@@ -33,7 +33,6 @@ const { data: statsData, refresh: refreshStats } = await useAsyncData(
   { lazy: true },
 );
 
-// The sets of the set filter: the ones the player owns a card of.
 const { data: setList, refresh: refreshSets } = await useAsyncData(
   'collection-owned-sets',
   () => getOwnedSets(),
@@ -51,7 +50,6 @@ const list = reactive(
   useCardList<CollectionCard, { q: string }>({
     context: COLLECTION_CRITERIA,
     fetchPage: getCollection,
-    // The scope of the collection: its text filter (debounced), which its URL carries too.
     scope: (): CardListScope<{ q: string }> => {
       const text = qDebounced.value;
       return { params: { q: text }, query: text.trim() ? { q: text } : {} };
@@ -186,14 +184,12 @@ const onDragLeave = () => {
 
 <template>
   <div class="mx-auto max-w-[1180px] px-5 pt-7 pb-10 max-md:px-4 max-md:pt-5 max-md:pb-8">
-    <!-- ── VALUE BAR — immersive (compact) ⇄ framed + scales (detail) ── -->
     <div
       :class="[
         'relative mb-4 overflow-hidden rounded-2xl border border-slate-200 bg-white/60 shadow-lg backdrop-blur-md transition-[height] duration-[450ms] ease-[cubic-bezier(0.4,0,0.1,1)] dark:border-white/10 dark:bg-zinc-900/60',
         showDetail ? 'h-[220px] md:h-[396px]' : 'h-[188px] max-md:h-[220px]',
       ]"
     >
-      <!-- graph background -->
       <div
         :class="[
           'absolute transition-[inset] duration-[450ms] ease-[cubic-bezier(0.4,0,0.1,1)]',
@@ -207,7 +203,6 @@ const onDragLeave = () => {
         />
       </div>
 
-      <!-- scrim (fades out in detail mode) -->
       <div
         :class="[
           'pointer-events-none absolute inset-0 z-[1] bg-gradient-to-b from-white/95 via-white/55 to-transparent transition-opacity duration-300 dark:from-zinc-900/95 dark:via-zinc-900/55',
@@ -215,7 +210,6 @@ const onDragLeave = () => {
         ]"
       />
 
-      <!-- top: KPIs + controls -->
       <div
         class="absolute inset-x-0 top-0 z-[3] flex flex-col items-start justify-between gap-3 px-5 py-5 max-md:gap-2.5 md:flex-row md:flex-wrap"
       >
@@ -289,7 +283,6 @@ const onDragLeave = () => {
         </div>
       </div>
 
-      <!-- bottom-left: sync status (hidden in detail, hidden on mobile — no room next to legend) -->
       <span
         :class="[
           'text-2xs absolute bottom-3.5 left-5 z-[3] hidden items-center gap-1.5 font-mono font-medium tracking-widest whitespace-nowrap text-slate-400 uppercase transition-opacity duration-300 sm:flex dark:text-slate-500',
@@ -299,7 +292,6 @@ const onDragLeave = () => {
         <Icon name="lucide:refresh-cw" :size="11" /> synchro auto · il y a 2 h
       </span>
 
-      <!-- bottom-right: legend -->
       <div class="absolute right-5 bottom-3.5 z-[3] flex gap-4">
         <span
           class="text-2xs flex items-center gap-1.5 font-mono whitespace-nowrap text-slate-500 dark:text-slate-300"
@@ -543,7 +535,6 @@ const onDragLeave = () => {
           </button>
         </template>
 
-        <!-- Step: done (failed) -->
         <template v-else-if="importStep === 'done'">
           <p class="mt-0 text-sm text-red-400">
             {{ importFailureMessage }}

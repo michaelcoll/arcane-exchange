@@ -1,6 +1,4 @@
 <script setup lang="ts">
-/* Between the two sides of the Trade: "échange", or "échange réservé" once the cards are
- * reserved. Horizontal between two stacked rails (mobile), vertical between two columns (desktop). */
 const props = withDefaults(
   defineProps<{
     reserved: boolean;

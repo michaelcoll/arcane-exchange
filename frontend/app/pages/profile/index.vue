@@ -90,7 +90,6 @@ const visHelp = [
   <div class="mx-auto max-w-[680px] px-5 pt-7 pb-10 max-md:px-4 max-md:pt-5 max-md:pb-8">
     <h2 class="font-display mb-4 text-xl font-semibold tracking-tight">Préférences</h2>
 
-    <!-- COMPTE -->
     <div
       class="mb-6 rounded-2xl border border-slate-200 bg-white/60 p-4 shadow-lg backdrop-blur-md dark:border-white/10 dark:bg-zinc-900/60"
     >
