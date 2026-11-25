@@ -90,6 +90,11 @@ Token names and values: [design-system.instructions.md](.claude/instructions/des
 - **Design**: never port the mockup's HTML/CSS structure into SwiftUI: the mockup is a reference (`maquette-ios`
   skill) adapted to iOS idioms, with its tokens in
   [design-system.instructions.md](.claude/instructions/design-system.instructions.md).
+- **Native first**: use the system component (`sheet` with `presentationDetents`, `toolbar`, `List`, `Menu`,
+  `confirmationDialog`) rather than a custom one, and leave a button in the neutral system style, with no added style
+  or color, unless it is a destructive action (`role: .destructive`) — as the « Ajouter » button of
+  `AddCollectionEntryForm.swift`: players know iOS components (« UI: native first » in
+  [ios.instructions.md](.claude/instructions/ios.instructions.md)).
 - **Colors**: name a color by role, as on the web — `Palette.primary` / `.primaryInk` / `.onPrimary` and their
   `secondary` counterparts (`ArcaneExchangeCore/Support/Palette.swift`), `Palette.down` for a value drop,
   `RarityColor` for the five rarities. Never `Color.accentColor`, SwiftUI `.cyan` / `.purple` for an accent, or
