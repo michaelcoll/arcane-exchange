@@ -43,6 +43,19 @@ code : [CODING_STANDARDS.md](../../CODING_STANDARDS.md) › iOS.
 - A test never reads `Bundle.main` in `ArcaneExchangeCoreTests`: it is the test runner, not the app. Resources
   resolve in `Palette.bundle`; `AppConfig` and `SharedContainer` take an injected `info:` dictionary.
 
+## UI: native first
+
+Players know iOS components: reach for the system one before building a custom one.
+
+- Present a panel with `sheet` and `presentationDetents`, never a hand-made drawer; put actions in the `toolbar`
+  (`ToolbarItem` with a semantic placement: `.confirmationAction`, `.cancellationAction`); list with `List`, choose
+  with `Menu`, confirm with `confirmationDialog`.
+- Leave buttons in the neutral system style: no added `buttonStyle`, tint or color. Reference: the « Ajouter » button
+  of `Features/AddCard/AddCollectionEntryForm.swift` (`ToolbarItem(placement: .confirmationAction)`, nothing else).
+- Red is for destructive actions only, through `role: .destructive`, shown as an icon.
+- No button that duplicates a native gesture: dragging a sheet, swiping a row, tapping a row.
+- The close button sits at the top right.
+
 ## Home-screen widgets
 
 - The `ArcaneExchangeWidgets` extension holds only its entry point and `WidgetSession`: everything else it runs lives
