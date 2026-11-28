@@ -41,3 +41,5 @@ Pour l'iOS, copier en plus `ios-app/Config/Local.xcconfig.example` vers `Local.x
   (lint iOS et tests du script d'annonce de release compris). Un fichier périmé fait échouer la tâche avec la
   commande de régénération, `mise run rebuild-docs` ou `mise run sqlx-prepare`, à lancer à la main. Il exige une base
   qui tourne, migrée (`mise run migrate`) : `docs/db.md` est comparé à la base de dev.
+  Le hook `pre-push` découpe ces vérifications en jobs lefthook séquentiels (voir `lefthook.yml`) : la sortie nomme
+  le job fautif.

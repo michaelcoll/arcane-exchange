@@ -60,11 +60,10 @@ Check the database first with the `dev-servers` skill: the pre-push hook needs P
 git push -u origin HEAD
 ```
 
-A pre-push failure from a Nuxt test timeout: rerun that check alone; when it passes, report **blocked: push** (the
-user pushes by hand). Any other failure is a real break from a bump: report **failed** with the output, PR unopened.
+A pre-push failure is a real break from a bump: report **failed** with the output, PR unopened.
 
-Write the body with the `pr` skill: the Summary is the version list from step 4; Evidence is the pre-push
-`mise run checks` passing. Then:
+Write the body with the `pr` skill: the Summary is the version list from step 4; Evidence is the pre-push hook
+passing. Then:
 
 ```bash
 gh pr create --base main --title "build(deps): upgrade the dependencies" --body-file <body>
