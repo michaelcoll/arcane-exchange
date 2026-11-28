@@ -43,7 +43,8 @@
 
 - Develop in a worktree unless the user says otherwise
 - History: linear, rebased on `main`, one commit per issue
-- Before pushing, check `docker info`: the pre-push hook needs PostgreSQL. If Docker is down, ask the user to start it
+- Before pushing, and when the pre-push hook fails, check the database with the `dev-servers` skill. If it is down, ask
+  the user to start it
 - Once the PR is open, offer to remove the worktrees and local branches whose PR is merged
 
 ## SUBAGENTS

@@ -53,7 +53,8 @@ Use its output as is.
 
 ## 5. Push and PR
 
-Check `docker info` first: the pre-push hook needs PostgreSQL. Docker down: report **blocked: docker**, stop.
+Check the database first with the `dev-servers` skill: the pre-push hook needs PostgreSQL. Database down: report
+**blocked: docker**, stop.
 
 ```bash
 git push -u origin HEAD

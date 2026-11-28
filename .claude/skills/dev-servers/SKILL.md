@@ -1,6 +1,6 @@
 ---
 name: dev-servers
-description: Checks the live health status of all local dev servers (backend Rust, frontend Nuxt, maquette mockup, PostgreSQL Docker). Provides per-service check/start/stop commands plus bulk JSON output. Use when the user asks about server status, whether a specific service is running, wants to start/stop a server, needs to debug a connection issue, or needs a health summary before testing.
+description: Checks the live health status of all local dev servers (backend Rust, frontend Nuxt, maquette mockup, PostgreSQL Docker). Provides per-service check/start/stop commands plus bulk JSON output. Use when the user asks about server status, whether a specific service is running, wants to start/stop a server, needs to debug a connection issue, or needs a health summary before testing or before a push, or when the pre-push hook fails.
 ---
 
 # Dev Servers Skill
@@ -15,6 +15,8 @@ Monitor and manage the health of all local development services for the **Arcane
 | Frontend (Nuxt/Vue)      | `3000` | HTTP SPA    | `http://127.0.0.1:3000` |
 | Maquette (static mockup) | `4000` | HTTP static | `http://127.0.0.1:4000` |
 | PostgreSQL (Docker)      | `5432` | TCP         | `127.0.0.1:5432`        |
+
+The container `ccpt_local-database-1` is this project's database (`ccpt` is its former name).
 
 ## Commands
 
