@@ -104,17 +104,14 @@ jobs:
         with:
           rust-src-dir: backend
 
-      - name: Save current OpenAPI spec
-        run: cp docs/openapi.yml docs/openapi.yml.bak
-
-      - name: Regenerate OpenAPI spec
-        working-directory: backend
-        run: SQLX_OFFLINE=true cargo run --bin generate-openapi
-
       - name: Check openapi.yml is up-to-date
+        working-directory: backend
+        env:
+          SQLX_OFFLINE: "true"
         run: |
-          if ! diff -q docs/openapi.yml.bak docs/openapi.yml > /dev/null 2>&1; then
+          if ! cargo run --bin generate-openapi -- --check; then
+            cargo run --bin generate-openapi -- "$RUNNER_TEMP/openapi.yml"
+            diff ../docs/openapi.yml "$RUNNER_TEMP/openapi.yml" || true
             echo "::error file=docs/openapi.yml::Le fichier docs/openapi.yml n'est pas à jour. Lancez 'mise run rebuild-docs' et committez les changements."
-            diff docs/openapi.yml.bak docs/openapi.yml
             exit 1
           fi

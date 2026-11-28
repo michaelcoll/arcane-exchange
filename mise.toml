@@ -18,6 +18,10 @@ CARDMARKET_PRICE_GUIDES_URL = "https://downloads.s3.cardmarket.com/productCatalo
 EDHREC_BASE_URL = "https://json.edhrec.com"
 SCRYFALL_BASE_URL = "https://api.scryfall.com"
 
+[vars]
+# Tables left out of docs/db.md, for both `rebuild-db-doc` and `check-db-doc`.
+erdify_ignored_tables = "databases,_sqlx_migrations"
+
 [tools]
 "aqua:cpisciotta/xcbeautify" = "latest"
 "aqua:realm/SwiftLint" = "latest"
@@ -38,8 +42,8 @@ swift = "latest"
 [tasks.checks]
 # `lint-ios` is in, `build-ios` / `test-ios` are deliberately out: lefthook.yml has no per-folder
 # scoping, so they would fire Xcode on every commit regardless of what changed.
-description = "Runs all the checks for the project"
-depends = ["rebuild-docs", "sqlx-prepare", "test-backend", "test-frontend", "lint-backend", "lint-frontend", "lint-ios", "test-release-announcement"]
+description = "Runs all the checks for the project, the generated files included (checked, not regenerated)"
+depends = ["check-docs", "test-backend", "test-frontend", "lint-backend", "lint-frontend", "lint-ios", "test-release-announcement"]
 
 [tasks.clean-backend]
 dir = "backend"
@@ -81,8 +85,28 @@ run = "cargo run --bin generate-openapi"
 
 [tasks.rebuild-db-doc]
 hide = true
-# Run from the root: docs/ is shared, not backend-only.
-run = "erdify --full --ignore-tables databases,_sqlx_migrations --output docs/db.md"
+# Run from the root: docs/ is shared, not backend-only. `--lock` records the schema hash that
+# `check-db-doc` verifies; the lock file is committed along with db.md.
+run = "erdify --full --ignore-tables {{vars.erdify_ignored_tables}} --output docs/db.md --lock docs/erdify.lock"
+
+[tasks.check-docs]
+description = "Checks that docs/openapi.yml and docs/db.md are up to date"
+depends = ["check-openapi-doc", "check-db-doc"]
+
+[tasks.check-openapi-doc]
+hide = true
+dir = "backend"
+# The binary names `mise run rebuild-docs` itself when the file is stale.
+run = "SQLX_OFFLINE=true cargo run --bin generate-openapi -- --check"
+
+[tasks.check-db-doc]
+hide = true
+# Compares the live dev database to the lock: it needs a running database with every migration
+# applied (`mise run migrate`), otherwise it reports a stale db.md that is not.
+run = """
+erdify --ignore-tables {{vars.erdify_ignored_tables}} --check docs/erdify.lock \
+  || { echo "docs/db.md is out of date: run 'mise run rebuild-docs' and commit the changes." >&2; exit 1; }
+"""
 
 [tasks.sqlx-prepare]
 description = "Regenerates the .sqlx metadata — required after changing any SQL query (needs a running database)"
@@ -94,13 +118,15 @@ description = "Tests the backend — also regenerates the frontend TS bindings (
 dir = "backend"
 # Skipped when nothing the tests read has changed since the last successful run (`outputs` defaults
 # to `{ auto = true }`, i.e. an internal state file). `mise run --force test-backend` to bypass.
-# The three crate roots are excluded because `cargo sqlx prepare` (run by `sqlx-prepare`, a sibling
-# inside `checks`) touches them on every run, which would defeat the skip. Globs are relative to `dir`.
+# The three crate roots are excluded because `cargo sqlx prepare --check` (run by `lint-sqlx`, a
+# sibling inside `checks`) touches them on every run, which would defeat the skip. Globs are
+# relative to `dir`.
 sources = [
     "src/**/*.rs",
     "!src/ae/lib.rs",
     "!src/ae/main.rs",
     "!src/ae/generate_openapi.rs",
+    "tests/**/*.rs",
     "Cargo.toml",
     "Cargo.lock",
     "migrations/**/*.sql",
@@ -126,16 +152,17 @@ run = "pnpm run test"
 
 [tasks.lint-clippy]
 dir = "backend"
-depends = ["sqlx-prepare"]
-# Skipped when no source changed since the last successful run — `--force` to bypass. Two things
-# are deliberately excluded, otherwise the task would never skip: `.sqlx/`, rewritten by
-# `sqlx-prepare` on every run, and the three crate roots of Cargo.toml, which `cargo sqlx prepare`
-# touches to force a recompilation. Globs are relative to `dir`.
+# Skipped when no source changed since the last successful run — `--force` to bypass. Runs offline
+# against the committed `.sqlx/`, so a changed `.sqlx/` must re-run it. The three crate roots are
+# excluded: `cargo sqlx prepare --check` (`lint-sqlx`) touches them on every run, which would defeat
+# the skip. Globs are relative to `dir`.
 sources = [
     "src/**/*.rs",
     "!src/ae/lib.rs",
     "!src/ae/main.rs",
     "!src/ae/generate_openapi.rs",
+    "tests/**/*.rs",
+    ".sqlx/**/*.json",
     "Cargo.toml",
     "Cargo.lock",
     "migrations/**/*.sql",
@@ -145,18 +172,23 @@ hide = true
 
 [tasks.lint-sqlx]
 dir = "backend"
-depends = ["sqlx-prepare"]
-# Same exclusions as lint-clippy: the crate roots are touched by every `cargo sqlx prepare`.
+# Needs a running database. Same crate-root exclusions as lint-clippy: it touches them itself, on
+# every run.
 sources = [
     "src/**/*.rs",
     "!src/ae/lib.rs",
     "!src/ae/main.rs",
     "!src/ae/generate_openapi.rs",
+    "tests/**/*.rs",
+    ".sqlx/**/*.json",
     "Cargo.toml",
     "Cargo.lock",
     "migrations/**/*.sql",
 ]
-run = "cargo sqlx prepare --check --workspace -- --tests"
+run = """
+cargo sqlx prepare --check --workspace -- --tests \
+  || { echo ".sqlx is out of date: run 'mise run sqlx-prepare' and commit the changes." >&2; exit 1; }
+"""
 hide = true
 
 [tasks.lint-backend]

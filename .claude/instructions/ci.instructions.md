@@ -21,8 +21,9 @@ Points qui ne se lisent pas dans les YAML :
   🎁 Features (`feat`), 🔧 Fixes (`fix`), 📦 Dependencies (`dependencies`), 🧹 Maintenance (attrape-tout `*`).
   Règle de nommage et scopes : [AGENTS.md](../../AGENTS.md#pr-titles).
 
-- **`check-openapi` est un gate** : il régénère `docs/openapi.yml` et échoue s'il diffère. Toute modification de
-  contrôleur ou de DTO impose `mise run rebuild-docs` + commit du fichier.
+- **`check-openapi` est un gate** : `generate-openapi --check` compare le fichier à la spec générée et échoue s'il
+  diffère, en laissant le fichier tel quel. Toute modification de contrôleur ou de DTO impose
+  `mise run rebuild-docs` + commit du fichier.
 - **Aucun job Vitest** : les tests frontend ne tournent qu'en local (`mise run test-frontend`).
 - **Les noms des jobs sont des status checks requis** par le ruleset de `main` (ex. « Typecheck ») : renommer
   ou supprimer un job impose de mettre à jour le ruleset dans le même temps, sinon plus rien ne se merge.

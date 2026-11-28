@@ -1,0 +1,5 @@
+version = 1
+hash = "sha256:eab31464ce1299692c4ca05d6f10423758f167d204f8cd79de2156f0bafd3644"
+schemas = []
+tables = []
+ignore_tables = ["databases", "_sqlx_migrations"]

@@ -36,5 +36,8 @@ Pour l'iOS, copier en plus `ios-app/Config/Local.xcconfig.example` vers `Local.x
   tâche est le seul moyen de remettre le front à jour.
 - **`mise run sqlx-prepare` exige une base qui tourne** et repart de zéro (`rm -fr backend/.sqlx`). Les requêtes SQLx sont
   vérifiées à la compilation, donc une requête modifiée sans `sqlx-prepare` casse le build offline et la CI.
-- **`mise run checks`** est le filet complet avant de pousser : docs régénérées, métadonnées SQLx, tests et lints
-  (lint iOS et tests du script d'annonce de release compris).
+- **`mise run checks`** est le filet complet avant de pousser : il contrôle que les fichiers générés
+  (`docs/openapi.yml`, `docs/db.md` via `docs/erdify.lock`, `backend/.sqlx`) sont à jour, puis lance tests et lints
+  (lint iOS et tests du script d'annonce de release compris). Un fichier périmé fait échouer la tâche avec la
+  commande de régénération, `mise run rebuild-docs` ou `mise run sqlx-prepare`, à lancer à la main. Il exige une base
+  qui tourne, migrée (`mise run migrate`) : `docs/db.md` est comparé à la base de dev.
