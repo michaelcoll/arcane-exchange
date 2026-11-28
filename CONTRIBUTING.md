@@ -49,14 +49,15 @@ Metal toolchain, …).
 | `mise run test-backend`  | Backend tests — also regenerates the frontend TypeScript bindings (`frontend/app/bindings/`)  |
 | `mise run test-frontend` | Frontend tests                                                                                |
 | `mise run sqlx-prepare`  | Regenerates the `backend/.sqlx` metadata — required after changing any SQL query (needs a DB) |
-| `mise run rebuild-docs`  | Regenerates `docs/openapi.yml` and `docs/db.md`                                               |
-| `mise run checks`        | Everything above plus the backend, frontend and iOS lints                                     |
+| `mise run rebuild-docs`  | Regenerates `docs/openapi.yml`, `docs/db.md` and its lock `docs/erdify.lock`                  |
+| `mise run checks`        | Checks the generated files are up to date, runs the tests and lints (needs a DB)              |
 | `mise run format`        | Formats the codebase                                                                          |
 
 ## Before pushing
 
-The lefthook hooks run `mise run format` on every commit and `mise run checks` on every push. CI enforces the same
-gates, notably:
+The lefthook hooks run `mise run format` on every commit and `mise run checks` on every push. `checks` verifies the
+generated files and fails with the command that regenerates them, which you run yourself. CI enforces the same gates,
+notably:
 
 - **`docs/openapi.yml` must be up to date** — after touching a controller or a DTO, run `mise run rebuild-docs` and
   commit the result.

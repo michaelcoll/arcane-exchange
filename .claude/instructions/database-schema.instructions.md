@@ -43,5 +43,6 @@ indexes, constraints). Read it for column names and relations; this file only do
 1. Add `backend/migrations/NNNN_description.sql` (4-digit sequence, forward-only — no down migrations). Applied at startup.
 2. If a view's shape changes, drop and recreate it in the same migration — dropping it drops its indexes too, so
    recreate them (`mv_card_prices_unique` in particular).
-3. Run `mise run rebuild-db-doc` (regenerates `docs/db.md`) and `mise run sqlx-prepare`; both are covered by
-   `mise run checks`.
+3. Run `mise run migrate`, then `mise run rebuild-db-doc` (regenerates `docs/db.md`) and `mise run sqlx-prepare`, and
+   commit `docs/db.md`, `docs/erdify.lock` and `backend/.sqlx`; `mise run checks` fails if any is stale. The doc
+   check compares the live dev database, so a pending migration makes it report a stale `docs/db.md` that is not.
