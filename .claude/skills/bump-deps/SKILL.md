@@ -14,8 +14,8 @@ report.
 Launch one agent with `subagent_type: "implementer"`, in the background. Its prompt:
 
 > Follow `<skill>/PROCEDURE.md` step by step, where `<skill>` is `<this skill's base directory>`. The main checkout is
-> `<repo root>`. You are cleared to commit, push and open the PR. The pre-push hook (`mise run checks`) is your check
-> run. End with the report PROCEDURE.md defines, in place of your usual one.
+> `<repo root>`. You are cleared to commit, push and open the PR. The pre-push hook (sequential jobs, see
+> `lefthook.yml`) is your check run. End with the report PROCEDURE.md defines, in place of your usual one.
 
 Fill in both absolute paths. Tell the user in one line that the bump is running, then carry on with whatever else they
 ask.

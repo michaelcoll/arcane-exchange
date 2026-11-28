@@ -4,7 +4,17 @@ pre-commit:
       run: mise run format
       stage_fixed: true
 
+# Jobs run one after the other (no `parallel`), so a failure names its job and no frontend job runs
+# while Rust compiles. Together they cover `mise run checks`.
 pre-push:
   jobs:
-    - name: checks
-      run: mise run checks
+    - name: docs
+      run: mise run check-docs
+    - name: backend
+      run: mise run checks-backend
+    - name: frontend
+      run: mise run checks-frontend
+    - name: ios
+      run: mise run lint-ios
+    - name: release-announcement
+      run: mise run test-release-announcement

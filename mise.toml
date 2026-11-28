@@ -43,7 +43,17 @@ swift = "latest"
 # `lint-ios` is in, `build-ios` / `test-ios` are deliberately out: lefthook.yml has no per-folder
 # scoping, so they would fire Xcode on every commit regardless of what changed.
 description = "Runs all the checks for the project, the generated files included (checked, not regenerated)"
-depends = ["check-docs", "test-backend", "test-frontend", "lint-backend", "lint-frontend", "lint-ios", "test-release-announcement"]
+depends = ["check-docs", "checks-backend", "checks-frontend", "lint-ios", "test-release-announcement"]
+
+[tasks.checks-backend]
+# One lefthook job each (see lefthook.yml), run one after the other: no frontend task runs while
+# Rust compiles. The Rust tasks `wait_for` the frontend ones so that `checks` keeps that order.
+description = "Tests and lints the backend"
+depends = ["test-backend", "lint-backend"]
+
+[tasks.checks-frontend]
+description = "Tests and lints the frontend"
+depends = ["test-frontend", "lint-frontend"]
 
 [tasks.clean-backend]
 dir = "backend"
@@ -98,6 +108,7 @@ hide = true
 dir = "backend"
 # The binary names `mise run rebuild-docs` itself when the file is stale.
 run = "SQLX_OFFLINE=true cargo run --bin generate-openapi -- --check"
+wait_for = ["test-frontend", "lint-frontend"]
 
 [tasks.check-db-doc]
 hide = true
@@ -133,6 +144,7 @@ sources = [
     ".config/nextest.toml",
 ]
 run = "cargo nextest run --status-level slow"
+wait_for = ["test-frontend", "lint-frontend"]
 depends_post = ["format-frontend"]
 
 [tasks.test-frontend]
@@ -168,6 +180,7 @@ sources = [
     "migrations/**/*.sql",
 ]
 run = "SQLX_OFFLINE=true cargo clippy --locked --workspace --all-features --all-targets -- -D clippy::all"
+wait_for = ["test-frontend", "lint-frontend"]
 hide = true
 
 [tasks.lint-sqlx]
@@ -189,6 +202,7 @@ run = """
 cargo sqlx prepare --check --workspace -- --tests \
   || { echo ".sqlx is out of date: run 'mise run sqlx-prepare' and commit the changes." >&2; exit 1; }
 """
+wait_for = ["test-frontend", "lint-frontend"]
 hide = true
 
 [tasks.lint-backend]

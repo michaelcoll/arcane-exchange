@@ -55,7 +55,8 @@ Metal toolchain, …).
 
 ## Before pushing
 
-The lefthook hooks run `mise run format` on every commit and `mise run checks` on every push. `checks` verifies the
+The lefthook hooks run `mise run format` on every commit and, on every push, the same checks as `mise run checks`, as
+jobs run one after the other (see `lefthook.yml`): the hook output names the failing job. `checks` verifies the
 generated files and fails with the command that regenerates them, which you run yourself. CI enforces the same gates,
 notably:
 
